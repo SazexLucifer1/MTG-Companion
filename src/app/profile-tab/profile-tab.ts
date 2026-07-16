@@ -5,6 +5,8 @@ import { ProfileService } from '../profile.service';
 import { MtgService } from '../mtg.service';
 import { GroupService } from '../group.service';
 import { DeckList } from '../deck-list/deck-list';
+import { DeckService } from '../deck.service';
+import { AuthService } from '../auth.service';
 
 @Component({
   selector: 'app-profile-tab',
@@ -16,6 +18,8 @@ export class ProfileTab {
   readonly profileService = inject(ProfileService);
   readonly mtg = inject(MtgService);
   readonly groupService = inject(GroupService);
+  private readonly deckService = inject(DeckService);
+  private readonly auth = inject(AuthService);
 
   readonly editedName = signal('');
   readonly isEditing = signal(false);
@@ -110,5 +114,32 @@ export class ProfileTab {
     await navigator.clipboard.writeText(this.shareUrl);
     this.linkCopied.set(true);
     setTimeout(() => this.linkCopied.set(false), 2000);
+  }
+
+  // --- Commander-Namen reparieren (Alt-Daten von vor Verbesserungen an der Erkennung) ---
+
+  readonly repairBusy = signal(false);
+  readonly repairProgress = signal<{ done: number; total: number } | null>(null);
+  readonly repairMessage = signal('');
+
+  async repairCommanderNames(): Promise<void> {
+    const userId = this.auth.currentUser()?.id;
+    if (!userId) return;
+
+    this.repairBusy.set(true);
+    this.repairMessage.set('');
+    this.repairProgress.set({ done: 0, total: 0 });
+
+    const result = await this.deckService.repairCommanderNames(userId, (done, total) =>
+      this.repairProgress.set({ done, total })
+    );
+
+    this.repairBusy.set(false);
+    this.repairProgress.set(null);
+    this.repairMessage.set(
+      result.checked === 0
+        ? 'Nichts zu prüfen – alle Commander sind bereits verknüpft oder es gibt keine offenen Matches.'
+        : `${result.checked} Commander-Namen geprüft, ${result.fixed} korrigiert, ${result.linked} mit einem Deck verknüpft.`
+    );
   }
 }

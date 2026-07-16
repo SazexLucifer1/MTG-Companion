@@ -336,6 +336,81 @@ export class DeckService {
     return data[0].deck_id;
   }
 
+  /**
+   * Reparatur-Werkzeug für Alt-Daten: geht alle noch unverknüpften Commander-Namen dieses Users
+   * (über alle seine Spieler-Einträge/Gruppen hinweg) durch, löst sie mit der aktuellen (besseren)
+   * Scryfall-Erkennung neu auf, korrigiert falsch gespeicherte Namen in der DB und verknüpft sie
+   * danach - wo möglich - automatisch mit passenden eigenen Decks. Nötig, weil ein Match nach dem
+   * Speichern nicht rückwirkend von Verbesserungen an der Namens-Erkennung profitiert.
+   */
+  async repairCommanderNames(
+    userId: string,
+    onProgress?: (done: number, total: number) => void
+  ): Promise<{ checked: number; fixed: number; linked: number }> {
+    const { data: playerRows } = await supabase.from('players').select('id').eq('user_id', userId);
+    if (!playerRows || playerRows.length === 0) return { checked: 0, fixed: 0, linked: 0 };
+    const playerIds = playerRows.map((p) => p.id);
+
+    const { data: rows } = await supabase
+      .from('match_players')
+      .select('commander_name, partner_commander_name')
+      .in('player_id', playerIds)
+      .is('deck_id', null);
+
+    if (!rows) return { checked: 0, fixed: 0, linked: 0 };
+
+    const uniqueNames = new Set<string>();
+    for (const r of rows) {
+      if (r.commander_name) uniqueNames.add(r.commander_name);
+      if (r.partner_commander_name) uniqueNames.add(r.partner_commander_name);
+    }
+
+    const list = [...uniqueNames];
+    const resolvedNames = new Map<string, string>(); // alter Name -> korrigierter Name
+    let done = 0;
+
+    for (const name of list) {
+      const resolved = await this.scryfall.resolveCommanderCandidate(name);
+      if (resolved && resolved !== name) resolvedNames.set(name, resolved);
+      done++;
+      onProgress?.(done, list.length);
+    }
+
+    let fixed = 0;
+    for (const [oldName, newName] of resolvedNames) {
+      const { error: commanderError } = await supabase
+        .from('match_players')
+        .update({ commander_name: newName })
+        .in('player_id', playerIds)
+        .eq('commander_name', oldName);
+      if (!commanderError) fixed++;
+
+      await supabase
+        .from('match_players')
+        .update({ partner_commander_name: newName })
+        .in('player_id', playerIds)
+        .eq('partner_commander_name', oldName);
+    }
+
+    // Jetzt (ggf. korrigierte) Namen mit vorhandenen eigenen Decks abgleichen.
+    const finalNames = new Set(list.map((n) => resolvedNames.get(n) ?? n));
+    let linked = 0;
+    for (const name of finalNames) {
+      const deckId = await this.findDeckIdByCommander(userId, name);
+      if (!deckId) continue;
+
+      const { error: linkError } = await supabase
+        .from('match_players')
+        .update({ deck_id: deckId })
+        .in('player_id', playerIds)
+        .is('deck_id', null)
+        .ilike('commander_name', name);
+      if (!linkError) linked++;
+    }
+
+    return { checked: list.length, fixed, linked };
+  }
+
   async deleteDeck(deckId: string): Promise<void> {
     const { error } = await supabase.from('decks').delete().eq('id', deckId);
     if (error) {

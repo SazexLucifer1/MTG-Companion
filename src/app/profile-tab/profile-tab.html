@@ -87,6 +87,24 @@
     <h2>Meine Decks</h2>
     <app-deck-list [userId]="profile.id" />
   </section>
+
+  <section class="glass-card">
+    <h2>Commander-Namen reparieren</h2>
+    <p class="hint">
+      Falls Commander aus alten Imports (z.B. Excel) falsch geschrieben oder nicht mit einem Deck
+      verknüpft sind: prüft alle noch offenen Commander-Namen neu und verknüpft sie automatisch
+      mit passenden eigenen Decks, wo möglich.
+    </p>
+    <button class="glass-button small" [disabled]="repairBusy()" (click)="repairCommanderNames()">
+      {{ repairBusy() ? 'Prüfe …' : '🔧 Jetzt prüfen' }}
+    </button>
+    @if (repairProgress(); as progress) {
+      <p class="hint">{{ progress.done }} / {{ progress.total }} geprüft …</p>
+    }
+    @if (repairMessage()) {
+      <p class="hint">{{ repairMessage() }}</p>
+    }
+  </section>
   }
 
   <section class="glass-card">
