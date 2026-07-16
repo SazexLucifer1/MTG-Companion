@@ -325,7 +325,7 @@
         >
           Kein<br />Hintergrund
         </button>
-        @for (custom of backgrounds.customBackgrounds(); track custom.id) {
+        @for (custom of backgrounds.myBackgrounds(); track custom.id) {
         <button
           class="bg-thumb"
           [class.active]="mtg.playerBackgrounds()[pickerKey] === custom.url"
@@ -337,9 +337,22 @@
           } @else {
           <span class="bg-thumb-error">⚠️<br />Datei fehlt</span>
           }
-          @if (isOwnUpload(custom.uploadedBy)) {
-            <span class="bg-thumb-delete" (click)="deleteCustomBackground($event, custom.id)">🗑</span>
+          <span class="bg-thumb-delete" (click)="deleteOwnBackground($event, custom.id)">🗑</span>
+        </button>
+        }
+        @for (shared of backgrounds.sharedWithMe(); track shared.id) {
+        <button
+          class="bg-thumb"
+          [class.active]="mtg.playerBackgrounds()[pickerKey] === shared.url"
+          [class.broken]="brokenBackgrounds().has(shared.url)"
+          (click)="selectBackground(pickerKey, shared.url)"
+        >
+          @if (!brokenBackgrounds().has(shared.url)) {
+          <img [src]="shared.url" loading="lazy" alt="" (error)="markBackgroundBroken(shared.url)" />
+          } @else {
+          <span class="bg-thumb-error">⚠️<br />Datei fehlt</span>
           }
+          <span class="bg-thumb-shared" title="Mit dir geteilt">🔗</span>
         </button>
         }
         @for (bg of backgrounds.list(); track bg) {
@@ -357,7 +370,7 @@
         </button>
         }
       </div>
-      @if (backgrounds.list().length === 0 && backgrounds.customBackgrounds().length === 0) {
+      @if (backgrounds.list().length === 0 && backgrounds.myBackgrounds().length === 0 && backgrounds.sharedWithMe().length === 0) {
       <p class="hint">Noch keine Hintergründe vorhanden – lade oben eins hoch.</p>
       }
       <button class="glass-button" (click)="closeBackgroundPicker()">Fertig</button>

@@ -1,35 +1,38 @@
 import { Injectable, effect, inject, signal } from '@angular/core';
 import { supabase } from './supabase.client';
-import { GroupService } from './group.service';
 import { AuthService } from './auth.service';
 
 export interface CustomBackground {
   id: string;
   url: string;
-  uploadedBy: string;
+  ownerId: string;
 }
 
 @Injectable({ providedIn: 'root' })
 export class BackgroundService {
-  private readonly groupService = inject(GroupService);
   private readonly auth = inject(AuthService);
 
-  /** Statische, mit der App ausgelieferte Hintergründe (public/backgrounds/). */
+  /** Statische, mit der App ausgelieferte Hintergründe (public/backgrounds/) - für alle sichtbar. */
   readonly list = signal<string[]>([]);
   private loaded = false;
 
-  /** Von Gruppenmitgliedern hochgeladene Hintergründe - geteilt mit der ganzen aktiven Gruppe. */
-  readonly customBackgrounds = signal<CustomBackground[]>([]);
+  /** Eigene hochgeladene Hintergründe - nur für den eigenen Account sichtbar/wählbar. */
+  readonly myBackgrounds = signal<CustomBackground[]>([]);
+  /** Von anderen Accounts gezielt mit mir geteilte Hintergründe. */
+  readonly sharedWithMe = signal<CustomBackground[]>([]);
+
   readonly uploading = signal(false);
   readonly uploadError = signal('');
 
   constructor() {
     effect(() => {
-      const groupId = this.groupService.groupId();
-      if (groupId) {
-        this.loadCustomBackgrounds(groupId);
+      const userId = this.auth.currentUser()?.id;
+      if (userId) {
+        this.loadOwn(userId);
+        this.loadSharedWithMe(userId);
       } else {
-        this.customBackgrounds.set([]);
+        this.myBackgrounds.set([]);
+        this.sharedWithMe.set([]);
       }
     });
   }
@@ -49,27 +52,48 @@ export class BackgroundService {
     }
   }
 
-  private async loadCustomBackgrounds(groupId: string): Promise<void> {
+  private async loadOwn(userId: string): Promise<void> {
     const { data, error } = await supabase
-      .from('group_backgrounds')
-      .select('id, image_url, uploaded_by')
-      .eq('group_id', groupId)
+      .from('backgrounds')
+      .select('id, image_url, owner_id')
+      .eq('owner_id', userId)
       .order('created_at', { ascending: false });
 
     if (error) {
-      console.error('Konnte hochgeladene Hintergründe nicht laden:', error);
+      console.error('Konnte eigene Hintergründe nicht laden:', error);
       return;
     }
 
-    this.customBackgrounds.set(
-      (data ?? []).map((row) => ({ id: row.id, url: row.image_url, uploadedBy: row.uploaded_by }))
+    this.myBackgrounds.set(
+      (data ?? []).map((row) => ({ id: row.id, url: row.image_url, ownerId: row.owner_id }))
+    );
+  }
+
+  private async loadSharedWithMe(userId: string): Promise<void> {
+    const { data, error } = await supabase
+      .from('background_shares')
+      .select('backgrounds ( id, image_url, owner_id )')
+      .eq('shared_with', userId);
+
+    if (error) {
+      console.error('Konnte geteilte Hintergründe nicht laden:', error);
+      return;
+    }
+
+    this.sharedWithMe.set(
+      (data as any[])
+        .filter((row) => row.backgrounds)
+        .map((row) => ({
+          id: row.backgrounds.id,
+          url: row.backgrounds.image_url,
+          ownerId: row.backgrounds.owner_id,
+        }))
     );
   }
 
   async uploadBackground(file: File): Promise<boolean> {
-    const groupId = this.groupService.groupId();
     const userId = this.auth.currentUser()?.id;
-    if (!groupId || !userId) return false;
+    if (!userId) return false;
 
     if (!file.type.startsWith('image/')) {
       this.uploadError.set('Bitte ein Bild auswählen.');
@@ -84,10 +108,10 @@ export class BackgroundService {
     this.uploadError.set('');
 
     const ext = file.name.split('.').pop() ?? 'jpg';
-    const path = `${groupId}/${crypto.randomUUID()}.${ext}`;
+    const path = `${userId}/${crypto.randomUUID()}.${ext}`;
 
     const { error: uploadError } = await supabase.storage
-      .from('group-backgrounds')
+      .from('backgrounds')
       .upload(path, file, { contentType: file.type });
 
     if (uploadError) {
@@ -97,11 +121,11 @@ export class BackgroundService {
       return false;
     }
 
-    const { data: publicUrlData } = supabase.storage.from('group-backgrounds').getPublicUrl(path);
+    const { data: publicUrlData } = supabase.storage.from('backgrounds').getPublicUrl(path);
 
     const { error: insertError } = await supabase
-      .from('group_backgrounds')
-      .insert({ group_id: groupId, uploaded_by: userId, image_url: publicUrlData.publicUrl });
+      .from('backgrounds')
+      .insert({ owner_id: userId, image_url: publicUrlData.publicUrl });
 
     this.uploading.set(false);
 
@@ -111,16 +135,57 @@ export class BackgroundService {
       return false;
     }
 
-    await this.loadCustomBackgrounds(groupId);
+    await this.loadOwn(userId);
     return true;
   }
 
-  async deleteCustomBackground(id: string): Promise<void> {
-    const { error } = await supabase.from('group_backgrounds').delete().eq('id', id);
+  async deleteBackground(id: string): Promise<void> {
+    const { error } = await supabase.from('backgrounds').delete().eq('id', id);
     if (error) {
       console.error('Konnte Hintergrund nicht löschen:', error);
       return;
     }
-    this.customBackgrounds.update((list) => list.filter((b) => b.id !== id));
+    this.myBackgrounds.update((list) => list.filter((b) => b.id !== id));
+  }
+
+  /** Gibt einen eigenen Hintergrund für einen anderen Account frei (erneutes Teilen ist ein No-op). */
+  async shareBackground(backgroundId: string, targetUserId: string): Promise<boolean> {
+    const { error } = await supabase
+      .from('background_shares')
+      .upsert(
+        { background_id: backgroundId, shared_with: targetUserId },
+        { onConflict: 'background_id,shared_with' }
+      );
+
+    if (error) {
+      console.error('Konnte Hintergrund nicht teilen:', error);
+      return false;
+    }
+    return true;
+  }
+
+  async loadSharesFor(backgroundId: string): Promise<{ userId: string }[]> {
+    const { data, error } = await supabase
+      .from('background_shares')
+      .select('shared_with')
+      .eq('background_id', backgroundId);
+
+    if (error) {
+      console.error('Konnte Freigaben nicht laden:', error);
+      return [];
+    }
+    return (data ?? []).map((row) => ({ userId: row.shared_with }));
+  }
+
+  async unshareBackground(backgroundId: string, targetUserId: string): Promise<void> {
+    const { error } = await supabase
+      .from('background_shares')
+      .delete()
+      .eq('background_id', backgroundId)
+      .eq('shared_with', targetUserId);
+
+    if (error) {
+      console.error('Konnte Freigabe nicht entfernen:', error);
+    }
   }
 }

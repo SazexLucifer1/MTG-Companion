@@ -4,7 +4,6 @@ import { Subscription } from 'rxjs';
 import { GameSessionService, IngameUnit } from '../game-session.service';
 import { MtgService } from '../mtg.service';
 import { BackgroundService } from '../background.service';
-import { AuthService } from '../auth.service';
 import { TEAM_OPTIONS } from '../models';
 
 @Component({
@@ -17,7 +16,6 @@ export class IngameTracker implements AfterViewInit, OnDestroy {
   readonly session = inject(GameSessionService);
   readonly mtg = inject(MtgService);
   readonly backgrounds = inject(BackgroundService);
-  private readonly auth = inject(AuthService);
   readonly teamOptions = TEAM_OPTIONS;
 
   readonly backgroundPickerFor = signal<string | null>(null);
@@ -55,14 +53,10 @@ export class IngameTracker implements AfterViewInit, OnDestroy {
     await this.backgrounds.uploadBackground(file);
   }
 
-  isOwnUpload(uploadedBy: string): boolean {
-    return uploadedBy === this.auth.currentUser()?.id;
-  }
-
-  async deleteCustomBackground(event: Event, id: string): Promise<void> {
+  async deleteOwnBackground(event: Event, id: string): Promise<void> {
     event.stopPropagation();
-    if (confirm('Diesen hochgeladenen Hintergrund für die ganze Gruppe löschen?')) {
-      await this.backgrounds.deleteCustomBackground(id);
+    if (confirm('Diesen eigenen Hintergrund löschen?')) {
+      await this.backgrounds.deleteBackground(id);
     }
   }
 

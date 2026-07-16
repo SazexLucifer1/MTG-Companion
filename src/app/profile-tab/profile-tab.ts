@@ -7,6 +7,7 @@ import { GroupService } from '../group.service';
 import { DeckList } from '../deck-list/deck-list';
 import { DeckService } from '../deck.service';
 import { AuthService } from '../auth.service';
+import { BackgroundService } from '../background.service';
 
 @Component({
   selector: 'app-profile-tab',
@@ -20,6 +21,7 @@ export class ProfileTab {
   readonly groupService = inject(GroupService);
   private readonly deckService = inject(DeckService);
   private readonly auth = inject(AuthService);
+  readonly backgrounds = inject(BackgroundService);
 
   readonly editedName = signal('');
   readonly isEditing = signal(false);
@@ -141,5 +143,59 @@ export class ProfileTab {
         ? 'Nichts zu prüfen – alle Commander sind bereits verknüpft oder es gibt keine offenen Matches.'
         : `${result.checked} Commander-Namen geprüft, ${result.fixed} korrigiert, ${result.linked} mit einem Deck verknüpft.`
     );
+  }
+
+  // --- Hintergrundbilder ---
+
+  async onBackgroundFileSelected(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file) return;
+    await this.backgrounds.uploadBackground(file);
+  }
+
+  async deleteBackground(id: string): Promise<void> {
+    if (confirm('Diesen Hintergrund löschen?')) {
+      await this.backgrounds.deleteBackground(id);
+    }
+  }
+
+  readonly sharingBackgroundId = signal<string | null>(null);
+  readonly shareCandidates = signal<{ userId: string; displayName: string }[]>([]);
+  readonly shareBusy = signal(false);
+  readonly shareMessage = signal('');
+
+  async openBackgroundShareDialog(backgroundId: string): Promise<void> {
+    this.sharingBackgroundId.set(backgroundId);
+    this.shareBusy.set(true);
+    this.shareMessage.set('');
+
+    const myUserId = this.auth.currentUser()?.id;
+    const seen = new Map<string, string>();
+    for (const group of this.groupService.myGroups()) {
+      const members = await this.groupService.loadGroupMembers(group.id);
+      for (const m of members) {
+        if (m.userId !== myUserId) seen.set(m.userId, m.displayName);
+      }
+    }
+
+    this.shareCandidates.set([...seen.entries()].map(([userId, displayName]) => ({ userId, displayName })));
+    this.shareBusy.set(false);
+  }
+
+  closeBackgroundShareDialog(): void {
+    this.sharingBackgroundId.set(null);
+    this.shareCandidates.set([]);
+    this.shareMessage.set('');
+  }
+
+  async shareBackgroundWith(userId: string): Promise<void> {
+    const backgroundId = this.sharingBackgroundId();
+    if (!backgroundId) return;
+
+    const ok = await this.backgrounds.shareBackground(backgroundId, userId);
+    this.shareMessage.set(ok ? 'Geteilt!' : 'Teilen fehlgeschlagen.');
+    if (ok) setTimeout(() => this.shareMessage.set(''), 2000);
   }
 }

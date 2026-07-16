@@ -89,6 +89,72 @@
   </section>
 
   <section class="glass-card">
+    <h2>Meine Hintergrundbilder</h2>
+    <p class="hint">
+      Eigene Hintergründe für den Life-Tracker – nur du kannst sie auswählen, außer du gibst sie
+      gezielt für andere Accounts frei.
+    </p>
+
+    <label class="glass-button small avatar-upload-label">
+      @if (backgrounds.uploading()) {
+        <span class="spinner"></span> Lädt hoch …
+      } @else {
+        🖼️ Hintergrund hochladen
+      }
+      <input
+        type="file"
+        accept="image/*"
+        [disabled]="backgrounds.uploading()"
+        (change)="onBackgroundFileSelected($event)"
+      />
+    </label>
+    @if (backgrounds.uploadError()) {
+      <p class="error">{{ backgrounds.uploadError() }}</p>
+    }
+
+    @if (backgrounds.myBackgrounds().length === 0) {
+      <p class="hint">Noch keine eigenen Hintergründe hochgeladen.</p>
+    } @else {
+      <div class="bg-thumb-grid">
+        @for (bg of backgrounds.myBackgrounds(); track bg.id) {
+          <div class="bg-thumb" [style.background-image]="'url(' + bg.url + ')'">
+            <button class="bg-thumb-delete" (click)="deleteBackground(bg.id)" aria-label="Löschen">🗑</button>
+            <button class="bg-thumb-share" (click)="openBackgroundShareDialog(bg.id)" aria-label="Teilen">🔗</button>
+          </div>
+        }
+      </div>
+    }
+  </section>
+
+  @if (sharingBackgroundId()) {
+  <div class="options-menu-overlay" (click)="closeBackgroundShareDialog()">
+    <div class="options-menu-sheet" (click)="$event.stopPropagation()">
+      <h3>Hintergrund teilen</h3>
+      @if (shareBusy()) {
+        <p class="hint">Lade Mitspieler …</p>
+      } @else if (shareCandidates().length === 0) {
+        <p class="hint">Keine anderen Spieler aus deinen Gruppen gefunden.</p>
+      } @else {
+        <ul class="player-list">
+          @for (candidate of shareCandidates(); track candidate.userId) {
+            <li>
+              <span class="player-name">{{ candidate.displayName }}</span>
+              <button class="glass-button small" (click)="shareBackgroundWith(candidate.userId)">
+                Teilen
+              </button>
+            </li>
+          }
+        </ul>
+      }
+      @if (shareMessage()) {
+        <p class="success">{{ shareMessage() }}</p>
+      }
+      <button class="glass-button" (click)="closeBackgroundShareDialog()">Schließen</button>
+    </div>
+  </div>
+  }
+
+  <section class="glass-card">
     <h2>Commander-Namen reparieren</h2>
     <p class="hint">
       Falls Commander aus alten Imports (z.B. Excel) falsch geschrieben oder nicht mit einem Deck
