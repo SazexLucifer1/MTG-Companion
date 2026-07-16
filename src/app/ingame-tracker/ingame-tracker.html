@@ -299,6 +299,24 @@
   <div class="background-picker-overlay" (click)="closeBackgroundPicker()">
     <div class="background-picker-sheet" (click)="$event.stopPropagation()">
       <h3>Hintergrund für {{ pickerKey }}</h3>
+
+      <label class="glass-button small bg-upload-label">
+        @if (backgrounds.uploading()) {
+          <span class="spinner"></span> Lädt hoch …
+        } @else {
+          📤 Eigenes Bild hochladen
+        }
+        <input
+          type="file"
+          accept="image/*"
+          [disabled]="backgrounds.uploading()"
+          (change)="onBackgroundFileSelected($event)"
+        />
+      </label>
+      @if (backgrounds.uploadError()) {
+        <p class="error">{{ backgrounds.uploadError() }}</p>
+      }
+
       <div class="background-swipe-row">
         <button
           class="bg-thumb none"
@@ -307,6 +325,23 @@
         >
           Kein<br />Hintergrund
         </button>
+        @for (custom of backgrounds.customBackgrounds(); track custom.id) {
+        <button
+          class="bg-thumb"
+          [class.active]="mtg.playerBackgrounds()[pickerKey] === custom.url"
+          [class.broken]="brokenBackgrounds().has(custom.url)"
+          (click)="selectBackground(pickerKey, custom.url)"
+        >
+          @if (!brokenBackgrounds().has(custom.url)) {
+          <img [src]="custom.url" loading="lazy" alt="" (error)="markBackgroundBroken(custom.url)" />
+          } @else {
+          <span class="bg-thumb-error">⚠️<br />Datei fehlt</span>
+          }
+          @if (isOwnUpload(custom.uploadedBy)) {
+            <span class="bg-thumb-delete" (click)="deleteCustomBackground($event, custom.id)">🗑</span>
+          }
+        </button>
+        }
         @for (bg of backgrounds.list(); track bg) {
         <button
           class="bg-thumb"
@@ -322,8 +357,8 @@
         </button>
         }
       </div>
-      @if (backgrounds.list().length === 0) {
-      <p class="hint">Noch keine Hintergründe gefunden – prüfe public/backgrounds/manifest.json.</p>
+      @if (backgrounds.list().length === 0 && backgrounds.customBackgrounds().length === 0) {
+      <p class="hint">Noch keine Hintergründe vorhanden – lade oben eins hoch.</p>
       }
       <button class="glass-button" (click)="closeBackgroundPicker()">Fertig</button>
     </div>
