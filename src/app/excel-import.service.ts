@@ -245,7 +245,7 @@ export class ExcelImportService {
       if (!trimmedPlayer) continue;
 
       for (const row of rowsBySheet.get(sheetName) ?? []) {
-        const commander = commanderNames.get(this.candidateFor(row)) ?? row.deckName;
+        const commander = commanderNames.get(this.rowKey(row)) ?? row.deckName;
         result.push(...this.buildSimpleMode('Commander', trimmedPlayer, commander, row.normal, importDate));
         result.push(...this.buildArchenemyTeam(trimmedPlayer, commander, row.archTeam, importDate));
         result.push(...this.buildArchenemyEvil(trimmedPlayer, commander, row.archEvil, importDate));
@@ -264,39 +264,44 @@ export class ExcelImportService {
     return result;
   }
 
-  /** Der Rohtext, der für eine Zeile als Commander-Quelle dient (Bildtitel bevorzugt, sonst Deckname). */
-  private candidateFor(row: DeckRow): string {
-    return row.noteTitle ? this.cleanNoteTitle(row.noteTitle) : row.deckName;
+  /** Eindeutiger Schlüssel je Zeilen-"Form" (Deckname + evtl. Bildtitel), zum Cachen der Auflösung. */
+  private rowKey(row: DeckRow): string {
+    return `${row.deckName} ${row.noteTitle ?? ''}`;
   }
 
   /**
-   * Verifiziert alle einzigartigen Commander-Kandidaten (Bildtitel oder Deckname) über Scryfall
-   * (siehe ScryfallService.resolveCommanderCandidate) und liefert eine Map Kandidat -> offizieller
-   * Kartenname. Kandidaten ohne Treffer fehlen in der Map (Aufrufer fällt dann auf den Rohtext
-   * zurück). Läuft sequenziell (Scryfall erlaubt keine Bulk-Fuzzy-/Wort-Suche), daher der
-   * Progress-Callback.
+   * Verifiziert alle einzigartigen Zeilen über Scryfall (siehe ScryfallService.resolveCommanderCandidate)
+   * und liefert eine Map Zeilen-Schlüssel -> offizieller Kartenname. Pro Zeile wird ZUERST der
+   * Deckname versucht (der Nutzer pflegt dort inzwischen die korrekten Commander-Namen) und NUR
+   * falls das nichts findet, ersatzweise der Bildtitel aus einem eingebetteten Kommentar (falls
+   * vorhanden) - vorher war das umgekehrt. Zeilen ohne Treffer fehlen in der Map (Aufrufer fällt
+   * dann auf den Rohtext zurück). Läuft sequenziell (Scryfall erlaubt keine Bulk-Fuzzy-/Wort-Suche),
+   * daher der Progress-Callback.
    */
   private async resolveCommanderNames(
     rowsBySheet: Map<string, DeckRow[]>,
     onProgress?: (done: number, total: number) => void
   ): Promise<Map<string, string>> {
-    const candidates = new Set<string>();
+    const uniqueRows = new Map<string, DeckRow>();
     for (const rows of rowsBySheet.values()) {
       for (const row of rows) {
-        const candidate = this.candidateFor(row);
-        if (candidate) candidates.add(candidate);
+        if (!row.deckName && !row.noteTitle) continue;
+        uniqueRows.set(this.rowKey(row), row);
       }
     }
 
     const result = new Map<string, string>();
-    const list = [...candidates];
+    const entries = [...uniqueRows.entries()];
     let done = 0;
 
-    for (const candidate of list) {
-      const resolvedName = await this.scryfall.resolveCommanderCandidate(candidate);
-      if (resolvedName) result.set(candidate, resolvedName);
+    for (const [key, row] of entries) {
+      let resolvedName = row.deckName ? await this.scryfall.resolveCommanderCandidate(row.deckName) : null;
+      if (!resolvedName && row.noteTitle) {
+        resolvedName = await this.scryfall.resolveCommanderCandidate(this.cleanNoteTitle(row.noteTitle));
+      }
+      if (resolvedName) result.set(key, resolvedName);
       done++;
-      onProgress?.(done, list.length);
+      onProgress?.(done, entries.length);
     }
 
     return result;
