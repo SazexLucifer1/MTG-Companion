@@ -446,8 +446,15 @@
       [value]="resetConfirmText()"
       (input)="updateResetConfirmText($any($event.target).value)"
     />
-    <button class="glass-button danger" [disabled]="!canConfirmReset()" (click)="confirmReset()">
-      Endgültig löschen
+    @if (resetError()) {
+      <p class="error">Fehler: {{ resetError() }}</p>
+    }
+    <button
+      class="glass-button danger"
+      [disabled]="!canConfirmReset() || resetBusy()"
+      (click)="confirmReset()"
+    >
+      {{ resetBusy() ? 'Lösche …' : 'Endgültig löschen' }}
     </button>
     <button class="glass-button" (click)="closeResetConfirm()">Abbrechen</button>
   </div>

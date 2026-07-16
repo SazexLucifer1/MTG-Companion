@@ -597,9 +597,9 @@ export class MtgService {
 
   /** Hard-Reset: löscht Verlauf, alle Spieler und deren Hintergrundbilder unwiderruflich. Cubes/Gemini-Key bleiben erhalten. */
   /** Hard-Reset: löscht Verlauf, alle Spieler und deren Hintergrundbilder unwiderruflich. Cubes/Gemini-Key bleiben erhalten. */
-  async resetAllData(): Promise<void> {
+  async resetAllData(): Promise<{ success: boolean; error?: string }> {
     const groupId = this.groupService.groupId();
-    if (!groupId) return;
+    if (!groupId) return { success: false, error: 'Keine aktive Gruppe.' };
 
     // Schritt 1: IDs aller Matches dieser Gruppe holen.
     const { data: matchRows, error: matchesFetchError } = await supabase
@@ -609,7 +609,7 @@ export class MtgService {
 
     if (matchesFetchError) {
       console.error('Reset fehlgeschlagen (Matches laden):', matchesFetchError);
-      return;
+      return { success: false, error: `Matches laden: ${matchesFetchError.message}` };
     }
 
     const matchIds = (matchRows ?? []).map((m) => m.id);
@@ -623,7 +623,7 @@ export class MtgService {
 
       if (mpError) {
         console.error('Reset fehlgeschlagen (match_players):', mpError);
-        return;
+        return { success: false, error: `Match-Spieler löschen: ${mpError.message}` };
       }
     }
 
@@ -632,7 +632,7 @@ export class MtgService {
 
     if (matchesError) {
       console.error('Reset fehlgeschlagen (matches):', matchesError);
-      return;
+      return { success: false, error: `Matches löschen: ${matchesError.message}` };
     }
 
     // Schritt 4: player_backgrounds löschen.
@@ -643,7 +643,7 @@ export class MtgService {
 
     if (backgroundsError) {
       console.error('Reset fehlgeschlagen (player_backgrounds):', backgroundsError);
-      return;
+      return { success: false, error: `Hintergründe löschen: ${backgroundsError.message}` };
     }
 
     // Schritt 5: players selbst löschen.
@@ -651,7 +651,7 @@ export class MtgService {
 
     if (playersError) {
       console.error('Reset fehlgeschlagen (players):', playersError);
-      return;
+      return { success: false, error: `Spieler löschen: ${playersError.message}` };
     }
 
     // Schritt 6: Lokale Signale zurücksetzen.
@@ -659,6 +659,8 @@ export class MtgService {
     this.allPlayers.set([]);
     this.playerBackgrounds.set({});
     this.playerIdsByName.set({});
+
+    return { success: true };
   }
   /** Fügt Bulk-importierte Matches an (Datum wird mitgegeben statt automatisch gesetzt). */
   async importMatches(newMatches: Omit<Match, 'id'>[]): Promise<void> {

@@ -607,6 +607,7 @@ export class StatsTab {
   closeResetConfirm(): void {
     this.showResetConfirm.set(false);
     this.resetConfirmText.set('');
+    this.resetError.set('');
   }
 
   updateResetConfirmText(value: string): void {
@@ -614,10 +615,24 @@ export class StatsTab {
   }
 
   readonly canConfirmReset = computed(() => this.resetConfirmText().trim() === 'LÖSCHEN');
+  readonly resetError = signal('');
+  readonly resetBusy = signal(false);
 
   async confirmReset(): Promise<void> {
     if (!this.canConfirmReset()) return;
-    await this.mtg.resetAllData();
+
+    this.resetBusy.set(true);
+    this.resetError.set('');
+
+    const result = await this.mtg.resetAllData();
+
+    this.resetBusy.set(false);
+
+    if (!result.success) {
+      this.resetError.set(result.error ?? 'Unbekannter Fehler beim Löschen.');
+      return;
+    }
+
     this.closeResetConfirm();
     this.selectedPlayer.set(null);
     this.selectedCommanderDetail.set(null);
