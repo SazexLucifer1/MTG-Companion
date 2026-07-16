@@ -1,6 +1,7 @@
 import { Injectable, signal, computed, effect, inject } from '@angular/core';
 import { supabase } from './supabase.client';
 import { AuthService } from './auth.service';
+import { chunk } from './array-utils';
 
 export interface MyGroup {
   id: string;
@@ -263,8 +264,9 @@ export class GroupService {
 
     const matchIds = (matchRows ?? []).map((m) => m.id);
 
-    if (matchIds.length > 0) {
-      const { error } = await supabase.from('match_players').delete().in('match_id', matchIds);
+    // In Päckchen löschen, sonst wird die Anfrage-URL bei vielen Matches zu lang ("Bad Request").
+    for (const batch of chunk(matchIds, 150)) {
+      const { error } = await supabase.from('match_players').delete().in('match_id', batch);
       if (error) {
         console.error('Löschen fehlgeschlagen (match_players):', error);
         return false;

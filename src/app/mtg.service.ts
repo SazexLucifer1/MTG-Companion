@@ -4,6 +4,7 @@ import { supabase } from './supabase.client';
 import { GroupService } from './group.service';
 import { AuthService } from './auth.service';
 import { DeckService } from './deck.service';
+import { chunk } from './array-utils';
 
 const GEMINI_KEY = 'mtg_gemini_key';
 
@@ -614,12 +615,10 @@ export class MtgService {
 
     const matchIds = (matchRows ?? []).map((m) => m.id);
 
-    // Schritt 2: match_players für diese Matches löschen (nur falls welche existieren).
-    if (matchIds.length > 0) {
-      const { error: mpError } = await supabase
-        .from('match_players')
-        .delete()
-        .in('match_id', matchIds);
+    // Schritt 2: match_players für diese Matches löschen (in Päckchen, sonst wird die
+    // Anfrage-URL bei vielen Matches - z.B. aus einem Excel-Import - zu lang).
+    for (const batch of chunk(matchIds, 150)) {
+      const { error: mpError } = await supabase.from('match_players').delete().in('match_id', batch);
 
       if (mpError) {
         console.error('Reset fehlgeschlagen (match_players):', mpError);
