@@ -1,0 +1,647 @@
+.ingame-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  display: flex;
+  flex-direction: column;
+  background: #0c0817;
+}
+
+// NEU
+.ingame-grid {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(var(--columns, 2), 1fr);
+  grid-auto-rows: 1fr;
+  gap: 8px;
+  padding:
+    calc(8px + env(safe-area-inset-top, 0px))
+    calc(8px + env(safe-area-inset-right, 0px))
+    calc(8px + env(safe-area-inset-bottom, 0px))
+    calc(8px + env(safe-area-inset-left, 0px));
+  overflow: hidden;
+}
+
+.player-panel {
+  position: relative;
+  overflow: hidden;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.player-panel--wide {
+  // Sonderslot unten bei ungerader Panel-Anzahl: volle Breite über beide
+  // Grid-Spalten, damit keine Restfläche frei bleibt. Rotation + Größen-Swap
+  // (panelInnerWidth/Height, panelRotation) laufen unverändert über den
+  // bestehenden Pinwheel-Mechanismus – hier muss nur die Grid-Zelle selbst
+  // breiter werden.
+  grid-column: 1 / -1;
+}
+
+.panel-inner {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  box-sizing: border-box;
+  background-size: cover;
+  background-position: center;
+  overflow: hidden;
+}
+
+.panel-tint {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(12, 8, 23, 0.3), rgba(12, 8, 23, 0.6));
+  pointer-events: none;
+}
+
+.panel-content {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 6px;
+  padding: 10px;
+  box-sizing: border-box;
+
+  &.dead {
+    filter: grayscale(0.5) brightness(0.55);
+  }
+}
+
+// NEU
+// NEU
+.panel-icon-pair {
+  position: absolute;
+  z-index: 2;
+  display: flex;
+  gap: 6px;
+
+  &.corner-tl {
+    top: 6px;
+    left: 6px;
+  }
+  &.corner-tr {
+    top: 6px;
+    right: 6px;
+  }
+  &.corner-bl {
+    bottom: 6px;
+    left: 6px;
+  }
+  &.corner-br {
+    bottom: 6px;
+    right: 6px;
+  }
+}
+
+.panel-icon-button {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(0, 0, 0, 0.35);
+  color: var(--text);
+  font-size: 0.95rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  touch-action: manipulation;
+  flex-shrink: 0;
+
+  &.death.active {
+    background: rgba(255, 80, 80, 0.55);
+    border-color: rgba(255, 80, 80, 0.85);
+  }
+
+  &:active {
+    transform: scale(0.92);
+  }
+}
+
+.dead-overlay {
+  position: absolute;
+  inset: 10%;
+  z-index: 1; // bewusst UNTER .panel-icon-pair (z-index 2), damit der
+              // Wiederbelebungs-Button (☠️) immer sichtbar/klickbar bleibt
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  border-radius: 18px;
+  background: rgba(120, 20, 20, 0.55);
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  pointer-events: none; // rein visuell, blockiert keine Klicks/Taps darunter
+  text-align: center;
+}
+
+.dead-overlay-text {
+  font-size: clamp(1.1rem, 6vw, 2.2rem);
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  line-height: 1.25;
+  color: rgba(255, 255, 255, 0.95);
+  text-shadow: 0 3px 8px rgba(0, 0, 0, 0.7);
+  transform: rotate(-6deg);
+}
+
+.panel-header {
+  text-align: center;
+  flex-shrink: 0;
+
+  .panel-name {
+    display: block;
+    font-weight: 700;
+    font-size: 1rem;
+  }
+
+  .panel-commander {
+    display: block;
+    font-size: 0.72rem;
+    opacity: 0.7;
+    margin-top: 2px;
+  }
+}
+
+/* --- Neue Tap-Zonen statt kleiner +/- Buttons: linke Hälfte = minus, rechte Hälfte = plus --- */
+
+.life-tap-area {
+  position: relative;
+  flex: 1;
+  width: 100%;
+  display: flex;
+  align-items: stretch;
+}
+
+.life-tap-zone {
+  flex: 1;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-touch-callout: none;
+  user-select: none;
+  border-radius: 12px;
+
+  &:active {
+    background: rgba(255, 255, 255, 0.06);
+  }
+}
+
+.life-value {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  min-width: 60%;
+  text-align: center;
+  font-size: clamp(3rem, 14vw, 5.5rem);
+  font-weight: 800;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.7);
+
+  &.poison {
+    color: #8be9a3;
+    font-size: clamp(2.2rem, 10vw, 4rem);
+  }
+}
+
+.mode-toggle-row {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  max-width: 240px;
+  flex-shrink: 0;
+}
+
+.mode-toggle-button {
+  flex: 1;
+  padding: 10px 6px;
+  border-radius: 12px;
+  border: 1px solid var(--glass-border);
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  touch-action: manipulation;
+
+  &.active {
+    background: rgba(80, 200, 120, 0.3);
+    border-color: rgba(80, 200, 120, 0.6);
+  }
+
+  &:active {
+    transform: scale(0.96);
+  }
+}
+
+.focus-self-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  max-width: 240px;
+  flex: 1;
+  justify-content: center;
+
+  .glass-button {
+    width: 100%;
+  }
+}
+
+// NEU
+.commander-source-split {
+  width: 100%;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+
+  &.single {
+    justify-content: center;
+    // align-items: center entfernt – hat commander-source-half auf Inhaltsbreite
+    // schrumpfen lassen, wodurch die großen Tap-Zonen bei nur einem Commander
+    // (kein Partner/Background) unsichtbar klein wurden.
+  }
+}
+
+// NEU
+.commander-source-half {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 8px 4px;
+  min-height: 0;
+
+  &:first-child:not(:last-child) {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+  }
+}
+
+.source-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  opacity: 0.85;
+  text-align: center;
+  padding: 0 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+  flex-shrink: 0;
+}
+
+/* --- Große Tap-Zonen für Commander-Schaden, analog zu .life-tap-area --- */
+
+.source-tap-area {
+  position: relative;
+  flex: 1;
+  width: 100%;
+  min-height: 64px;
+  display: flex;
+  align-items: stretch;
+}
+
+.source-tap-zone {
+  flex: 1;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-touch-callout: none;
+  user-select: none;
+  border-radius: 12px;
+
+  &:active {
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  &.minus:active {
+    background: rgba(255, 100, 100, 0.12);
+  }
+
+  &.plus:active {
+    background: rgba(80, 200, 120, 0.12);
+  }
+}
+
+.source-value {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  min-width: 50%;
+  text-align: center;
+  font-size: clamp(2rem, 9vw, 3.5rem);
+  font-weight: 800;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.7);
+}
+
+/* --- Zentraler Options-Button an der Kreuzung aller Panels --- */
+
+// NEU
+.center-menu-button {
+  position: absolute;
+  left: calc(50% + (env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)) / 2);
+  transform: translate(-50%, -50%);
+  z-index: 60;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: rgba(20, 16, 38, 0.9);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: var(--text);
+  font-size: 1.4rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  touch-action: manipulation;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+
+  &:active {
+    transform: translate(-50%, -50%) scale(0.92);
+  }
+}
+
+.options-menu-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 650;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.options-menu-sheet {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  max-width: 300px;
+  padding: 20px;
+  border-radius: 20px;
+  background: rgba(20, 16, 38, 0.96);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+
+  .glass-button {
+    width: 100%;
+  }
+}
+
+.winner-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.winner-card {
+  width: 100%;
+  max-width: 420px;
+  max-height: 80vh;
+  overflow-y: auto;
+
+  .glass-button {
+    width: 100%;
+    margin-top: 10px;
+
+    &.danger {
+      background: rgba(255, 100, 100, 0.15);
+      border-color: rgba(255, 100, 100, 0.4);
+      color: #ff8f8f;
+    }
+  }
+}
+
+.background-picker-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 700;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.background-picker-sheet {
+  width: 100%;
+  max-height: 70vh;
+  background: rgba(20, 16, 38, 0.96);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border-top-left-radius: 24px;
+  border-top-right-radius: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  padding: 16px;
+  padding-bottom: calc(16px + env(safe-area-inset-bottom));
+
+  h3 {
+    margin: 0 0 12px;
+    text-align: center;
+  }
+}
+
+.background-swipe-row {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  padding-bottom: 10px;
+  margin-bottom: 12px;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+.bg-thumb {
+  flex: 0 0 auto;
+  scroll-snap-align: center;
+  width: 110px;
+  height: 150px;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.08);
+  padding: 0;
+  cursor: pointer;
+  position: relative;
+  color: var(--text);
+  font-size: 0.8rem;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  &.none {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px;
+    text-align: center;
+    line-height: 1.3;
+  }
+
+  &.active {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px var(--accent);
+  }
+
+  &.broken {
+    border-color: rgba(255, 100, 100, 0.4);
+  }
+}
+
+.bg-thumb-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 6px;
+  font-size: 0.7rem;
+  line-height: 1.4;
+  color: #ff8f8f;
+  text-align: center;
+
+  small {
+    opacity: 0.6;
+    font-size: 0.6rem;
+    word-break: break-all;
+  }
+}
+
+// NEU
+.reorder-tap-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(80, 120, 255, 0.15);
+  border: 2px dashed rgba(120, 150, 255, 0.6);
+  border-radius: 18px;
+  cursor: pointer;
+  touch-action: manipulation;
+
+  &.selected {
+    background: rgba(255, 200, 80, 0.25);
+    border-color: rgba(255, 200, 80, 0.8);
+  }
+}
+
+.reorder-hint {
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-align: center;
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 10px;
+  pointer-events: none;
+}
+
+.reorder-hint-banner {
+  position: fixed;
+  top: calc(12px + env(safe-area-inset-top, 0px));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 55;
+  pointer-events: none; // rein informativ, kann also nie etwas blockieren
+  padding: 8px 16px;
+  border-radius: 16px;
+  background: rgba(20, 16, 38, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  font-size: 0.8rem;
+  text-align: center;
+  max-width: 80vw;
+}
+/* --- Startspieler-Roulette --- */
+
+.roulette-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 750;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.7);
+}
+
+.roulette-sheet {
+  width: 100%;
+  max-width: 340px;
+  padding: 24px 20px;
+  border-radius: 20px;
+  background: rgba(20, 16, 38, 0.96);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  text-align: center;
+
+  h3 {
+    margin: 0 0 16px;
+    font-size: 1rem;
+  }
+
+  .glass-button {
+    width: 100%;
+    margin-top: 14px;
+  }
+}
+
+.roulette-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.roulette-item {
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.06);
+  font-weight: 600;
+  transition: background 0.1s ease, border-color 0.1s ease, transform 0.1s ease;
+
+  &.active {
+    background: rgba(255, 200, 80, 0.28);
+    border-color: rgba(255, 200, 80, 0.7);
+    transform: scale(1.04);
+  }
+}
+
+.roulette-result {
+  margin-top: 16px;
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: #ffd873;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
+}

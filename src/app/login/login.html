@@ -1,0 +1,36 @@
+<div class="login-screen">
+<div class="login-card">
+  <h1>MTG Companion</h1>
+  <p class="subtitle">{{ mode() === 'signin' ? 'Melde dich an' : 'Erstelle einen Account' }}</p>
+
+  <label>
+    E-Mail
+    <input
+      type="email"
+      [value]="email()"
+      (input)="email.set($any($event.target).value)"
+    />
+  </label>
+
+  <label>
+    Passwort
+    <input
+      type="password"
+      [value]="password()"
+      (input)="password.set($any($event.target).value)"
+    />
+  </label>
+
+  @if (errorMessage()) {
+    <p class="error">{{ errorMessage() }}</p>
+  }
+
+  <button type="button" [disabled]="loading()" (click)="submit()">
+    {{ loading() ? 'Bitte warten...' : (mode() === 'signin' ? 'Anmelden' : 'Account erstellen') }}
+  </button>
+
+  <button type="button" class="switch-mode" (click)="toggleMode()">
+    {{ mode() === 'signin' ? 'Noch keinen Account? Registrieren' : 'Schon einen Account? Anmelden' }}
+  </button>
+</div>
+</div>

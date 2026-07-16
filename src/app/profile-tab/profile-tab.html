@@ -1,0 +1,146 @@
+<section class="glass-card">
+    <h2>Mein Profil</h2>
+  
+    @if (profileService.loading()) {
+      <p class="hint">Lade Profil …</p>
+    } @else if (!profileService.profile()) {
+      <p class="hint">Profil konnte nicht geladen werden.</p>
+    } @else {
+      <div class="avatar-row">
+        <div
+          class="avatar-circle"
+          [style.background-image]="
+            profileService.profile()?.avatarUrl
+              ? 'url(' + profileService.profile()?.avatarUrl + ')'
+              : null
+          "
+        >
+          @if (!profileService.profile()?.avatarUrl) {
+            <span class="avatar-placeholder">👤</span>
+          }
+        </div>
+        <label class="glass-button small avatar-upload-label">
+          @if (avatarUploading()) {
+            <span class="spinner"></span> Lädt hoch …
+          } @else {
+            📷 Bild ändern
+          }
+          <input
+            type="file"
+            accept="image/*"
+            [disabled]="avatarUploading()"
+            (change)="onAvatarSelected($event)"
+          />
+        </label>
+      </div>
+      @if (avatarError()) {
+        <p class="error">{{ avatarError() }}</p>
+      }
+
+      @if (!isEditing()) {
+        <div class="profile-name-row">
+          <span class="profile-name">{{ profileService.profile()?.displayName }}</span>
+          <button class="icon-button" (click)="startEdit()" aria-label="Namen bearbeiten">✏️</button>
+        </div>
+      } @else {
+        <div class="add-row">
+          <input
+            class="glass-input"
+            type="text"
+            placeholder="Dein Anzeigename …"
+            [ngModel]="editedName()"
+            (ngModelChange)="editedName.set($event)"
+            (keyup.enter)="saveName()"
+            autofocus
+          />
+          <button class="glass-button primary" (click)="saveName()" [disabled]="!editedName().trim()">
+            ✓
+          </button>
+          <button class="glass-button" (click)="cancelEdit()">✕</button>
+        </div>
+      }
+  
+      @if (saveMessage()) {
+        <p class="success">{{ saveMessage() }}</p>
+      }
+    }
+  </section>
+
+  <section class="glass-card">
+    <h2>Meine Gruppen</h2>
+    @if (groupService.myGroups().length === 0) {
+      <p class="hint">Du bist noch in keiner Gruppe.</p>
+    } @else {
+      <ul class="player-list">
+        @for (group of groupService.myGroups(); track group.id) {
+          <li>
+            <span class="player-name">{{ group.name }}</span>
+            <span class="hint">{{ group.role === 'owner' ? '👑 Host' : 'Mitglied' }}</span>
+          </li>
+        }
+      </ul>
+    }
+  </section>
+
+  @if (profileService.profile(); as profile) {
+  <section class="glass-card">
+    <h2>Meine Decks</h2>
+    <app-deck-list [userId]="profile.id" />
+  </section>
+  }
+
+  <section class="glass-card">
+    <h2>App teilen</h2>
+    <button class="glass-button" (click)="openShareDialog()">📤 App teilen</button>
+  </section>
+
+  @if (showShareDialog()) {
+  <div class="options-menu-overlay" (click)="closeShareDialog()">
+    <div class="options-menu-sheet" (click)="$event.stopPropagation()">
+      <h3>App teilen</h3>
+      <p class="hint">Lade Freunde ein, die App zu öffnen – per Link oder QR-Code:</p>
+      @if (qrDataUrl()) {
+        <img class="qr-code" [src]="qrDataUrl()" alt="QR-Code zur App" />
+      }
+      <div class="add-row">
+        <input class="glass-input" type="text" [value]="shareUrl" readonly />
+        <button class="glass-button primary" (click)="copyShareLink()">
+          {{ linkCopied() ? '✓ Kopiert' : 'Kopieren' }}
+        </button>
+      </div>
+      <button class="glass-button" (click)="closeShareDialog()">Schließen</button>
+    </div>
+  </div>
+  }
+
+  <section class="glass-card">
+    <h2>Einstellungen</h2>
+    <button class="glass-button" (click)="openGeminiSettings()">🔑 Gemini-API-Key</button>
+  </section>
+
+  @if (showGeminiSettings()) {
+  <div class="options-menu-overlay" (click)="closeGeminiSettings()">
+    <div class="options-menu-sheet" (click)="$event.stopPropagation()">
+      <h3>Gemini-API-Key</h3>
+      <p class="hint">
+        Wird für die Foto-Erkennung der Commander benötigt. Kostenlos erhältlich im
+        <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio</a>.
+        Der Key wird nur lokal auf diesem Gerät gespeichert.
+      </p>
+      <div class="add-row">
+        <input
+          class="glass-input"
+          type="password"
+          placeholder="API-Key einfügen …"
+          [ngModel]="keyInput()"
+          (ngModelChange)="keyInput.set($event)"
+        />
+        <button class="glass-button primary" (click)="saveKey()">Speichern</button>
+      </div>
+      @if (keySaved()) {
+        <p class="success">Key gespeichert!</p>
+      }
+      <button class="glass-button" (click)="closeGeminiSettings()">Schließen</button>
+    </div>
+  </div>
+  }

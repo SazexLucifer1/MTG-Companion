@@ -1,0 +1,372 @@
+<!-- NEU (komplette Datei) -->
+<section class="glass-card">
+  <h2>Neues Match</h2>
+
+  <h3>Spielmodus</h3>
+  <div class="chip-row">
+    @for (m of modes; track m) {
+      <button class="glass-chip" [class.active]="session.mode() === m" (click)="session.mode.set(m)">
+        {{ m }}
+      </button>
+    }
+  </div>
+
+  <h3>Wer hat mitgespielt?</h3>
+  @if (mtg.allPlayers().length === 0) {
+    <p class="hint">Noch keine Spieler angelegt. Füge sie im Tab „Gruppe“ hinzu.</p>
+  } @else {
+    <div class="chip-row">
+      @for (player of mtg.allPlayers(); track player) {
+        <button class="glass-chip avatar-chip" [class.active]="isSelected(player)" (click)="togglePlayer(player)">
+          <app-player-avatar [url]="mtg.playerAvatars()[player] ?? null" />
+          {{ player }}
+        </button>
+      }
+    </div>
+  }
+
+  @if (session.requiresCommanderSelection() && session.selectedPlayers().length > 0) {
+    <h3>Commander</h3>
+
+    <div class="photo-row">
+      <label class="glass-button photo-button" [class.disabled]="recognizing() || !hasGeminiKey()">
+        @if (recognizing()) {
+          <span class="spinner"></span> Analysiere Foto …
+        } @else {
+          📸 Commander per Foto erkennen
+        }
+        <input
+          type="file"
+          accept="image/*"
+          capture="environment"
+          [disabled]="recognizing() || !hasGeminiKey()"
+          (change)="onPhotoSelected($event)"
+        />
+      </label>
+      @if (!hasGeminiKey()) {
+        <p class="hint">Für die Foto-Erkennung zuerst einen Gemini-API-Key im Tab „Profil“ hinterlegen.</p>
+      }
+    </div>
+
+    @if (errorMessage()) {
+      <p class="error">{{ errorMessage() }}</p>
+    }
+
+    @if (recognizedCards().length > 0) {
+      <div class="recognized">
+        <p class="hint">Erkannte Karten – antippen und einem Spieler zuweisen:</p>
+        @for (card of recognizedCards(); track card) {
+          <div class="recognized-card">
+            <span class="card-name">{{ card }}</span>
+            <div class="chip-row">
+              @for (p of session.selectedPlayers(); track p.name) {
+                <button class="glass-chip small" (click)="assignRecognizedCard(card, p.name)">
+                  → {{ p.name }}
+                </button>
+              }
+            </div>
+          </div>
+        }
+      </div>
+    }
+
+    <ul class="player-commander-list">
+      @for (p of session.selectedPlayers(); track p.name) {
+        <li>
+          <span class="player-name">{{ p.name }}</span>
+
+          @if (p.commander) {
+            <span class="commander-name">
+              @if (p.deckId) {<span title="Aus importiertem Deck">📚</span>}
+              {{ p.commander }}
+            </span>
+            <button class="icon-button" (click)="clearCommander(p.name)" aria-label="Commander entfernen">✕</button>
+          } @else if (searchTarget()?.player === p.name && searchTarget()?.slot === 'commander') {
+            <div class="search-box">
+              <input
+                class="glass-input"
+                type="text"
+                placeholder="Kartenname suchen …"
+                [ngModel]="searchQuery()"
+                (ngModelChange)="onSearchInput($event)"
+                autofocus
+              />
+              <button class="icon-button" (click)="closeSearch()" aria-label="Suche schließen">✕</button>
+              @if (suggestions().length > 0) {
+                <ul class="suggestions">
+                  @for (s of suggestions(); track s) {
+                    <li><button (click)="assignSearchResult(s)">{{ s }}</button></li>
+                  }
+                </ul>
+              }
+            </div>
+          } @else {
+            <div class="chip-row">
+              <button class="glass-chip small" (click)="openSearch(p.name)">🔍 Commander suchen</button>
+              @if (mtg.playerUserIds()[p.name]) {
+                <button class="glass-chip small" (click)="openOwnDeckPicker(p.name)">📚 Deck wählen</button>
+              }
+              <button class="glass-chip small" (click)="openBorrowDeckPicker(p.name)">🤝 Deck leihen</button>
+            </div>
+          }
+
+          @if (p.commander) {
+            @if (p.partnerCommander) {
+              <span class="commander-name partner">+ {{ p.partnerCommander }}</span>
+              <button class="icon-button" (click)="clearPartnerCommander(p.name)" aria-label="Partner/Background entfernen">✕</button>
+            } @else if (searchTarget()?.player === p.name && searchTarget()?.slot === 'partner') {
+              <div class="search-box">
+                <input
+                  class="glass-input"
+                  type="text"
+                  placeholder="Partner/Background suchen …"
+                  [ngModel]="searchQuery()"
+                  (ngModelChange)="onSearchInput($event)"
+                  autofocus
+                />
+                <button class="icon-button" (click)="closeSearch()" aria-label="Suche schließen">✕</button>
+                @if (suggestions().length > 0) {
+                  <ul class="suggestions">
+                    @for (s of suggestions(); track s) {
+                      <li><button (click)="assignSearchResult(s)">{{ s }}</button></li>
+                    }
+                  </ul>
+                }
+              </div>
+            } @else {
+              <button
+                class="icon-button add-partner-button"
+                (click)="openSearch(p.name, 'partner')"
+                aria-label="Partner oder Background hinzufügen"
+                title="Partner/Background hinzufügen"
+              >
+                ＋
+              </button>
+            }
+          }
+        </li>
+      }
+    </ul>
+  }
+
+  @if (deckPickerTarget()) {
+    <div class="options-menu-overlay" (click)="closeDeckPicker()">
+      <div class="options-menu-sheet" (click)="$event.stopPropagation()">
+        <h3>Deck für {{ deckPickerTarget() }}</h3>
+        @if (deckPickerBusy()) {
+          <p class="hint">Lade Decks …</p>
+        } @else if (deckPickerOptions().length === 0) {
+          <p class="hint">{{ deckPickerMessage() || 'Keine Decks gefunden.' }}</p>
+        } @else {
+          @if (deckPickerMessage()) {
+            <p class="error">{{ deckPickerMessage() }}</p>
+          }
+          <ul class="player-list">
+            @for (option of deckPickerOptions(); track option.deckId) {
+              <li>
+                <span class="player-name">
+                  @if (option.isPrecon) {<span title="Precon">📦</span>}
+                  {{ option.deckName }}
+                </span>
+                @if (option.ownerName) {
+                  <span class="hint">von {{ option.ownerName }}</span>
+                }
+                <button class="glass-button small" (click)="selectDeck(option.deckId)">Wählen</button>
+              </li>
+            }
+          </ul>
+        }
+        <button class="glass-button" (click)="closeDeckPicker()">Abbrechen</button>
+      </div>
+    </div>
+  }
+
+  @if (session.isTwoHeadedGiantMode() && session.selectedPlayers().length > 0) {
+    <h3>Teams zuordnen</h3>
+    <div class="team-selector-list">
+      @for (p of session.selectedPlayers(); track p.name) {
+        <label class="team-selector-item">
+          <span>{{ p.name }}</span>
+          <select class="glass-input" [ngModel]="p.team ?? ''" (ngModelChange)="setPlayerTeam(p.name, $event)">
+            <option value="">Team wählen</option>
+            @for (team of teamOptions; track team) {
+              <option [value]="team">{{ team }}</option>
+            }
+          </select>
+        </label>
+      }
+    </div>
+  }
+
+  @if (session.mode() === 'Archenemy' && session.selectedPlayers().length > 0) {
+    <h3>Archenemy markieren</h3>
+    <div class="chip-row">
+      @for (p of session.selectedPlayers(); track p.name) {
+        <button class="glass-chip" [class.active]="p.isArchenemy" (click)="toggleArchenemy(p.name)">
+          👹 {{ p.name }}
+        </button>
+      }
+    </div>
+    <p class="hint">Wähle genau einen Archenemy aus (4 vs 1).</p>
+  }
+
+  @if (session.mode() === 'Cube') {
+    <h3>Cube auswählen</h3>
+    @if (mtg.cubes().length === 0) {
+      <p class="hint">Noch keine Cubes vorhanden. Lege einen neuen Cube an.</p>
+    } @else {
+      <div>
+        <select class="glass-input" [ngModel]="session.selectedCubeId()" (ngModelChange)="session.selectedCubeId.set($event)">
+          <option value="">Cube wählen</option>
+          @for (c of mtg.cubes(); track c.id) {
+            <option [value]="c.id">{{ c.name }}</option>
+          }
+        </select>
+      </div>
+
+      <ul class="player-list">
+        @for (c of mtg.cubes(); track c.id) {
+          <li>
+            <span class="player-name">{{ c.name }}</span>
+            @if (c.isCommander) {
+              <span class="hint">Commander</span>
+            }
+            <button class="icon-button" (click)="deleteCube(c.id, c.name)" aria-label="Cube löschen">🗑</button>
+          </li>
+        }
+      </ul>
+    }
+
+    <h4>Neuen Cube hinzufügen</h4>
+    <div class="cube-form">
+      <input class="glass-input" type="text" placeholder="Cube-Name" [ngModel]="newCubeName()" (ngModelChange)="newCubeName.set($event)" />
+      <label class="checkbox-inline">
+        <input type="checkbox" [ngModel]="newCubeIsCommander()" (ngModelChange)="newCubeIsCommander.set($event)" /> Commander Cube
+      </label>
+      <button class="glass-button" (click)="addNewCube()">Cube hinzufügen</button>
+    </div>
+  }
+
+  @if (session.mode() === 'Draft') {
+    <h3>Draft-Set wählen</h3>
+    <div class="draft-search">
+      <input class="glass-input" type="text" placeholder="Set suchen (Name oder Code) …" [ngModel]="draftSearchQuery()" (ngModelChange)="onDraftSearchInput($event)" />
+      <input class="glass-input small" type="number" placeholder="Jahr" [ngModel]="draftYear()" (ngModelChange)="filterDraftsByYear($event)" />
+    </div>
+    @if (draftSuggestions().length > 0) {
+      <ul class="suggestions">
+        @for (s of draftSuggestions(); track s.id) {
+          <li>
+            <button class="glass-chip small" (click)="selectDraftSet(s)">
+              {{ s.name }} @if (s.released_at) { ({{ s.released_at }}) }
+            </button>
+          </li>
+        }
+      </ul>
+    }
+    @if (session.selectedDraftSet()) {
+      <p>Ausgewähltes Set: <strong>{{ session.selectedDraftSet()?.name }}</strong>@if (session.selectedDraftSet()?.releasedAt) { – {{ session.selectedDraftSet()?.releasedAt }} }</p>
+      <button class="glass-button small" (click)="selectDraftSet(null)">Auswahl entfernen</button>
+    }
+  }
+
+  <button class="glass-button primary save-button" [disabled]="!session.canStartGame()" (click)="session.startGame()">
+    ▶ Spiel starten
+  </button>
+  @if (session.selectedPlayers().length === 1) {
+    <p class="hint">Mindestens zwei Spieler auswählen.</p>
+  }
+  @if (successMessage()) {
+    <p class="success">{{ successMessage() }}</p>
+  }
+</section>
+
+<section class="glass-card">
+  <h2>Verlauf</h2>
+  @if (mtg.history().length === 0) {
+    <p class="hint">Noch keine Matches gespeichert.</p>
+  } @else {
+    <button class="glass-chip" (click)="toggleHistory()">
+      {{ historyExpanded() ? '▾ Einklappen' : '▸ Verlauf anzeigen' }} ({{ mtg.history().length }})
+    </button>
+  }
+  @if (historyExpanded()) {
+    @if (historyTotalPages() > 1) {
+      <div class="chip-row history-pager">
+        <button
+          class="icon-button"
+          (click)="prevHistoryPage()"
+          [disabled]="historyPage() === 0"
+          aria-label="Neuere Spiele"
+        >
+          ◀
+        </button>
+        <span class="hint"
+          >Spiele {{ historyPage() * historyPageSize + 1 }}–{{ historyRangeEnd() }} von
+          {{ mtg.history().length }}</span
+        >
+        <button
+          class="icon-button"
+          (click)="nextHistoryPage()"
+          [disabled]="historyPage() >= historyTotalPages() - 1"
+          aria-label="Ältere Spiele"
+        >
+          ▶
+        </button>
+      </div>
+    }
+    <ul class="history-list">
+      @for (match of pagedHistory(); track match.id) {
+        <li class="history-item">
+        <div class="history-head">
+        @if (match.mode === 'Cube' && match.cube) {
+          <span class="history-mode">{{ match.mode }} – {{ match.cube.name }}</span>
+        } @else {
+          <span class="history-mode">{{ match.mode }}</span>
+        }
+        <span class="history-date">{{ match.date | date: 'dd.MM.yyyy, HH:mm' }}</span>
+        <button class="icon-button" (click)="startEditWinner(match.id)" aria-label="Gewinner ändern">✏️</button>
+        <button class="icon-button" (click)="deleteMatch(match.id)" aria-label="Match löschen">🗑</button>
+      </div>
+      <div class="history-players">
+      @for (p of match.players; track p.name) {
+        @if (match.mode === 'Archenemy') {
+          <span class="history-player" [class.is-winner]="(match.winner === '__OTHERS__' ? !p.isArchenemy : p.name === match.winner)">
+            <app-player-avatar [url]="mtg.playerAvatars()[p.name] ?? null" />
+            {{ (match.winner === '__OTHERS__' ? (!p.isArchenemy ? '🏆 ' : '') : (p.name === match.winner ? '🏆 ' : '')) }}{{ p.name }}
+            @if (p.isArchenemy) {<em> – Archenemy</em>}
+            @if (p.commander) {<em> – {{ p.commander }}</em>}
+          </span>
+        } @else {
+          <span class="history-player" [class.is-winner]="p.name === match.winner">
+            <app-player-avatar [url]="mtg.playerAvatars()[p.name] ?? null" />
+            @if (p.name === match.winner) {🏆 }{{ p.name }}
+            @if (match.mode === 'Two-Headed Giant' && p.team) {<em> – Team {{ p.team }}</em>}
+            @if (p.commander) {<em> – {{ p.commander }}</em>}
+          </span>
+        }
+      }
+    </div>
+
+    @if (editingMatchId() === match.id) {
+      <div class="winner-edit">
+        <p class="hint">Wer hat wirklich gewonnen?</p>
+        <div class="chip-row">
+          @for (opt of winnerOptions(match); track opt.value) {
+            <button
+              class="glass-chip small"
+              [class.active]="opt.value === match.winner"
+              (click)="setMatchWinner(match.id, opt.value)"
+            >
+              {{ opt.label }}
+            </button>
+          }
+        </div>
+        <button class="glass-button small" (click)="editingMatchId.set(null)">Abbrechen</button>
+      </div>
+    }
+  </li>
+      }
+    </ul>
+  }
+</section>

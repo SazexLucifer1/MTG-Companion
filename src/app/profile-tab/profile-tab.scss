@@ -1,0 +1,108 @@
+.profile-name-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    .profile-name {
+      font-weight: 600;
+      font-size: 1.1rem;
+    }
+  }
+
+.add-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+
+  .glass-input {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+.avatar-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.avatar-circle {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background-color: rgba(255, 255, 255, 0.1);
+  background-size: cover;
+  background-position: center;
+  border: 1px solid var(--glass-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+
+  .avatar-placeholder {
+    font-size: 1.8rem;
+    opacity: 0.6;
+  }
+}
+
+.avatar-upload-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+
+  input[type='file'] {
+    display: none;
+  }
+}
+
+.player-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+
+    &:last-child {
+      border-bottom: none;
+    }
+  }
+
+  .player-name {
+    flex: 1;
+    font-weight: 600;
+  }
+}
+
+.qr-code {
+  display: block;
+  width: 100%;
+  max-width: 240px;
+  margin: 0 auto 12px;
+  border-radius: 12px;
+  background: #fff;
+  padding: 10px;
+}
+
+.spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

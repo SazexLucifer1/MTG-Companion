@@ -1,0 +1,42 @@
+<!-- NEU -->
+@if (auth.currentUser()) {
+  <header class="app-header">
+    <h1>MTG Companion</h1>
+    <button class="logout-btn" (click)="auth.signOut()">Logout</button>
+  </header>
+
+<main class="content">
+  @switch (activeTab()) { @case ('match') {
+  <app-match-tab />
+  } @case ('stats') {
+  <app-stats-tab />
+  } @case ('group') {
+  <app-group-tab />
+  } @case ('profile') {
+  <app-profile-tab />
+  } }
+</main>
+
+<app-ingame-tracker />
+<app-deck-detail-view />
+
+<nav class="tab-bar">
+  @for (tab of tabs; track tab.id) {
+  <button class="tab-item" [class.active]="activeTab() === tab.id" (click)="activeTab.set(tab.id)">
+    <span class="tab-icon">{{ tab.icon }}</span>
+    <span class="tab-label">{{ tab.label }}</span>
+  </button>
+  } @if (session.phase() === 'ingame') {
+  <button
+    class="tab-item ingame-tab"
+    [class.active]="!session.minimized()"
+    (click)="session.reopenGame()"
+  >
+    <span class="tab-icon">🎮</span>
+    <span class="tab-label">Spiel</span>
+  </button>
+  }
+</nav>
+} @else {
+<app-login />
+}

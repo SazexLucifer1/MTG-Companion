@@ -1,0 +1,333 @@
+@if (session.phase() === 'ingame' && !session.minimized()) {
+<div class="ingame-overlay">
+  <div class="ingame-grid" [style.--columns]="session.ingameColumns()">
+    @for (p of session.ingameUnits(); track p.key; let i = $index) {
+    <div
+      class="player-panel"
+      [class.player-panel--wide]="isBottomSpecialSlot(i)"
+      #panelRef
+      [attr.data-panel-index]="i"
+    >
+      <div
+        class="panel-inner"
+        [style.width]="panelInnerWidth(i)"
+        [style.height]="panelInnerHeight(i)"
+        [style.transform]="'translate(-50%, -50%) rotate(' + session.panelRotation(i) + 'deg)'"
+        [style.backgroundImage]="mtg.playerBackgrounds()[p.key] ? ('url(' + mtg.playerBackgrounds()[p.key] + ')') : null"
+      >
+        <div class="panel-tint"></div>
+
+        <div class="panel-content" [class.dead]="session.isDead(p.key)">
+          @if (reorderMode()) {
+          <div
+            class="reorder-tap-overlay"
+            [class.selected]="reorderFirstKey() === p.key"
+            (click)="selectForReorder(p.key)"
+          >
+            <span class="reorder-hint">
+              {{ reorderFirstKey() === p.key ? 'Ausgewählt – Ziel antippen' : 'Antippen zum
+              Tauschen' }}
+            </span>
+          </div>
+          }
+          <div
+            class="panel-icon-pair"
+            [ngClass]="iconPairCorner(i)"
+            [style.flex-direction]="iconPairDirection(i)"
+          >
+            <button
+              class="panel-icon-button"
+              (click)="openBackgroundPicker(p.key)"
+              aria-label="Hintergrund ändern"
+              title="Hintergrund ändern"
+            >
+              🖌️
+            </button>
+            <button
+              class="panel-icon-button death"
+              [class.active]="session.isDead(p.key)"
+              (click)="session.toggleDead(p.key)"
+              aria-label="Als tot markieren"
+              title="Tot/Lebendig"
+            >
+              ☠️
+            </button>
+          </div>
+
+          @if (session.isDead(p.key)) {
+          <div class="dead-overlay">
+            <span class="dead-overlay-text">{{ session.deadMessage(p.key) }}</span>
+          </div>
+          }
+
+          <div
+            class="panel-header"
+            (pointerdown)="startPinLongPress(p.key)"
+            (pointerup)="cancelPinLongPress()"
+            (pointerleave)="cancelPinLongPress()"
+            (pointercancel)="cancelPinLongPress()"
+          >
+            <span class="panel-name">{{ p.label }}</span>
+            @if (session.commanderDamageFocus() === null && p.commander) {
+            <span class="panel-commander">
+              {{ p.commander }}@if (p.partnerCommander) { + {{ p.partnerCommander }} }
+            </span>
+            }
+          </div>
+
+          @if (session.commanderDamageFocus(); as focusKey) { @if (focusKey === p.key) {
+          <div class="focus-self-buttons">
+            <button class="glass-button" (click)="session.exitCommanderDamageFocus()">
+              🔙 Zurück zu Leben
+            </button>
+            <button class="glass-button" (click)="session.goToPoisonFromFocus(p.key)">
+              ☠️ Zu Gift wechseln
+            </button>
+          </div>
+          } @else {
+          <div class="commander-source-split" [class.single]="session.commandersOf(p).length === 1">
+            @for (source of session.commandersOf(p); track source.key) {
+            <div class="commander-source-half">
+              <span class="source-label">{{ source.label }}</span>
+              <div class="source-tap-area">
+                <button
+                  class="source-tap-zone minus"
+                  (pointerdown)="startCommanderDamageHold(focusKey, source.key, -1)"
+                  (pointerup)="stopCommanderDamageHold(focusKey, source.key, -1)"
+                  (pointerleave)="stopCommanderDamageHold(focusKey, source.key, -1)"
+                  (pointercancel)="stopCommanderDamageHold(focusKey, source.key, -1)"
+                  aria-label="Commander-Schaden abziehen"
+                ></button>
+                <span class="source-value"
+                  >{{ session.commanderDamageValue(focusKey, source.key) }}</span
+                >
+                <button
+                  class="source-tap-zone plus"
+                  (pointerdown)="startCommanderDamageHold(focusKey, source.key, 1)"
+                  (pointerup)="stopCommanderDamageHold(focusKey, source.key, 1)"
+                  (pointerleave)="stopCommanderDamageHold(focusKey, source.key, 1)"
+                  (pointercancel)="stopCommanderDamageHold(focusKey, source.key, 1)"
+                  aria-label="Commander-Schaden addieren"
+                ></button>
+              </div>
+            </div>
+            }
+          </div>
+          } } @else { @if (!session.isPoisonView(p.key)) {
+          <div class="life-tap-area">
+            <button
+              class="life-tap-zone"
+              (pointerdown)="startLifeHold(p.key, -1)"
+              (pointerup)="stopLifeHold(p.key, -1)"
+              (pointerleave)="stopLifeHold(p.key, -1)"
+              (pointercancel)="stopLifeHold(p.key, -1)"
+              aria-label="Leben abziehen"
+            ></button>
+            <span class="life-value">{{ session.lifeTotals()[p.key] }}</span>
+            <button
+              class="life-tap-zone"
+              (pointerdown)="startLifeHold(p.key, 1)"
+              (pointerup)="stopLifeHold(p.key, 1)"
+              (pointerleave)="stopLifeHold(p.key, 1)"
+              (pointercancel)="stopLifeHold(p.key, 1)"
+              aria-label="Leben addieren"
+            ></button>
+          </div>
+          } @else {
+          <div class="life-tap-area">
+            <button
+              class="life-tap-zone"
+              (pointerdown)="startPoisonHold(p.key, -1)"
+              (pointerup)="stopPoisonHold(p.key, -1)"
+              (pointerleave)="stopPoisonHold(p.key, -1)"
+              (pointercancel)="stopPoisonHold(p.key, -1)"
+              aria-label="Gift-Marke abziehen"
+            ></button>
+            <span class="life-value poison">☠ {{ session.poisonValue(p.key) }}</span>
+            <button
+              class="life-tap-zone"
+              (pointerdown)="startPoisonHold(p.key, 1)"
+              (pointerup)="stopPoisonHold(p.key, 1)"
+              (pointerleave)="stopPoisonHold(p.key, 1)"
+              (pointercancel)="stopPoisonHold(p.key, 1)"
+              aria-label="Gift-Marke addieren"
+            ></button>
+          </div>
+          }
+
+          <div class="mode-toggle-row">
+            <button class="mode-toggle-button" (click)="session.startCommanderDamageFocus(p.key)">
+              ⚔️ Commander DMG
+            </button>
+            <button
+              class="mode-toggle-button"
+              [class.active]="session.isPoisonView(p.key)"
+              (click)="session.togglePoisonView(p.key)"
+            >
+              ☠️ Gift
+            </button>
+          </div>
+          }
+        </div>
+      </div>
+    </div>
+    }
+  </div>
+
+  <button
+    class="center-menu-button"
+    [style.top]="'calc(' + session.centerButtonTopPercent() + '% + (env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)) / 2)'"
+    (click)="reorderMode() ? closeReorderMode() : openOptionsMenu()"
+    [attr.aria-label]="reorderMode() ? 'Neuanordnen beenden' : 'Spiel-Menü öffnen'"
+  >
+    {{ reorderMode() ? '✅' : '⋮' }}
+  </button>
+
+  @if (showOptionsMenu()) {
+  <div class="options-menu-overlay" (click)="closeOptionsMenu()">
+    <div class="options-menu-sheet" (click)="$event.stopPropagation()">
+      <button class="glass-button" (click)="chooseMinimize()">▾ Minimieren</button>
+      <button class="glass-button" (click)="openReorderMode()">🔀 Spieler neu anordnen</button>
+      <button class="glass-button" (click)="startPlayerRoulette()">🎲 Startspieler auslosen</button>
+      <button class="glass-button primary" (click)="chooseEndGame()">🏁 Spiel beenden</button>
+      <button class="glass-button" (click)="closeOptionsMenu()">Abbrechen</button>
+    </div>
+  </div>
+  }
+  <!-- NEU: nach dem @if (showOptionsMenu()) { ... } Block einfügen -->
+  @if (showRouletteOverlay()) {
+  <div class="roulette-overlay">
+    <div class="roulette-sheet">
+      <h3>🎲 Startspieler wird ausgelost …</h3>
+      <div class="roulette-list">
+        @for (unit of session.ingameUnits(); track unit.key) {
+        <div class="roulette-item" [class.active]="rouletteHighlightKey() === unit.key">
+          {{ unit.label }}
+        </div>
+        }
+      </div>
+      @if (rouletteResultUnit(); as result) {
+      <div class="roulette-result">🏆 {{ result.label }} beginnt!</div>
+      <button class="glass-button primary" (click)="closeRouletteOverlay()">Fertig</button>
+      }
+    </div>
+  </div>
+  } @if (pinMenuFor(); as pinKey) {
+  <div class="options-menu-overlay" (click)="closePinMenu()">
+    <div class="options-menu-sheet" (click)="$event.stopPropagation()">
+      <button class="glass-button primary" (click)="pinToBottom(pinKey)">
+        ⬇️ Unten quer anheften
+      </button>
+      <button class="glass-button" (click)="resetPinnedBottom()">
+        ↩️ Automatisch (zurücksetzen)
+      </button>
+      <button class="glass-button" (click)="closePinMenu()">Abbrechen</button>
+    </div>
+    <!-- NEU -->
+    @if (reorderMode()) {
+    <div class="reorder-hint-banner">
+      Tippe zwei Spieler an, um sie zu tauschen – ✅ in der Mitte zum Beenden
+    </div>
+    }
+  </div>
+  } @if (session.showWinnerPanel()) {
+  <div class="winner-overlay">
+    <div class="winner-card glass-card">
+      <h2>Wer hat gewonnen?</h2>
+
+      @if (session.mode() === 'Archenemy') {
+      <div class="chip-row">
+        <button
+          class="glass-chip winner"
+          [class.active]="session.winner() === (session.selectedPlayers().find(p => p.isArchenemy)?.name)"
+          (click)="session.winner.set(session.selectedPlayers().find(p => p.isArchenemy)?.name ?? null)"
+        >
+          🏆 Archenemy
+        </button>
+        <button
+          class="glass-chip winner"
+          [class.active]="session.winner() === session.OTHERS"
+          (click)="session.winner.set(session.OTHERS)"
+        >
+          🏆 Alle anderen
+        </button>
+      </div>
+      } @else if (session.isTwoHeadedGiantMode()) {
+      <div class="chip-row">
+        @for (team of teamOptions; track team) {
+        <button
+          class="glass-chip winner"
+          [class.active]="session.winner() === team"
+          (click)="session.winner.set(team)"
+        >
+          🏆 {{ team }}
+        </button>
+        }
+      </div>
+      } @else {
+      <div class="chip-row">
+        @for (p of session.selectedPlayers(); track p.name) {
+        <button
+          class="glass-chip winner"
+          [class.active]="session.winner() === p.name"
+          (click)="session.winner.set(p.name)"
+        >
+          🏆 {{ p.name }}
+        </button>
+        }
+      </div>
+      }
+
+      <div class="chip-row">
+            <button
+              class="glass-chip winner"
+              [class.active]="session.winner() === session.DRAW"
+              (click)="session.winner.set(session.DRAW)"
+            >
+              🤝 Unentschieden
+            </button>
+          </div>
+
+          <button class="glass-button primary" [disabled]="!session.canSave()" (click)="finishGame()">Match speichern & beenden</button>
+      <button class="glass-button" (click)="session.showWinnerPanel.set(false)">
+        Zurück zum Life Tracker
+      </button>
+      <button class="glass-button danger" (click)="discardGame()">Ohne Speichern schließen</button>
+    </div>
+  </div>
+  } @if (backgroundPickerFor(); as pickerKey) {
+  <div class="background-picker-overlay" (click)="closeBackgroundPicker()">
+    <div class="background-picker-sheet" (click)="$event.stopPropagation()">
+      <h3>Hintergrund für {{ pickerKey }}</h3>
+      <div class="background-swipe-row">
+        <button
+          class="bg-thumb none"
+          [class.active]="!mtg.playerBackgrounds()[pickerKey]"
+          (click)="selectBackground(pickerKey, null)"
+        >
+          Kein<br />Hintergrund
+        </button>
+        @for (bg of backgrounds.list(); track bg) {
+        <button
+          class="bg-thumb"
+          [class.active]="mtg.playerBackgrounds()[pickerKey] === bg"
+          [class.broken]="brokenBackgrounds().has(bg)"
+          (click)="selectBackground(pickerKey, bg)"
+        >
+          @if (!brokenBackgrounds().has(bg)) {
+          <img [src]="bg" loading="lazy" alt="" (error)="markBackgroundBroken(bg)" />
+          } @else {
+          <span class="bg-thumb-error">⚠️<br />Datei fehlt<br /><small>{{ bg }}</small></span>
+          }
+        </button>
+        }
+      </div>
+      @if (backgrounds.list().length === 0) {
+      <p class="hint">Noch keine Hintergründe gefunden – prüfe public/backgrounds/manifest.json.</p>
+      }
+      <button class="glass-button" (click)="closeBackgroundPicker()">Fertig</button>
+    </div>
+  </div>
+  }
+</div>
+}

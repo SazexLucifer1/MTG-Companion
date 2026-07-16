@@ -1,0 +1,27 @@
+.player-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background-color: rgba(255, 255, 255, 0.1);
+  background-size: cover;
+  background-position: center;
+  border: 1px solid var(--glass-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+
+  &.large {
+    width: 56px;
+    height: 56px;
+  }
+
+  .player-avatar-placeholder {
+    font-size: 0.85rem;
+    opacity: 0.6;
+  }
+
+  &.large .player-avatar-placeholder {
+    font-size: 1.6rem;
+  }
+}

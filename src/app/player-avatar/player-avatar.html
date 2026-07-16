@@ -1,0 +1,9 @@
+<div
+  class="player-avatar"
+  [class.large]="large()"
+  [style.background-image]="url() ? 'url(' + url() + ')' : null"
+>
+  @if (!url()) {
+    <span class="player-avatar-placeholder">👤</span>
+  }
+</div>

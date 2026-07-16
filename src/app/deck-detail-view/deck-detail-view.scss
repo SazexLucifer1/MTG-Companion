@@ -1,0 +1,171 @@
+.deck-detail-fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 700;
+  display: flex;
+  flex-direction: column;
+  background: rgba(12, 8, 23, 0.98);
+  backdrop-filter: blur(30px) saturate(160%);
+  -webkit-backdrop-filter: blur(30px) saturate(160%);
+}
+
+.deck-detail-header {
+  flex-shrink: 0;
+  padding: 16px 20px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+
+  h3 {
+    margin-top: 4px;
+  }
+}
+
+.deck-detail-back {
+  margin-bottom: 4px;
+}
+
+.deck-detail-body {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+  padding: 16px 20px calc(20px + env(safe-area-inset-bottom));
+}
+
+.deck-game-stats {
+  position: relative;
+  margin: 4px 0 14px;
+}
+
+.deck-stats-info-toggle {
+  position: absolute;
+  top: 0;
+  right: 0;
+}
+
+.stat-tiles {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.stat-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 14px 8px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+
+  .stat-value {
+    font-size: 1.6rem;
+    font-weight: 700;
+  }
+
+  .stat-label {
+    font-size: 0.78rem;
+    opacity: 0.8;
+    text-align: center;
+  }
+}
+
+.deck-section-title {
+  margin: 16px 0 8px;
+
+  &:first-of-type {
+    margin-top: 8px;
+  }
+}
+
+.deck-visual-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 12px;
+  margin: 0 0 16px;
+}
+
+.deck-card-tile {
+  position: relative;
+  aspect-ratio: 63 / 88;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--glass-border);
+  background: rgba(255, 255, 255, 0.06);
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+}
+
+.deck-card-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+  font-size: 0.7rem;
+  text-align: center;
+  opacity: 0.75;
+}
+
+.deck-card-qty {
+  position: absolute;
+  bottom: 4px;
+  right: 4px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.7);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.deck-text-list {
+  list-style: none;
+  margin: 12px 0;
+  padding: 0;
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    font-size: 0.92rem;
+
+    &:last-child {
+      border-bottom: none;
+    }
+  }
+}
+
+.deck-card-qty-text {
+  font-weight: 700;
+  color: var(--accent);
+  min-width: 28px;
+}
+
+.deck-change-log {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    font-size: 0.85rem;
+
+    &:last-child {
+      border-bottom: none;
+    }
+  }
+
+  .change-text {
+    flex: 1;
+  }
+}

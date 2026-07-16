@@ -1,0 +1,104 @@
+@if (viewer.viewingDeck(); as deck) {
+<div class="deck-detail-fullscreen">
+  <div class="deck-detail-header">
+    <button class="glass-button small deck-detail-back" (click)="viewer.close()">← Zurück</button>
+    <h3>{{ deck.name }}</h3>
+    @if (deck.format) {
+      <p class="hint">{{ deck.format }} · {{ viewer.viewingTotalCards() }} Karten</p>
+    } @else {
+      <p class="hint">{{ viewer.viewingTotalCards() }} Karten</p>
+    }
+
+    @if (viewer.viewingDeckGameStats(); as gameStats) {
+      <div class="deck-game-stats">
+        <div class="stat-tiles">
+          <div class="stat-tile">
+            <span class="stat-value">{{ gameStats.games }}</span>
+            <span class="stat-label">Gespielt</span>
+          </div>
+          <div class="stat-tile">
+            <span class="stat-value">{{ gameStats.wins }}</span>
+            <span class="stat-label">Siege</span>
+          </div>
+          <div class="stat-tile">
+            <span class="stat-value">{{ gameStats.winRate | number: '1.0-0' }}%</span>
+            <span class="stat-label">Winrate</span>
+          </div>
+        </div>
+        <button class="icon-button deck-stats-info-toggle" (click)="viewer.toggleDeckStatsInfo()" aria-label="Was zählt diese Statistik?">
+          ⓘ
+        </button>
+        @if (viewer.showDeckStatsInfo()) {
+          <p class="hint">
+            Zählt alle Spiele mit diesem Deck über alle Gruppen hinweg – unabhängig davon, wer es
+            gespielt hat. Wurde es mal verliehen, fließen auch diese Spiele mit ein.
+          </p>
+        }
+      </div>
+    }
+
+    @if (!viewer.detailBusy()) {
+      <div class="chip-row">
+        <button class="glass-chip small" [class.active]="viewer.viewMode() === 'visual'" (click)="viewer.viewMode.set('visual')">
+          🖼️ Bilder
+        </button>
+        <button class="glass-chip small" [class.active]="viewer.viewMode() === 'text'" (click)="viewer.viewMode.set('text')">
+          📋 Text
+        </button>
+      </div>
+    }
+  </div>
+
+  <div class="deck-detail-body">
+    @if (viewer.detailBusy()) {
+      <p class="hint">Lade Deck …</p>
+    } @else {
+      @for (section of viewer.groupedDeckCards(); track section.label) {
+        <h4 class="deck-section-title">{{ section.label }} ({{ section.cards.length }})</h4>
+        @if (viewer.viewMode() === 'visual') {
+          <div class="deck-visual-grid">
+            @for (card of section.cards; track card.cardName) {
+              <div class="deck-card-tile">
+                @if (card.imageUrl) {
+                  <img [src]="card.imageUrl" [alt]="card.cardName" loading="lazy" />
+                } @else {
+                  <div class="deck-card-placeholder">{{ card.cardName }}</div>
+                }
+                @if (card.quantity > 1) {
+                  <span class="deck-card-qty">{{ card.quantity }}×</span>
+                }
+              </div>
+            }
+          </div>
+        } @else {
+          <ul class="deck-text-list">
+            @for (card of section.cards; track card.cardName) {
+              <li>
+                <span class="deck-card-qty-text">{{ card.quantity }}×</span>
+                <span>{{ card.cardName }}</span>
+              </li>
+            }
+          </ul>
+        }
+      }
+
+      @if (viewer.viewingChangeLog().length > 0) {
+        <button class="glass-chip small" (click)="viewer.toggleChangeLog()">
+          {{ viewer.showChangeLog() ? '▾' : '▸' }} Änderungsverlauf ({{ viewer.viewingChangeLog().length }})
+        </button>
+        @if (viewer.showChangeLog()) {
+          <ul class="deck-change-log">
+            @for (entry of viewer.viewingChangeLog(); track entry.changedAt + entry.cardName + entry.changeType) {
+              <li>
+                <span class="change-icon">{{ entry.changeType === 'added' ? '➕' : '➖' }}</span>
+                <span class="change-text">{{ entry.quantity }}× {{ entry.cardName }}</span>
+                <span class="hint">{{ entry.changedAt | date: 'dd.MM.yyyy' }}</span>
+              </li>
+            }
+          </ul>
+        }
+      }
+    }
+  </div>
+</div>
+}

@@ -1,0 +1,94 @@
+.deck-list {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+
+    &:last-child {
+      border-bottom: none;
+    }
+  }
+}
+
+.deck-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.deck-name {
+  font-weight: 600;
+}
+
+.import-field {
+  margin-bottom: 12px;
+
+  label {
+    display: block;
+    margin-bottom: 6px;
+  }
+}
+
+.precon-year-row {
+  display: flex;
+  gap: 8px;
+
+  .glass-input {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+.precon-sheet {
+  width: min(94vw, 480px);
+  max-width: 480px;
+  max-height: 88vh;
+  overflow-y: auto;
+}
+
+.precon-list {
+  list-style: none;
+  margin: 12px 0;
+  padding: 0;
+  max-height: 40vh;
+  overflow-y: auto;
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 4px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    cursor: pointer;
+
+    &:last-child {
+      border-bottom: none;
+    }
+
+    &.selected {
+      background: rgba(138, 180, 255, 0.12);
+      border-radius: 10px;
+    }
+
+    .deck-name {
+      flex: 1;
+    }
+  }
+}
+
+.deck-textarea {
+  width: 100%;
+  min-height: 160px;
+  resize: vertical;
+  font-family: inherit;
+  line-height: 1.4;
+}
