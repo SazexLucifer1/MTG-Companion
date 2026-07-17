@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import QRCode from 'qrcode';
 import { ProfileService } from '../profile.service';
@@ -197,5 +197,46 @@ export class ProfileTab {
     const ok = await this.backgrounds.shareBackground(backgroundId, userId);
     this.shareMessage.set(ok ? 'Geteilt!' : 'Teilen fehlgeschlagen.');
     if (ok) setTimeout(() => this.shareMessage.set(''), 2000);
+  }
+
+  // --- Account löschen (Danger Zone) ---
+
+  readonly showDeleteAccountConfirm = signal(false);
+  readonly deleteAccountConfirmText = signal('');
+  readonly deleteAccountBusy = signal(false);
+  readonly deleteAccountError = signal('');
+
+  readonly canConfirmDeleteAccount = computed(
+    () => this.deleteAccountConfirmText().trim() === 'LÖSCHEN'
+  );
+
+  openDeleteAccountConfirm(): void {
+    this.showDeleteAccountConfirm.set(true);
+    this.deleteAccountConfirmText.set('');
+    this.deleteAccountError.set('');
+  }
+
+  closeDeleteAccountConfirm(): void {
+    this.showDeleteAccountConfirm.set(false);
+    this.deleteAccountConfirmText.set('');
+    this.deleteAccountError.set('');
+  }
+
+  async confirmDeleteAccount(): Promise<void> {
+    if (!this.canConfirmDeleteAccount()) return;
+
+    this.deleteAccountBusy.set(true);
+    this.deleteAccountError.set('');
+
+    const result = await this.auth.deleteAccount();
+
+    this.deleteAccountBusy.set(false);
+
+    if (!result.success) {
+      this.deleteAccountError.set(result.error ?? 'Unbekannter Fehler beim Löschen.');
+      return;
+    }
+    // Erfolgreich: auth.currentUser() wird durch das signOut() in deleteAccount() null,
+    // die App zeigt danach automatisch den Login-Screen.
   }
 }

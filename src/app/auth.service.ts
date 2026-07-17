@@ -52,4 +52,14 @@ export class AuthService {
     if (error) throw error;
     this.passwordRecovery.set(false);
   }
+
+  /** Löscht unwiderruflich den eigenen Account (ruft die "delete-account"-Edge-Function auf). */
+  async deleteAccount(): Promise<{ success: boolean; error?: string }> {
+    const { error } = await supabase.functions.invoke('delete-account', { method: 'POST' });
+    if (error) {
+      return { success: false, error: error.message ?? 'Konnte Account nicht löschen.' };
+    }
+    await supabase.auth.signOut();
+    return { success: true };
+  }
 }

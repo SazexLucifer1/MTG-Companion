@@ -228,3 +228,44 @@
     </div>
   </div>
   }
+
+  <section class="glass-card danger-zone">
+    <h2>⚠️ Danger Zone</h2>
+    <p class="hint">
+      Löscht deinen Account unwiderruflich – Profil, Decks, Gruppenmitgliedschaften und eigene
+      Hintergrundbilder gehen dabei verloren. Das kann nicht rückgängig gemacht werden!
+    </p>
+    <button class="glass-button danger" (click)="openDeleteAccountConfirm()">
+      🗑 Account löschen
+    </button>
+  </section>
+
+  @if (showDeleteAccountConfirm()) {
+  <div class="options-menu-overlay" (click)="closeDeleteAccountConfirm()">
+    <div class="options-menu-sheet" (click)="$event.stopPropagation()">
+      <h3>Account wirklich löschen?</h3>
+      <p class="hint">
+        Tippe <strong>LÖSCHEN</strong> ein, um zu bestätigen. Dein Account und alle deine Daten
+        sind danach unwiderruflich weg.
+      </p>
+      <input
+        class="glass-input"
+        type="text"
+        placeholder="LÖSCHEN"
+        [ngModel]="deleteAccountConfirmText()"
+        (ngModelChange)="deleteAccountConfirmText.set($event)"
+      />
+      @if (deleteAccountError()) {
+        <p class="error">{{ deleteAccountError() }}</p>
+      }
+      <button
+        class="glass-button danger"
+        [disabled]="!canConfirmDeleteAccount() || deleteAccountBusy()"
+        (click)="confirmDeleteAccount()"
+      >
+        {{ deleteAccountBusy() ? 'Lösche …' : 'Endgültig löschen' }}
+      </button>
+      <button class="glass-button" (click)="closeDeleteAccountConfirm()">Abbrechen</button>
+    </div>
+  </div>
+  }

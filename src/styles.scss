@@ -245,3 +245,22 @@ h3 {
     width: 100%;
   }
 }
+
+.danger-zone {
+  border-color: rgba(255, 100, 100, 0.35);
+
+  h2 {
+    color: #ff8f8f;
+  }
+}
+
+.glass-button.danger {
+  background: rgba(255, 100, 100, 0.15);
+  border-color: rgba(255, 100, 100, 0.4);
+  color: #ff8f8f;
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+}
