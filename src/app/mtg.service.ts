@@ -368,6 +368,7 @@ export class MtgService {
         draft_set_released_at,
         cubes ( id, name, is_commander ),
         match_players (
+          player_name,
           commander_name,
           partner_commander_name,
           team,
@@ -397,7 +398,7 @@ export class MtgService {
       mode: row.game_mode,
       winner: row.winner_name,
       players: (row.match_players ?? []).map((mp: any) => ({
-        name: mp.players?.display_name ?? '',
+        name: mp.player_name ?? mp.players?.display_name ?? '',
         commander: mp.commander_name ?? undefined,
         partnerCommander: mp.partner_commander_name ?? undefined,
         team: mp.team ?? undefined,
@@ -491,6 +492,7 @@ export class MtgService {
     const playerRows = players.map((p) => ({
       match_id: matchRow.id,
       player_id: this.playerIdsByName()[p.name] ?? null,
+      player_name: p.name,
       commander_name: p.commander ?? null,
       partner_commander_name: p.partnerCommander ?? null,
       team: p.team ?? null,
@@ -750,6 +752,7 @@ export class MtgService {
       const playerRows = resolvedPlayers.map((p) => ({
         match_id: matchRow.id,
         player_id: this.playerIdsByName()[p.name] ?? null,
+        player_name: p.name,
         commander_name: p.commander ?? null,
         partner_commander_name: p.partnerCommander ?? null,
         team: p.team ?? null,
