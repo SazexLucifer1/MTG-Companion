@@ -24,13 +24,43 @@
   @if (errorMessage()) {
     <p class="error">{{ errorMessage() }}</p>
   }
+  @if (infoMessage()) {
+    <p class="success">{{ infoMessage() }}</p>
+  }
 
   <button type="button" [disabled]="loading()" (click)="submit()">
     {{ loading() ? 'Bitte warten...' : (mode() === 'signin' ? 'Anmelden' : 'Account erstellen') }}
   </button>
+
+  @if (mode() === 'signin') {
+    <button type="button" class="switch-mode" (click)="openForgot()">Passwort vergessen?</button>
+  }
 
   <button type="button" class="switch-mode" (click)="toggleMode()">
     {{ mode() === 'signin' ? 'Noch keinen Account? Registrieren' : 'Schon einen Account? Anmelden' }}
   </button>
 </div>
 </div>
+
+@if (showForgot()) {
+<div class="options-menu-overlay" (click)="closeForgot()">
+  <div class="options-menu-sheet" (click)="$event.stopPropagation()">
+    <h3>Passwort vergessen</h3>
+    <p class="hint">Gib deine E-Mail-Adresse ein, wir schicken dir einen Link zum Zurücksetzen.</p>
+    <input
+      class="glass-input"
+      type="email"
+      placeholder="E-Mail-Adresse"
+      [value]="forgotEmail()"
+      (input)="forgotEmail.set($any($event.target).value)"
+    />
+    @if (forgotMessage()) {
+      <p class="hint">{{ forgotMessage() }}</p>
+    }
+    <button class="glass-button primary" [disabled]="forgotBusy()" (click)="submitForgot()">
+      {{ forgotBusy() ? 'Sende …' : 'Link schicken' }}
+    </button>
+    <button class="glass-button" (click)="closeForgot()">Schließen</button>
+  </div>
+</div>
+}

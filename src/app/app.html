@@ -1,5 +1,7 @@
 <!-- NEU -->
-@if (auth.currentUser()) {
+@if (auth.passwordRecovery()) {
+<app-reset-password />
+} @else if (auth.currentUser()) {
   <header class="app-header">
     <h1>MTG Companion</h1>
     <button class="logout-btn" (click)="auth.signOut()">Logout</button>
