@@ -16,8 +16,11 @@
     min-width: 0;
   }
 
-  button {
+  // Höhere Selektor-Spezifität als die globale ".options-menu-sheet .glass-button"-Regel
+  // (die Buttons in Dialogen sonst auf volle Breite setzt), damit "Suchen" hier schmal bleibt.
+  .glass-button.small {
     flex: 0 0 auto;
+    width: auto;
     padding-left: 14px;
     padding-right: 14px;
     white-space: nowrap;
