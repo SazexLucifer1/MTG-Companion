@@ -203,6 +203,11 @@
     {{ showPlayerDecks() ? '▾' : '▸' }} Decks ({{ playerDeckStats().length }})
   </button>
   @if (showPlayerDecks()) {
+  <div class="chip-row sort-toggle">
+    <button class="glass-chip small" [class.active]="playerDeckSortMode() === 'winRate'" (click)="playerDeckSortMode.set('winRate')">Winrate</button>
+    <button class="glass-chip small" [class.active]="playerDeckSortMode() === 'wins'" (click)="playerDeckSortMode.set('wins')">Siege</button>
+    <button class="glass-chip small" [class.active]="playerDeckSortMode() === 'games'" (click)="playerDeckSortMode.set('games')">Spiele</button>
+  </div>
   <ul class="ranking">
     @for (d of playerDeckStats(); track d.deckId; let i = $index) {
     <li>
@@ -226,6 +231,11 @@
     {{ showPlayerCommanders() ? '▾' : '▸' }} Gespielte Commander ({{ playerCommanderStats().length }})
   </button>
   @if (showPlayerCommanders()) {
+  <div class="chip-row sort-toggle">
+    <button class="glass-chip small" [class.active]="playerCommanderSortMode() === 'winRate'" (click)="playerCommanderSortMode.set('winRate')">Winrate</button>
+    <button class="glass-chip small" [class.active]="playerCommanderSortMode() === 'wins'" (click)="playerCommanderSortMode.set('wins')">Siege</button>
+    <button class="glass-chip small" [class.active]="playerCommanderSortMode() === 'games'" (click)="playerCommanderSortMode.set('games')">Spiele</button>
+  </div>
   <ul class="ranking">
     @for (c of playerCommanderStats(); track c.commander; let i = $index) {
     <li
@@ -290,6 +300,11 @@
 <!-- NEU -->
 <section class="glass-card">
   <h2>Rangliste</h2>
+  <div class="chip-row sort-toggle">
+    <button class="glass-chip small" [class.active]="playerSortMode() === 'winRate'" (click)="playerSortMode.set('winRate')">Winrate</button>
+    <button class="glass-chip small" [class.active]="playerSortMode() === 'wins'" (click)="playerSortMode.set('wins')">Siege</button>
+    <button class="glass-chip small" [class.active]="playerSortMode() === 'games'" (click)="playerSortMode.set('games')">Spiele</button>
+  </div>
   @if (rankedPlayerStats().length === 0) {
   <p class="hint">Noch niemand hat genug Spiele für die Rangliste – siehe Qualifikation unten.</p>
   }
@@ -334,6 +349,11 @@
 } @if (deckStats().length > 0) {
 <section class="glass-card">
   <h2>Decks</h2>
+  <div class="chip-row sort-toggle">
+    <button class="glass-chip small" [class.active]="deckSortMode() === 'winRate'" (click)="deckSortMode.set('winRate')">Winrate</button>
+    <button class="glass-chip small" [class.active]="deckSortMode() === 'wins'" (click)="deckSortMode.set('wins')">Siege</button>
+    <button class="glass-chip small" [class.active]="deckSortMode() === 'games'" (click)="deckSortMode.set('games')">Spiele</button>
+  </div>
   @if (rankedDeckStats().length === 0) {
   <p class="hint">Noch kein Deck hat genug Spiele für die Rangliste – siehe Qualifikation unten.</p>
   }
@@ -379,6 +399,11 @@
 } @if (commanderStats().length > 0) {
 <section class="glass-card">
   <h2>Erfolgreichste Commander</h2>
+  <div class="chip-row sort-toggle">
+    <button class="glass-chip small" [class.active]="commanderSortMode() === 'winRate'" (click)="commanderSortMode.set('winRate')">Winrate</button>
+    <button class="glass-chip small" [class.active]="commanderSortMode() === 'wins'" (click)="commanderSortMode.set('wins')">Siege</button>
+    <button class="glass-chip small" [class.active]="commanderSortMode() === 'games'" (click)="commanderSortMode.set('games')">Spiele</button>
+  </div>
   @if (rankedCommanderStats().length === 0) {
   <p class="hint">
     Noch kein Commander hat genug Spiele für die Rangliste – siehe Qualifikation unten.

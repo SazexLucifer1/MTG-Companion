@@ -12,6 +12,8 @@ import {
 } from '../excel-import.service';
 import { CommanderStats, DeckStats, GAME_MODES, GameMode, Match, PlayerStats } from '../models';
 
+export type RankSortMode = 'wins' | 'winRate' | 'games';
+
 interface ImportMappingRow {
   sheetName: string;
   /** '' = überspringen, '__NEW__' = neuer Spieler (siehe newName), sonst ein Name aus mtg.allPlayers() */
@@ -29,6 +31,27 @@ export class StatsTab {
   readonly mtg = inject(MtgService);
   readonly groupService = inject(GroupService);
   private readonly excelImport = inject(ExcelImportService);
+
+  // --- Sortierung der Ranglisten: nach Siegen, Winrate oder Spielanzahl umschaltbar ---
+
+  private compareBySortMode<T extends { wins: number; winRate: number; games: number }>(
+    mode: RankSortMode
+  ): (a: T, b: T) => number {
+    switch (mode) {
+      case 'wins':
+        return (a, b) => b.wins - a.wins || b.winRate - a.winRate;
+      case 'games':
+        return (a, b) => b.games - a.games || b.winRate - a.winRate;
+      case 'winRate':
+        return (a, b) => b.winRate - a.winRate || b.games - a.games;
+    }
+  }
+
+  readonly playerSortMode = signal<RankSortMode>('winRate');
+  readonly deckSortMode = signal<RankSortMode>('winRate');
+  readonly commanderSortMode = signal<RankSortMode>('winRate');
+  readonly playerDeckSortMode = signal<RankSortMode>('winRate');
+  readonly playerCommanderSortMode = signal<RankSortMode>('winRate');
 
   // --- Stats-Sichtbarkeit ---
 
@@ -132,7 +155,7 @@ export class StatsTab {
   readonly rankedPlayerStats = computed<PlayerStats[]>(() =>
     this.playerStats()
       .filter((p) => p.games >= this.qualificationThreshold())
-      .sort((a, b) => b.winRate - a.winRate || b.games - a.games)
+      .sort(this.compareBySortMode(this.playerSortMode()))
   );
 
   /** Spieler unterhalb der Schwelle, mit Anzeige wie viele Spiele noch bis zur Qualifikation fehlen. */
@@ -173,7 +196,7 @@ export class StatsTab {
   readonly rankedCommanderStats = computed<CommanderStats[]>(() =>
     this.commanderStats()
       .filter((c) => c.games >= this.commanderQualificationThreshold)
-      .sort((a, b) => b.winRate - a.winRate || b.games - a.games)
+      .sort(this.compareBySortMode(this.commanderSortMode()))
   );
 
   /** Commander unterhalb der Schwelle, mit Anzeige wie viele Spiele noch bis zur Qualifikation fehlen. */
@@ -260,7 +283,7 @@ export class StatsTab {
   readonly rankedDeckStats = computed<DeckStats[]>(() =>
     this.deckStats()
       .filter((d) => d.games >= this.deckQualificationThreshold)
-      .sort((a, b) => b.winRate - a.winRate || b.games - a.games)
+      .sort(this.compareBySortMode(this.deckSortMode()))
   );
 
   /** Decks unterhalb der Schwelle, mit Anzeige wie viele Spiele noch bis zur Qualifikation fehlen. */
@@ -361,7 +384,7 @@ export class StatsTab {
         ...s,
         winRate: s.games > 0 ? (s.wins / s.games) * 100 : 0,
       }))
-      .sort((a, b) => b.wins - a.wins || b.winRate - a.winRate);
+      .sort(this.compareBySortMode(this.playerCommanderSortMode()));
   });
 
   /** Deck-Stats des ausgewählten Spielers (eigene + geliehene Decks, die er selbst gespielt hat). */
@@ -402,7 +425,7 @@ export class StatsTab {
           ownerName,
         };
       })
-      .sort((a, b) => b.wins - a.wins || b.winRate - a.winRate);
+      .sort(this.compareBySortMode(this.playerDeckSortMode()));
   });
 
   /** Ob die ausklappbaren "Decks"/"Gespielte Commander"-Bereiche in den Spieler-Details offen sind. */
