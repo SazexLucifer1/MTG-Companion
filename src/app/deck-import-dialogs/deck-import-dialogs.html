@@ -1,0 +1,136 @@
+@if (importService.showImportDialog()) {
+<div class="options-menu-overlay" (click)="importService.closeImportDialog()">
+  <div class="options-menu-sheet" (click)="$event.stopPropagation()">
+    <h3>{{ importService.editingDeckId() ? 'Deck aktualisieren' : 'Deck importieren' }}</h3>
+    <p class="hint">
+      Kopiere deine Decklist von deckstats.net, Moxfield, Archidekt o.ä. hierhin – ein Kartenname
+      pro Zeile, z.B. "1 Sol Ring" oder "1x Sol Ring". Beim erneuten Speichern wird automatisch
+      erkannt, was sich seit dem letzten Import geändert hat.
+    </p>
+
+    <div class="import-field">
+      <label class="hint" for="deck-name-input">Deckname</label>
+      <input
+        id="deck-name-input"
+        class="glass-input"
+        type="text"
+        placeholder="z.B. Atraxa Superfriends"
+        [ngModel]="importService.deckName()"
+        (ngModelChange)="importService.deckName.set($event)"
+      />
+    </div>
+
+    <div class="import-field">
+      <label class="hint" for="deck-format-input">Format (optional)</label>
+      <input
+        id="deck-format-input"
+        class="glass-input"
+        type="text"
+        placeholder="z.B. Commander"
+        [ngModel]="importService.deckFormat()"
+        (ngModelChange)="importService.deckFormat.set($event)"
+      />
+    </div>
+
+    <div class="import-field">
+      <label class="hint" for="deck-text-input">Kartenliste</label>
+      <textarea
+        id="deck-text-input"
+        class="glass-input deck-textarea"
+        rows="10"
+        placeholder="1 Sol Ring&#10;1 Arcane Signet&#10;1 Command Tower&#10;..."
+        [ngModel]="importService.deckText()"
+        (ngModelChange)="importService.deckText.set($event)"
+      ></textarea>
+    </div>
+
+    @if (importService.importMessage()) {
+      <p class="error">{{ importService.importMessage() }}</p>
+    }
+
+    <button
+      class="glass-button primary"
+      [disabled]="importService.importBusy() || !importService.deckName().trim() || !importService.deckText().trim()"
+      (click)="importService.saveDeck()"
+    >
+      {{ importService.importBusy() ? 'Speichere …' : 'Speichern' }}
+    </button>
+    <button class="glass-button" (click)="importService.closeImportDialog()">Abbrechen</button>
+  </div>
+</div>
+}
+
+@if (importService.showPreconDialog()) {
+<div class="options-menu-overlay" (click)="importService.closePreconDialog()">
+  <div class="options-menu-sheet precon-sheet" (click)="$event.stopPropagation()">
+    <h3>📦 Precon importieren</h3>
+    <p class="hint">
+      Wähle ein Jahr, dann erscheinen alle in diesem Jahr erschienenen Commander-Precons. Mehrere
+      auswählen und auf einmal importieren.
+    </p>
+
+    <div class="import-field">
+      <label class="hint" for="precon-year-input">Jahr</label>
+      <div class="precon-year-row">
+        <input
+          id="precon-year-input"
+          class="glass-input"
+          type="number"
+          [value]="importService.preconYear()"
+          [disabled]="importService.preconSearchBusy() || importService.preconImportBusy()"
+          (change)="importService.setPreconYear($event)"
+          (keyup.enter)="importService.searchPreconsForYear()"
+        />
+        <button
+          class="glass-button small"
+          [disabled]="importService.preconSearchBusy() || importService.preconImportBusy()"
+          (click)="importService.searchPreconsForYear()"
+        >
+          Suchen
+        </button>
+      </div>
+    </div>
+
+    @if (importService.preconSearchBusy()) {
+      <p class="hint">Lade Precons …</p>
+    } @else if (importService.preconOptions().length === 0) {
+      <p class="hint">Keine Commander-Precons für {{ importService.preconYear() }} gefunden.</p>
+    } @else {
+      <button class="glass-chip small" (click)="importService.toggleAllPrecons()" [disabled]="importService.preconImportBusy()">
+        {{ importService.selectedPreconFileNames().size === importService.preconOptions().length ? 'Alle abwählen' : 'Alle auswählen' }}
+      </button>
+      <ul class="precon-list">
+        @for (precon of importService.preconOptions(); track precon.fileName) {
+          <li (click)="importService.togglePreconSelected(precon.fileName)" [class.selected]="importService.isPreconSelected(precon.fileName)">
+            <input
+              type="checkbox"
+              [checked]="importService.isPreconSelected(precon.fileName)"
+              [disabled]="importService.preconImportBusy()"
+              (click)="$event.stopPropagation()"
+              (change)="importService.togglePreconSelected(precon.fileName)"
+            />
+            <span class="deck-name">{{ precon.name }}</span>
+            <span class="hint">{{ precon.code }}</span>
+          </li>
+        }
+      </ul>
+
+      @if (importService.preconImportProgress(); as progress) {
+        <p class="hint">Importiere {{ progress.done }} / {{ progress.total }} …</p>
+      }
+      @if (importService.preconMessage()) {
+        <p class="hint">{{ importService.preconMessage() }}</p>
+      }
+
+      <button
+        class="glass-button primary"
+        [disabled]="importService.preconImportBusy() || importService.selectedPreconFileNames().size === 0"
+        (click)="importService.importSelectedPrecons()"
+      >
+        {{ importService.preconImportBusy() ? 'Importiere …' : importService.selectedPreconFileNames().size + ' importieren' }}
+      </button>
+    }
+    <button class="glass-button" (click)="importService.closePreconDialog()">Schließen</button>
+  </div>
+</div>
+}

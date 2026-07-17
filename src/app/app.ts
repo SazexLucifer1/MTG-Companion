@@ -5,6 +5,7 @@ import { ProfileTab } from './profile-tab/profile-tab';
 import { GroupTab } from './group-tab/group-tab';
 import { IngameTracker } from './ingame-tracker/ingame-tracker';
 import { DeckDetailView } from './deck-detail-view/deck-detail-view';
+import { DeckImportDialogs } from './deck-import-dialogs/deck-import-dialogs';
 import { Login } from './login/login';
 import { ResetPassword } from './reset-password/reset-password';
 import { GameSessionService } from './game-session.service';
@@ -14,7 +15,17 @@ type Tab = 'match' | 'stats' | 'group' | 'profile';
 
 @Component({
   selector: 'app-root',
-  imports: [MatchTab, StatsTab, ProfileTab, GroupTab, IngameTracker, DeckDetailView, Login, ResetPassword],
+  imports: [
+    MatchTab,
+    StatsTab,
+    ProfileTab,
+    GroupTab,
+    IngameTracker,
+    DeckDetailView,
+    DeckImportDialogs,
+    Login,
+    ResetPassword,
+  ],
   templateUrl: './app.html',
   styleUrl: './app.scss',
 })
