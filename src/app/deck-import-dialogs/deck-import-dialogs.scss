@@ -12,8 +12,16 @@
   gap: 8px;
 
   .glass-input {
-    flex: 1;
+    flex: 1 1 auto;
+    width: 100%;
     min-width: 0;
+  }
+
+  button {
+    flex: 0 0 auto;
+    padding-left: 14px;
+    padding-right: 14px;
+    white-space: nowrap;
   }
 }
 
