@@ -276,6 +276,8 @@ export class MtgService {
     const groupId = this.groupService.groupId();
     if (!groupId) return false;
 
+    const playerId = this.playerIdsByName()[oldName];
+
     const { error } = await supabase
       .from('players')
       .update({ display_name: trimmed })
@@ -286,6 +288,24 @@ export class MtgService {
       console.error('Konnte Spieler nicht umbenennen:', error);
       return false;
     }
+
+    // Der Name ist zusätzlich als Text direkt in match_players/matches gespeichert (siehe
+    // player_name/winner_name - überlebt so eine spätere Spieler-Löschung), muss beim Umbenennen
+    // also explizit mitgezogen werden, sonst zeigen alte Matches weiterhin den alten Namen.
+    if (playerId) {
+      const { error: mpError } = await supabase
+        .from('match_players')
+        .update({ player_name: trimmed })
+        .eq('player_id', playerId);
+      if (mpError) console.error('Konnte Namen in Match-Historie nicht aktualisieren:', mpError);
+    }
+
+    const { error: matchError } = await supabase
+      .from('matches')
+      .update({ winner_name: trimmed })
+      .eq('group_id', groupId)
+      .eq('winner_name', oldName);
+    if (matchError) console.error('Konnte Gewinner-Namen nicht aktualisieren:', matchError);
 
     this.allPlayers.update((players) => players.map((p) => (p === oldName ? trimmed : p)));
     this.history.update((matches) =>
