@@ -303,7 +303,9 @@
             </button>
           </div>
 
-          <button class="glass-button primary" [disabled]="!session.canSave()" (click)="finishGame()">Match speichern & beenden</button>
+          <button class="glass-button primary" [disabled]="!session.canSave() || session.saving()" (click)="finishGame()">
+            {{ session.saving() ? 'Speichere …' : 'Match speichern & beenden' }}
+          </button>
       <button class="glass-button" (click)="session.showWinnerPanel.set(false)">
         Zurück zum Life Tracker
       </button>

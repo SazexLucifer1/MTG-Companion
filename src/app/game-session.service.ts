@@ -527,32 +527,40 @@ export class GameSessionService {
     this.minimized.set(false);
   }
 
+  /** Während saveAndReset() läuft (verhindert doppeltes Anlegen bei Doppel-Tipp auf "Speichern"). */
+  readonly saving = signal(false);
+
   /** Speichert das Match und setzt die komplette Session zurück. Setzt voraus, dass canSave() bereits geprüft wurde. */
   async saveAndReset(): Promise<void> {
     const winner = this.winner();
-    if (!winner || !this.canSave()) return;
+    if (!winner || !this.canSave() || this.saving()) return;
 
-    const cube = this.mtg.cubes().find((c) => c.id === this.selectedCubeId());
-    const draftSet = this.selectedDraftSet();
+    this.saving.set(true);
+    try {
+      const cube = this.mtg.cubes().find((c) => c.id === this.selectedCubeId());
+      const draftSet = this.selectedDraftSet();
 
-    await this.mtg.addMatch({
-      mode: this.mode(),
-      players: this.selectedPlayers(),
-      winner,
-      cube: cube ? { id: cube.id, name: cube.name, isCommander: cube.isCommander } : undefined,
-      draftSet:
-        this.mode() === 'Draft' && draftSet
-          ? {
-              id: draftSet.id,
-              code: draftSet.code,
-              name: draftSet.name,
-              releasedAt: draftSet.releasedAt,
-            }
-          : undefined,
-    });
+      await this.mtg.addMatch({
+        mode: this.mode(),
+        players: this.selectedPlayers(),
+        winner,
+        cube: cube ? { id: cube.id, name: cube.name, isCommander: cube.isCommander } : undefined,
+        draftSet:
+          this.mode() === 'Draft' && draftSet
+            ? {
+                id: draftSet.id,
+                code: draftSet.code,
+                name: draftSet.name,
+                releasedAt: draftSet.releasedAt,
+              }
+            : undefined,
+      });
 
-    this.resetAll();
-    this.deadMessageMap.set({}); // NEU
+      this.resetAll();
+      this.deadMessageMap.set({}); // NEU
+    } finally {
+      this.saving.set(false);
+    }
   }
 
   /** Verwirft die Session ohne zu speichern. */
