@@ -1,4 +1,5 @@
 import { Injectable } from '@angular/core';
+import { sleep } from './array-utils';
 
 export interface ScryfallCard {
   name: string;
@@ -182,14 +183,19 @@ export class ScryfallService {
     const words = candidate.trim().split(/\s+/).filter(Boolean);
     if (words.length === 0) return null;
 
+    // Bewusst NACHEINANDER statt parallel, mit Pause zwischen jeder einzelnen Anfrage -
+    // Scryfalls Rate-Limit (429) greift sonst schnell, wenn ein Name mehrere Kürzungs- und
+    // Sprachversuche braucht (mehrere Anfragen in kurzer Zeit).
     for (let len = words.length; len >= 1; len--) {
       const attempt = words.slice(0, len).join(' ');
-      const [english, german] = await Promise.all([
-        this.searchCommanderNamesByName(attempt),
-        this.searchGermanPrintedNames(attempt),
-      ]);
-      const matches = [...new Set([...english, ...german])];
-      if (matches.length > 0) return matches[0];
+
+      const english = await this.searchCommanderNamesByName(attempt);
+      if (english.length > 0) return english[0];
+      await sleep(150);
+
+      const german = await this.searchGermanPrintedNames(attempt);
+      if (german.length > 0) return german[0];
+      await sleep(150);
     }
 
     const fuzzy = await this.findCard(candidate);
