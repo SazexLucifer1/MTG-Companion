@@ -375,7 +375,7 @@ export class DeckService {
       if (resolved && resolved !== name) resolvedNames.set(name, resolved);
       done++;
       onProgress?.(done, list.length);
-      await sleep(120); // Scryfalls Rate-Limit respektieren, sonst schlagen die Anfragen mit 429 fehl.
+      await sleep(400); // Scryfalls Rate-Limit respektieren, sonst schlagen die Anfragen mit 429 fehl.
     }
 
     let fixed = 0;
@@ -451,7 +451,7 @@ export class DeckService {
       if (resolved && resolved !== name) resolvedNames.set(name, resolved);
       done++;
       onProgress?.(done, list.length);
-      await sleep(120); // Scryfalls Rate-Limit respektieren, sonst schlagen die Anfragen mit 429 fehl.
+      await sleep(400); // Scryfalls Rate-Limit respektieren, sonst schlagen die Anfragen mit 429 fehl.
     }
 
     let fixed = 0;

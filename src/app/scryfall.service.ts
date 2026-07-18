@@ -37,7 +37,7 @@ export class ScryfallService {
    * warten reicht" unterscheiden - deshalb bei JEDEM Fehler einfach abwarten und erneut versuchen,
    * mit wachsender Pause, statt sofort aufzugeben.
    */
-  private async fetchWithRetry(url: string, retries = 3): Promise<Response | null> {
+  private async fetchWithRetry(url: string, retries = 2): Promise<Response | null> {
     for (let attempt = 0; attempt <= retries; attempt++) {
       try {
         const res = await fetch(url, { headers: this.buildHeaders() });
@@ -45,7 +45,7 @@ export class ScryfallService {
       } catch {
         // Von Scryfall geblockte 429-Antworten kommen als Promise-Rejection an - abfangen und unten erneut versuchen.
       }
-      if (attempt < retries) await sleep(1200 * (attempt + 1));
+      if (attempt < retries) await sleep(3000 * (attempt + 1));
     }
     return null;
   }
@@ -199,11 +199,11 @@ export class ScryfallService {
 
       const english = await this.searchCommanderNamesByName(attempt);
       if (english.length > 0) return english[0];
-      await sleep(150);
+      await sleep(400);
 
       const german = await this.searchGermanPrintedNames(attempt);
       if (german.length > 0) return german[0];
-      await sleep(150);
+      await sleep(400);
     }
 
     const fuzzy = await this.findCard(candidate);

@@ -303,7 +303,7 @@ export class ExcelImportService {
       if (resolvedName) result.set(key, resolvedName);
       done++;
       onProgress?.(done, entries.length);
-      await sleep(120); // Scryfalls Rate-Limit respektieren, sonst schlagen die Anfragen mit 429 fehl.
+      await sleep(400); // Scryfalls Rate-Limit respektieren, sonst schlagen die Anfragen mit 429 fehl.
     }
 
     return result;
