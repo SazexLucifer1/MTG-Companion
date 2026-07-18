@@ -29,6 +29,27 @@ export class ScryfallService {
     };
   }
 
+  /**
+   * Fetch mit Wiederholung bei Fehlern - wichtig, weil Scryfalls Rate-Limit (429) im Browser als
+   * generischer CORS-Fehler ankommt (die 429-Antwort hat selbst keine CORS-Header, der Browser
+   * blockt sie also komplett und die fetch-Promise wird abgelehnt, ohne dass der Statuscode für
+   * JS lesbar wäre). Ein einzelner Fehlschlag lässt sich also nicht sicher von einem "429, kurz
+   * warten reicht" unterscheiden - deshalb bei JEDEM Fehler einfach abwarten und erneut versuchen,
+   * mit wachsender Pause, statt sofort aufzugeben.
+   */
+  private async fetchWithRetry(url: string, retries = 3): Promise<Response | null> {
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      try {
+        const res = await fetch(url, { headers: this.buildHeaders() });
+        if (res.ok || res.status === 404) return res;
+      } catch {
+        // Von Scryfall geblockte 429-Antworten kommen als Promise-Rejection an - abfangen und unten erneut versuchen.
+      }
+      if (attempt < retries) await sleep(1200 * (attempt + 1));
+    }
+    return null;
+  }
+
   /** Liefert alle Sets (caching) */
   async allSets(): Promise<ScryfallSet[]> {
     if (this.cachedSets) return this.cachedSets;
@@ -123,17 +144,11 @@ export class ScryfallService {
   private async searchCommanderNamesByName(query: string): Promise<string[]> {
     const safeQuery = query.trim().replace(/"/g, '');
     if (!safeQuery) return [];
-    try {
-      const q = encodeURIComponent(`is:commander name:"${safeQuery}"`);
-      const res = await fetch(`${API}/cards/search?q=${q}&unique=cards&order=name`, {
-        headers: this.buildHeaders(),
-      });
-      if (!res.ok) return [];
-      const data = await res.json();
-      return ((data.data as { name: string }[]) ?? []).map((c) => c.name).slice(0, 12);
-    } catch {
-      return [];
-    }
+    const q = encodeURIComponent(`is:commander name:"${safeQuery}"`);
+    const res = await this.fetchWithRetry(`${API}/cards/search?q=${q}&unique=cards&order=name`);
+    if (!res?.ok) return [];
+    const data = await res.json();
+    return ((data.data as { name: string }[]) ?? []).map((c) => c.name).slice(0, 12);
   }
 
   /**
@@ -142,30 +157,23 @@ export class ScryfallService {
    */
   async findCard(name: string): Promise<ScryfallCard | null> {
     if (!name.trim()) return null;
-    try {
-      // Fuzzy-Suche matcht auch viele gedruckte fremdsprachige Namen
-      const res = await fetch(`${API}/cards/named?fuzzy=${encodeURIComponent(name)}`, {
-        headers: this.buildHeaders(),
-      });
-      if (res.ok) {
-        return this.toCard(await res.json());
-      }
 
-      // Fallback: exakte Suche über gedruckte Namen in beliebiger Sprache
-      const q = encodeURIComponent(`lang:any !"${name}"`);
-      const searchRes = await fetch(`${API}/cards/search?q=${q}&unique=cards`, {
-        headers: this.buildHeaders(),
-      });
-      if (searchRes.ok) {
-        const data = await searchRes.json();
-        if (data.data?.length > 0) {
-          return this.toCard(data.data[0]);
-        }
-      }
-      return null;
-    } catch {
-      return null;
+    // Fuzzy-Suche matcht auch viele gedruckte fremdsprachige Namen
+    const res = await this.fetchWithRetry(`${API}/cards/named?fuzzy=${encodeURIComponent(name)}`);
+    if (res?.ok) {
+      return this.toCard(await res.json());
     }
+
+    // Fallback: exakte Suche über gedruckte Namen in beliebiger Sprache
+    const q = encodeURIComponent(`lang:any !"${name}"`);
+    const searchRes = await this.fetchWithRetry(`${API}/cards/search?q=${q}&unique=cards`);
+    if (searchRes?.ok) {
+      const data = await searchRes.json();
+      if (data.data?.length > 0) {
+        return this.toCard(data.data[0]);
+      }
+    }
+    return null;
   }
 
   /**
@@ -173,8 +181,8 @@ export class ScryfallService {
    * Deckname wie "Sovereign Okinec Ahau +1/+1 Markendeck") zu einem eindeutigen, offiziellen
    * Commander-Namen auf. Schneidet dafür schrittweise Wörter vom Ende ab (der störende
    * Zusatztext steht meist hinter dem eigentlichen Namen) und sucht bei jeder Länge gezielt nach
-   * Commander-fähigen Karten - auf Englisch UND Deutsch parallel, da hier oft deutsch gespielt
-   * wird. Sobald eine Länge Treffer liefert, wird abgebrochen (kürzer würde die Trefferzahl nur
+   * Commander-fähigen Karten - auf Englisch, dann Deutsch (nacheinander statt parallel, siehe
+   * fetchWithRetry). Sobald eine Länge Treffer liefert, wird abgebrochen (kürzer würde die Trefferzahl nur
    * noch vergrößern, nie eindeutiger machen). Bei mehreren Treffern wird der erste (alphabetisch)
    * als Best-Effort-Rateversuch genommen. Letzter Fallback: die normale Fuzzy-Suche, die auch
    * Tippfehler im Kernnamen selbst abdeckt.
@@ -205,17 +213,11 @@ export class ScryfallService {
   // NEU
   /** Sucht deutsche gedruckte Namen (nur erlaubte Commander) und liefert die englischen Kartennamen zurück. */
   private async searchGermanPrintedNames(query: string): Promise<string[]> {
-    try {
-      const q = encodeURIComponent(`is:commander lang:de ${query}`);
-      const res = await fetch(`${API}/cards/search?q=${q}&unique=cards&order=name`, {
-        headers: this.buildHeaders(),
-      });
-      if (!res.ok) return [];
-      const data = await res.json();
-      return ((data.data as { name: string }[]) ?? []).map((c) => c.name);
-    } catch {
-      return [];
-    }
+    const q = encodeURIComponent(`is:commander lang:de ${query}`);
+    const res = await this.fetchWithRetry(`${API}/cards/search?q=${q}&unique=cards&order=name`);
+    if (!res?.ok) return [];
+    const data = await res.json();
+    return ((data.data as { name: string }[]) ?? []).map((c) => c.name);
   }
   /**
    * Lädt Kartendaten (u.a. Bilder) für viele Kartennamen auf einmal, statt pro Karte eine
