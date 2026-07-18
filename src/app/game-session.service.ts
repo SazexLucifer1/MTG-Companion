@@ -1,5 +1,5 @@
 // NEU (komplette Datei)
-import { Injectable, computed, effect, inject, signal } from '@angular/core';
+import { Injectable, WritableSignal, computed, effect, inject, signal } from '@angular/core';
 import { GameMode, MatchPlayer, TEAM_OPTIONS, TeamName } from './models';
 import { MtgService } from './mtg.service';
 
@@ -385,6 +385,68 @@ export class GameSessionService {
     }));
   }
 
+  // --- Gepuffertes Tippen: Leben/Gift/Commander-Schaden ändern sich beim Tippen/Halten NICHT
+  // sofort sichtbar - stattdessen sammelt sich ein "schwebendes" Delta (z.B. "-6"), das erst nach
+  // einer kurzen Pause ohne weitere Eingabe auf einmal verrechnet wird. Das erspart Kopfrechnen
+  // ("23 Leben, 6 Schaden -> 17") beim schnellen Eintippen von Schaden. ---
+
+  private static readonly PENDING_COMMIT_DELAY_MS = 700;
+  private readonly pendingTimers = new Map<string, ReturnType<typeof setTimeout>>();
+
+  /** Panel-Key -> noch nicht verrechnetes Lebens-Delta. */
+  readonly pendingLifeDelta = signal<Record<string, number>>({});
+  /** Panel-Key -> noch nicht verrechnetes Gift-Delta. */
+  readonly pendingPoisonDelta = signal<Record<string, number>>({});
+  /** "target::sourceKey" -> noch nicht verrechnetes Commander-Schaden-Delta. */
+  readonly pendingCommanderDamageDelta = signal<Record<string, number>>({});
+
+  private bufferChange(
+    pendingSignal: WritableSignal<Record<string, number>>,
+    timerNamespace: string,
+    key: string,
+    delta: number,
+    commit: (totalDelta: number) => void
+  ): void {
+    pendingSignal.update((map) => ({ ...map, [key]: (map[key] ?? 0) + delta }));
+
+    const timerKey = `${timerNamespace}:${key}`;
+    const existing = this.pendingTimers.get(timerKey);
+    if (existing) clearTimeout(existing);
+
+    this.pendingTimers.set(
+      timerKey,
+      setTimeout(() => {
+        this.pendingTimers.delete(timerKey);
+        const total = pendingSignal()[key] ?? 0;
+        pendingSignal.update((map) => {
+          const next = { ...map };
+          delete next[key];
+          return next;
+        });
+        if (total !== 0) commit(total);
+      }, GameSessionService.PENDING_COMMIT_DELAY_MS)
+    );
+  }
+
+  bufferLifeChange(key: string, delta: number): void {
+    this.bufferChange(this.pendingLifeDelta, 'life', key, delta, (total) =>
+      this.adjustLife(key, total)
+    );
+  }
+
+  bufferPoisonChange(key: string, delta: number): void {
+    this.bufferChange(this.pendingPoisonDelta, 'poison', key, delta, (total) =>
+      this.adjustPoison(key, total)
+    );
+  }
+
+  bufferCommanderDamageChange(target: string, sourceKey: string, delta: number): void {
+    const key = `${target}::${sourceKey}`;
+    this.bufferChange(this.pendingCommanderDamageDelta, 'cd', key, delta, (total) =>
+      this.adjustCommanderDamage(target, sourceKey, total)
+    );
+  }
+
   isPoisonView(key: string): boolean {
     return this.poisonView()[key] ?? false;
   }
@@ -502,6 +564,11 @@ export class GameSessionService {
     this.phase.set('setup');
     this.showWinnerPanel.set(false);
     this.minimized.set(false);
+    for (const timer of this.pendingTimers.values()) clearTimeout(timer);
+    this.pendingTimers.clear();
+    this.pendingLifeDelta.set({});
+    this.pendingPoisonDelta.set({});
+    this.pendingCommanderDamageDelta.set({});
     this.lifeTotals.set({});
     this.commanderDamage.set({});
     this.poisonCounters.set({});

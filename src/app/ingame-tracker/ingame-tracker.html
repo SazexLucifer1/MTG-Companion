@@ -98,9 +98,14 @@
                   (pointercancel)="stopCommanderDamageHold(focusKey, source.key, -1)"
                   aria-label="Commander-Schaden abziehen"
                 ></button>
+                <span class="tap-hint minus">−</span>
                 <span class="source-value"
                   >{{ session.commanderDamageValue(focusKey, source.key) }}</span
                 >
+                @if (session.pendingCommanderDamageDelta()[focusKey + '::' + source.key]; as pending) {
+                  <span class="pending-delta" [class.negative]="pending < 0">{{ pending > 0 ? '+' : '' }}{{ pending }}</span>
+                }
+                <span class="tap-hint plus">+</span>
                 <button
                   class="source-tap-zone plus"
                   (pointerdown)="startCommanderDamageHold(focusKey, source.key, 1)"
@@ -123,7 +128,12 @@
               (pointercancel)="stopLifeHold(p.key, -1)"
               aria-label="Leben abziehen"
             ></button>
+            <span class="tap-hint minus">−</span>
             <span class="life-value">{{ session.lifeTotals()[p.key] }}</span>
+            @if (session.pendingLifeDelta()[p.key]; as pending) {
+              <span class="pending-delta" [class.negative]="pending < 0">{{ pending > 0 ? '+' : '' }}{{ pending }}</span>
+            }
+            <span class="tap-hint plus">+</span>
             <button
               class="life-tap-zone"
               (pointerdown)="startLifeHold(p.key, 1)"
@@ -143,7 +153,12 @@
               (pointercancel)="stopPoisonHold(p.key, -1)"
               aria-label="Gift-Marke abziehen"
             ></button>
+            <span class="tap-hint minus">−</span>
             <span class="life-value poison">☠ {{ session.poisonValue(p.key) }}</span>
+            @if (session.pendingPoisonDelta()[p.key]; as pending) {
+              <span class="pending-delta" [class.negative]="pending < 0">{{ pending > 0 ? '+' : '' }}{{ pending }}</span>
+            }
+            <span class="tap-hint plus">+</span>
             <button
               class="life-tap-zone"
               (pointerdown)="startPoisonHold(p.key, 1)"

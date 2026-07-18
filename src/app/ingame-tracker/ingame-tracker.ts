@@ -304,21 +304,21 @@ export class IngameTracker implements AfterViewInit, OnDestroy {
   }
 
   startLifeHold(player: string, sign: 1 | -1): void {
-    this.startHold(`life-${player}-${sign}`, (step) => this.session.adjustLife(player, sign * step));
+    this.startHold(`life-${player}-${sign}`, (step) => this.session.bufferLifeChange(player, sign * step));
   }
   stopLifeHold(player: string, sign: 1 | -1): void {
     this.stopHold(`life-${player}-${sign}`);
   }
 
   startCommanderDamageHold(target: string, sourceKey: string, sign: 1 | -1): void {
-    this.startHold(`cd-${target}-${sourceKey}-${sign}`, (step) => this.session.adjustCommanderDamage(target, sourceKey, sign * step));
+    this.startHold(`cd-${target}-${sourceKey}-${sign}`, (step) => this.session.bufferCommanderDamageChange(target, sourceKey, sign * step));
   }
   stopCommanderDamageHold(target: string, sourceKey: string, sign: 1 | -1): void {
     this.stopHold(`cd-${target}-${sourceKey}-${sign}`);
   }
 
   startPoisonHold(player: string, sign: 1 | -1): void {
-    this.startHold(`poison-${player}-${sign}`, (step) => this.session.adjustPoison(player, sign * step));
+    this.startHold(`poison-${player}-${sign}`, (step) => this.session.bufferPoisonChange(player, sign * step));
   }
   stopPoisonHold(player: string, sign: 1 | -1): void {
     this.stopHold(`poison-${player}-${sign}`);

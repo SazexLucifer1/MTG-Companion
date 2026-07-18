@@ -212,6 +212,55 @@
   }
 }
 
+/* --- Dezente +/- Hinweis-Symbole nah an der Zahl - die riesige Tipp-Fläche drum herum
+   bleibt unverändert, das hier ist nur eine visuelle Orientierung. --- */
+.tap-hint {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  font-size: clamp(1.1rem, 4vw, 1.6rem);
+  font-weight: 700;
+  opacity: 0.4;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+
+  &.minus {
+    left: 14%;
+  }
+
+  &.plus {
+    right: 14%;
+  }
+}
+
+/* --- Schwebendes, noch nicht verrechnetes Delta (z.B. "-6") beim Tippen/Halten - die große
+   Zahl bleibt währenddessen eingefroren, erst nach einer kurzen Pause wird verrechnet. --- */
+.pending-delta {
+  position: absolute;
+  top: calc(50% + 2.6rem);
+  left: 50%;
+  transform: translate(-50%, 0);
+  pointer-events: none;
+  font-size: clamp(1.1rem, 4.5vw, 1.7rem);
+  font-weight: 800;
+  color: #8be9a3;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+  animation: pending-pop 0.15s ease-out;
+
+  &.negative {
+    color: #ff8f8f;
+  }
+}
+
+@keyframes pending-pop {
+  from {
+    transform: translate(-50%, 0) scale(1.35);
+  }
+  to {
+    transform: translate(-50%, 0) scale(1);
+  }
+}
+
 .mode-toggle-row {
   display: flex;
   gap: 8px;
