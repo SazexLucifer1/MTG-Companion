@@ -1,3 +1,25 @@
+.section-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+
+  h2 {
+    margin: 0;
+  }
+}
+
+.mode-chip-row {
+  margin-top: 10px;
+}
+
+.pager {
+  align-items: center;
+  justify-content: center;
+  margin-top: 10px;
+}
+
 .glass-chip.locked {
   opacity: 0.45;
   cursor: not-allowed;
@@ -301,7 +323,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 10px;
+    gap: 8px;
     padding: 10px 0;
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 
@@ -312,11 +334,15 @@
 
   .name {
     font-weight: 600;
+    min-width: 0;
+    flex: 1 1 auto;
   }
 
   .detail {
     font-size: 0.82rem;
     opacity: 0.75;
+    white-space: nowrap;
+    flex: 0 0 auto;
   }
 
   .needed {
@@ -324,5 +350,6 @@
     color: var(--gold);
     font-size: 0.85rem;
     white-space: nowrap;
+    flex: 0 0 auto;
   }
 }

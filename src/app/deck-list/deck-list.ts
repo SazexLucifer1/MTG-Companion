@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { DeckService, Deck, DeckGameStats } from '../deck.service';
 import { DeckViewerService } from '../deck-viewer.service';
 import { DeckImportService } from '../deck-import.service';
+import { ScryfallService } from '../scryfall.service';
 
 export type DeckSortMode = 'alpha' | 'winRate' | 'games';
 
@@ -11,6 +12,7 @@ interface DeckWithStats extends Deck {
   games: number;
   wins: number;
   winRate: number;
+  commander?: string;
 }
 
 const PAGE_SIZE = 10;
@@ -29,6 +31,7 @@ export class DeckList {
   private readonly deckService = inject(DeckService);
   readonly viewer = inject(DeckViewerService);
   readonly importService = inject(DeckImportService);
+  private readonly scryfall = inject(ScryfallService);
 
   readonly decks = signal<Deck[]>([]);
   private readonly deckStats = signal<Map<string, DeckGameStats>>(new Map());
@@ -37,6 +40,9 @@ export class DeckList {
   readonly searchQuery = signal('');
   readonly sortMode = signal<DeckSortMode>('alpha');
   readonly page = signal(0);
+
+  /** Kartenname (lowercase) -> Bild-URL oder null (nicht gefunden). Nur für aktuell sichtbare Einträge geladen. */
+  private readonly cardImages = signal<Record<string, string | null>>({});
 
   constructor() {
     effect(() => {
@@ -49,6 +55,31 @@ export class DeckList {
         this.loading.set(false);
       });
     });
+
+    effect(() => {
+      const names = this.pagedDecks()
+        .map((d) => d.commander)
+        .filter((n): n is string => !!n);
+      const cache = this.cardImages();
+      const missing = [...new Set(names)].filter((n) => !(n.toLowerCase() in cache));
+      if (missing.length === 0) return;
+
+      this.scryfall.findCardsBulk(missing).then((found) => {
+        this.cardImages.update((current) => {
+          const next = { ...current };
+          for (const name of missing) {
+            next[name.toLowerCase()] = found.get(name.toLowerCase())?.imageUrl ?? null;
+          }
+          return next;
+        });
+      });
+    });
+  }
+
+  /** Kartenbild-URL für einen Commander-Namen, falls schon geladen. */
+  commanderImage(name: string | undefined): string | null {
+    if (!name) return null;
+    return this.cardImages()[name.toLowerCase()] ?? null;
   }
 
   private readonly decksWithStats = computed<DeckWithStats[]>(() =>

@@ -62,6 +62,31 @@ export class ProfileTab {
         this.favoriteCommanderImages.set(Object.fromEntries(entries));
       });
     });
+
+    effect(() => {
+      const names = this.pagedCommanderStats().map((c) => c.commander);
+      const cache = this.commanderCardImages();
+      const missing = [...new Set(names)].filter((n) => !(n.toLowerCase() in cache));
+      if (missing.length === 0) return;
+
+      this.scryfall.findCardsBulk(missing).then((found) => {
+        this.commanderCardImages.update((current) => {
+          const next = { ...current };
+          for (const name of missing) {
+            next[name.toLowerCase()] = found.get(name.toLowerCase())?.imageUrl ?? null;
+          }
+          return next;
+        });
+      });
+    });
+  }
+
+  /** Kartenname (lowercase) -> Bild-URL oder null (nicht gefunden), für die "Commander ohne Deck"-Liste. */
+  private readonly commanderCardImages = signal<Record<string, string | null>>({});
+
+  commanderImage(name: string | undefined): string | null {
+    if (!name) return null;
+    return this.commanderCardImages()[name.toLowerCase()] ?? null;
   }
 
   // --- Top-3-Lieblings-Commander (füllt den sonst leeren Bereich neben Avatar/Gruppen) ---

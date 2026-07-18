@@ -37,9 +37,14 @@
     @for (deck of pagedDecks(); track deck.id) {
       <li>
         <div class="deck-row">
-          <span class="deck-name">
-            @if (deck.isPrecon) {<span title="Precon">📦</span>}
-            {{ deck.name }}
+          <span class="deck-name card-name-cell">
+            @if (commanderImage(deck.commander); as img) {
+            <img class="card-thumb" [src]="img" [alt]="deck.commander" />
+            }
+            <span class="card-name-text">
+              @if (deck.isPrecon) {<span title="Precon">📦</span>}
+              {{ deck.name }}
+            </span>
           </span>
           @if (deck.format) {
             <span class="hint">{{ deck.format }}</span>

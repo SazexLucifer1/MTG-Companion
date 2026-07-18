@@ -315,7 +315,12 @@
         <ul class="player-list">
           @for (c of pagedCommanderStats(); track c.commander) {
             <li>
-              <span class="player-name">{{ c.commander }}</span>
+              <span class="player-name card-name-cell">
+                @if (commanderImage(c.commander); as img) {
+                <img class="card-thumb" [src]="img" [alt]="c.commander" />
+                }
+                <span class="card-name-text">{{ c.commander }}</span>
+              </span>
               <span class="hint">{{ c.wins }} / {{ c.games }} Siege · {{ c.winRate | number: '1.0-0' }}%</span>
             </li>
           }

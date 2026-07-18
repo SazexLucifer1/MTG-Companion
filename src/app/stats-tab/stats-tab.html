@@ -1,7 +1,3 @@
-<section class="glass-card">
-  <button class="glass-button small" (click)="openImportDialog()">📥 Alte Stats importieren</button>
-</section>
-
 @if (showImportDialog()) {
 <div class="options-menu-overlay" (click)="closeImportDialog()">
   <div class="options-menu-sheet" (click)="$event.stopPropagation()">
@@ -114,19 +110,26 @@
 </section>
 } @else {
 <section class="glass-card">
-  <h2>Zeitraum</h2>
+  <div class="section-header-row">
+    <h2>Zeitraum &amp; Modus</h2>
+    @if (groupService.isOwner()) {
+    <button
+      class="icon-button"
+      (click)="openImportDialog()"
+      aria-label="Alte Stats importieren"
+      title="Alte Stats importieren"
+    >
+      📥
+    </button>
+    }
+  </div>
   <select class="glass-input" [value]="selectedYear()" (change)="setSelectedYear($event)">
     <option value="Alle">Alle Zeiten</option>
     @for (year of availableYears(); track year) {
     <option [value]="year">{{ year }}</option>
     }
   </select>
-</section>
-
-<section class="glass-card">
-  <h2>Modus</h2>
-  <p class="hint">Wähle beliebig viele Modi - die Ranglisten fassen genau diese Auswahl zusammen.</p>
-  <div class="chip-row">
+  <div class="chip-row mode-chip-row">
     <button class="glass-chip" [class.active]="isAllModesSelected()" (click)="selectAllModes()">
       Alle Modi
     </button>
@@ -144,15 +147,6 @@
     }
   </div>
 </section>
-
-@if (groupService.isOwner()) {
-<section class="glass-card">
-  <p class="hint">
-    Wer welchen Modus im Stats-Tab sehen darf, legst du im Tab „Gruppe" unter „Sichtbarkeit
-    verwalten" fest.
-  </p>
-</section>
-}
 
 @if (blockedModes().length > 0) {
 <section class="glass-card">
@@ -319,7 +313,7 @@
       <span class="stat-label">Aktive Spieler</span>
     </div>
     <div class="stat-tile">
-      <span class="stat-value">{{ commanderStats().length }}</span>
+      <span class="stat-value">{{ distinctCommanderCount() }}</span>
       <span class="stat-label">Commander</span>
     </div>
   </div>
@@ -337,9 +331,9 @@
   <p class="hint">Noch niemand hat genug Spiele für die Rangliste – siehe Qualifikation unten.</p>
   }
   <ul class="ranking">
-    @for (p of rankedPlayerStats(); track p.name; let i = $index) {
+    @for (p of pagedPlayerStats(); track p.name; let i = $index) {
     <li>
-      <span class="rank">{{ medal(i) }}</span>
+      <span class="rank">{{ medal(playerEffectivePage() * 10 + i) }}</span>
       <span class="name player-name-cell">
         <app-player-avatar [url]="mtg.playerAvatars()[p.name] ?? null" />
         {{ p.name }}
@@ -352,6 +346,13 @@
     </li>
     }
   </ul>
+  @if (playerTotalPages() > 1) {
+  <div class="chip-row pager">
+    <button class="icon-button" (click)="prevPlayerPage()" [disabled]="playerEffectivePage() === 0" aria-label="Vorherige Seite">◀</button>
+    <span class="hint">{{ playerEffectivePage() * 10 + 1 }}–{{ playerPageRangeEnd() }} von {{ rankedPlayerStats().length }}</span>
+    <button class="icon-button" (click)="nextPlayerPage()" [disabled]="playerEffectivePage() >= playerTotalPages() - 1" aria-label="Nächste Seite">▶</button>
+  </div>
+  }
 </section>
 
 @if (playersInQualification().length > 0) {
@@ -362,7 +363,7 @@
     Rangliste.
   </p>
   <ul class="qualification">
-    @for (p of playersInQualification(); track p.name) {
+    @for (p of pagedPlayersInQualification(); track p.name) {
     <li>
       <span class="name player-name-cell">
         <app-player-avatar [url]="mtg.playerAvatars()[p.name] ?? null" />
@@ -373,100 +374,87 @@
     </li>
     }
   </ul>
+  @if (playerQualTotalPages() > 1) {
+  <div class="chip-row pager">
+    <button class="icon-button" (click)="prevPlayerQualPage()" [disabled]="playerQualEffectivePage() === 0" aria-label="Vorherige Seite">◀</button>
+    <span class="hint">{{ playerQualEffectivePage() * 10 + 1 }}–{{ playerQualPageRangeEnd() }} von {{ playersInQualification().length }}</span>
+    <button class="icon-button" (click)="nextPlayerQualPage()" [disabled]="playerQualEffectivePage() >= playerQualTotalPages() - 1" aria-label="Nächste Seite">▶</button>
+  </div>
+  }
 </section>
-} @if (deckStats().length > 0) {
+} @if (combinedDeckCommanderStats().length > 0) {
 <section class="glass-card">
-  <h2>Decks</h2>
+  <h2>Decks &amp; Commander</h2>
+  <p class="hint">
+    Eigenständige (Nicht-Precon-)Decks bleiben einzeln, Precons und noch nicht verlinkte
+    Commander sind pro Commander zusammengefasst.
+  </p>
   <div class="chip-row sort-toggle">
     <button class="glass-chip small" [class.active]="deckSortMode() === 'winRate'" (click)="deckSortMode.set('winRate')">Winrate</button>
     <button class="glass-chip small" [class.active]="deckSortMode() === 'wins'" (click)="deckSortMode.set('wins')">Siege</button>
     <button class="glass-chip small" [class.active]="deckSortMode() === 'games'" (click)="deckSortMode.set('games')">Spiele</button>
   </div>
-  @if (rankedDeckStats().length === 0) {
-  <p class="hint">Noch kein Deck hat genug Spiele für die Rangliste – siehe Qualifikation unten.</p>
+  @if (rankedCombinedStats().length === 0) {
+  <p class="hint">Noch nichts hat genug Spiele für die Rangliste – siehe Qualifikation unten.</p>
   }
   <ul class="ranking">
-    @for (d of rankedDeckStats(); track d.deckId; let i = $index) {
+    @for (e of pagedCombinedStats(); track e.key; let i = $index) {
     <li>
-      <span class="rank">{{ medal(i) }}</span>
-      <span class="name">
-        @if (d.isPrecon) {<span title="Precon">📦</span>}
-        {{ d.deckName }}
+      <span class="rank">{{ medal(combinedEffectivePage() * 10 + i) }}</span>
+      <span class="name card-name-cell">
+        @if (commanderImage(e.cardName); as img) {
+        <img class="card-thumb" [src]="img" [alt]="e.cardName" />
+        }
+        <span class="card-name-text">{{ e.name }}</span>
       </span>
       <span class="detail">
-        {{ d.wins }} / {{ d.games }} Siege · gespielt von
-        @for (pilot of d.pilots; track pilot.name; let last = $last) {
+        {{ e.wins }} / {{ e.games }} Siege · gespielt von
+        @for (pilot of e.playedBy; track pilot.name; let last = $last) {
           <span [class.borrowed-pilot]="pilot.borrowed">{{ pilot.name }}@if (pilot.borrowed) { 🤝 }</span
           >@if (!last) {, }
         }
       </span>
-      <span class="rate">{{ d.winRate | number: '1.0-0' }}%</span>
+      <span class="rate">{{ e.winRate | number: '1.0-0' }}%</span>
       <div class="bar">
-        <div class="bar-fill" [style.width.%]="d.winRate"></div>
+        <div class="bar-fill" [style.width.%]="e.winRate"></div>
       </div>
     </li>
     }
   </ul>
-  @if (decksInQualification().length > 0) {
+  @if (combinedTotalPages() > 1) {
+  <div class="chip-row pager">
+    <button class="icon-button" (click)="prevCombinedPage()" [disabled]="combinedEffectivePage() === 0" aria-label="Vorherige Seite">◀</button>
+    <span class="hint">{{ combinedEffectivePage() * 10 + 1 }}–{{ combinedPageRangeEnd() }} von {{ rankedCombinedStats().length }}</span>
+    <button class="icon-button" (click)="nextCombinedPage()" [disabled]="combinedEffectivePage() >= combinedTotalPages() - 1" aria-label="Nächste Seite">▶</button>
+  </div>
+  }
+  @if (combinedInQualification().length > 0) {
   <button class="glass-chip" (click)="toggleDeckQualification()">
     {{ showDeckQualification() ? '▾' : '▸' }} Spiele bis zur Qualifikation ({{
-    decksInQualification().length }})
+    combinedInQualification().length }})
   </button>
   } @if (showDeckQualification()) {
   <ul class="qualification">
-    @for (d of decksInQualification(); track d.deckId) {
+    @for (e of pagedCombinedInQualification(); track e.key) {
     <li>
-      <span class="name">@if (d.isPrecon) {📦 }{{ d.deckName }}</span>
-      <span class="detail">{{ d.games }} / {{ deckQualificationThreshold() }} Spiele</span>
-      <span class="needed">noch {{ d.gamesNeeded }}</span>
+      <span class="name card-name-cell">
+        @if (commanderImage(e.cardName); as img) {
+        <img class="card-thumb" [src]="img" [alt]="e.cardName" />
+        }
+        <span class="card-name-text">{{ e.name }}</span>
+      </span>
+      <span class="detail">{{ e.games }} / {{ deckQualificationThreshold() }} Spiele</span>
+      <span class="needed">noch {{ e.gamesNeeded }}</span>
     </li>
     }
   </ul>
-  }
-</section>
-} @if (commanderStats().length > 0) {
-<section class="glass-card">
-  <h2>Erfolgreichste Commander</h2>
-  <div class="chip-row sort-toggle">
-    <button class="glass-chip small" [class.active]="commanderSortMode() === 'winRate'" (click)="commanderSortMode.set('winRate')">Winrate</button>
-    <button class="glass-chip small" [class.active]="commanderSortMode() === 'wins'" (click)="commanderSortMode.set('wins')">Siege</button>
-    <button class="glass-chip small" [class.active]="commanderSortMode() === 'games'" (click)="commanderSortMode.set('games')">Spiele</button>
+  @if (combinedQualTotalPages() > 1) {
+  <div class="chip-row pager">
+    <button class="icon-button" (click)="prevCombinedQualPage()" [disabled]="combinedQualEffectivePage() === 0" aria-label="Vorherige Seite">◀</button>
+    <span class="hint">{{ combinedQualEffectivePage() * 10 + 1 }}–{{ combinedQualPageRangeEnd() }} von {{ combinedInQualification().length }}</span>
+    <button class="icon-button" (click)="nextCombinedQualPage()" [disabled]="combinedQualEffectivePage() >= combinedQualTotalPages() - 1" aria-label="Nächste Seite">▶</button>
   </div>
-  @if (rankedCommanderStats().length === 0) {
-  <p class="hint">
-    Noch kein Commander hat genug Spiele für die Rangliste – siehe Qualifikation unten.
-  </p>
   }
-  <ul class="ranking">
-    @for (c of rankedCommanderStats(); track c.commander; let i = $index) {
-    <li>
-      <span class="rank">{{ medal(i) }}</span>
-      <span class="name">{{ c.commander }}</span>
-      <span class="detail"
-        >{{ c.wins }} / {{ c.games }} Siege · gespielt von {{ c.playedBy.join(', ') }}</span
-      >
-      <span class="rate">{{ c.winRate | number: '1.0-0' }}%</span>
-      <div class="bar">
-        <div class="bar-fill" [style.width.%]="c.winRate"></div>
-      </div>
-    </li>
-    }
-  </ul>
-  @if (commandersInQualification().length > 0) {
-  <button class="glass-chip" (click)="toggleCommanderQualification()">
-    {{ showCommanderQualification() ? '▾' : '▸' }} Spiele bis zur Qualifikation ({{
-    commandersInQualification().length }})
-  </button>
-  } @if (showCommanderQualification()) {
-  <ul class="qualification">
-    @for (c of commandersInQualification(); track c.commander) {
-    <li>
-      <span class="name">{{ c.commander }}</span>
-      <span class="detail">{{ c.games }} / {{ commanderQualificationThreshold() }} Spiele</span>
-      <span class="needed">noch {{ c.gamesNeeded }}</span>
-    </li>
-    }
-  </ul>
   }
 </section>
 } }

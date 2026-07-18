@@ -75,4 +75,6 @@ export interface DeckStats {
   wins: number;
   winRate: number;
   pilots: { name: string; borrowed: boolean }[];
+  /** Zuletzt in einem Match erfasster Commander dieses Decks, falls vorhanden. */
+  commander?: string;
 }

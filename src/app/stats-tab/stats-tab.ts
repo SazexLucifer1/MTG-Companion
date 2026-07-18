@@ -1,10 +1,11 @@
 // NEU (komplette Datei)
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MtgService } from '../mtg.service';
 import { GroupService } from '../group.service';
 import { PlayerAvatar } from '../player-avatar/player-avatar';
+import { ScryfallService } from '../scryfall.service';
 import {
   ExcelImportService,
   IMPORT_LOSS_PLACEHOLDER,
@@ -13,6 +14,19 @@ import {
 import { CommanderStats, DeckStats, GAME_MODES, GameMode, Match, PlayerStats } from '../models';
 
 export type RankSortMode = 'wins' | 'winRate' | 'games';
+
+const PAGE_SIZE = 10;
+
+/** Gemeinsame Zeile für die vereinte Decks&Commander-Rangliste (siehe combinedDeckCommanderStats). */
+interface CombinedRankEntry {
+  key: string;
+  name: string;
+  cardName?: string;
+  games: number;
+  wins: number;
+  winRate: number;
+  playedBy: { name: string; borrowed: boolean }[];
+}
 
 interface ImportMappingRow {
   sheetName: string;
@@ -31,6 +45,43 @@ export class StatsTab {
   readonly mtg = inject(MtgService);
   readonly groupService = inject(GroupService);
   private readonly excelImport = inject(ExcelImportService);
+  private readonly scryfall = inject(ScryfallService);
+
+  // --- Kartenbilder (Commander/Erfolgreichste Commander & Decks) ---
+
+  /** Kartenname (lowercase) -> Bild-URL oder null (nicht gefunden). Nur für aktuell sichtbare Einträge geladen. */
+  private readonly cardImages = signal<Record<string, string | null>>({});
+
+  constructor() {
+    effect(() => {
+      const names = new Set<string>();
+      for (const e of this.pagedCombinedStats()) {
+        if (e.cardName) names.add(e.cardName);
+      }
+      for (const e of this.pagedCombinedInQualification()) {
+        if (e.cardName) names.add(e.cardName);
+      }
+      const cache = this.cardImages();
+      const missing = [...names].filter((n) => !(n.toLowerCase() in cache));
+      if (missing.length === 0) return;
+
+      this.scryfall.findCardsBulk(missing).then((found) => {
+        this.cardImages.update((current) => {
+          const next = { ...current };
+          for (const name of missing) {
+            next[name.toLowerCase()] = found.get(name.toLowerCase())?.imageUrl ?? null;
+          }
+          return next;
+        });
+      });
+    });
+  }
+
+  /** Kartenbild-URL für einen Commander-Namen, falls schon geladen (siehe cardImages). */
+  commanderImage(name: string | undefined): string | null {
+    if (!name) return null;
+    return this.cardImages()[name.toLowerCase()] ?? null;
+  }
 
   // --- Sortierung der Ranglisten: nach Siegen, Winrate oder Spielanzahl umschaltbar ---
 
@@ -48,8 +99,8 @@ export class StatsTab {
   }
 
   readonly playerSortMode = signal<RankSortMode>('winRate');
+  /** Gemeinsamer Sortier-Modus für die vereinte Decks&Commander-Rangliste. */
   readonly deckSortMode = signal<RankSortMode>('winRate');
-  readonly commanderSortMode = signal<RankSortMode>('winRate');
   readonly playerDeckSortMode = signal<RankSortMode>('winRate');
   readonly playerCommanderSortMode = signal<RankSortMode>('winRate');
 
@@ -200,6 +251,30 @@ export class StatsTab {
       .sort(this.compareBySortMode(this.playerSortMode()))
   );
 
+  /** Seitenweise Anzeige der Spieler-Rangliste (10 pro Seite). */
+  readonly playerPage = signal(0);
+  readonly playerTotalPages = computed(() =>
+    Math.max(1, Math.ceil(this.rankedPlayerStats().length / PAGE_SIZE))
+  );
+  readonly playerEffectivePage = computed(() =>
+    Math.min(this.playerPage(), this.playerTotalPages() - 1)
+  );
+  readonly pagedPlayerStats = computed(() => {
+    const start = this.playerEffectivePage() * PAGE_SIZE;
+    return this.rankedPlayerStats().slice(start, start + PAGE_SIZE);
+  });
+  readonly playerPageRangeEnd = computed(() =>
+    Math.min((this.playerEffectivePage() + 1) * PAGE_SIZE, this.rankedPlayerStats().length)
+  );
+
+  prevPlayerPage(): void {
+    this.playerPage.update((p) => Math.max(0, p - 1));
+  }
+
+  nextPlayerPage(): void {
+    this.playerPage.update((p) => Math.min(this.playerTotalPages() - 1, p + 1));
+  }
+
   /** Spieler unterhalb der Schwelle, mit Anzeige wie viele Spiele noch bis zur Qualifikation fehlen. */
   readonly playersInQualification = computed(() =>
     this.playerStats()
@@ -208,11 +283,43 @@ export class StatsTab {
       .sort((a, b) => a.gamesNeeded - b.gamesNeeded || a.name.localeCompare(b.name))
   );
 
+  /** Seitenweise Anzeige der Spieler-Qualifikationsliste (10 pro Seite). */
+  readonly playerQualPage = signal(0);
+  readonly playerQualTotalPages = computed(() =>
+    Math.max(1, Math.ceil(this.playersInQualification().length / PAGE_SIZE))
+  );
+  readonly playerQualEffectivePage = computed(() =>
+    Math.min(this.playerQualPage(), this.playerQualTotalPages() - 1)
+  );
+  readonly pagedPlayersInQualification = computed(() => {
+    const start = this.playerQualEffectivePage() * PAGE_SIZE;
+    return this.playersInQualification().slice(start, start + PAGE_SIZE);
+  });
+  readonly playerQualPageRangeEnd = computed(() =>
+    Math.min((this.playerQualEffectivePage() + 1) * PAGE_SIZE, this.playersInQualification().length)
+  );
+
+  prevPlayerQualPage(): void {
+    this.playerQualPage.update((p) => Math.max(0, p - 1));
+  }
+
+  nextPlayerQualPage(): void {
+    this.playerQualPage.update((p) => Math.min(this.playerQualTotalPages() - 1, p + 1));
+  }
+
+  /**
+   * Fasst Commander-Spiele ohne eigenständiges (Nicht-Precon-)Deck zusammen: sowohl gar nicht
+   * verlinkte Matches als auch mit einem Precon-Deck gespielte, da Precons austauschbar sind und
+   * hier nicht "das beste Deck von Spieler X" abgefragt wird, sondern der Commander allgemein.
+   * Eigenständige Decks (keine Precons) laufen bewusst getrennt in deckStats(), da zwei
+   * verschiedene Spieler mit demselben Commander in der Praxis unterschiedliche Decks bauen.
+   */
   readonly commanderStats = computed<CommanderStats[]>(() => {
     const stats = new Map<string, { games: number; wins: number; playedBy: Set<string> }>();
     for (const match of this.filteredMatches()) {
       for (const p of match.players) {
         if (!p.commander) continue;
+        if (p.deckId && p.deckIsPrecon !== true) continue;
         const entry = stats.get(p.commander) ?? { games: 0, wins: 0, playedBy: new Set<string>() };
         entry.games++;
         entry.playedBy.add(p.name);
@@ -231,30 +338,10 @@ export class StatsTab {
       .sort((a, b) => b.wins - a.wins || b.winRate - a.winRate);
   });
 
-  /** Mindestanzahl Spiele für die Commander-Rangliste - Host-Override falls gesetzt, sonst Standard 5. */
+  /** Mindestanzahl Spiele für die Decks&Commander-Rangliste - Host-Override falls gesetzt, sonst Standard 5. */
   readonly commanderQualificationThreshold = computed(() => this.qualificationOverride() ?? 5);
-
-  /** Rangliste: nur qualifizierte Commander (>= Schwelle), sortiert nach Winrate. */
-  readonly rankedCommanderStats = computed<CommanderStats[]>(() =>
-    this.commanderStats()
-      .filter((c) => c.games >= this.commanderQualificationThreshold())
-      .sort(this.compareBySortMode(this.commanderSortMode()))
-  );
-
-  /** Commander unterhalb der Schwelle, mit Anzeige wie viele Spiele noch bis zur Qualifikation fehlen. */
-  readonly commandersInQualification = computed(() =>
-    this.commanderStats()
-      .filter((c) => c.games < this.commanderQualificationThreshold())
-      .map((c) => ({ ...c, gamesNeeded: this.commanderQualificationThreshold() - c.games }))
-      .sort((a, b) => a.gamesNeeded - b.gamesNeeded || a.commander.localeCompare(b.commander))
-  );
-
-  /** Ob die nicht-qualifizierten Commander (Qualifikations-Liste) eingeblendet sind. */
-  readonly showCommanderQualification = signal(false);
-
-  toggleCommanderQualification(): void {
-    this.showCommanderQualification.update((v) => !v);
-  }
+  /** Gleiche Schwelle, ein Alias für Vorlagen, die noch den alten Deck-spezifischen Namen nutzen. */
+  readonly deckQualificationThreshold = this.commanderQualificationThreshold;
 
   // --- Deck-Statistiken ---
 
@@ -266,9 +353,9 @@ export class StatsTab {
   }
 
   /**
-   * Stats pro importiertem Deck (unabhängig davon, wer es in welchem Match gespielt hat -
-   * z.B. bei geliehenen Decks). Respektiert bewusst dieselbe Sichtbarkeits-Einstellung wie
-   * Spieler-Stats, da ein Deck meist einem bestimmten Spieler gehört und dessen Leistung zeigt.
+   * Stats pro eigenständigem (Nicht-Precon-)Deck (unabhängig davon, wer es in welchem Match
+   * gespielt hat - z.B. bei geliehenen Decks). Precon-Decks laufen bewusst NICHT hier, sondern
+   * gesammelt in commanderStats() - siehe Kommentar dort.
    */
   readonly deckStats = computed<DeckStats[]>(() => {
     const stats = new Map<
@@ -280,11 +367,12 @@ export class StatsTab {
         games: number;
         wins: number;
         pilots: Set<string>;
+        commander?: string;
       }
     >();
     for (const match of this.filteredMatches()) {
       for (const p of match.players) {
-        if (!p.deckId) continue;
+        if (!p.deckId || p.deckIsPrecon === true) continue;
         const entry = stats.get(p.deckId) ?? {
           deckName: p.deckName ?? 'Unbekanntes Deck',
           isPrecon: p.deckIsPrecon ?? false,
@@ -295,6 +383,7 @@ export class StatsTab {
         };
         entry.games++;
         entry.pilots.add(p.name);
+        if (p.commander) entry.commander = p.commander;
         if (this.isPlayerWinner(match, p.name)) entry.wins++;
         stats.set(p.deckId, entry);
       }
@@ -313,30 +402,115 @@ export class StatsTab {
             name,
             borrowed: ownerName !== null && name !== ownerName,
           })),
+          commander: s.commander,
         };
       })
       .sort((a, b) => b.wins - a.wins || b.winRate - a.winRate);
   });
 
-  /** Gleiche Schwelle wie bei Commandern, damit beide Ranglisten konsistent funktionieren. */
-  readonly deckQualificationThreshold = this.commanderQualificationThreshold;
+  /** Verschiedene Commander insgesamt (eigenständige Decks + Precons/Unverlinkte), für die Übersichts-Kachel. */
+  readonly distinctCommanderCount = computed(() => {
+    const names = new Set<string>();
+    for (const d of this.deckStats()) {
+      if (d.commander) names.add(d.commander);
+    }
+    for (const c of this.commanderStats()) names.add(c.commander);
+    return names.size;
+  });
 
-  /** Rangliste: nur qualifizierte Decks (>= Schwelle), sortiert nach Winrate. */
-  readonly rankedDeckStats = computed<DeckStats[]>(() =>
-    this.deckStats()
-      .filter((d) => d.games >= this.deckQualificationThreshold())
+  /**
+   * Decks und Commander in EINER gemeinsamen Rangliste: eigenständige (Nicht-Precon-)Decks
+   * bleiben als einzelne Einträge erhalten, Precons/unverlinkte Matches sind pro Commander
+   * zusammengefasst (siehe commanderStats()).
+   */
+  readonly combinedDeckCommanderStats = computed<CombinedRankEntry[]>(() => [
+    ...this.deckStats().map((d) => ({
+      key: `d:${d.deckId}`,
+      name: d.deckName,
+      cardName: d.commander,
+      games: d.games,
+      wins: d.wins,
+      winRate: d.winRate,
+      playedBy: d.pilots,
+    })),
+    ...this.commanderStats().map((c) => ({
+      key: `c:${c.commander}`,
+      name: c.commander,
+      cardName: c.commander,
+      games: c.games,
+      wins: c.wins,
+      winRate: c.winRate,
+      playedBy: c.playedBy.map((name) => ({ name, borrowed: false })),
+    })),
+  ]);
+
+  /** Rangliste: nur qualifizierte Decks/Commander (>= Schwelle), sortiert nach Winrate. */
+  readonly rankedCombinedStats = computed<CombinedRankEntry[]>(() =>
+    this.combinedDeckCommanderStats()
+      .filter((e) => e.games >= this.commanderQualificationThreshold())
       .sort(this.compareBySortMode(this.deckSortMode()))
   );
 
-  /** Decks unterhalb der Schwelle, mit Anzeige wie viele Spiele noch bis zur Qualifikation fehlen. */
-  readonly decksInQualification = computed(() =>
-    this.deckStats()
-      .filter((d) => d.games < this.deckQualificationThreshold())
-      .map((d) => ({ ...d, gamesNeeded: this.deckQualificationThreshold() - d.games }))
-      .sort((a, b) => a.gamesNeeded - b.gamesNeeded || a.deckName.localeCompare(b.deckName))
+  /** Seitenweise Anzeige der Decks&Commander-Rangliste (10 pro Seite). */
+  readonly combinedPage = signal(0);
+  readonly combinedTotalPages = computed(() =>
+    Math.max(1, Math.ceil(this.rankedCombinedStats().length / PAGE_SIZE))
+  );
+  readonly combinedEffectivePage = computed(() =>
+    Math.min(this.combinedPage(), this.combinedTotalPages() - 1)
+  );
+  readonly pagedCombinedStats = computed(() => {
+    const start = this.combinedEffectivePage() * PAGE_SIZE;
+    return this.rankedCombinedStats().slice(start, start + PAGE_SIZE);
+  });
+  readonly combinedPageRangeEnd = computed(() =>
+    Math.min((this.combinedEffectivePage() + 1) * PAGE_SIZE, this.rankedCombinedStats().length)
   );
 
-  /** Ob die nicht-qualifizierten Decks (Qualifikations-Liste) eingeblendet sind. */
+  prevCombinedPage(): void {
+    this.combinedPage.update((p) => Math.max(0, p - 1));
+  }
+
+  nextCombinedPage(): void {
+    this.combinedPage.update((p) => Math.min(this.combinedTotalPages() - 1, p + 1));
+  }
+
+  /** Decks/Commander unterhalb der Schwelle, mit Anzeige wie viele Spiele noch bis zur Qualifikation fehlen. */
+  readonly combinedInQualification = computed(() =>
+    this.combinedDeckCommanderStats()
+      .filter((e) => e.games < this.commanderQualificationThreshold())
+      .map((e) => ({ ...e, gamesNeeded: this.commanderQualificationThreshold() - e.games }))
+      .sort((a, b) => a.gamesNeeded - b.gamesNeeded || a.name.localeCompare(b.name))
+  );
+
+  /** Seitenweise Anzeige der Decks&Commander-Qualifikationsliste (10 pro Seite). */
+  readonly combinedQualPage = signal(0);
+  readonly combinedQualTotalPages = computed(() =>
+    Math.max(1, Math.ceil(this.combinedInQualification().length / PAGE_SIZE))
+  );
+  readonly combinedQualEffectivePage = computed(() =>
+    Math.min(this.combinedQualPage(), this.combinedQualTotalPages() - 1)
+  );
+  readonly pagedCombinedInQualification = computed(() => {
+    const start = this.combinedQualEffectivePage() * PAGE_SIZE;
+    return this.combinedInQualification().slice(start, start + PAGE_SIZE);
+  });
+  readonly combinedQualPageRangeEnd = computed(() =>
+    Math.min(
+      (this.combinedQualEffectivePage() + 1) * PAGE_SIZE,
+      this.combinedInQualification().length
+    )
+  );
+
+  prevCombinedQualPage(): void {
+    this.combinedQualPage.update((p) => Math.max(0, p - 1));
+  }
+
+  nextCombinedQualPage(): void {
+    this.combinedQualPage.update((p) => Math.min(this.combinedQualTotalPages() - 1, p + 1));
+  }
+
+  /** Ob die nicht-qualifizierten Decks/Commander (Qualifikations-Liste) eingeblendet sind. */
   readonly showDeckQualification = signal(false);
 
   toggleDeckQualification(): void {

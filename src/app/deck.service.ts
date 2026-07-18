@@ -17,6 +17,8 @@ export interface DeckGameStats {
   games: number;
   wins: number;
   winRate: number;
+  /** Zuletzt in einem Match erfasster Commander dieses Decks, falls vorhanden (für das Kartenbild). */
+  commander?: string;
 }
 
 export interface CommanderGameStats {
@@ -527,7 +529,9 @@ export class DeckService {
 
     const { data, error } = await supabase
       .from('match_players')
-      .select('deck_id, team, is_archenemy, players ( display_name ), matches ( game_mode, winner_name )')
+      .select(
+        'deck_id, commander_name, team, is_archenemy, players ( display_name ), matches ( game_mode, winner_name )'
+      )
       .in('deck_id', deckIds);
 
     if (error || !data) {
@@ -535,7 +539,7 @@ export class DeckService {
       return result;
     }
 
-    const raw = new Map<string, { games: number; wins: number }>();
+    const raw = new Map<string, { games: number; wins: number; commander?: string }>();
     for (const row of data as any[]) {
       const deckId = row.deck_id as string | null;
       const match = row.matches;
@@ -544,6 +548,7 @@ export class DeckService {
 
       const entry = raw.get(deckId) ?? { games: 0, wins: 0 };
       entry.games++;
+      if (row.commander_name) entry.commander = row.commander_name;
       if (isPlayerWinner(match.game_mode, match.winner_name, playerName, row.team, row.is_archenemy)) {
         entry.wins++;
       }
@@ -551,7 +556,12 @@ export class DeckService {
     }
 
     for (const [deckId, s] of raw) {
-      result.set(deckId, { games: s.games, wins: s.wins, winRate: s.games > 0 ? (s.wins / s.games) * 100 : 0 });
+      result.set(deckId, {
+        games: s.games,
+        wins: s.wins,
+        winRate: s.games > 0 ? (s.wins / s.games) * 100 : 0,
+        commander: s.commander,
+      });
     }
     return result;
   }
