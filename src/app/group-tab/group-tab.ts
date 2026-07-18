@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { GroupService } from '../group.service';
 import { MtgService } from '../mtg.service';
 import { ProfileService } from '../profile.service';
+import { DeckService } from '../deck.service';
 import { PlayerAvatar } from '../player-avatar/player-avatar';
 import { DeckList } from '../deck-list/deck-list';
 import { GAME_MODES, GameMode } from '../models';
@@ -17,6 +18,7 @@ export class GroupTab {
   readonly groupService = inject(GroupService);
   readonly mtg = inject(MtgService);
   private readonly profileService = inject(ProfileService);
+  private readonly deckService = inject(DeckService);
 
   // --- Gruppen erstellen/wechseln ---
 
@@ -285,6 +287,35 @@ export class GroupTab {
     } else {
       this.mergeMessage.set('Zusammenführen fehlgeschlagen.');
     }
+  }
+
+  // --- Commander-Namen für die ganze Gruppe reparieren (z.B. deutsch/englisch-Dopplungen) ---
+
+  readonly repairGroupBusy = signal(false);
+  readonly repairGroupProgress = signal<{ done: number; total: number } | null>(null);
+  readonly repairGroupMessage = signal('');
+
+  async repairGroupCommanderNames(): Promise<void> {
+    const groupId = this.groupService.groupId();
+    if (!groupId) return;
+
+    this.repairGroupBusy.set(true);
+    this.repairGroupMessage.set('');
+    this.repairGroupProgress.set({ done: 0, total: 0 });
+
+    const result = await this.deckService.repairCommanderNamesForGroup(groupId, (done, total) =>
+      this.repairGroupProgress.set({ done, total })
+    );
+
+    await this.mtg.refreshHistory();
+
+    this.repairGroupBusy.set(false);
+    this.repairGroupProgress.set(null);
+    this.repairGroupMessage.set(
+      result.checked === 0
+        ? 'Nichts zu prüfen – noch keine Commander in der Gruppen-Historie.'
+        : `${result.checked} Commander-Namen geprüft, ${result.fixed} vereinheitlicht.`
+    );
   }
 
   // --- Profil ansehen (nur lesend) ---

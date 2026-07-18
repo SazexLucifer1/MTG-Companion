@@ -221,6 +221,17 @@
   @if (groupService.isOwner() && mtg.allPlayers().length > 1) {
     <button class="glass-button small" (click)="openMergeDialog()">🔀 Spieler zusammenführen</button>
   }
+  @if (groupService.isOwner()) {
+    <button class="glass-button small" [disabled]="repairGroupBusy()" (click)="repairGroupCommanderNames()">
+      {{ repairGroupBusy() ? 'Prüfe …' : '🔧 Commander-Namen der Gruppe reparieren' }}
+    </button>
+    @if (repairGroupProgress(); as progress) {
+      <p class="hint">{{ progress.done }} / {{ progress.total }} geprüft …</p>
+    }
+    @if (repairGroupMessage()) {
+      <p class="hint">{{ repairGroupMessage() }}</p>
+    }
+  }
 </section>
 
 @if (showMergeDialog()) {

@@ -411,6 +411,65 @@ export class DeckService {
     return { checked: list.length, fixed, linked };
   }
 
+  /**
+   * Wie repairCommanderNames(), aber für die GANZE Gruppe statt nur den eigenen Account - für den
+   * Host gedacht. Löst z.B. den Fall, dass ein Excel-Import einen Commander unaufgelöst auf
+   * Deutsch stehen ließ, während eine später live getrackte Partie denselben Commander (korrekt
+   * aufgelöst) auf Englisch speichert - beide würden sonst als zwei verschiedene Commander in der
+   * Statistik auftauchen. Verknüpft bewusst NICHT automatisch mit Decks (das bleibt Sache von
+   * repairCommanderNames() pro Account, da nur der jeweilige Besitzer seine eigenen Decks kennt).
+   */
+  async repairCommanderNamesForGroup(
+    groupId: string,
+    onProgress?: (done: number, total: number) => void
+  ): Promise<{ checked: number; fixed: number }> {
+    const { data: playerRows } = await supabase.from('players').select('id').eq('group_id', groupId);
+    if (!playerRows || playerRows.length === 0) return { checked: 0, fixed: 0 };
+    const playerIds = playerRows.map((p) => p.id);
+
+    const { data: rows } = await supabase
+      .from('match_players')
+      .select('commander_name, partner_commander_name')
+      .in('player_id', playerIds);
+
+    if (!rows) return { checked: 0, fixed: 0 };
+
+    const uniqueNames = new Set<string>();
+    for (const r of rows) {
+      if (r.commander_name) uniqueNames.add(r.commander_name);
+      if (r.partner_commander_name) uniqueNames.add(r.partner_commander_name);
+    }
+
+    const list = [...uniqueNames];
+    const resolvedNames = new Map<string, string>(); // alter Name -> korrigierter Name
+    let done = 0;
+
+    for (const name of list) {
+      const resolved = await this.scryfall.resolveCommanderCandidate(name);
+      if (resolved && resolved !== name) resolvedNames.set(name, resolved);
+      done++;
+      onProgress?.(done, list.length);
+    }
+
+    let fixed = 0;
+    for (const [oldName, newName] of resolvedNames) {
+      const { error: commanderError } = await supabase
+        .from('match_players')
+        .update({ commander_name: newName })
+        .in('player_id', playerIds)
+        .eq('commander_name', oldName);
+      if (!commanderError) fixed++;
+
+      await supabase
+        .from('match_players')
+        .update({ partner_commander_name: newName })
+        .in('player_id', playerIds)
+        .eq('partner_commander_name', oldName);
+    }
+
+    return { checked: list.length, fixed };
+  }
+
   async deleteDeck(deckId: string): Promise<void> {
     const { error } = await supabase.from('decks').delete().eq('id', deckId);
     if (error) {

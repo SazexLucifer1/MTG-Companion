@@ -432,6 +432,12 @@ export class MtgService {
 
   // --- Matches ---
 
+  /** Lädt den Match-Verlauf der aktiven Gruppe neu (z.B. nach einer Namens-Reparatur außerhalb dieses Signals). */
+  async refreshHistory(): Promise<void> {
+    const groupId = this.groupService.groupId();
+    if (groupId) await this.loadHistory(groupId);
+  }
+
   private async loadHistory(groupId: string): Promise<void> {
     const { data, error } = await supabase
       .from('matches')
