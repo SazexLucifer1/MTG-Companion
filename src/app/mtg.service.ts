@@ -27,8 +27,19 @@ export class MtgService {
   /** Spielername -> gewählter Hintergrundbild-Pfad. Persistiert dauerhaft, unabhängig vom Match. */
   readonly playerBackgrounds = signal<Record<string, string>>({});
 
-  /** Spielername -> Menge der Modi, für die der Host die Stats für die ganze Gruppe freigegeben hat. */
-  readonly statVisibility = signal<Map<string, Set<GameMode>>>(new Map());
+  /**
+   * Spielername (= Account) -> (Modus -> darf dieser Account den Modus im Stats-Tab sehen?).
+   * Nicht konfigurierte Modi fehlen in der inneren Map (Default: Zugriff erlaubt) - siehe
+   * canViewMode in stats-tab.ts.
+   */
+  readonly statVisibility = signal<Map<string, Map<GameMode, boolean>>>(new Map());
+
+  /**
+   * Modus (oder 'Alle' für die Aggregat-Ansicht) -> Mindestanzahl Spiele, ab der ein Eintrag
+   * in den Ranglisten (Spieler/Decks/Commander) für diesen Modus erscheint. 0 = keine
+   * Mindestspielzahl. Nicht konfigurierte Modi fehlen (Default: siehe stats-tab.ts).
+   */
+  readonly qualificationSettings = signal<Map<string, number>>(new Map());
 
   /** Der eigene Spielername (falls der eingeloggte User über einen verknüpften players-Eintrag verfügt). */
   readonly myPlayerName = computed(() => {
@@ -47,6 +58,7 @@ export class MtgService {
         this.loadHistory(groupId);
         this.loadPlayerBackgrounds(groupId);
         this.loadStatVisibility(groupId);
+        this.loadQualificationSettings(groupId);
       } else {
         this.clearGroupData();
       }
@@ -64,27 +76,70 @@ export class MtgService {
     this.cubes.set([]);
     this.playerBackgrounds.set({});
     this.statVisibility.set(new Map());
+    this.qualificationSettings.set(new Map());
+  }
+
+  private async loadQualificationSettings(groupId: string): Promise<void> {
+    const { data, error } = await supabase
+      .from('group_qualification_settings')
+      .select('game_mode, min_games')
+      .eq('group_id', groupId);
+
+    if (error) {
+      console.error('Konnte Qualifikations-Einstellungen nicht laden:', error);
+      return;
+    }
+
+    const map = new Map<string, number>();
+    for (const row of data as { game_mode: string; min_games: number }[]) {
+      map.set(row.game_mode, row.min_games);
+    }
+    this.qualificationSettings.set(map);
+  }
+
+  /** Nur für den Host: legt die Mindestanzahl Spiele für einen Modus (oder 'Alle' für die Aggregat-Ansicht) fest. 0 = keine Mindestspielzahl. */
+  async setQualificationThreshold(mode: GameMode | 'Alle', minGames: number): Promise<boolean> {
+    const groupId = this.groupService.groupId();
+    if (!groupId) return false;
+
+    const { error } = await supabase
+      .from('group_qualification_settings')
+      .upsert(
+        { group_id: groupId, game_mode: mode, min_games: minGames },
+        { onConflict: 'group_id,game_mode' }
+      );
+
+    if (error) {
+      console.error('Konnte Qualifikations-Einstellung nicht ändern:', error);
+      return false;
+    }
+
+    this.qualificationSettings.update((map) => {
+      const next = new Map(map);
+      next.set(mode, minGames);
+      return next;
+    });
+    return true;
   }
 
   private async loadStatVisibility(groupId: string): Promise<void> {
     const { data, error } = await supabase
       .from('player_stat_visibility')
       .select('game_mode, visible, players ( display_name )')
-      .eq('group_id', groupId)
-      .eq('visible', true);
+      .eq('group_id', groupId);
 
     if (error) {
       console.error('Konnte Sichtbarkeits-Einstellungen nicht laden:', error);
       return;
     }
 
-    const map = new Map<string, Set<GameMode>>();
+    const map = new Map<string, Map<GameMode, boolean>>();
     for (const row of data as any[]) {
       const name = row.players?.display_name;
       if (!name) continue;
-      const set = map.get(name) ?? new Set<GameMode>();
-      set.add(row.game_mode);
-      map.set(name, set);
+      const inner = map.get(name) ?? new Map<GameMode, boolean>();
+      inner.set(row.game_mode, row.visible);
+      map.set(name, inner);
     }
     this.statVisibility.set(map);
   }
@@ -111,13 +166,9 @@ export class MtgService {
 
     this.statVisibility.update((map) => {
       const next = new Map(map);
-      const set = new Set(next.get(playerName) ?? []);
-      if (visible) {
-        set.add(mode);
-      } else {
-        set.delete(mode);
-      }
-      next.set(playerName, set);
+      const inner = new Map(next.get(playerName) ?? []);
+      inner.set(mode, visible);
+      next.set(playerName, inner);
       return next;
     });
     return true;
@@ -149,7 +200,7 @@ export class MtgService {
 
     this.statVisibility.update((map) => {
       const next = new Map(map);
-      next.set(playerName, visible ? new Set(GAME_MODES) : new Set());
+      next.set(playerName, new Map(GAME_MODES.map((mode) => [mode, visible])));
       return next;
     });
     return true;

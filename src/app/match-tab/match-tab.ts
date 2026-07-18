@@ -6,6 +6,7 @@ import { MtgService } from '../mtg.service';
 import { ScryfallService, ScryfallSet } from '../scryfall.service';
 import { GeminiService } from '../gemini.service';
 import { GameSessionService } from '../game-session.service';
+import { GroupService } from '../group.service';
 import { PlayerAvatar } from '../player-avatar/player-avatar';
 import { DeckService } from '../deck.service';
 import { GAME_MODES, TEAM_OPTIONS, Match } from '../models';
@@ -19,6 +20,7 @@ import { GAME_MODES, TEAM_OPTIONS, Match } from '../models';
 export class MatchTab {
   readonly mtg = inject(MtgService);
   readonly session = inject(GameSessionService);
+  readonly groupService = inject(GroupService);
   private readonly scryfall = inject(ScryfallService);
   private readonly gemini = inject(GeminiService);
   private readonly deckService = inject(DeckService);

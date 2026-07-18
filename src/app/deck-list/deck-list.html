@@ -5,6 +5,21 @@
   </div>
 }
 
+@if (!loading() && decks().length > 0) {
+  <input
+    class="glass-input"
+    type="text"
+    placeholder="Deck suchen …"
+    [ngModel]="searchQuery()"
+    (ngModelChange)="setSearchQuery($event)"
+  />
+  <div class="chip-row sort-toggle">
+    <button class="glass-chip small" [class.active]="sortMode() === 'alpha'" (click)="setSortMode('alpha')">A-Z</button>
+    <button class="glass-chip small" [class.active]="sortMode() === 'winRate'" (click)="setSortMode('winRate')">Winrate</button>
+    <button class="glass-chip small" [class.active]="sortMode() === 'games'" (click)="setSortMode('games')">Meistgespielt</button>
+  </div>
+}
+
 @if (loading()) {
   <p class="hint">Lade Decks …</p>
 } @else if (decks().length === 0) {
@@ -15,9 +30,11 @@
       Noch keine Decks importiert.
     }
   </p>
+} @else if (filteredSortedDecks().length === 0) {
+  <p class="hint">Kein Deck gefunden.</p>
 } @else {
   <ul class="deck-list">
-    @for (deck of decks(); track deck.id) {
+    @for (deck of pagedDecks(); track deck.id) {
       <li>
         <div class="deck-row">
           <span class="deck-name">
@@ -26,6 +43,9 @@
           </span>
           @if (deck.format) {
             <span class="hint">{{ deck.format }}</span>
+          }
+          @if (deck.games > 0) {
+            <span class="hint">{{ deck.wins }} / {{ deck.games }} Siege · {{ deck.winRate | number: '1.0-0' }}%</span>
           }
           <span class="hint">Aktualisiert {{ deck.updatedAt | date: 'dd.MM.yyyy' }}</span>
         </div>
@@ -37,4 +57,12 @@
       </li>
     }
   </ul>
+
+  @if (totalPages() > 1) {
+    <div class="chip-row pager">
+      <button class="icon-button" (click)="prevPage()" [disabled]="page() === 0" aria-label="Vorherige Seite">◀</button>
+      <span class="hint">{{ page() * 10 + 1 }}–{{ pageRangeEnd() }} von {{ filteredSortedDecks().length }}</span>
+      <button class="icon-button" (click)="nextPage()" [disabled]="page() >= totalPages() - 1" aria-label="Nächste Seite">▶</button>
+    </div>
+  }
 }

@@ -4,13 +4,13 @@ import { GroupService } from '../group.service';
 import { MtgService } from '../mtg.service';
 import { ProfileService } from '../profile.service';
 import { DeckService } from '../deck.service';
+import { NavigationService } from '../navigation.service';
 import { PlayerAvatar } from '../player-avatar/player-avatar';
-import { DeckList } from '../deck-list/deck-list';
 import { GAME_MODES, GameMode } from '../models';
 
 @Component({
   selector: 'app-group-tab',
-  imports: [FormsModule, PlayerAvatar, DeckList],
+  imports: [FormsModule, PlayerAvatar],
   templateUrl: './group-tab.html',
   styleUrl: './group-tab.scss',
 })
@@ -19,12 +19,25 @@ export class GroupTab {
   readonly mtg = inject(MtgService);
   private readonly profileService = inject(ProfileService);
   private readonly deckService = inject(DeckService);
+  private readonly navigation = inject(NavigationService);
 
   // --- Gruppen erstellen/wechseln ---
 
   readonly newGroupName = signal('');
   readonly creating = signal(false);
   readonly message = signal('');
+
+  readonly showCreateGroupDialog = signal(false);
+
+  openCreateGroupDialog(): void {
+    this.newGroupName.set('');
+    this.message.set('');
+    this.showCreateGroupDialog.set(true);
+  }
+
+  closeCreateGroupDialog(): void {
+    this.showCreateGroupDialog.set(false);
+  }
 
   async createGroup(): Promise<void> {
     const name = this.newGroupName().trim();
@@ -38,8 +51,7 @@ export class GroupTab {
     this.creating.set(false);
     if (success) {
       this.newGroupName.set('');
-      this.message.set(`Gruppe „${name}" erstellt!`);
-      setTimeout(() => this.message.set(''), 2500);
+      this.showCreateGroupDialog.set(false);
     } else {
       this.message.set('Gruppe konnte nicht erstellt werden.');
     }
@@ -47,6 +59,42 @@ export class GroupTab {
 
   selectGroup(groupId: string): void {
     this.groupService.switchGroup(groupId);
+  }
+
+  // --- Gruppe verlassen (nur Mitglieder, Hosts nutzen "Gruppe löschen") ---
+
+  readonly leavingGroupId = signal<string | null>(null);
+  readonly leavingGroupName = signal('');
+  readonly leaveGroupBusy = signal(false);
+  readonly leaveGroupError = signal('');
+
+  openLeaveGroupConfirm(groupId: string, groupName: string): void {
+    this.leavingGroupId.set(groupId);
+    this.leavingGroupName.set(groupName);
+    this.leaveGroupError.set('');
+  }
+
+  closeLeaveGroupConfirm(): void {
+    this.leavingGroupId.set(null);
+    this.leaveGroupError.set('');
+  }
+
+  async confirmLeaveGroup(): Promise<void> {
+    const groupId = this.leavingGroupId();
+    if (!groupId) return;
+
+    this.leaveGroupBusy.set(true);
+    this.leaveGroupError.set('');
+
+    const ok = await this.groupService.leaveGroup(groupId);
+
+    this.leaveGroupBusy.set(false);
+
+    if (ok) {
+      this.closeLeaveGroupConfirm();
+    } else {
+      this.leaveGroupError.set('Verlassen fehlgeschlagen.');
+    }
   }
 
   // --- Gruppe umbenennen ---
@@ -149,6 +197,17 @@ export class GroupTab {
   readonly joinCode = signal('');
   readonly joinBusy = signal(false);
   readonly joinMessage = signal('');
+  readonly showJoinGroupDialog = signal(false);
+
+  openJoinGroupDialog(): void {
+    this.joinCode.set('');
+    this.joinMessage.set('');
+    this.showJoinGroupDialog.set(true);
+  }
+
+  closeJoinGroupDialog(): void {
+    this.showJoinGroupDialog.set(false);
+  }
 
   async submitJoinCode(): Promise<void> {
     this.joinBusy.set(true);
@@ -161,8 +220,59 @@ export class GroupTab {
 
     if (result.success) {
       this.joinCode.set('');
-      setTimeout(() => this.joinMessage.set(''), 2500);
+      this.showJoinGroupDialog.set(false);
+
+      if (result.needsPlayerChoice && result.groupId) {
+        this.playerChoiceGroupId.set(result.groupId);
+        this.playerChoiceCandidates.set(result.candidates ?? []);
+        this.playerChoiceSuggestedId.set(result.suggestedPlayerId ?? null);
+        this.playerChoiceNewName.set(this.profileService.profile()?.displayName ?? '');
+        this.showPlayerChoiceDialog.set(true);
+      }
     }
+  }
+
+  // --- Nach dem Beitritt: mit bestehendem Spieler verknüpfen oder neuen anlegen ---
+
+  readonly showPlayerChoiceDialog = signal(false);
+  readonly playerChoiceGroupId = signal<string | null>(null);
+  readonly playerChoiceCandidates = signal<{ id: string; displayName: string }[]>([]);
+  readonly playerChoiceSuggestedId = signal<string | null>(null);
+  readonly playerChoiceNewName = signal('');
+  readonly playerChoiceBusy = signal(false);
+
+  private finishPlayerChoiceDialog(): void {
+    this.showPlayerChoiceDialog.set(false);
+    this.playerChoiceGroupId.set(null);
+    this.playerChoiceCandidates.set([]);
+    this.playerChoiceSuggestedId.set(null);
+    setTimeout(() => this.joinMessage.set(''), 2500);
+  }
+
+  async chooseExistingPlayer(playerId: string): Promise<void> {
+    const groupId = this.playerChoiceGroupId();
+    if (!groupId || this.playerChoiceBusy()) return;
+
+    this.playerChoiceBusy.set(true);
+    const ok = await this.groupService.finalizePlayerChoice(groupId, { linkToPlayerId: playerId });
+    this.playerChoiceBusy.set(false);
+    if (ok) this.finishPlayerChoiceDialog();
+  }
+
+  async chooseNewPlayer(): Promise<void> {
+    const groupId = this.playerChoiceGroupId();
+    if (!groupId || this.playerChoiceBusy()) return;
+
+    this.playerChoiceBusy.set(true);
+    const name = this.playerChoiceNewName().trim() || this.profileService.profile()?.displayName || 'Spieler';
+    const ok = await this.groupService.finalizePlayerChoice(groupId, { createNewWithName: name });
+    this.playerChoiceBusy.set(false);
+    if (ok) this.finishPlayerChoiceDialog();
+  }
+
+  /** Overlay weggeklickt, ohne explizit zu wählen -> Fallback: wie bisher neuen Spieler mit Profilnamen anlegen. */
+  dismissPlayerChoiceDialog(): void {
+    this.chooseNewPlayer();
   }
 
   // --- Spielerverwaltung (Statistik-Identitäten der aktiven Gruppe) ---
@@ -291,9 +401,19 @@ export class GroupTab {
 
   // --- Commander-Namen für die ganze Gruppe reparieren (z.B. deutsch/englisch-Dopplungen) ---
 
+  readonly showRepairInfoDialog = signal(false);
   readonly repairGroupBusy = signal(false);
   readonly repairGroupProgress = signal<{ done: number; total: number } | null>(null);
   readonly repairGroupMessage = signal('');
+
+  openRepairInfoDialog(): void {
+    this.repairGroupMessage.set('');
+    this.showRepairInfoDialog.set(true);
+  }
+
+  closeRepairInfoDialog(): void {
+    this.showRepairInfoDialog.set(false);
+  }
 
   async repairGroupCommanderNames(): Promise<void> {
     const groupId = this.groupService.groupId();
@@ -318,22 +438,11 @@ export class GroupTab {
     );
   }
 
-  // --- Profil ansehen (nur lesend) ---
-
-  readonly viewingProfileFor = signal<string | null>(null);
-  readonly viewedProfile = signal<{ displayName: string; avatarUrl: string | null } | null>(null);
-  readonly viewProfileBusy = signal(false);
+  // --- Profil ansehen (nur lesend, springt in den Profil-Tab statt Popup) ---
 
   async openProfileView(userId: string): Promise<void> {
-    this.viewingProfileFor.set(userId);
-    this.viewProfileBusy.set(true);
-    this.viewedProfile.set(await this.profileService.loadPublicProfile(userId));
-    this.viewProfileBusy.set(false);
-  }
-
-  closeProfileView(): void {
-    this.viewingProfileFor.set(null);
-    this.viewedProfile.set(null);
+    this.navigation.goToTab('profile');
+    await this.profileService.viewProfile(userId);
   }
 
   // --- Spieler nachträglich mit einem Mitglied-Account verknüpfen (nur Host) ---
@@ -369,12 +478,21 @@ export class GroupTab {
     this.closeLinkDialog();
   }
 
-  // --- Stats-Sichtbarkeit (nur Host) ---
+  // --- Stats-Zugriff pro Account (nur Host): wer darf im Stats-Tab welchen Modus sehen ---
 
   readonly visibilityModes = GAME_MODES;
   readonly showVisibilityDialog = signal(false);
+  readonly linkedPlayersForVisibility = computed(() =>
+    this.mtg.allPlayers().filter((name) => this.isPlayerLinked(name)),
+  );
 
-  openVisibilityDialog(): void {
+  openVisibilityDialog(groupId: string): void {
+    // Sichtbarkeit hängt an den Daten der AKTIVEN Gruppe (mtg.allPlayers()/statVisibility) -
+    // falls der Button in einer anderen als der gerade aktiven Gruppe geklickt wird, erst
+    // dorthin wechseln, damit der Dialog die richtigen Spieler zeigt.
+    if (this.groupService.groupId() !== groupId) {
+      this.selectGroup(groupId);
+    }
     this.showVisibilityDialog.set(true);
   }
 
@@ -383,7 +501,7 @@ export class GroupTab {
   }
 
   isStatVisible(name: string, mode: GameMode): boolean {
-    return this.mtg.statVisibility().get(name)?.has(mode) ?? false;
+    return this.mtg.statVisibility().get(name)?.get(mode) ?? false;
   }
 
   async toggleVisibilityChip(name: string, mode: GameMode): Promise<void> {
@@ -392,5 +510,33 @@ export class GroupTab {
 
   async setAllModesVisible(name: string, visible: boolean): Promise<void> {
     await this.mtg.setStatVisibilityForAllModes(name, visible);
+  }
+
+  // --- Qualifikationsschwellen pro Modus (nur Host): ab wann taucht wer in der Rangliste auf ---
+
+  readonly showQualificationDialog = signal(false);
+  /** Modus-Liste für den Dialog: die echten Modi plus die Aggregat-Ansicht "Alle Modi". */
+  readonly qualificationDialogModes: readonly (GameMode | 'Alle')[] = ['Alle', ...GAME_MODES];
+
+  openQualificationDialog(groupId: string): void {
+    if (this.groupService.groupId() !== groupId) {
+      this.selectGroup(groupId);
+    }
+    this.showQualificationDialog.set(true);
+  }
+
+  closeQualificationDialog(): void {
+    this.showQualificationDialog.set(false);
+  }
+
+  /** Aktuell wirksame Mindestspielzahl für einen Modus - Host-Override falls gesetzt, sonst der App-Standard (10 bei "Alle", sonst 3). */
+  qualificationValue(mode: GameMode | 'Alle'): number {
+    return this.mtg.qualificationSettings().get(mode) ?? (mode === 'Alle' ? 10 : 3);
+  }
+
+  async updateQualificationValue(mode: GameMode | 'Alle', value: string): Promise<void> {
+    const parsed = Math.max(0, Math.floor(Number(value)));
+    if (!Number.isFinite(parsed)) return;
+    await this.mtg.setQualificationThreshold(mode, parsed);
   }
 }

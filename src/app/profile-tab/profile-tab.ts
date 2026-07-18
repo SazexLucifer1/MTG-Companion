@@ -1,17 +1,19 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { DecimalPipe } from '@angular/common';
 import QRCode from 'qrcode';
 import { ProfileService } from '../profile.service';
 import { MtgService } from '../mtg.service';
 import { GroupService } from '../group.service';
 import { DeckList } from '../deck-list/deck-list';
-import { DeckService } from '../deck.service';
+import { DeckService, CommanderGameStats, Deck } from '../deck.service';
 import { AuthService } from '../auth.service';
 import { BackgroundService } from '../background.service';
+import { ScryfallService } from '../scryfall.service';
 
 @Component({
   selector: 'app-profile-tab',
-  imports: [FormsModule, DeckList],
+  imports: [FormsModule, DecimalPipe, DeckList],
   templateUrl: './profile-tab.html',
   styleUrl: './profile-tab.scss',
 })
@@ -22,6 +24,150 @@ export class ProfileTab {
   private readonly deckService = inject(DeckService);
   private readonly auth = inject(AuthService);
   readonly backgrounds = inject(BackgroundService);
+  private readonly scryfall = inject(ScryfallService);
+
+  readonly deckListRef = viewChild<DeckList>('deckListRef');
+
+  readonly unassignedCommanderStats = signal<CommanderGameStats[]>([]);
+
+  private async refreshUnassignedAndDecks(): Promise<void> {
+    const userId = this.profileService.profile()?.id;
+    if (!userId) return;
+    this.unassignedCommanderStats.set(await this.deckService.getUnassignedCommanderStats(userId));
+    await this.deckListRef()?.refreshDecks();
+  }
+
+  constructor() {
+    effect(() => {
+      const userId = this.profileService.profile()?.id;
+      if (!userId) {
+        this.unassignedCommanderStats.set([]);
+        return;
+      }
+      this.deckService.getUnassignedCommanderStats(userId).then((stats) => {
+        this.unassignedCommanderStats.set(stats);
+        this.commanderPage.set(0);
+      });
+    });
+
+    effect(() => {
+      const names = this.profileService.profile()?.favoriteCommanders ?? [];
+      if (names.length === 0) {
+        this.favoriteCommanderImages.set({});
+        return;
+      }
+      Promise.all(
+        names.map((n) => this.scryfall.findCard(n).then((card) => [n, card?.imageUrl ?? null] as const))
+      ).then((entries) => {
+        this.favoriteCommanderImages.set(Object.fromEntries(entries));
+      });
+    });
+  }
+
+  // --- Top-3-Lieblings-Commander (füllt den sonst leeren Bereich neben Avatar/Gruppen) ---
+
+  readonly favoriteCommanderImages = signal<Record<string, string | null>>({});
+
+  readonly showFavoriteCommanderDialog = signal(false);
+  readonly favoriteCommanderQuery = signal('');
+  readonly favoriteCommanderSuggestions = signal<string[]>([]);
+  readonly favoriteCommanderBusy = signal(false);
+  private favoriteCommanderSearchTimer: ReturnType<typeof setTimeout> | null = null;
+
+  openFavoriteCommanderDialog(): void {
+    this.favoriteCommanderQuery.set('');
+    this.favoriteCommanderSuggestions.set([]);
+    this.showFavoriteCommanderDialog.set(true);
+  }
+
+  closeFavoriteCommanderDialog(): void {
+    this.showFavoriteCommanderDialog.set(false);
+  }
+
+  onFavoriteCommanderSearchInput(value: string): void {
+    this.favoriteCommanderQuery.set(value);
+    if (this.favoriteCommanderSearchTimer) clearTimeout(this.favoriteCommanderSearchTimer);
+    this.favoriteCommanderSearchTimer = setTimeout(async () => {
+      this.favoriteCommanderSuggestions.set(await this.scryfall.autocomplete(value));
+    }, 250);
+  }
+
+  async addFavoriteCommander(name: string): Promise<void> {
+    const current = this.profileService.profile()?.favoriteCommanders ?? [];
+    if (current.length >= 3 || current.includes(name)) return;
+
+    this.favoriteCommanderBusy.set(true);
+    await this.profileService.updateFavoriteCommanders([...current, name]);
+    this.favoriteCommanderBusy.set(false);
+    this.favoriteCommanderQuery.set('');
+    this.favoriteCommanderSuggestions.set([]);
+  }
+
+  async removeFavoriteCommander(name: string): Promise<void> {
+    const current = this.profileService.profile()?.favoriteCommanders ?? [];
+
+    this.favoriteCommanderBusy.set(true);
+    await this.profileService.updateFavoriteCommanders(current.filter((c) => c !== name));
+    this.favoriteCommanderBusy.set(false);
+  }
+
+  // --- Suche/Sortierung/Seiten für "Commander ohne Deck" ---
+
+  private static readonly PAGE_SIZE = 10;
+
+  readonly commanderSearchQuery = signal('');
+  readonly commanderSortMode = signal<'alpha' | 'winRate' | 'games'>('alpha');
+  readonly commanderPage = signal(0);
+
+  readonly filteredSortedCommanderStats = computed<CommanderGameStats[]>(() => {
+    const query = this.commanderSearchQuery().trim().toLowerCase();
+    let list = this.unassignedCommanderStats();
+    if (query) {
+      list = list.filter((c) => c.commander.toLowerCase().includes(query));
+    }
+
+    const mode = this.commanderSortMode();
+    list = [...list];
+    if (mode === 'alpha') {
+      list.sort((a, b) => a.commander.localeCompare(b.commander));
+    } else if (mode === 'winRate') {
+      list.sort((a, b) => b.winRate - a.winRate || b.games - a.games);
+    } else {
+      list.sort((a, b) => b.games - a.games || b.winRate - a.winRate);
+    }
+    return list;
+  });
+
+  readonly commanderTotalPages = computed(() =>
+    Math.max(1, Math.ceil(this.filteredSortedCommanderStats().length / ProfileTab.PAGE_SIZE))
+  );
+
+  readonly pagedCommanderStats = computed<CommanderGameStats[]>(() => {
+    const start = this.commanderPage() * ProfileTab.PAGE_SIZE;
+    return this.filteredSortedCommanderStats().slice(start, start + ProfileTab.PAGE_SIZE);
+  });
+
+  readonly commanderPageRangeEnd = computed(() =>
+    Math.min((this.commanderPage() + 1) * ProfileTab.PAGE_SIZE, this.filteredSortedCommanderStats().length)
+  );
+
+  setCommanderSearchQuery(value: string): void {
+    this.commanderSearchQuery.set(value);
+    this.commanderPage.set(0);
+  }
+
+  setCommanderSortMode(mode: 'alpha' | 'winRate' | 'games'): void {
+    this.commanderSortMode.set(mode);
+    this.commanderPage.set(0);
+  }
+
+  prevCommanderPage(): void {
+    this.commanderPage.update((p) => Math.max(0, p - 1));
+  }
+
+  nextCommanderPage(): void {
+    this.commanderPage.update((p) => Math.min(this.commanderTotalPages() - 1, p + 1));
+  }
 
   readonly editedName = signal('');
   readonly isEditing = signal(false);
@@ -120,9 +266,19 @@ export class ProfileTab {
 
   // --- Commander-Namen reparieren (Alt-Daten von vor Verbesserungen an der Erkennung) ---
 
+  readonly showRepairInfoDialog = signal(false);
   readonly repairBusy = signal(false);
   readonly repairProgress = signal<{ done: number; total: number } | null>(null);
   readonly repairMessage = signal('');
+
+  openRepairInfoDialog(): void {
+    this.repairMessage.set('');
+    this.showRepairInfoDialog.set(true);
+  }
+
+  closeRepairInfoDialog(): void {
+    this.showRepairInfoDialog.set(false);
+  }
 
   async repairCommanderNames(): Promise<void> {
     const userId = this.auth.currentUser()?.id;
@@ -143,9 +299,95 @@ export class ProfileTab {
         ? 'Nichts zu prüfen – alle Commander sind bereits verknüpft oder es gibt keine offenen Matches.'
         : `${result.checked} Commander-Namen geprüft, ${result.fixed} korrigiert, ${result.linked} mit einem Deck verknüpft.`
     );
+    await this.refreshUnassignedAndDecks();
+  }
+
+  // --- Manuell Commander <-> Deck verlinken/entlinken ---
+
+  readonly showManualLinkDialog = signal(false);
+  readonly myDecksForLinking = signal<Deck[]>([]);
+
+  readonly linkCommanderChoice = signal('');
+  readonly linkDeckChoice = signal('');
+  readonly linkBusy = signal(false);
+  readonly linkMessage = signal('');
+
+  readonly unlinkDeckChoice = signal('');
+  readonly unlinkBusy = signal(false);
+  readonly unlinkMessage = signal('');
+
+  async openManualLinkDialog(): Promise<void> {
+    const userId = this.profileService.profile()?.id;
+    if (!userId) return;
+
+    this.linkCommanderChoice.set('');
+    this.linkDeckChoice.set('');
+    this.linkMessage.set('');
+    this.unlinkDeckChoice.set('');
+    this.unlinkMessage.set('');
+    this.myDecksForLinking.set(await this.deckService.loadDecksForUser(userId));
+    this.showManualLinkDialog.set(true);
+  }
+
+  closeManualLinkDialog(): void {
+    this.showManualLinkDialog.set(false);
+  }
+
+  async confirmManualLink(): Promise<void> {
+    const userId = this.profileService.profile()?.id;
+    const commander = this.linkCommanderChoice();
+    const deckId = this.linkDeckChoice();
+    if (!userId || !commander || !deckId) return;
+
+    this.linkBusy.set(true);
+    this.linkMessage.set('');
+
+    const ok = await this.deckService.linkCommanderToDeck(userId, commander, deckId);
+
+    this.linkBusy.set(false);
+
+    if (ok) {
+      this.linkMessage.set('Verlinkt!');
+      this.linkCommanderChoice.set('');
+      this.linkDeckChoice.set('');
+      await this.refreshUnassignedAndDecks();
+    } else {
+      this.linkMessage.set('Verlinken fehlgeschlagen.');
+    }
+  }
+
+  async confirmManualUnlink(): Promise<void> {
+    const userId = this.profileService.profile()?.id;
+    const deckId = this.unlinkDeckChoice();
+    if (!userId || !deckId) return;
+
+    this.unlinkBusy.set(true);
+    this.unlinkMessage.set('');
+
+    const ok = await this.deckService.unlinkDeckMatches(userId, deckId);
+
+    this.unlinkBusy.set(false);
+
+    if (ok) {
+      this.unlinkMessage.set('Verknüpfung gelöst!');
+      this.unlinkDeckChoice.set('');
+      await this.refreshUnassignedAndDecks();
+    } else {
+      this.unlinkMessage.set('Lösen fehlgeschlagen.');
+    }
   }
 
   // --- Hintergrundbilder ---
+
+  readonly showBackgroundsDialog = signal(false);
+
+  openBackgroundsDialog(): void {
+    this.showBackgroundsDialog.set(true);
+  }
+
+  closeBackgroundsDialog(): void {
+    this.showBackgroundsDialog.set(false);
+  }
 
   async onBackgroundFileSelected(event: Event): Promise<void> {
     const input = event.target as HTMLInputElement;

@@ -244,6 +244,14 @@ h3 {
   .glass-button {
     width: 100%;
   }
+
+  // Buttons, die neben einem Eingabefeld in einer Zeile stehen (z.B. "Speichern" neben einem
+  // API-Key-Feld), sollen NICHT die volle Breite bekommen - sonst quetscht das die .glass-input
+  // daneben auf fast nichts zusammen (gleiche Ursache wie beim Precon-Jahr-Feld-Bug).
+  .add-row .glass-button {
+    width: auto;
+    flex: 0 0 auto;
+  }
 }
 
 .danger-zone {

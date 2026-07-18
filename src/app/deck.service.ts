@@ -19,6 +19,13 @@ export interface DeckGameStats {
   winRate: number;
 }
 
+export interface CommanderGameStats {
+  commander: string;
+  games: number;
+  wins: number;
+  winRate: number;
+}
+
 export interface DeckCard {
   cardName: string;
   quantity: number;
@@ -508,5 +515,138 @@ export class DeckService {
 
     const games = data.length;
     return { games, wins, winRate: games > 0 ? (wins / games) * 100 : 0 };
+  }
+
+  /**
+   * Wie getDeckStats(), aber für mehrere Decks auf einmal (eine Anfrage statt einer pro Deck) -
+   * für Listen, die z.B. nach Winrate/Spielanzahl sortiert werden sollen.
+   */
+  async getDeckStatsForDecks(deckIds: string[]): Promise<Map<string, DeckGameStats>> {
+    const result = new Map<string, DeckGameStats>();
+    if (deckIds.length === 0) return result;
+
+    const { data, error } = await supabase
+      .from('match_players')
+      .select('deck_id, team, is_archenemy, players ( display_name ), matches ( game_mode, winner_name )')
+      .in('deck_id', deckIds);
+
+    if (error || !data) {
+      console.error('Konnte Deck-Statistiken nicht laden:', error);
+      return result;
+    }
+
+    const raw = new Map<string, { games: number; wins: number }>();
+    for (const row of data as any[]) {
+      const deckId = row.deck_id as string | null;
+      const match = row.matches;
+      const playerName = row.players?.display_name;
+      if (!deckId || !match || !playerName) continue;
+
+      const entry = raw.get(deckId) ?? { games: 0, wins: 0 };
+      entry.games++;
+      if (isPlayerWinner(match.game_mode, match.winner_name, playerName, row.team, row.is_archenemy)) {
+        entry.wins++;
+      }
+      raw.set(deckId, entry);
+    }
+
+    for (const [deckId, s] of raw) {
+      result.set(deckId, { games: s.games, wins: s.wins, winRate: s.games > 0 ? (s.wins / s.games) * 100 : 0 });
+    }
+    return result;
+  }
+
+  /**
+   * Commander-Statistik über ALLE Gruppen hinweg für Matches OHNE Deck-Zuordnung (z.B. alte
+   * Excel-Importe oder live getrackte Spiele, bei denen kein eigenes Deck ausgewählt wurde) -
+   * ergänzt getDeckStats() im Profil, wo sonst nur deck-gebundene Spiele auftauchen würden.
+   */
+  async getUnassignedCommanderStats(userId: string): Promise<CommanderGameStats[]> {
+    const { data: playerRows } = await supabase.from('players').select('id').eq('user_id', userId);
+    if (!playerRows || playerRows.length === 0) return [];
+    const playerIds = playerRows.map((p) => p.id);
+
+    const { data, error } = await supabase
+      .from('match_players')
+      .select('commander_name, team, is_archenemy, players ( display_name ), matches ( game_mode, winner_name )')
+      .in('player_id', playerIds)
+      .is('deck_id', null)
+      .not('commander_name', 'is', null);
+
+    if (error || !data) {
+      console.error('Konnte Commander-Statistik nicht laden:', error);
+      return [];
+    }
+
+    const stats = new Map<string, { games: number; wins: number }>();
+    for (const row of data as any[]) {
+      const match = row.matches;
+      const playerName = row.players?.display_name;
+      const commander = row.commander_name as string | null;
+      if (!match || !playerName || !commander) continue;
+
+      const entry = stats.get(commander) ?? { games: 0, wins: 0 };
+      entry.games++;
+      if (isPlayerWinner(match.game_mode, match.winner_name, playerName, row.team, row.is_archenemy)) {
+        entry.wins++;
+      }
+      stats.set(commander, entry);
+    }
+
+    return [...stats.entries()]
+      .map(([commander, s]) => ({
+        commander,
+        games: s.games,
+        wins: s.wins,
+        winRate: s.games > 0 ? (s.wins / s.games) * 100 : 0,
+      }))
+      .sort((a, b) => b.wins - a.wins || b.winRate - a.winRate);
+  }
+
+  /**
+   * Verlinkt manuell alle noch unverlinkten Matches eines Commanders (nur eigene Spieler-Einträge)
+   * mit einem konkreten Deck - für Fälle, wo die automatische Erkennung (findDeckIdByCommander)
+   * nichts findet oder der falsche Commander-Name erkannt wurde.
+   */
+  async linkCommanderToDeck(userId: string, commander: string, deckId: string): Promise<boolean> {
+    const { data: playerRows } = await supabase.from('players').select('id').eq('user_id', userId);
+    if (!playerRows || playerRows.length === 0) return false;
+    const playerIds = playerRows.map((p) => p.id);
+
+    const { error } = await supabase
+      .from('match_players')
+      .update({ deck_id: deckId })
+      .in('player_id', playerIds)
+      .eq('commander_name', commander)
+      .is('deck_id', null);
+
+    if (error) {
+      console.error('Konnte Commander nicht mit Deck verlinken:', error);
+      return false;
+    }
+    return true;
+  }
+
+  /**
+   * Löst die Deck-Verknüpfung aller Matches eines Decks (nur eigene Spieler-Einträge) wieder -
+   * z.B. falls eine automatische oder manuelle Verlinkung ein falsches Deck getroffen hat. Die
+   * Matches landen danach wieder unter "Commander ohne Deck".
+   */
+  async unlinkDeckMatches(userId: string, deckId: string): Promise<boolean> {
+    const { data: playerRows } = await supabase.from('players').select('id').eq('user_id', userId);
+    if (!playerRows || playerRows.length === 0) return false;
+    const playerIds = playerRows.map((p) => p.id);
+
+    const { error } = await supabase
+      .from('match_players')
+      .update({ deck_id: null })
+      .in('player_id', playerIds)
+      .eq('deck_id', deckId);
+
+    if (error) {
+      console.error('Konnte Deck nicht entlinken:', error);
+      return false;
+    }
+    return true;
   }
 }

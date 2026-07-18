@@ -1,130 +1,379 @@
-<section class="glass-card">
-    <h2>Mein Profil</h2>
-  
-    @if (profileService.loading()) {
+@if (profileService.viewingUserId()) {
+  <section class="glass-card">
+    <button class="glass-button small" (click)="profileService.stopViewingProfile()">← Zurück zu meinem Profil</button>
+    @if (profileService.viewingBusy()) {
       <p class="hint">Lade Profil …</p>
-    } @else if (!profileService.profile()) {
-      <p class="hint">Profil konnte nicht geladen werden.</p>
-    } @else {
+    } @else if (profileService.viewingProfile(); as viewed) {
       <div class="avatar-row">
         <div
           class="avatar-circle"
-          [style.background-image]="
-            profileService.profile()?.avatarUrl
-              ? 'url(' + profileService.profile()?.avatarUrl + ')'
-              : null
-          "
+          [style.background-image]="viewed.avatarUrl ? 'url(' + viewed.avatarUrl + ')' : null"
         >
-          @if (!profileService.profile()?.avatarUrl) {
+          @if (!viewed.avatarUrl) {
             <span class="avatar-placeholder">👤</span>
           }
         </div>
-        <label class="glass-button small avatar-upload-label">
-          @if (avatarUploading()) {
-            <span class="spinner"></span> Lädt hoch …
-          } @else {
-            📷 Bild ändern
-          }
-          <input
-            type="file"
-            accept="image/*"
-            [disabled]="avatarUploading()"
-            (change)="onAvatarSelected($event)"
-          />
-        </label>
+        <span class="profile-name">{{ viewed.displayName }}</span>
       </div>
-      @if (avatarError()) {
-        <p class="error">{{ avatarError() }}</p>
-      }
-
-      @if (!isEditing()) {
-        <div class="profile-name-row">
-          <span class="profile-name">{{ profileService.profile()?.displayName }}</span>
-          <button class="icon-button" (click)="startEdit()" aria-label="Namen bearbeiten">✏️</button>
-        </div>
-      } @else {
-        <div class="add-row">
-          <input
-            class="glass-input"
-            type="text"
-            placeholder="Dein Anzeigename …"
-            [ngModel]="editedName()"
-            (ngModelChange)="editedName.set($event)"
-            (keyup.enter)="saveName()"
-            autofocus
-          />
-          <button class="glass-button primary" (click)="saveName()" [disabled]="!editedName().trim()">
-            ✓
-          </button>
-          <button class="glass-button" (click)="cancelEdit()">✕</button>
-        </div>
-      }
-  
-      @if (saveMessage()) {
-        <p class="success">{{ saveMessage() }}</p>
-      }
-    }
-  </section>
-
-  <section class="glass-card">
-    <h2>Meine Gruppen</h2>
-    @if (groupService.myGroups().length === 0) {
-      <p class="hint">Du bist noch in keiner Gruppe.</p>
     } @else {
-      <ul class="player-list">
-        @for (group of groupService.myGroups(); track group.id) {
-          <li>
-            <span class="player-name">{{ group.name }}</span>
-            <span class="hint">{{ group.role === 'owner' ? '👑 Host' : 'Mitglied' }}</span>
-          </li>
-        }
-      </ul>
+      <p class="hint">Profil konnte nicht geladen werden.</p>
     }
   </section>
+
+  @if (profileService.viewingUserId(); as userId) {
+    <section class="glass-card">
+      <h2>Decks</h2>
+      <app-deck-list [userId]="userId" [readonlyMode]="true" />
+    </section>
+  }
+} @else {
+
+<section class="glass-card">
+    <div class="profile-main-row">
+      <div class="profile-left">
+        <h2>Mein Profil</h2>
+        @if (profileService.loading()) {
+          <p class="hint">Lade Profil …</p>
+        } @else if (!profileService.profile()) {
+          <p class="hint">Profil konnte nicht geladen werden.</p>
+        } @else {
+          <div class="avatar-row">
+            <label
+              class="avatar-circle"
+              aria-label="Profilbild ändern"
+              title="Profilbild ändern"
+              [style.background-image]="
+                profileService.profile()?.avatarUrl
+                  ? 'url(' + profileService.profile()?.avatarUrl + ')'
+                  : null
+              "
+            >
+              @if (avatarUploading()) {
+                <span class="spinner"></span>
+              } @else if (!profileService.profile()?.avatarUrl) {
+                <span class="avatar-placeholder">👤</span>
+              }
+              <input
+                type="file"
+                accept="image/*"
+                [disabled]="avatarUploading()"
+                (change)="onAvatarSelected($event)"
+              />
+            </label>
+          </div>
+          @if (avatarError()) {
+            <p class="error">{{ avatarError() }}</p>
+          }
+
+          @if (!isEditing()) {
+            <div class="profile-name-row">
+              <span class="profile-name">{{ profileService.profile()?.displayName }}</span>
+              <button class="icon-button" (click)="startEdit()" aria-label="Namen bearbeiten">✏️</button>
+            </div>
+          } @else {
+            <div class="add-row">
+              <input
+                class="glass-input"
+                type="text"
+                placeholder="Dein Anzeigename …"
+                [ngModel]="editedName()"
+                (ngModelChange)="editedName.set($event)"
+                (keyup.enter)="saveName()"
+                autofocus
+              />
+              <button class="glass-button primary" (click)="saveName()" [disabled]="!editedName().trim()">
+                ✓
+              </button>
+              <button class="glass-button" (click)="cancelEdit()">✕</button>
+            </div>
+          }
+
+          @if (saveMessage()) {
+            <p class="success">{{ saveMessage() }}</p>
+          }
+        }
+
+        <h3>Meine Gruppen</h3>
+        @if (groupService.myGroups().length === 0) {
+          <p class="hint">Du bist noch in keiner Gruppe.</p>
+        } @else {
+          <ul class="player-list compact-list narrow-list">
+            @for (group of groupService.myGroups(); track group.id) {
+              <li>
+                @if (group.role === 'owner') {
+                  <span title="Admin">👑</span>
+                }
+                <span class="player-name">{{ group.name }}</span>
+              </li>
+            }
+          </ul>
+        }
+      </div>
+
+      <div class="favorite-commanders-col">
+        <h3>Meine Lieblingscommander</h3>
+        <div class="favorite-commanders-row">
+          @for (name of profileService.profile()?.favoriteCommanders ?? []; track name) {
+            <button class="favorite-commander-card" (click)="openFavoriteCommanderDialog()" [attr.aria-label]="name">
+              @if (favoriteCommanderImages()[name]; as img) {
+                <img [src]="img" [alt]="name" />
+              } @else {
+                <span class="favorite-commander-placeholder">{{ name }}</span>
+              }
+            </button>
+          }
+          @if ((profileService.profile()?.favoriteCommanders ?? []).length < 3) {
+            <button class="favorite-commander-card empty" (click)="openFavoriteCommanderDialog()" aria-label="Lieblings-Commander hinzufügen">
+              <span class="favorite-commander-placeholder">⭐<br />hinzufügen</span>
+            </button>
+          }
+        </div>
+      </div>
+
+      <div class="header-icon-col">
+        <button class="icon-button large" (click)="openBackgroundsDialog()" aria-label="Meine Hintergrundbilder" title="Meine Hintergrundbilder">🖼️</button>
+        <button class="icon-button large" (click)="openShareDialog()" aria-label="App teilen" title="App teilen">📤</button>
+        <button class="icon-button large" (click)="openGeminiSettings()" aria-label="Gemini-API-Key" title="Gemini-API-Key">🔑</button>
+      </div>
+    </div>
+  </section>
+
+  @if (showFavoriteCommanderDialog()) {
+  <div class="options-menu-overlay" (click)="closeFavoriteCommanderDialog()">
+    <div class="options-menu-sheet" (click)="$event.stopPropagation()">
+      <h3>⭐ Meine Lieblingscommander</h3>
+      <p class="hint">Bis zu 3 Stück.</p>
+
+      @if ((profileService.profile()?.favoriteCommanders ?? []).length > 0) {
+        <ul class="player-list compact-list">
+          @for (name of profileService.profile()?.favoriteCommanders ?? []; track name) {
+            <li>
+              <span class="player-name">{{ name }}</span>
+              <button class="icon-button" [disabled]="favoriteCommanderBusy()" (click)="removeFavoriteCommander(name)" aria-label="Entfernen">🗑</button>
+            </li>
+          }
+        </ul>
+      }
+
+      @if ((profileService.profile()?.favoriteCommanders ?? []).length < 3) {
+        <input
+          class="glass-input"
+          type="text"
+          placeholder="Kartenname suchen …"
+          [ngModel]="favoriteCommanderQuery()"
+          (ngModelChange)="onFavoriteCommanderSearchInput($event)"
+          autofocus
+        />
+        @if (favoriteCommanderSuggestions().length > 0) {
+          <ul class="player-list compact-list">
+            @for (s of favoriteCommanderSuggestions(); track s) {
+              <li class="clickable" (click)="addFavoriteCommander(s)">
+                <span class="player-name">{{ s }}</span>
+              </li>
+            }
+          </ul>
+        }
+      }
+      <button class="glass-button" (click)="closeFavoriteCommanderDialog()">Schließen</button>
+    </div>
+  </div>
+  }
 
   @if (profileService.profile(); as profile) {
   <section class="glass-card">
-    <h2>Meine Decks</h2>
-    <app-deck-list [userId]="profile.id" />
+    <div class="section-header-row">
+      <h2>Meine Decks</h2>
+      <div class="chip-row">
+        <button class="icon-button" (click)="openRepairInfoDialog()" aria-label="Commander automatisch überprüfen und mit Decks verlinken" title="Commander automatisch überprüfen und mit Decks verlinken">🔧</button>
+        <button class="icon-button" (click)="openManualLinkDialog()" aria-label="Manuell verlinken/entlinken" title="Manuell verlinken/entlinken">🔗</button>
+      </div>
+    </div>
+    <app-deck-list #deckListRef [userId]="profile.id" />
   </section>
 
-  <section class="glass-card">
-    <h2>Meine Hintergrundbilder</h2>
-    <p class="hint">
-      Eigene Hintergründe für den Life-Tracker – nur du kannst sie auswählen, außer du gibst sie
-      gezielt für andere Accounts frei.
-    </p>
-
-    <label class="glass-button small avatar-upload-label">
-      @if (backgrounds.uploading()) {
-        <span class="spinner"></span> Lädt hoch …
-      } @else {
-        🖼️ Hintergrund hochladen
+  @if (showRepairInfoDialog()) {
+  <div class="options-menu-overlay" (click)="closeRepairInfoDialog()">
+    <div class="options-menu-sheet" (click)="$event.stopPropagation()">
+      <h3>🔧 Commander überprüfen &amp; verlinken</h3>
+      <p class="hint">
+        Prüft alle noch offenen Commander-Namen (z.B. aus alten Excel-Importen) neu über Scryfall
+        und verknüpft sie automatisch mit passenden eigenen Decks, wo möglich.
+      </p>
+      @if (repairProgress(); as progress) {
+        <p class="hint">{{ progress.done }} / {{ progress.total }} geprüft …</p>
       }
-      <input
-        type="file"
-        accept="image/*"
-        [disabled]="backgrounds.uploading()"
-        (change)="onBackgroundFileSelected($event)"
-      />
-    </label>
-    @if (backgrounds.uploadError()) {
-      <p class="error">{{ backgrounds.uploadError() }}</p>
-    }
+      @if (repairMessage()) {
+        <p class="hint">{{ repairMessage() }}</p>
+      }
+      <button class="glass-button primary" [disabled]="repairBusy()" (click)="repairCommanderNames()">
+        {{ repairBusy() ? 'Prüfe …' : 'Jetzt prüfen' }}
+      </button>
+      <button class="glass-button" (click)="closeRepairInfoDialog()">Schließen</button>
+    </div>
+  </div>
+  }
 
-    @if (backgrounds.myBackgrounds().length === 0) {
-      <p class="hint">Noch keine eigenen Hintergründe hochgeladen.</p>
-    } @else {
-      <div class="bg-thumb-grid">
-        @for (bg of backgrounds.myBackgrounds(); track bg.id) {
-          <div class="bg-thumb" [style.background-image]="'url(' + bg.url + ')'">
-            <button class="bg-thumb-delete" (click)="deleteBackground(bg.id)" aria-label="Löschen">🗑</button>
-            <button class="bg-thumb-share" (click)="openBackgroundShareDialog(bg.id)" aria-label="Teilen">🔗</button>
+  @if (showManualLinkDialog()) {
+  <div class="options-menu-overlay" (click)="closeManualLinkDialog()">
+    <div class="options-menu-sheet manual-link-sheet" (click)="$event.stopPropagation()">
+      <h3>🔗 Manuell verlinken</h3>
+
+      <h4>Commander mit Deck verlinken</h4>
+      <p class="hint">
+        Wähle einen noch nicht zugeordneten Commander und das passende Deck, falls die
+        automatische Erkennung nichts gefunden hat.
+      </p>
+      @if (unassignedCommanderStats().length === 0) {
+        <p class="hint">Aktuell kein Commander ohne Deck vorhanden.</p>
+      } @else {
+        <select
+          class="glass-input"
+          [ngModel]="linkCommanderChoice()"
+          (ngModelChange)="linkCommanderChoice.set($event)"
+        >
+          <option value="">-- Commander wählen --</option>
+          @for (c of unassignedCommanderStats(); track c.commander) {
+            <option [value]="c.commander">{{ c.commander }} ({{ c.games }} Spiele)</option>
+          }
+        </select>
+        <select
+          class="glass-input"
+          [ngModel]="linkDeckChoice()"
+          (ngModelChange)="linkDeckChoice.set($event)"
+        >
+          <option value="">-- Deck wählen --</option>
+          @for (d of myDecksForLinking(); track d.id) {
+            <option [value]="d.id">{{ d.name }}</option>
+          }
+        </select>
+        @if (linkMessage()) {
+          <p class="hint">{{ linkMessage() }}</p>
+        }
+        <button
+          class="glass-button primary"
+          [disabled]="!linkCommanderChoice() || !linkDeckChoice() || linkBusy()"
+          (click)="confirmManualLink()"
+        >
+          {{ linkBusy() ? 'Verlinke …' : 'Verlinken' }}
+        </button>
+      }
+
+      <h4>Deck-Verknüpfung lösen</h4>
+      <p class="hint">
+        Falls ein Deck fälschlich verlinkt wurde: hier die Verknüpfung aller seiner Spiele wieder
+        aufheben – sie wandern zurück zu "Commander ohne Deck".
+      </p>
+      <select
+        class="glass-input"
+        [ngModel]="unlinkDeckChoice()"
+        (ngModelChange)="unlinkDeckChoice.set($event)"
+      >
+        <option value="">-- Deck wählen --</option>
+        @for (d of myDecksForLinking(); track d.id) {
+          <option [value]="d.id">{{ d.name }}</option>
+        }
+      </select>
+      @if (unlinkMessage()) {
+        <p class="hint">{{ unlinkMessage() }}</p>
+      }
+      <button
+        class="glass-button danger"
+        [disabled]="!unlinkDeckChoice() || unlinkBusy()"
+        (click)="confirmManualUnlink()"
+      >
+        {{ unlinkBusy() ? 'Löse …' : 'Verknüpfung lösen' }}
+      </button>
+
+      <button class="glass-button" (click)="closeManualLinkDialog()">Schließen</button>
+    </div>
+  </div>
+  }
+
+  @if (unassignedCommanderStats().length > 0) {
+    <section class="glass-card">
+      <h2>Commander ohne Deck</h2>
+      <p class="hint">
+        Spiele, bei denen noch kein eigenes Deck zum passenden Commander existiert.
+      </p>
+
+      <input
+        class="glass-input"
+        type="text"
+        placeholder="Commander suchen …"
+        [ngModel]="commanderSearchQuery()"
+        (ngModelChange)="setCommanderSearchQuery($event)"
+      />
+      <div class="chip-row sort-toggle">
+        <button class="glass-chip small" [class.active]="commanderSortMode() === 'alpha'" (click)="setCommanderSortMode('alpha')">A-Z</button>
+        <button class="glass-chip small" [class.active]="commanderSortMode() === 'winRate'" (click)="setCommanderSortMode('winRate')">Winrate</button>
+        <button class="glass-chip small" [class.active]="commanderSortMode() === 'games'" (click)="setCommanderSortMode('games')">Meistgespielt</button>
+      </div>
+
+      @if (filteredSortedCommanderStats().length === 0) {
+        <p class="hint">Kein Commander gefunden.</p>
+      } @else {
+        <ul class="player-list">
+          @for (c of pagedCommanderStats(); track c.commander) {
+            <li>
+              <span class="player-name">{{ c.commander }}</span>
+              <span class="hint">{{ c.wins }} / {{ c.games }} Siege · {{ c.winRate | number: '1.0-0' }}%</span>
+            </li>
+          }
+        </ul>
+
+        @if (commanderTotalPages() > 1) {
+          <div class="chip-row pager">
+            <button class="icon-button" (click)="prevCommanderPage()" [disabled]="commanderPage() === 0" aria-label="Vorherige Seite">◀</button>
+            <span class="hint">{{ commanderPage() * 10 + 1 }}–{{ commanderPageRangeEnd() }} von {{ filteredSortedCommanderStats().length }}</span>
+            <button class="icon-button" (click)="nextCommanderPage()" [disabled]="commanderPage() >= commanderTotalPages() - 1" aria-label="Nächste Seite">▶</button>
           </div>
         }
-      </div>
-    }
-  </section>
+      }
+    </section>
+  }
+
+  @if (showBackgroundsDialog()) {
+  <div class="options-menu-overlay" (click)="closeBackgroundsDialog()">
+    <div class="options-menu-sheet backgrounds-sheet" (click)="$event.stopPropagation()">
+      <h3>Meine Hintergrundbilder</h3>
+      <p class="hint">
+        Eigene Hintergründe für den Life-Tracker – nur du kannst sie auswählen, außer du gibst sie
+        gezielt für andere Accounts frei.
+      </p>
+
+      <label class="glass-button small avatar-upload-label">
+        @if (backgrounds.uploading()) {
+          <span class="spinner"></span> Lädt hoch …
+        } @else {
+          🖼️ Hintergrund hochladen
+        }
+        <input
+          type="file"
+          accept="image/*"
+          [disabled]="backgrounds.uploading()"
+          (change)="onBackgroundFileSelected($event)"
+        />
+      </label>
+      @if (backgrounds.uploadError()) {
+        <p class="error">{{ backgrounds.uploadError() }}</p>
+      }
+
+      @if (backgrounds.myBackgrounds().length === 0) {
+        <p class="hint">Noch keine eigenen Hintergründe hochgeladen.</p>
+      } @else {
+        <div class="bg-thumb-grid">
+          @for (bg of backgrounds.myBackgrounds(); track bg.id) {
+            <div class="bg-thumb" [style.background-image]="'url(' + bg.url + ')'">
+              <button class="bg-thumb-delete" (click)="deleteBackground(bg.id)" aria-label="Löschen">🗑</button>
+              <button class="bg-thumb-share" (click)="openBackgroundShareDialog(bg.id)" aria-label="Teilen">🔗</button>
+            </div>
+          }
+        </div>
+      }
+      <button class="glass-button" (click)="closeBackgroundsDialog()">Schließen</button>
+    </div>
+  </div>
+  }
 
   @if (sharingBackgroundId()) {
   <div class="options-menu-overlay" (click)="closeBackgroundShareDialog()">
@@ -154,29 +403,7 @@
   </div>
   }
 
-  <section class="glass-card">
-    <h2>Commander-Namen reparieren</h2>
-    <p class="hint">
-      Falls Commander aus alten Imports (z.B. Excel) falsch geschrieben oder nicht mit einem Deck
-      verknüpft sind: prüft alle noch offenen Commander-Namen neu und verknüpft sie automatisch
-      mit passenden eigenen Decks, wo möglich.
-    </p>
-    <button class="glass-button small" [disabled]="repairBusy()" (click)="repairCommanderNames()">
-      {{ repairBusy() ? 'Prüfe …' : '🔧 Jetzt prüfen' }}
-    </button>
-    @if (repairProgress(); as progress) {
-      <p class="hint">{{ progress.done }} / {{ progress.total }} geprüft …</p>
-    }
-    @if (repairMessage()) {
-      <p class="hint">{{ repairMessage() }}</p>
-    }
-  </section>
   }
-
-  <section class="glass-card">
-    <h2>App teilen</h2>
-    <button class="glass-button" (click)="openShareDialog()">📤 App teilen</button>
-  </section>
 
   @if (showShareDialog()) {
   <div class="options-menu-overlay" (click)="closeShareDialog()">
@@ -196,11 +423,6 @@
     </div>
   </div>
   }
-
-  <section class="glass-card">
-    <h2>Einstellungen</h2>
-    <button class="glass-button" (click)="openGeminiSettings()">🔑 Gemini-API-Key</button>
-  </section>
 
   @if (showGeminiSettings()) {
   <div class="options-menu-overlay" (click)="closeGeminiSettings()">
@@ -269,3 +491,5 @@
     </div>
   </div>
   }
+
+}

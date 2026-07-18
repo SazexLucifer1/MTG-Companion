@@ -125,10 +125,21 @@
 
 <section class="glass-card">
   <h2>Modus</h2>
+  <p class="hint">Wähle beliebig viele Modi - die Ranglisten fassen genau diese Auswahl zusammen.</p>
   <div class="chip-row">
-    @for (m of filterOptions; track m) {
-    <button class="glass-chip" [class.active]="selectedMode() === m" (click)="setSelectedMode(m)">
-      {{ m === 'Alle' ? 'Alle Modi' : m }}
+    <button class="glass-chip" [class.active]="isAllModesSelected()" (click)="selectAllModes()">
+      Alle Modi
+    </button>
+    @for (m of gameModes; track m) {
+    <button
+      class="glass-chip"
+      [class.active]="isModeSelected(m)"
+      [class.locked]="!canViewMode(m)"
+      [disabled]="!canViewMode(m)"
+      (click)="toggleModeFilter(m)"
+    >
+      @if (!canViewMode(m)) { 🔒 }
+      {{ m }}
     </button>
     }
   </div>
@@ -137,15 +148,32 @@
 @if (groupService.isOwner()) {
 <section class="glass-card">
   <p class="hint">
-    Wer welche Stats sehen darf, legst du im Tab „Gruppe" unter „Sichtbarkeit verwalten" fest.
+    Wer welchen Modus im Stats-Tab sehen darf, legst du im Tab „Gruppe" unter „Sichtbarkeit
+    verwalten" fest.
   </p>
 </section>
 }
 
+@if (blockedModes().length > 0) {
+<section class="glass-card">
+  <p class="hint">
+    🔒 {{ blockedModes().join(', ') }}
+    {{ blockedModes().length === 1 ? 'ist für dich gesperrt' : 'sind für dich gesperrt' }} und
+    daher nicht auswählbar. Wende dich an den Admin der Gruppe, falls du Zugriff haben möchtest.
+  </p>
+</section>
+}
+
+@if (selectedModes().size === 0) {
+<section class="glass-card">
+  <p class="hint">Wähle mindestens einen Modus aus, um Stats zu sehen.</p>
+</section>
+} @else {
+
 <section class="glass-card">
   <h2>Spieler-Details</h2>
   <div class="chip-row">
-    @for (player of visiblePlayers(); track player) {
+    @for (player of mtg.allPlayers(); track player) {
     <button
       class="glass-chip avatar-chip"
       [class.active]="selectedPlayer() === player"
@@ -157,15 +185,15 @@
     }
   </div>
 
-  @if (selectedPlayer() && selectedMode() !== 'Alle') {
-  <p class="hint">Zeigt Stats von {{ selectedPlayer() }} nur im Modus „{{ selectedMode() }}“.</p>
+  @if (selectedPlayer() && isSingleMode() !== null) {
+  <p class="hint">Zeigt Stats von {{ selectedPlayer() }} nur im Modus „{{ isSingleMode() }}“.</p>
   } @if (!selectedPlayer()) {
   <p class="hint">Wähle einen Spieler aus, um seine Stats zu sehen.</p>
-  } @else if (playerTotalGames() === 0) { @if (selectedMode() === 'Alle') {
+  } @else if (playerTotalGames() === 0) { @if (isSingleMode() === null) {
   <p class="hint">{{ selectedPlayer() }} hat noch keine Matches gespielt.</p>
   } @else {
   <p class="hint">
-    {{ selectedPlayer() }} hat im Modus „{{ selectedMode() }}“ noch keine Matches gespielt.
+    {{ selectedPlayer() }} hat im Modus „{{ isSingleMode() }}“ noch keine Matches gespielt.
   </p>
   } } @else {
   <div class="stat-tiles">
@@ -183,7 +211,7 @@
     </div>
   </div>
 
-  @if (selectedMode() === 'Alle') {
+  @if (isSingleMode() === null) {
   <h3>Nach Spielmodus</h3>
   <ul class="ranking">
     @for (m of playerModeStats(); track m.mode) {
@@ -240,13 +268,13 @@
     @for (c of playerCommanderStats(); track c.commander; let i = $index) {
     <li
       class="commander-row"
-      [class.expandable]="selectedMode() === 'Alle'"
-      [class.expanded]="selectedMode() === 'Alle' && selectedCommanderDetail() === c.commander"
+      [class.expandable]="isSingleMode() === null"
+      [class.expanded]="isSingleMode() === null && selectedCommanderDetail() === c.commander"
       (click)="toggleCommanderDetail(c.commander)"
     >
       <span class="rank">{{ medal(i) }}</span>
       <span class="name">
-        {{ c.commander }} @if (selectedMode() === 'Alle') {
+        {{ c.commander }} @if (isSingleMode() === null) {
         <span class="chevron">{{ selectedCommanderDetail() === c.commander ? '▾' : '▸' }}</span>
         }
       </span>
@@ -256,7 +284,7 @@
         <div class="bar-fill" [style.width.%]="c.winRate"></div>
       </div>
 
-      @if (selectedMode() === 'Alle' && selectedCommanderDetail() === c.commander) {
+      @if (isSingleMode() === null && selectedCommanderDetail() === c.commander) {
       <div class="commander-detail">
         @for (m of commanderDetailStats(); track m.mode) {
         <div class="commander-detail-row">
@@ -340,7 +368,7 @@
         <app-player-avatar [url]="mtg.playerAvatars()[p.name] ?? null" />
         {{ p.name }}
       </span>
-      <span class="detail">{{ p.games }} / 10 Spiele</span>
+      <span class="detail">{{ p.games }} / {{ qualificationThreshold() }} Spiele</span>
       <span class="needed">noch {{ p.gamesNeeded }}</span>
     </li>
     }
@@ -389,7 +417,7 @@
     @for (d of decksInQualification(); track d.deckId) {
     <li>
       <span class="name">@if (d.isPrecon) {📦 }{{ d.deckName }}</span>
-      <span class="detail">{{ d.games }} / {{ deckQualificationThreshold }} Spiele</span>
+      <span class="detail">{{ d.games }} / {{ deckQualificationThreshold() }} Spiele</span>
       <span class="needed">noch {{ d.gamesNeeded }}</span>
     </li>
     }
@@ -434,7 +462,7 @@
     @for (c of commandersInQualification(); track c.commander) {
     <li>
       <span class="name">{{ c.commander }}</span>
-      <span class="detail">{{ c.games }} / {{ commanderQualificationThreshold }} Spiele</span>
+      <span class="detail">{{ c.games }} / {{ commanderQualificationThreshold() }} Spiele</span>
       <span class="needed">noch {{ c.gamesNeeded }}</span>
     </li>
     }
@@ -442,9 +470,10 @@
   }
 </section>
 } }
-} }
+} } }
 <!-- NEU: ganz am Ende der Datei anfügen -->
 
+@if (groupService.isOwner()) {
 <section class="glass-card danger-zone">
   <h2>⚠️ Danger Zone</h2>
   <p class="hint">
@@ -455,6 +484,7 @@
     🗑️ Alle Statistiken zurücksetzen
   </button>
 </section>
+}
 
 @if (showResetConfirm()) {
 <div class="options-menu-overlay" (click)="closeResetConfirm()">

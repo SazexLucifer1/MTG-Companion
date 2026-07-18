@@ -56,24 +56,19 @@ export class StatsTab {
   // --- Stats-Sichtbarkeit ---
 
   /**
-   * Ob der aktuelle Nutzer die Stats von `name` im Modus `mode` sehen darf: der Host sieht
-   * alles, jeder sieht seine eigenen Stats, alle anderen nur falls der Host sie für diesen
-   * Modus freigegeben hat.
+   * Ob der aktuell eingeloggte Account (der Viewer) die Stats für `mode` überhaupt sehen darf.
+   * Das legt der Host pro Account und Modus in "Sichtbarkeit verwalten" fest - auch für sich
+   * selbst, z.B. als Selbst-Spoilerschutz. Ohne verknüpften Spieler oder ohne explizite
+   * Einstellung ist der Zugriff standardmäßig erlaubt.
    */
-  private canSeePlayerStats(name: string, mode: GameMode): boolean {
-    if (this.groupService.isOwner()) return true;
-    if (name === this.mtg.myPlayerName()) return true;
-    return this.mtg.statVisibility().get(name)?.has(mode) ?? false;
+  canViewMode(mode: GameMode): boolean {
+    const myName = this.mtg.myPlayerName();
+    if (!myName) return true;
+    return this.mtg.statVisibility().get(myName)?.get(mode) ?? true;
   }
 
-  /** Spieler, für die der aktuelle Nutzer in mindestens einem Modus Stats sehen darf. */
-  readonly visiblePlayers = computed<string[]>(() =>
-    this.mtg.allPlayers().filter((name) =>
-      this.groupService.isOwner() ||
-      name === this.mtg.myPlayerName() ||
-      (this.mtg.statVisibility().get(name)?.size ?? 0) > 0
-    )
-  );
+  /** Modi, die für den eingeloggten Account gesperrt sind (für den Hinweis-Banner). */
+  readonly blockedModes = computed(() => GAME_MODES.filter((m) => !this.canViewMode(m)));
 
   // --- Zeitraum-Filter (Jahr) ---
 
@@ -100,15 +95,51 @@ export class StatsTab {
       : this.mtg.history().filter((m) => new Date(m.date).getFullYear() === year);
   });
 
-  // --- Modus-Filter ---
+  // --- Modus-Filter (Mehrfachauswahl: eigene Kombination aus mehreren Modi möglich) ---
 
-  readonly filterOptions: readonly (GameMode | 'Alle')[] = ['Alle', ...GAME_MODES];
-  readonly selectedMode = signal<GameMode | 'Alle'>('Alle');
+  readonly gameModes = GAME_MODES;
+
+  /** Aktuell gewählte Modi. Default: alle - die für den Account gesperrten werden trotzdem
+   * unten per canViewMode() rausgefiltert. */
+  readonly selectedModes = signal<Set<GameMode>>(new Set(GAME_MODES));
+
+  /** Der eine ausgewählte Modus, falls genau einer gewählt ist - sonst null (Mehrfach- oder Nullauswahl = Aggregat-Ansicht). */
+  readonly isSingleMode = computed<GameMode | null>(() => {
+    const modes = [...this.selectedModes()];
+    return modes.length === 1 ? modes[0] : null;
+  });
+
+  readonly isAllModesSelected = computed(() =>
+    GAME_MODES.every((m) => this.selectedModes().has(m))
+  );
+
+  isModeSelected(mode: GameMode): boolean {
+    return this.selectedModes().has(mode);
+  }
+
+  toggleModeFilter(mode: GameMode): void {
+    if (!this.canViewMode(mode)) return;
+    this.selectedModes.update((set) => {
+      const next = new Set(set);
+      if (next.has(mode)) {
+        next.delete(mode);
+      } else {
+        next.add(mode);
+      }
+      return next;
+    });
+    this.selectedCommanderDetail.set(null);
+  }
+
+  selectAllModes(): void {
+    this.selectedModes.set(new Set(GAME_MODES));
+    this.selectedCommanderDetail.set(null);
+  }
 
   readonly filteredMatches = computed<Match[]>(() => {
-    const mode = this.selectedMode();
+    const modes = this.selectedModes();
     const base = this.yearFilteredMatches();
-    return mode === 'Alle' ? base : base.filter((m) => m.mode === mode);
+    return base.filter((m) => modes.has(m.mode) && this.canViewMode(m.mode));
   });
 
   // NEU
@@ -132,7 +163,6 @@ export class StatsTab {
     const stats = new Map<string, { games: number; wins: number }>();
     for (const match of this.filteredMatches()) {
       for (const p of match.players) {
-        if (!this.canSeePlayerStats(p.name, match.mode)) continue;
         const entry = stats.get(p.name) ?? { games: 0, wins: 0 };
         entry.games++;
         if (this.isPlayerWinner(match, p.name)) entry.wins++;
@@ -145,11 +175,23 @@ export class StatsTab {
   });
 
   /**
-   * Mindestanzahl Spiele (innerhalb des aktuellen Jahr+Modus-Filters), ab der
-   * ein Spieler/Commander in der Rangliste nach Winrate auftaucht. Bei "Alle"
-   * Modi gilt eine höhere Schwelle als bei einem einzelnen Modus.
+   * Von Host konfigurierter Override der Mindestspielzahl für die aktuelle Modus-Auswahl (vom
+   * Host pro Modus bzw. für die Aggregat-Ansicht "Alle Modi" in "Qualifikationsschwellen
+   * verwalten" einstellbar), oder null ohne explizite Einstellung.
    */
-  readonly qualificationThreshold = computed(() => (this.selectedMode() === 'Alle' ? 10 : 3));
+  private readonly qualificationOverride = computed<number | null>(() => {
+    const key = this.isSingleMode() ?? 'Alle';
+    return this.mtg.qualificationSettings().get(key) ?? null;
+  });
+
+  /**
+   * Mindestanzahl Spiele (innerhalb des aktuellen Jahr+Modus-Filters), ab der ein Spieler in
+   * der Rangliste nach Winrate auftaucht. Ohne Host-Override: bei "Alle Modi" eine höhere
+   * Schwelle als bei einem einzelnen Modus.
+   */
+  readonly qualificationThreshold = computed(
+    () => this.qualificationOverride() ?? (this.isSingleMode() === null ? 10 : 3)
+  );
 
   /** Rangliste: nur qualifizierte Spieler (>= Schwelle), sortiert nach Winrate statt nach Siegen. */
   readonly rankedPlayerStats = computed<PlayerStats[]>(() =>
@@ -189,21 +231,21 @@ export class StatsTab {
       .sort((a, b) => b.wins - a.wins || b.winRate - a.winRate);
   });
 
-  /** Feste Mindestanzahl Spiele für die Commander-Rangliste (unabhängig vom Modus-Filter). */
-  readonly commanderQualificationThreshold = 5;
+  /** Mindestanzahl Spiele für die Commander-Rangliste - Host-Override falls gesetzt, sonst Standard 5. */
+  readonly commanderQualificationThreshold = computed(() => this.qualificationOverride() ?? 5);
 
   /** Rangliste: nur qualifizierte Commander (>= Schwelle), sortiert nach Winrate. */
   readonly rankedCommanderStats = computed<CommanderStats[]>(() =>
     this.commanderStats()
-      .filter((c) => c.games >= this.commanderQualificationThreshold)
+      .filter((c) => c.games >= this.commanderQualificationThreshold())
       .sort(this.compareBySortMode(this.commanderSortMode()))
   );
 
   /** Commander unterhalb der Schwelle, mit Anzeige wie viele Spiele noch bis zur Qualifikation fehlen. */
   readonly commandersInQualification = computed(() =>
     this.commanderStats()
-      .filter((c) => c.games < this.commanderQualificationThreshold)
-      .map((c) => ({ ...c, gamesNeeded: this.commanderQualificationThreshold - c.games }))
+      .filter((c) => c.games < this.commanderQualificationThreshold())
+      .map((c) => ({ ...c, gamesNeeded: this.commanderQualificationThreshold() - c.games }))
       .sort((a, b) => a.gamesNeeded - b.gamesNeeded || a.commander.localeCompare(b.commander))
   );
 
@@ -242,7 +284,7 @@ export class StatsTab {
     >();
     for (const match of this.filteredMatches()) {
       for (const p of match.players) {
-        if (!p.deckId || !this.canSeePlayerStats(p.name, match.mode)) continue;
+        if (!p.deckId) continue;
         const entry = stats.get(p.deckId) ?? {
           deckName: p.deckName ?? 'Unbekanntes Deck',
           isPrecon: p.deckIsPrecon ?? false,
@@ -282,15 +324,15 @@ export class StatsTab {
   /** Rangliste: nur qualifizierte Decks (>= Schwelle), sortiert nach Winrate. */
   readonly rankedDeckStats = computed<DeckStats[]>(() =>
     this.deckStats()
-      .filter((d) => d.games >= this.deckQualificationThreshold)
+      .filter((d) => d.games >= this.deckQualificationThreshold())
       .sort(this.compareBySortMode(this.deckSortMode()))
   );
 
   /** Decks unterhalb der Schwelle, mit Anzeige wie viele Spiele noch bis zur Qualifikation fehlen. */
   readonly decksInQualification = computed(() =>
     this.deckStats()
-      .filter((d) => d.games < this.deckQualificationThreshold)
-      .map((d) => ({ ...d, gamesNeeded: this.deckQualificationThreshold - d.games }))
+      .filter((d) => d.games < this.deckQualificationThreshold())
+      .map((d) => ({ ...d, gamesNeeded: this.deckQualificationThreshold() - d.games }))
       .sort((a, b) => a.gamesNeeded - b.gamesNeeded || a.deckName.localeCompare(b.deckName))
   );
 
@@ -314,13 +356,8 @@ export class StatsTab {
     this.showPlayerCommanders.set(false);
   }
 
-  setSelectedMode(mode: GameMode | 'Alle'): void {
-    this.selectedMode.set(mode);
-    this.selectedCommanderDetail.set(null);
-  }
-
   toggleCommanderDetail(commander: string): void {
-    if (this.selectedMode() !== 'Alle') return;
+    if (this.isSingleMode() !== null) return;
     this.selectedCommanderDetail.set(
       this.selectedCommanderDetail() === commander ? null : commander
     );
@@ -329,9 +366,7 @@ export class StatsTab {
   private readonly selectedPlayerMatches = computed<Match[]>(() => {
     const player = this.selectedPlayer();
     if (!player) return [];
-    return this.filteredMatches().filter(
-      (m) => m.players.some((p) => p.name === player) && this.canSeePlayerStats(player, m.mode)
-    );
+    return this.filteredMatches().filter((m) => m.players.some((p) => p.name === player));
   });
 
   readonly playerTotalGames = computed(() => this.selectedPlayerMatches().length);
@@ -446,10 +481,9 @@ export class StatsTab {
     if (!player || !commander) return [];
 
     const stats = new Map<GameMode, { games: number; wins: number }>();
-    for (const match of this.yearFilteredMatches()) {
+    for (const match of this.filteredMatches()) {
       const entry0 = match.players.find((p) => p.name === player);
       if (!entry0 || entry0.commander !== commander) continue;
-      if (!this.canSeePlayerStats(player, match.mode)) continue;
       const entry = stats.get(match.mode) ?? { games: 0, wins: 0 };
       entry.games++;
       if (this.isPlayerWinner(match, player)) entry.wins++;

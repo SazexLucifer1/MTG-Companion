@@ -1,47 +1,115 @@
 <section class="glass-card">
   <h2>Meine Gruppen</h2>
 
+  <div class="chip-row">
+    <button class="glass-button small" (click)="openCreateGroupDialog()">➕ Neue Gruppe erstellen</button>
+    <button class="glass-button small" (click)="openJoinGroupDialog()">🔑 Gruppe beitreten</button>
+  </div>
+
   @if (groupService.loading()) {
     <p class="hint">Lade Gruppen …</p>
   } @else if (groupService.myGroups().length === 0) {
     <p class="hint">Du bist noch in keiner Gruppe.</p>
   } @else {
-    <ul class="player-list">
+    <ul class="group-list">
       @for (group of groupService.myGroups(); track group.id) {
-        <li>
+        <li class="group-card" [class.active]="groupService.groupId() === group.id">
           @if (renamingGroupId() === group.id) {
-            <input
-              class="glass-input"
-              type="text"
-              [ngModel]="renameValue()"
-              (ngModelChange)="renameValue.set($event)"
-              (keyup.enter)="confirmRenameGroup()"
-              autofocus
-            />
-            <button class="icon-button confirm" (click)="confirmRenameGroup()" aria-label="Umbenennen bestätigen">✓</button>
-            <button class="icon-button" (click)="cancelRenameGroup()" aria-label="Abbrechen">✕</button>
+            <div class="add-row">
+              <input
+                class="glass-input"
+                type="text"
+                [ngModel]="renameValue()"
+                (ngModelChange)="renameValue.set($event)"
+                (keyup.enter)="confirmRenameGroup()"
+                autofocus
+              />
+              <button class="icon-button confirm" (click)="confirmRenameGroup()" aria-label="Umbenennen bestätigen">✓</button>
+              <button class="icon-button" (click)="cancelRenameGroup()" aria-label="Abbrechen">✕</button>
+            </div>
           } @else {
-            <span class="player-name">{{ group.name }}</span>
-            <span class="hint">{{ group.role === 'owner' ? '👑 Host' : 'Mitglied' }}</span>
-            @if (groupService.groupId() === group.id) {
-              <span class="hint">✓ Aktiv</span>
-            } @else {
-              <button class="glass-button small" (click)="selectGroup(group.id)">Wechseln</button>
-            }
-            @if (group.role === 'owner') {
-              <button class="glass-button small" (click)="openInvite(group.id)">➕ Einladen</button>
-            }
-            <button class="glass-button small" (click)="openMembers(group.id)">👥 Mitglieder</button>
-            @if (group.role === 'owner') {
-              <button class="icon-button" (click)="startRenameGroup(group.id, group.name)" aria-label="Gruppe umbenennen">✏️</button>
-              <button class="icon-button" (click)="openDeleteGroupConfirm(group.id, group.name)" aria-label="Gruppe löschen">🗑</button>
-            }
+            <div class="group-card-header">
+              <span class="group-name">{{ group.name }}</span>
+              <span class="role-badge" [class.owner]="group.role === 'owner'">
+                {{ group.role === 'owner' ? '👑 Admin' : '🧑 Mitglied' }}
+              </span>
+            </div>
+            <div class="group-card-actions">
+              @if (groupService.groupId() === group.id) {
+                <span class="glass-chip small active">✓ Aktiv</span>
+              } @else {
+                <button class="glass-button small" (click)="selectGroup(group.id)">Aktiv setzen</button>
+              }
+              @if (group.role === 'owner') {
+                <button class="glass-button small" (click)="openInvite(group.id)">➕ Einladen</button>
+              }
+              <button class="glass-button small" (click)="openMembers(group.id)">👥 Mitglieder</button>
+              @if (group.role === 'owner') {
+                <button class="glass-button small" (click)="openVisibilityDialog(group.id)">👁️ Sichtbarkeit</button>
+                <button class="glass-button small" (click)="openQualificationDialog(group.id)">🏁 Qualifikation</button>
+                <button class="icon-button" (click)="startRenameGroup(group.id, group.name)" aria-label="Gruppe umbenennen">✏️</button>
+                <button class="icon-button" (click)="openDeleteGroupConfirm(group.id, group.name)" aria-label="Gruppe löschen">🗑</button>
+              } @else {
+                <button class="icon-button" (click)="openLeaveGroupConfirm(group.id, group.name)" aria-label="Gruppe verlassen">🚪</button>
+              }
+            </div>
           }
         </li>
       }
     </ul>
   }
 </section>
+
+@if (showCreateGroupDialog()) {
+<div class="options-menu-overlay" (click)="closeCreateGroupDialog()">
+  <div class="options-menu-sheet" (click)="$event.stopPropagation()">
+    <h3>Neue Gruppe erstellen</h3>
+    <input
+      class="glass-input"
+      type="text"
+      placeholder="Gruppenname …"
+      [ngModel]="newGroupName()"
+      (ngModelChange)="newGroupName.set($event)"
+      (keyup.enter)="createGroup()"
+      [disabled]="creating()"
+      autofocus
+    />
+    @if (message()) {
+      <p class="error">{{ message() }}</p>
+    }
+    <button class="glass-button primary" (click)="createGroup()" [disabled]="creating() || !newGroupName().trim()">
+      {{ creating() ? 'Erstelle …' : 'Erstellen' }}
+    </button>
+    <button class="glass-button" (click)="closeCreateGroupDialog()">Abbrechen</button>
+  </div>
+</div>
+}
+
+@if (showJoinGroupDialog()) {
+<div class="options-menu-overlay" (click)="closeJoinGroupDialog()">
+  <div class="options-menu-sheet" (click)="$event.stopPropagation()">
+    <h3>Einer Gruppe beitreten</h3>
+    <p class="hint">Hast du einen Einladungscode bekommen? Hier eingeben:</p>
+    <input
+      class="glass-input"
+      type="text"
+      placeholder="Code eingeben …"
+      [ngModel]="joinCode()"
+      (ngModelChange)="joinCode.set($event)"
+      (keyup.enter)="submitJoinCode()"
+      [disabled]="joinBusy()"
+      autofocus
+    />
+    @if (joinMessage()) {
+      <p class="error">{{ joinMessage() }}</p>
+    }
+    <button class="glass-button primary" (click)="submitJoinCode()" [disabled]="joinBusy() || !joinCode().trim()">
+      {{ joinBusy() ? 'Trete bei …' : 'Beitreten' }}
+    </button>
+    <button class="glass-button" (click)="closeJoinGroupDialog()">Abbrechen</button>
+  </div>
+</div>
+}
 
 @if (deletingGroupId()) {
 <div class="options-menu-overlay" (click)="closeDeleteGroupConfirm()">
@@ -66,6 +134,25 @@
 </div>
 }
 
+@if (leavingGroupId()) {
+<div class="options-menu-overlay" (click)="closeLeaveGroupConfirm()">
+  <div class="options-menu-sheet" (click)="$event.stopPropagation()">
+    <h3>„{{ leavingGroupName() }}" wirklich verlassen?</h3>
+    <p class="hint">
+      Deine bisherigen Spiele bleiben für die Gruppe erhalten, du selbst verlierst aber den
+      Zugriff. Ein erneuter Beitritt per Einladungscode ist jederzeit möglich.
+    </p>
+    @if (leaveGroupError()) {
+      <p class="error">{{ leaveGroupError() }}</p>
+    }
+    <button class="glass-button danger" [disabled]="leaveGroupBusy()" (click)="confirmLeaveGroup()">
+      {{ leaveGroupBusy() ? 'Verlasse …' : 'Gruppe verlassen' }}
+    </button>
+    <button class="glass-button" (click)="closeLeaveGroupConfirm()">Abbrechen</button>
+  </div>
+</div>
+}
+
 @if (invitingForGroupId()) {
   <div class="options-menu-overlay" (click)="closeInvite()">
     <div class="options-menu-sheet" (click)="$event.stopPropagation()">
@@ -85,19 +172,19 @@
 
 @if (viewingMembersForGroupId()) {
   <div class="options-menu-overlay" (click)="closeMembers()">
-    <div class="options-menu-sheet" (click)="$event.stopPropagation()">
+    <div class="options-menu-sheet choice-sheet" (click)="$event.stopPropagation()">
       <h3>Mitglieder</h3>
       @if (membersBusy()) {
         <p class="hint">Lade Mitglieder …</p>
       } @else if (members().length === 0) {
         <p class="hint">Keine Mitglieder gefunden.</p>
       } @else {
-        <ul class="player-list">
+        <ul class="player-list choice-candidate-list">
           @for (m of members(); track m.userId) {
             <li class="clickable" (click)="openProfileView(m.userId)">
               <app-player-avatar [url]="m.avatarUrl" />
               <span class="player-name">{{ m.displayName }}</span>
-              <span class="hint">{{ m.role === 'owner' ? '👑 Host' : 'Mitglied' }}</span>
+              <span class="hint">{{ m.role === 'owner' ? '👑 Admin' : 'Mitglied' }}</span>
             </li>
           }
         </ul>
@@ -107,51 +194,63 @@
   </div>
 }
 
-<section class="glass-card">
-  <h2>Neue Gruppe erstellen</h2>
-  <div class="add-row">
-    <input
-      class="glass-input"
-      type="text"
-      placeholder="Gruppenname …"
-      [ngModel]="newGroupName()"
-      (ngModelChange)="newGroupName.set($event)"
-      (keyup.enter)="createGroup()"
-      [disabled]="creating()"
-    />
-    <button class="glass-button primary" (click)="createGroup()" [disabled]="creating() || !newGroupName().trim()">
-      Erstellen
+@if (showPlayerChoiceDialog()) {
+<div class="options-menu-overlay" (click)="dismissPlayerChoiceDialog()">
+  <div class="options-menu-sheet choice-sheet" (click)="$event.stopPropagation()">
+    <h3>Bist du schon dabei?</h3>
+    <p class="hint">
+      In dieser Gruppe gibt es bereits Spieler ohne verknüpften Account (z.B. aus einem alten
+      Import). Bist du einer davon? Dann übernimmst du dessen bisherige Spiele/Stats.
+    </p>
+    <ul class="player-list choice-candidate-list">
+      @for (candidate of playerChoiceCandidates(); track candidate.id) {
+        <li>
+          <span class="player-name">
+            {{ candidate.displayName }}
+            @if (candidate.id === playerChoiceSuggestedId()) {
+              <span class="hint">(passt zu deinem Namen)</span>
+            }
+          </span>
+          <button
+            class="glass-button small"
+            [disabled]="playerChoiceBusy()"
+            (click)="chooseExistingPlayer(candidate.id)"
+          >
+            Das bin ich
+          </button>
+        </li>
+      }
+    </ul>
+
+    <p class="hint">Keiner davon? Dann leg dich als neuen Spieler an:</p>
+    <div class="add-row">
+      <input
+        class="glass-input"
+        type="text"
+        placeholder="Dein Spielername …"
+        [ngModel]="playerChoiceNewName()"
+        (ngModelChange)="playerChoiceNewName.set($event)"
+      />
+    </div>
+    <button class="glass-button primary" [disabled]="playerChoiceBusy()" (click)="chooseNewPlayer()">
+      {{ playerChoiceBusy() ? 'Speichere …' : '➕ Ich bin neu' }}
     </button>
   </div>
-  @if (message()) {
-    <p class="hint">{{ message() }}</p>
-  }
-</section>
+</div>
+}
 
 <section class="glass-card">
-  <h2>Einer Gruppe beitreten</h2>
-  <p class="hint">Hast du einen Einladungscode bekommen? Hier eingeben:</p>
-  <div class="add-row">
-    <input
-      class="glass-input"
-      type="text"
-      placeholder="Code eingeben …"
-      [ngModel]="joinCode()"
-      (ngModelChange)="joinCode.set($event)"
-      (keyup.enter)="submitJoinCode()"
-      [disabled]="joinBusy()"
-    />
-    <button class="glass-button primary" (click)="submitJoinCode()" [disabled]="joinBusy() || !joinCode().trim()">
-      Beitreten
-    </button>
+  <div class="section-header-row">
+    <h2>Spieler</h2>
+    @if (groupService.isOwner()) {
+      <div class="chip-row">
+        @if (mtg.allPlayers().length > 1) {
+          <button class="icon-button" (click)="openMergeDialog()" aria-label="Spieler zusammenführen" title="Spieler zusammenführen">🔀</button>
+        }
+        <button class="icon-button" (click)="openRepairInfoDialog()" aria-label="Commander-Namen der Gruppe reparieren" title="Commander-Namen der Gruppe reparieren">🔧</button>
+      </div>
+    }
   </div>
-  @if (joinMessage()) {
-    <p class="hint">{{ joinMessage() }}</p>
-  }
-</section>
-
-<section class="glass-card">
-  <h2>Spieler</h2>
 
   <div class="add-row">
     <input
@@ -190,18 +289,10 @@
             <button class="icon-button" (click)="cancelEditPlayer()" aria-label="Abbrechen">✕</button>
           } @else {
             <app-player-avatar [url]="mtg.playerAvatars()[player] ?? null" />
-            @if (isPlayerLinked(player)) {
-              <span
-                class="player-name clickable-name"
-                (click)="openProfileView(mtg.playerUserIds()[player]!)"
-                >{{ player }}</span
-              >
-            } @else {
-              <span class="player-name">{{ player }}</span>
-            }
+            <span class="player-name">{{ player }}</span>
             <span class="player-games">{{ gamesPerPlayer().get(player) ?? 0 }} Spiele</span>
             @if (isPlayerLinked(player)) {
-              <span class="hint" title="Mit einem Account verknüpft">🔗</span>
+              <button class="icon-button" (click)="openProfileView(mtg.playerUserIds()[player]!)" aria-label="Profil ansehen" title="Profil ansehen">👁️</button>
             } @else if (groupService.isOwner()) {
               <button class="icon-button" (click)="openLinkDialog(player)" aria-label="Mit Mitglied verknüpfen">🔗</button>
             }
@@ -213,18 +304,12 @@
     </ul>
     @if (!groupService.isOwner()) {
       <p class="hint">
-        Spieler ohne 🔗 sind noch keinem Account zugeordnet – das kann der Host nachholen, sobald
+        Spieler ohne 🔗 sind noch keinem Account zugeordnet – das kann der Admin nachholen, sobald
         die Person der Gruppe beigetreten ist.
       </p>
     }
   }
-  @if (groupService.isOwner() && mtg.allPlayers().length > 1) {
-    <button class="glass-button small" (click)="openMergeDialog()">🔀 Spieler zusammenführen</button>
-  }
   @if (groupService.isOwner()) {
-    <button class="glass-button small" [disabled]="repairGroupBusy()" (click)="repairGroupCommanderNames()">
-      {{ repairGroupBusy() ? 'Prüfe …' : '🔧 Commander-Namen der Gruppe reparieren' }}
-    </button>
     @if (repairGroupProgress(); as progress) {
       <p class="hint">{{ progress.done }} / {{ progress.total }} geprüft …</p>
     }
@@ -234,16 +319,40 @@
   }
 </section>
 
+@if (showRepairInfoDialog()) {
+<div class="options-menu-overlay" (click)="closeRepairInfoDialog()">
+  <div class="options-menu-sheet" (click)="$event.stopPropagation()">
+    <h3>🔧 Commander-Namen reparieren</h3>
+    <p class="hint">
+      Prüft alle in der Gruppe verwendeten Commander-Namen über Scryfall und vereinheitlicht sie
+      auf den offiziellen englischen Namen. Praktisch z.B. wenn derselbe Commander mal deutsch,
+      mal englisch gespeichert wurde und dadurch fälschlich als zwei verschiedene Commander in der
+      Statistik auftaucht. Kann je nach Anzahl unterschiedlicher Commander einen Moment dauern.
+    </p>
+    @if (repairGroupProgress(); as progress) {
+      <p class="hint">{{ progress.done }} / {{ progress.total }} geprüft …</p>
+    }
+    @if (repairGroupMessage()) {
+      <p class="hint">{{ repairGroupMessage() }}</p>
+    }
+    <button class="glass-button primary" [disabled]="repairGroupBusy()" (click)="repairGroupCommanderNames()">
+      {{ repairGroupBusy() ? 'Prüfe …' : 'Jetzt prüfen' }}
+    </button>
+    <button class="glass-button" (click)="closeRepairInfoDialog()">Schließen</button>
+  </div>
+</div>
+}
+
 @if (showMergeDialog()) {
 <div class="options-menu-overlay" (click)="closeMergeDialog()">
-  <div class="options-menu-sheet" (click)="$event.stopPropagation()">
+  <div class="options-menu-sheet choice-sheet" (click)="$event.stopPropagation()">
     <h3>Spieler zusammenführen</h3>
     <p class="hint">
       Wähle Spieler-Einträge, die eigentlich dieselbe Person sind (z.B. ein alter Excel-Import-Name
       und der später beigetretene Account). Danach einen davon als Hauptspieler festlegen – alle
       Spiele der anderen wandern zu ihm, die Duplikate werden gelöscht.
     </p>
-    <ul class="player-list">
+    <ul class="player-list choice-candidate-list">
       @for (player of mtg.allPlayers(); track player) {
         <li>
           <input
@@ -283,7 +392,7 @@
 
 @if (linkingPlayerName()) {
 <div class="options-menu-overlay" (click)="closeLinkDialog()">
-  <div class="options-menu-sheet" (click)="$event.stopPropagation()">
+  <div class="options-menu-sheet choice-sheet" (click)="$event.stopPropagation()">
     <h3>„{{ linkingPlayerName() }}" verknüpfen</h3>
     <p class="hint">
       Wähle den Account, dem dieser Spieler (und seine bisherigen Stats) gehört. Nur beigetretene
@@ -296,7 +405,7 @@
         Keine unverknüpften Mitglieder gefunden. Erst muss die Person der Gruppe beitreten.
       </p>
     } @else {
-      <ul class="player-list">
+      <ul class="player-list choice-candidate-list">
         @for (m of linkCandidates(); track m.userId) {
           <li>
             <span class="player-name">{{ m.displayName }}</span>
@@ -310,34 +419,27 @@
 </div>
 }
 
-@if (groupService.isOwner()) {
-<section class="glass-card">
-  <h2>Gruppen-Einstellungen</h2>
-  <button class="glass-button small" (click)="openVisibilityDialog()">
-    👁️ Sichtbarkeit verwalten
-  </button>
-</section>
-}
-
 @if (showVisibilityDialog()) {
 <div class="options-menu-overlay" (click)="closeVisibilityDialog()">
-  <div class="options-menu-sheet" (click)="$event.stopPropagation()">
+  <div class="options-menu-sheet choice-sheet" (click)="$event.stopPropagation()">
     <h3>Sichtbarkeit verwalten</h3>
     <p class="hint">
-      Lege pro Mitglied und Modus fest, wessen Stats für die ganze Gruppe im Stats-Tab sichtbar
-      sind. Standardmäßig sieht jede*r nur die eigenen Stats – du als Host siehst als Einzige*r
-      immer alles.
+      Lege pro Account und Modus fest, ob dieser Account im Stats-Tab überhaupt etwas sehen darf
+      – unabhängig davon, wessen Stats das sind. Standardmäßig darf jeder Account alles sehen.
+      Das gilt auch für dein eigenes Konto: du kannst dir selbst einzelne Modi sperren, z.B. um
+      dich vor dem Jahresendstand nicht zu spoilern. Spieler ohne verknüpften Account sind hier
+      nicht aufgeführt, da sie die App nicht selbst nutzen.
     </p>
-    <ul class="visibility-list">
-      @for (player of mtg.allPlayers(); track player) {
+    <ul class="visibility-list choice-candidate-list">
+      @for (player of linkedPlayersForVisibility(); track player) {
       <li>
         <span class="player-name">{{ player }}</span>
         <div class="chip-row">
           <button class="glass-chip small" (click)="setAllModesVisible(player, true)">
-            Alle sichtbar
+            Alles erlauben
           </button>
           <button class="glass-chip small" (click)="setAllModesVisible(player, false)">
-            Alle privat
+            Alles sperren
           </button>
         </div>
         <div class="chip-row">
@@ -360,25 +462,35 @@
 </div>
 }
 
-@if (viewingProfileFor()) {
-<div class="options-menu-overlay" (click)="closeProfileView()">
-  <div class="options-menu-sheet" (click)="$event.stopPropagation()">
-    @if (viewProfileBusy()) {
-      <p class="hint">Lade Profil …</p>
-    } @else if (viewedProfile(); as profile) {
-      <div class="avatar-row">
-        <app-player-avatar [url]="profile.avatarUrl" [large]="true" />
-        <h3>{{ profile.displayName }}</h3>
-      </div>
-
-      <h4>Decks</h4>
-      @if (viewingProfileFor(); as userId) {
-        <app-deck-list [userId]="userId" [readonlyMode]="true" />
+@if (showQualificationDialog()) {
+<div class="options-menu-overlay" (click)="closeQualificationDialog()">
+  <div class="options-menu-sheet choice-sheet qualification-sheet" (click)="$event.stopPropagation()">
+    <h3>Qualifikationsschwellen verwalten</h3>
+    <p class="hint">
+      Lege pro Modus fest, ab wie vielen Spielen jemand in den Ranglisten (Spieler, Decks UND
+      Commander gemeinsam) auftaucht. 0 = keine Mindestspielzahl, jede*r erscheint sofort.
+      "Alle Modi" gilt für die Aggregat-Ansicht, wenn mehrere Modi gleichzeitig ausgewählt sind.
+    </p>
+    <ul class="visibility-list choice-candidate-list">
+      @for (mode of qualificationDialogModes; track mode) {
+      <li class="qualification-row">
+        <span class="player-name">{{ mode === 'Alle' ? 'Alle Modi' : mode }}</span>
+        <div class="qualification-input-row">
+          <input
+            type="number"
+            min="0"
+            step="1"
+            class="glass-input small"
+            [value]="qualificationValue(mode)"
+            (change)="updateQualificationValue(mode, $any($event.target).value)"
+          />
+          <span class="hint">Spiele</span>
+        </div>
+      </li>
       }
-    } @else {
-      <p class="hint">Profil konnte nicht geladen werden.</p>
-    }
-    <button class="glass-button" (click)="closeProfileView()">Schließen</button>
+    </ul>
+    <button class="glass-button" (click)="closeQualificationDialog()">Schließen</button>
   </div>
 </div>
 }
+

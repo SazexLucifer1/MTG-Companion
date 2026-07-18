@@ -326,7 +326,9 @@
         }
         <span class="history-date">{{ match.date | date: 'dd.MM.yyyy, HH:mm' }}</span>
         <button class="icon-button" (click)="startEditWinner(match.id)" aria-label="Gewinner ändern">✏️</button>
-        <button class="icon-button" (click)="deleteMatch(match.id)" aria-label="Match löschen">🗑</button>
+        @if (groupService.isOwner()) {
+          <button class="icon-button" (click)="deleteMatch(match.id)" aria-label="Match löschen">🗑</button>
+        }
       </div>
       <div class="history-players">
       @for (p of match.players; track p.name) {

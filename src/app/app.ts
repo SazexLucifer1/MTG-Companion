@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { MatchTab } from './match-tab/match-tab';
 import { StatsTab } from './stats-tab/stats-tab';
 import { ProfileTab } from './profile-tab/profile-tab';
@@ -10,8 +10,7 @@ import { Login } from './login/login';
 import { ResetPassword } from './reset-password/reset-password';
 import { GameSessionService } from './game-session.service';
 import { AuthService } from './auth.service';
-
-type Tab = 'match' | 'stats' | 'group' | 'profile';
+import { NavigationService, AppTab } from './navigation.service';
 
 @Component({
   selector: 'app-root',
@@ -32,9 +31,9 @@ type Tab = 'match' | 'stats' | 'group' | 'profile';
 export class App {
   readonly auth = inject(AuthService);
   readonly session = inject(GameSessionService);
-  readonly activeTab = signal<Tab>('match');
+  readonly navigation = inject(NavigationService);
 
-  readonly tabs: { id: Tab; label: string; icon: string }[] = [
+  readonly tabs: { id: AppTab; label: string; icon: string }[] = [
     { id: 'match', label: 'Match', icon: '⚔️' },
     { id: 'stats', label: 'Statistik', icon: '📊' },
     { id: 'group', label: 'Gruppe', icon: '🎉' },

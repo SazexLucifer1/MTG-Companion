@@ -6,6 +6,7 @@ export interface Profile {
   id: string;
   displayName: string;
   avatarUrl: string | null;
+  favoriteCommanders: string[];
 }
 
 @Injectable({ providedIn: 'root' })
@@ -14,6 +15,28 @@ export class ProfileService {
 
   readonly profile = signal<Profile | null>(null);
   readonly loading = signal<boolean>(true);
+
+  /** Ist gesetzt, während im Profil-Tab statt des eigenen Profils das eines anderen Users
+   * (nur lesend) angezeigt wird - z.B. nach "Profil ansehen" aus dem Gruppen-Tab. */
+  readonly viewingUserId = signal<string | null>(null);
+  readonly viewingProfile = signal<{
+    displayName: string;
+    avatarUrl: string | null;
+    favoriteCommanders: string[];
+  } | null>(null);
+  readonly viewingBusy = signal(false);
+
+  async viewProfile(userId: string): Promise<void> {
+    this.viewingUserId.set(userId);
+    this.viewingBusy.set(true);
+    this.viewingProfile.set(await this.loadPublicProfile(userId));
+    this.viewingBusy.set(false);
+  }
+
+  stopViewingProfile(): void {
+    this.viewingUserId.set(null);
+    this.viewingProfile.set(null);
+  }
 
   constructor() {
     effect(() => {
@@ -31,7 +54,7 @@ export class ProfileService {
     this.loading.set(true);
     const { data, error } = await supabase
       .from('profiles')
-      .select('id, display_name, avatar_url')
+      .select('id, display_name, avatar_url, favorite_commanders')
       .eq('id', userId)
       .single();
 
@@ -43,9 +66,31 @@ export class ProfileService {
         id: data.id,
         displayName: data.display_name,
         avatarUrl: data.avatar_url,
+        favoriteCommanders: data.favorite_commanders ?? [],
       });
     }
     this.loading.set(false);
+  }
+
+  /** Maximal 3 Lieblings-Commander. */
+  async updateFavoriteCommanders(commanders: string[]): Promise<boolean> {
+    const current = this.profile();
+    if (!current) return false;
+
+    const trimmed = commanders.slice(0, 3);
+
+    const { error } = await supabase
+      .from('profiles')
+      .update({ favorite_commanders: trimmed })
+      .eq('id', current.id);
+
+    if (error) {
+      console.error('Konnte Lieblings-Commander nicht speichern:', error);
+      return false;
+    }
+
+    this.profile.update((p) => (p ? { ...p, favoriteCommanders: trimmed } : p));
+    return true;
   }
 
   async updateDisplayName(newName: string): Promise<boolean> {
@@ -107,10 +152,10 @@ export class ProfileService {
   /** Lädt die öffentlich sichtbaren Profildaten eines beliebigen Users (nur lesend, keine Bearbeitung). */
   async loadPublicProfile(
     userId: string
-  ): Promise<{ displayName: string; avatarUrl: string | null } | null> {
+  ): Promise<{ displayName: string; avatarUrl: string | null; favoriteCommanders: string[] } | null> {
     const { data, error } = await supabase
       .from('profiles')
-      .select('display_name, avatar_url')
+      .select('display_name, avatar_url, favorite_commanders')
       .eq('id', userId)
       .single();
 
@@ -119,6 +164,10 @@ export class ProfileService {
       return null;
     }
 
-    return { displayName: data.display_name, avatarUrl: data.avatar_url };
+    return {
+      displayName: data.display_name,
+      avatarUrl: data.avatar_url,
+      favoriteCommanders: data.favorite_commanders ?? [],
+    };
   }
 }

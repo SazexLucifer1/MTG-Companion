@@ -82,6 +82,44 @@ export class GroupService {
     }
   }
 
+  /**
+   * Lässt den eingeloggten User eine Gruppe verlassen, in der er NICHT Host ist (Hosts nutzen
+   * stattdessen "Gruppe löschen" - sonst bliebe die Gruppe ohne Host zurück). Der eigene
+   * players-Eintrag wird dabei nur entkoppelt (user_id = null), nicht gelöscht - so bleiben
+   * Match-Historie/Statistik für die verbleibende Gruppe erhalten, genau wie beim Löschen eines
+   * Spielers durch den Host. Tritt der User später erneut bei, kann er sich über die
+   * Beitritts-Auswahl wieder mit demselben Spieler verknüpfen.
+   */
+  async leaveGroup(groupId: string): Promise<boolean> {
+    const user = this.auth.currentUser();
+    if (!user) return false;
+
+    const { error: unlinkError } = await supabase
+      .from('players')
+      .update({ user_id: null })
+      .eq('group_id', groupId)
+      .eq('user_id', user.id);
+
+    if (unlinkError) {
+      console.error('Konnte eigenen Spieler nicht entkoppeln:', unlinkError);
+      return false;
+    }
+
+    const { error: leaveError } = await supabase
+      .from('group_members')
+      .delete()
+      .eq('group_id', groupId)
+      .eq('user_id', user.id);
+
+    if (leaveError) {
+      console.error('Konnte Gruppe nicht verlassen:', leaveError);
+      return false;
+    }
+
+    await this.refresh();
+    return true;
+  }
+
   async createGroup(name: string): Promise<boolean> {
     const trimmed = name.trim();
     if (!trimmed) return false;
@@ -102,22 +140,43 @@ export class GroupService {
     return true;
   }
 
+  /**
+   * Liefert den (einen, dauerhaften) Einladungscode einer Gruppe - legt beim ersten Aufruf einen
+   * an, bei jedem weiteren wird einfach derselbe zurückgegeben. Codes sind über alle Gruppen
+   * hinweg eindeutig (DB-Constraint), bei einer sehr seltenen Kollision wird neu gewürfelt.
+   */
   async createInvite(groupId: string): Promise<string | null> {
+    const { data: existing, error: fetchError } = await supabase
+      .from('group_invites')
+      .select('code')
+      .eq('group_id', groupId)
+      .maybeSingle();
+
+    if (fetchError) {
+      console.error('Konnte bestehende Einladung nicht laden:', fetchError);
+      return null;
+    }
+    if (existing) return existing.code;
+
     const user = this.auth.currentUser();
     if (!user) return null;
 
-    const code = this.generateCode();
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const code = this.generateCode();
+      const { error } = await supabase
+        .from('group_invites')
+        .insert({ group_id: groupId, code, created_by: user.id });
 
-    const { error } = await supabase
-      .from('group_invites')
-      .insert({ group_id: groupId, code, created_by: user.id });
-
-    if (error) {
-      console.error('Konnte Einladung nicht erstellen:', error);
-      return null;
+      if (!error) return code;
+      if (error.code !== '23505') {
+        console.error('Konnte Einladung nicht erstellen:', error);
+        return null;
+      }
+      // 23505 = unique_violation -> Code kollidiert mit einer anderen Gruppe, nochmal versuchen.
     }
 
-    return code;
+    console.error('Konnte keinen eindeutigen Einladungscode finden.');
+    return null;
   }
 
   private generateCode(): string {
@@ -129,7 +188,14 @@ export class GroupService {
     return code;
   }
 
-  async joinGroupByCode(code: string): Promise<{ success: boolean; message: string }> {
+  async joinGroupByCode(code: string): Promise<{
+    success: boolean;
+    message: string;
+    needsPlayerChoice?: boolean;
+    groupId?: string;
+    candidates?: { id: string; displayName: string }[];
+    suggestedPlayerId?: string | null;
+  }> {
     const user = this.auth.currentUser();
     if (!user) return { success: false, message: 'Nicht angemeldet.' };
 
@@ -171,43 +237,79 @@ export class GroupService {
       .eq('id', user.id)
       .single();
 
-    if (profile?.display_name) {
-      // Falls schon ein account-loser Spieler mit passendem Namen existiert (z.B. aus einem
-      // Excel-Import vor dem Beitritt), diesen verknüpfen statt einen zweiten anzulegen – sonst
-      // würden die alten Stats dieser Person auf einen leeren Zweit-Eintrag verteilt.
-      const { data: existingPlayer } = await supabase
-        .from('players')
-        .select('id')
-        .eq('group_id', invite.group_id)
-        .is('user_id', null)
-        .ilike('display_name', profile.display_name)
-        .maybeSingle();
-
-      if (existingPlayer) {
-        const { error: linkError } = await supabase
-          .from('players')
-          .update({ user_id: user.id })
-          .eq('id', existingPlayer.id);
-
-        if (linkError) {
-          console.error('Konnte bestehenden Spieler nicht verknüpfen:', linkError);
-        }
-      } else {
-        const { error: playerError } = await supabase
-          .from('players')
-          .insert({ group_id: invite.group_id, display_name: profile.display_name, user_id: user.id });
-
-        if (playerError) {
-          console.error('Konnte Spieler-Eintrag nicht anlegen:', playerError);
-          // Kein "return" hier - der Gruppenbeitritt selbst war erfolgreich, das ist nur ein Zusatzschritt.
-        }
-      }
-    }
+    // Alle noch account-losen Spieler dieser Gruppe (z.B. aus einem Excel-Import vor dem Beitritt) -
+    // der Beitretende soll sich bewusst selbst zuordnen können, statt dass Namensabweichungen wie
+    // "Theo" vs. "Theodor" stillschweigend zu einem doppelten Spieler-Eintrag führen.
+    const { data: unlinkedPlayers } = await supabase
+      .from('players')
+      .select('id, display_name')
+      .eq('group_id', invite.group_id)
+      .is('user_id', null);
 
     await this.refresh();
     this.groupId.set(invite.group_id);
 
+    if (profile?.display_name && unlinkedPlayers && unlinkedPlayers.length > 0) {
+      const suggested = unlinkedPlayers.find(
+        (p) => p.display_name.toLowerCase() === profile.display_name.toLowerCase()
+      );
+      return {
+        success: true,
+        message: 'Erfolgreich beigetreten!',
+        needsPlayerChoice: true,
+        groupId: invite.group_id,
+        candidates: unlinkedPlayers.map((p) => ({ id: p.id, displayName: p.display_name })),
+        suggestedPlayerId: suggested?.id ?? null,
+      };
+    }
+
+    if (profile?.display_name) {
+      const { error: playerError } = await supabase
+        .from('players')
+        .insert({ group_id: invite.group_id, display_name: profile.display_name, user_id: user.id });
+
+      if (playerError) {
+        console.error('Konnte Spieler-Eintrag nicht anlegen:', playerError);
+        // Kein "return" hier - der Gruppenbeitritt selbst war erfolgreich, das ist nur ein Zusatzschritt.
+      }
+    }
+
     return { success: true, message: 'Erfolgreich beigetreten!' };
+  }
+
+  /**
+   * Schließt die Spieler-Auswahl nach dem Beitritt ab: entweder mit einem bestehenden,
+   * account-losen Spieler verknüpfen (dessen alte Stats übernehmen), oder einen neuen anlegen.
+   */
+  async finalizePlayerChoice(
+    groupId: string,
+    choice: { linkToPlayerId: string } | { createNewWithName: string }
+  ): Promise<boolean> {
+    const user = this.auth.currentUser();
+    if (!user) return false;
+
+    if ('linkToPlayerId' in choice) {
+      const { error } = await supabase
+        .from('players')
+        .update({ user_id: user.id })
+        .eq('id', choice.linkToPlayerId);
+
+      if (error) {
+        console.error('Konnte Spieler nicht verknüpfen:', error);
+        return false;
+      }
+      return true;
+    }
+
+    const { error } = await supabase
+      .from('players')
+      .insert({ group_id: groupId, display_name: choice.createNewWithName, user_id: user.id });
+
+    if (error) {
+      console.error('Konnte Spieler-Eintrag nicht anlegen:', error);
+      return false;
+    }
+    return true;
   }
 
   async loadGroupMembers(
