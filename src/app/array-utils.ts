@@ -10,3 +10,8 @@ export function chunk<T>(items: T[], size: number): T[][] {
   }
   return result;
 }
+
+/** Kleine Pause - nötig zwischen vielen aufeinanderfolgenden Scryfall-Anfragen, sonst greift deren Rate-Limit (429). */
+export function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}

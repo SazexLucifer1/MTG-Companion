@@ -3,6 +3,7 @@ import * as XLSX from 'xlsx';
 import JSZip from 'jszip';
 import { GameMode, Match, MatchPlayer, TeamName } from './models';
 import { ScryfallService } from './scryfall.service';
+import { sleep } from './array-utils';
 
 export interface DetectedDeckSheet {
   sheetName: string;
@@ -302,6 +303,7 @@ export class ExcelImportService {
       if (resolvedName) result.set(key, resolvedName);
       done++;
       onProgress?.(done, entries.length);
+      await sleep(120); // Scryfalls Rate-Limit respektieren, sonst schlagen die Anfragen mit 429 fehl.
     }
 
     return result;

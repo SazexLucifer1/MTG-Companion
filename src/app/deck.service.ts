@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { supabase } from './supabase.client';
 import { ScryfallService } from './scryfall.service';
 import { isPlayerWinner } from './match-utils';
+import { sleep } from './array-utils';
 
 export interface Deck {
   id: string;
@@ -374,6 +375,7 @@ export class DeckService {
       if (resolved && resolved !== name) resolvedNames.set(name, resolved);
       done++;
       onProgress?.(done, list.length);
+      await sleep(120); // Scryfalls Rate-Limit respektieren, sonst schlagen die Anfragen mit 429 fehl.
     }
 
     let fixed = 0;
@@ -449,6 +451,7 @@ export class DeckService {
       if (resolved && resolved !== name) resolvedNames.set(name, resolved);
       done++;
       onProgress?.(done, list.length);
+      await sleep(120); // Scryfalls Rate-Limit respektieren, sonst schlagen die Anfragen mit 429 fehl.
     }
 
     let fixed = 0;
