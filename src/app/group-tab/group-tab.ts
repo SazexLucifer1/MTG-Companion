@@ -227,6 +227,66 @@ export class GroupTab {
     return !!this.mtg.playerUserIds()[name];
   }
 
+  // --- Spieler zusammenführen (Duplikate wie "Theo"/"Theos"/"Theodor" zu einem machen) ---
+
+  readonly showMergeDialog = signal(false);
+  readonly mergeSelected = signal<Set<string>>(new Set());
+  readonly mergeTargetName = signal<string | null>(null);
+  readonly mergeBusy = signal(false);
+  readonly mergeMessage = signal('');
+
+  openMergeDialog(): void {
+    this.showMergeDialog.set(true);
+    this.mergeSelected.set(new Set());
+    this.mergeTargetName.set(null);
+    this.mergeMessage.set('');
+  }
+
+  closeMergeDialog(): void {
+    this.showMergeDialog.set(false);
+  }
+
+  toggleMergeSelected(name: string): void {
+    this.mergeSelected.update((set) => {
+      const next = new Set(set);
+      if (next.has(name)) {
+        next.delete(name);
+        if (this.mergeTargetName() === name) this.mergeTargetName.set(null);
+      } else {
+        next.add(name);
+      }
+      return next;
+    });
+  }
+
+  setMergeTarget(name: string): void {
+    this.mergeTargetName.set(name);
+  }
+
+  readonly canConfirmMerge = computed(
+    () => this.mergeSelected().size >= 2 && !!this.mergeTargetName()
+  );
+
+  async confirmMerge(): Promise<void> {
+    const target = this.mergeTargetName();
+    if (!target) return;
+    const sources = [...this.mergeSelected()].filter((n) => n !== target);
+    if (sources.length === 0) return;
+
+    this.mergeBusy.set(true);
+    this.mergeMessage.set('');
+
+    const ok = await this.mtg.mergePlayers(target, sources);
+
+    this.mergeBusy.set(false);
+
+    if (ok) {
+      this.closeMergeDialog();
+    } else {
+      this.mergeMessage.set('Zusammenführen fehlgeschlagen.');
+    }
+  }
+
   // --- Profil ansehen (nur lesend) ---
 
   readonly viewingProfileFor = signal<string | null>(null);

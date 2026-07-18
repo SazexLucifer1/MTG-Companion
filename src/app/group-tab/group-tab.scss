@@ -9,6 +9,14 @@
   }
 }
 
+.merge-target-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  white-space: nowrap;
+}
+
 .invite-code {
   font-size: 2rem;
   font-weight: 700;

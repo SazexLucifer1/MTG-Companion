@@ -317,6 +317,65 @@ export class MtgService {
   }
 
   /**
+   * Führt mehrere Spieler-Einträge zu einem zusammen (z.B. wenn ein per Excel-Import angelegter
+   * Name wie "Theo"/"Theos" in Wahrheit derselbe Mensch ist wie der später beigetretene Account
+   * "Theodor"). Alle Matches der Quell-Spieler werden auf den Ziel-Spieler umgehängt (inkl. der
+   * als Text gespeicherten Namen in match_players/matches), die Quell-Spieler-Einträge werden
+   * danach gelöscht. Bewusst NICHT über deletePlayer(), da dort die Spiele beim gelöschten
+   * (Alt-)Namen verbleiben würden statt zum Ziel-Spieler zu wandern.
+   */
+  async mergePlayers(targetName: string, sourceNames: string[]): Promise<boolean> {
+    const groupId = this.groupService.groupId();
+    if (!groupId || sourceNames.length === 0) return false;
+
+    const idsByName = this.playerIdsByName();
+    const targetId = idsByName[targetName];
+    if (!targetId) return false;
+
+    for (const sourceName of sourceNames) {
+      const sourceId = idsByName[sourceName];
+      if (!sourceId || sourceId === targetId) continue;
+
+      const { error: mpError } = await supabase
+        .from('match_players')
+        .update({ player_id: targetId, player_name: targetName })
+        .eq('player_id', sourceId);
+
+      if (mpError) {
+        console.error('Konnte Match-Spieler nicht zusammenführen:', mpError);
+        return false;
+      }
+
+      const { error: matchError } = await supabase
+        .from('matches')
+        .update({ winner_name: targetName })
+        .eq('group_id', groupId)
+        .eq('winner_name', sourceName);
+
+      if (matchError) {
+        console.error('Konnte Gewinner-Namen nicht zusammenführen:', matchError);
+        return false;
+      }
+
+      const { error: deleteError } = await supabase.from('players').delete().eq('id', sourceId);
+
+      if (deleteError) {
+        console.error('Konnte doppelten Spieler nicht löschen:', deleteError);
+        return false;
+      }
+    }
+
+    await Promise.all([
+      this.loadPlayers(groupId),
+      this.loadHistory(groupId),
+      this.loadStatVisibility(groupId),
+      this.loadPlayerBackgrounds(groupId),
+    ]);
+
+    return true;
+  }
+
+  /**
    * Verknüpft einen bestehenden (noch account-losen) Spieler-Eintrag nachträglich mit einem
    * Gruppenmitglied, damit dessen alte Stats (z.B. aus dem Excel-Import) zu seinem Account gehören.
    * Schlägt gezielt fehl, falls der Spieler zwischenzeitlich schon verknüpft wurde.

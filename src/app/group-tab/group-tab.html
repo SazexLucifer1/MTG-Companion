@@ -218,7 +218,57 @@
       </p>
     }
   }
+  @if (groupService.isOwner() && mtg.allPlayers().length > 1) {
+    <button class="glass-button small" (click)="openMergeDialog()">🔀 Spieler zusammenführen</button>
+  }
 </section>
+
+@if (showMergeDialog()) {
+<div class="options-menu-overlay" (click)="closeMergeDialog()">
+  <div class="options-menu-sheet" (click)="$event.stopPropagation()">
+    <h3>Spieler zusammenführen</h3>
+    <p class="hint">
+      Wähle Spieler-Einträge, die eigentlich dieselbe Person sind (z.B. ein alter Excel-Import-Name
+      und der später beigetretene Account). Danach einen davon als Hauptspieler festlegen – alle
+      Spiele der anderen wandern zu ihm, die Duplikate werden gelöscht.
+    </p>
+    <ul class="player-list">
+      @for (player of mtg.allPlayers(); track player) {
+        <li>
+          <input
+            type="checkbox"
+            [checked]="mergeSelected().has(player)"
+            (change)="toggleMergeSelected(player)"
+          />
+          <span class="player-name">{{ player }}</span>
+          @if (mergeSelected().has(player)) {
+            <label class="hint merge-target-label">
+              <input
+                type="radio"
+                name="merge-target"
+                [checked]="mergeTargetName() === player"
+                (change)="setMergeTarget(player)"
+              />
+              Hauptspieler
+            </label>
+          }
+        </li>
+      }
+    </ul>
+    @if (mergeMessage()) {
+      <p class="error">{{ mergeMessage() }}</p>
+    }
+    <button
+      class="glass-button primary"
+      [disabled]="!canConfirmMerge() || mergeBusy()"
+      (click)="confirmMerge()"
+    >
+      {{ mergeBusy() ? 'Führe zusammen …' : 'Zusammenführen' }}
+    </button>
+    <button class="glass-button" (click)="closeMergeDialog()">Abbrechen</button>
+  </div>
+</div>
+}
 
 @if (linkingPlayerName()) {
 <div class="options-menu-overlay" (click)="closeLinkDialog()">
