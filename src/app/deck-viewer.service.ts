@@ -248,6 +248,11 @@ export class DeckViewerService {
   readonly typeFilterValue = signal<'all' | string>('all');
   readonly creatureTypeFilter = signal<'all' | string>('all');
   readonly colorFilter = signal<'all' | 'W' | 'U' | 'B' | 'R' | 'G' | 'C'>('all');
+  readonly keywordFilter = signal('all');
+  readonly effectFilter = signal('all');
+  /** Ergebnis der letzten Effekt-Abfrage (lowercase Kartennamen) - null solange kein Effekt-Filter aktiv oder noch nicht geladen. */
+  readonly effectMatchNames = signal<Set<string> | null>(null);
+  readonly effectFilterBusy = signal(false);
 
   /** Kreaturtypen (Untertypen nach dem Gedankenstrich), die tatsächlich im Deck vorkommen - für das Filter-Dropdown. */
   readonly availableCreatureTypes = computed(() => {
@@ -288,6 +293,18 @@ export class DeckViewerService {
       if (color === 'C' ? identity.length > 0 : !identity.includes(color)) return false;
     }
 
+    const keyword = this.keywordFilter();
+    if (keyword !== 'all') {
+      const keywords = this.viewingCardDetails().get(card.cardName.toLowerCase())?.keywords ?? [];
+      if (!keywords.some((k) => k.toLowerCase() === keyword)) return false;
+    }
+
+    const effect = this.effectFilter();
+    if (effect !== 'all') {
+      const matches = this.effectMatchNames();
+      if (!matches?.has(card.cardName.toLowerCase())) return false;
+    }
+
     return true;
   }
 
@@ -309,7 +326,9 @@ export class DeckViewerService {
       this.cmcFilter() !== 'all' ||
       this.typeFilterValue() !== 'all' ||
       this.creatureTypeFilter() !== 'all' ||
-      this.colorFilter() !== 'all'
+      this.colorFilter() !== 'all' ||
+      this.keywordFilter() !== 'all' ||
+      this.effectFilter() !== 'all'
   );
 
   resetCardFilters(): void {
@@ -318,6 +337,29 @@ export class DeckViewerService {
     this.typeFilterValue.set('all');
     this.creatureTypeFilter.set('all');
     this.colorFilter.set('all');
+    this.keywordFilter.set('all');
+    this.effectFilter.set('all');
+    this.effectMatchNames.set(null);
+  }
+
+  setEffectFilter(value: string): void {
+    this.effectFilter.set(value);
+    this.loadEffectMatches();
+  }
+
+  /** Effekt-Kategorien sind kein Feld auf der Karte, sondern nur über eine Scryfall-Suche abfragbar - deshalb async statt wie die übrigen Filter rein lokal. */
+  private async loadEffectMatches(): Promise<void> {
+    const effect = this.effectFilter();
+    const tagQuery = this.effectFilters.find((f) => f.value === effect)?.query;
+    if (!tagQuery) {
+      this.effectMatchNames.set(null);
+      return;
+    }
+    this.effectFilterBusy.set(true);
+    const names = this.viewingDeckCards().map((c) => c.cardName);
+    const matched = await this.scryfall.filterNamesByQuery(tagQuery, names);
+    this.effectMatchNames.set(matched);
+    this.effectFilterBusy.set(false);
   }
 
   // NEU - Bearbeitungsmodus: Karten hinzufügen/entfernen
@@ -328,18 +370,20 @@ export class DeckViewerService {
   readonly addCardColorFilter = signal<'all' | 'W' | 'U' | 'B' | 'R' | 'G' | 'C'>('all');
   readonly addCardCmcFilter = signal<'all' | number>('all');
   readonly addCardEffectFilter = signal('all');
+  readonly addCardKeywordFilter = signal('all');
   readonly addCardResults = signal<ScryfallCard[]>([]);
   readonly addCardBusy = signal(false);
   readonly addCardMessage = signal('');
   private addCardSearchTimer: ReturnType<typeof setTimeout> | null = null;
 
   /**
-   * Effekt-Kategorien für die Add-Karten-Suche, über Scryfalls community-gepflegte Oracle-Tags
-   * (otag:) bzw. offizielle Keyword-Abfragen (keyword:) - viel zuverlässiger als eine eigene
-   * Texterkennung. "Marken" nutzt mangels passendem Tag eine Oracle-Text-Näherung.
+   * Funktions-Kategorien (was eine Karte TUT) über Scryfalls community-gepflegte Oracle-Tags
+   * (otag:) - viel zuverlässiger als eine eigene Texterkennung. Bewusst getrennt von den
+   * Fähigkeits-Keywords unten (keywordFilters): Lifelink z.B. ist eine feste Eigenschaft der
+   * Karte, kein Effekt wie "Lebenspunkte gewinnen" (otag:lifegain, eigene Kategorie). "Marken
+   * erzeugen" nutzt mangels passendem Tag eine Oracle-Text-Näherung.
    */
   readonly effectFilters: { value: string; label: string; query: string }[] = [
-    { value: 'lifelink', label: 'Lifelink', query: 'keyword:lifelink' },
     { value: 'tokens', label: 'Marken erzeugen', query: 'o:"create a" o:token' },
     { value: 'draw', label: 'Kartenziehen', query: 'otag:draw' },
     { value: 'removal', label: 'Entfernung', query: 'otag:removal' },
@@ -348,11 +392,33 @@ export class DeckViewerService {
     { value: 'lifegain', label: 'Lebenspunkte gewinnen', query: 'otag:lifegain' },
     { value: 'counters', label: '+1/+1-Zähler', query: 'otag:counters-matter' },
     { value: 'proliferate', label: 'Proliferate', query: 'keyword:proliferate' },
-    { value: 'protection', label: 'Schutz', query: 'otag:protection' },
+    { value: 'protection', label: 'Schutz gewähren', query: 'otag:protection' },
     { value: 'reanimate', label: 'Wiederbelebung', query: 'otag:reanimate' },
     { value: 'recursion', label: 'Rekursion', query: 'otag:recursion' },
     { value: 'tutor', label: 'Tutor', query: 'otag:tutor' },
     { value: 'sacrifice', label: 'Opfern', query: 'otag:sacrifice-outlet' },
+    { value: 'extraturn', label: 'Extra-Runde', query: 'otag:extra-turn' },
+    { value: 'extracombat', label: 'Extra-Kampfphase', query: 'otag:extra-combat' },
+    { value: 'mld', label: 'Mass Land Denial', query: 'otag:mass-land-denial' },
+  ];
+
+  /** Fähigkeits-Keywords (feste Eigenschaft der Karte, nicht Tagger-Tags, sondern echte Scryfall-Keyword-Abfragen). */
+  readonly keywordFilters: { value: string; label: string }[] = [
+    { value: 'lifelink', label: 'Lifelink' },
+    { value: 'deathtouch', label: 'Deathtouch' },
+    { value: 'flying', label: 'Flugfähigkeit' },
+    { value: 'trample', label: 'Trample' },
+    { value: 'vigilance', label: 'Wachsamkeit' },
+    { value: 'haste', label: 'Eile' },
+    { value: 'hexproof', label: 'Hexenschutz' },
+    { value: 'indestructible', label: 'Unzerstörbar' },
+    { value: 'menace', label: 'Bedrohlich' },
+    { value: 'reach', label: 'Reichweite' },
+    { value: 'first strike', label: 'Erstschlag' },
+    { value: 'double strike', label: 'Doppelschlag' },
+    { value: 'ward', label: 'Ward' },
+    { value: 'flash', label: 'Blitzschnelle' },
+    { value: 'defender', label: 'Verteidiger' },
   ];
 
   private static readonly TYPE_TO_SCRYFALL: Record<string, string> = {
@@ -462,6 +528,7 @@ export class DeckViewerService {
     this.addCardColorFilter.set('all');
     this.addCardCmcFilter.set('all');
     this.addCardEffectFilter.set('all');
+    this.addCardKeywordFilter.set('all');
     this.addCardResults.set([]);
     this.addCardMessage.set('');
   }
@@ -578,6 +645,11 @@ export class DeckViewerService {
     this.triggerAddCardSearch();
   }
 
+  setAddCardKeywordFilter(value: string): void {
+    this.addCardKeywordFilter.set(value);
+    this.triggerAddCardSearch();
+  }
+
   private triggerAddCardSearch(): void {
     if (this.addCardSearchTimer) clearTimeout(this.addCardSearchTimer);
     const query = this.addCardQuery();
@@ -586,6 +658,7 @@ export class DeckViewerService {
     const color = this.addCardColorFilter();
     const cmc = this.addCardCmcFilter();
     const effect = this.addCardEffectFilter();
+    const keyword = this.addCardKeywordFilter();
 
     if (
       !query.trim() &&
@@ -593,7 +666,8 @@ export class DeckViewerService {
       !creatureType.trim() &&
       color === 'all' &&
       cmc === 'all' &&
-      effect === 'all'
+      effect === 'all' &&
+      keyword === 'all'
     ) {
       this.addCardResults.set([]);
       return;
@@ -607,6 +681,7 @@ export class DeckViewerService {
         color: color === 'all' ? null : color,
         cmc: cmc === 'all' ? null : cmc,
         effectQuery: effect === 'all' ? undefined : this.effectFilters.find((f) => f.value === effect)?.query,
+        keyword: keyword === 'all' ? undefined : keyword,
         colorIdentitySubset: this.deckColorIdentitySubset(),
       });
       this.addCardResults.set(results);
@@ -656,6 +731,7 @@ export class DeckViewerService {
     this.showDeckStatsInfo.set(false);
     this.showDeckAnalysis.set(false);
     this.resetCardFilters();
+    this.effectFilterBusy.set(false);
     this.editMode.set(false);
     this.pendingChanges.set(new Map());
     this.flashState.set(null);

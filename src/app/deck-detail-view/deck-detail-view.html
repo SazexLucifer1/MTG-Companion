@@ -181,6 +181,16 @@
                 <option [ngValue]="f.value">{{ f.label }}</option>
               }
             </select>
+            <select
+              class="glass-input small"
+              [ngModel]="viewer.addCardKeywordFilter()"
+              (ngModelChange)="viewer.setAddCardKeywordFilter($event)"
+            >
+              <option [ngValue]="'all'">Fähigkeit: alle</option>
+              @for (k of viewer.keywordFilters; track k.value) {
+                <option [ngValue]="k.value">{{ k.label }}</option>
+              }
+            </select>
           </div>
 
           @if (viewer.addCardMessage()) {
@@ -434,12 +444,34 @@
           <option [ngValue]="'G'">Grün</option>
           <option [ngValue]="'C'">Farblos</option>
         </select>
+        <select
+          class="glass-input small"
+          [ngModel]="viewer.keywordFilter()"
+          (ngModelChange)="viewer.keywordFilter.set($event)"
+        >
+          <option [ngValue]="'all'">Fähigkeit: alle</option>
+          @for (k of viewer.keywordFilters; track k.value) {
+            <option [ngValue]="k.value">{{ k.label }}</option>
+          }
+        </select>
+        <select
+          class="glass-input small"
+          [ngModel]="viewer.effectFilter()"
+          (ngModelChange)="viewer.setEffectFilter($event)"
+        >
+          <option [ngValue]="'all'">Effekt: alle</option>
+          @for (f of viewer.effectFilters; track f.value) {
+            <option [ngValue]="f.value">{{ f.label }}</option>
+          }
+        </select>
         @if (viewer.hasActiveCardFilters()) {
           <button class="glass-chip small" (click)="viewer.resetCardFilters()">✕ Filter zurücksetzen</button>
         }
       </div>
 
-      @if (viewer.hasActiveCardFilters() && viewer.filteredGroupedDeckCards().length === 0) {
+      @if (viewer.effectFilterBusy()) {
+        <p class="hint">Prüfe Effekt-Kategorie …</p>
+      } @else if (viewer.hasActiveCardFilters() && viewer.filteredGroupedDeckCards().length === 0) {
         <p class="hint">Keine Karten gefunden.</p>
       }
 

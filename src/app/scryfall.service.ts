@@ -11,6 +11,8 @@ export interface ScryfallCard {
   /** Teil der offiziellen Commander-Bracket-"Game Changers"-Liste (von Scryfall selbst gepflegt). */
   gameChanger?: boolean;
   oracleText?: string;
+  /** Native Scryfall-Fähigkeiten-Liste ("Flying", "Lifelink", ...) - kein Tagger-Tag, kommt direkt mit jeder Karte. */
+  keywords?: string[];
 }
 
 export interface ScryfallSet {
@@ -282,8 +284,10 @@ export class ScryfallService {
       cmc?: number | null;
       color?: string | null;
       colorIdentitySubset?: string[] | null;
-      /** Fertiges Scryfall-Query-Fragment für eine Effekt-Kategorie, z.B. "otag:removal" - siehe EFFECT_QUERIES in deck-viewer.service.ts. */
+      /** Fertiges Scryfall-Query-Fragment für eine Effekt-Kategorie, z.B. "otag:removal" - siehe effectFilters in deck-viewer.service.ts. */
       effectQuery?: string;
+      /** Fähigkeits-Keyword wie "lifelink" oder "first strike" (native Scryfall-Abfrage, kein Tagger-Tag). */
+      keyword?: string;
     }
   ): Promise<ScryfallCard[]> {
     const trimmed = query.trim();
@@ -294,7 +298,8 @@ export class ScryfallService {
       !creatureType &&
       filters.cmc == null &&
       !filters.color &&
-      !filters.effectQuery
+      !filters.effectQuery &&
+      !filters.keyword
     ) {
       return [];
     }
@@ -306,6 +311,7 @@ export class ScryfallService {
     if (filters.cmc != null) parts.push(filters.cmc >= 7 ? 'cmc>=7' : `cmc:${filters.cmc}`);
     if (filters.color) parts.push(filters.color === 'C' ? 'id:c' : `id:${filters.color}`);
     if (filters.effectQuery) parts.push(filters.effectQuery);
+    if (filters.keyword) parts.push(`keyword:"${filters.keyword.replace(/"/g, '')}"`);
     if (filters.colorIdentitySubset) {
       parts.push(filters.colorIdentitySubset.length > 0 ? `id<=${filters.colorIdentitySubset.join('')}` : 'id:c');
     }
@@ -315,6 +321,31 @@ export class ScryfallService {
     if (!res?.ok) return [];
     const data = await res.json();
     return ((data.data as any[]) ?? []).slice(0, 30).map((c) => this.toCard(c));
+  }
+
+  // NEU
+  /**
+   * Prüft, welche der übergebenen Kartennamen zu einer otag:/keyword:-Abfrage passen - für den
+   * lokalen Deck-Kartenfilter (Effekt-Kategorien sind kein Feld auf der Karte selbst, sondern nur
+   * über eine Scryfall-Suche abfragbar). Fragt in Gruppen ab (URL-Länge), damit auch größere Decks
+   * funktionieren.
+   */
+  async filterNamesByQuery(tagQuery: string, cardNames: string[]): Promise<Set<string>> {
+    const matched = new Set<string>();
+    const unique = [...new Set(cardNames.map((n) => n.trim()).filter(Boolean))];
+
+    for (let i = 0; i < unique.length; i += 20) {
+      const chunk = unique.slice(i, i + 20);
+      const nameClause = '(' + chunk.map((n) => `!"${n.replace(/"/g, '')}"`).join(' or ') + ')';
+      const q = encodeURIComponent(`${tagQuery} ${nameClause}`);
+      const res = await this.fetchWithRetry(`${API}/cards/search?q=${q}&unique=cards`);
+      if (!res?.ok) continue;
+      const data = await res.json();
+      for (const card of (data.data as any[]) ?? []) {
+        matched.add((card.name as string).toLowerCase());
+      }
+    }
+    return matched;
   }
 
   private toCard(data: any): ScryfallCard {
@@ -331,6 +362,7 @@ export class ScryfallService {
       colorIdentity: data.color_identity as string[] | undefined,
       gameChanger: data.game_changer as boolean | undefined,
       oracleText: (data.oracle_text || data.card_faces?.[0]?.oracle_text) as string | undefined,
+      keywords: data.keywords as string[] | undefined,
     };
   }
 }
