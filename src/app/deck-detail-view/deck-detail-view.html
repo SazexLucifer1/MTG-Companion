@@ -101,7 +101,7 @@
           </button>
         }
         <button class="glass-chip small" [class.active]="viewer.showChangeLog()" (click)="viewer.toggleChangeLog()">
-          🕘 Verlauf @if (viewer.viewingChangeLog().length > 0) {({{ viewer.viewingChangeLog().length }})}
+          🕘 Verlauf
         </button>
         @if (viewer.canEditViewingDeck()) {
           <button class="glass-chip small" (click)="reimportDecklist()">📋 Kartenliste neu einfügen</button>
