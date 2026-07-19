@@ -347,3 +347,16 @@
     flex: 1;
   }
 }
+
+// NEU
+.card-filter-row {
+  margin-top: 8px;
+
+  .glass-input.small {
+    flex: 1 1 auto;
+    min-width: 120px;
+    padding: 7px 10px;
+    min-height: 34px;
+    font-size: 0.85rem;
+  }
+}

@@ -233,12 +233,91 @@ export class DeckViewerService {
     return sections;
   });
 
+  // NEU
+  readonly cardSearchQuery = signal('');
+  readonly cmcFilter = signal<'all' | number>('all');
+  readonly typeFilterValue = signal<'all' | string>('all');
+  readonly creatureTypeFilter = signal<'all' | string>('all');
+  readonly colorFilter = signal<'all' | 'W' | 'U' | 'B' | 'R' | 'G' | 'C'>('all');
+
+  /** Kreaturtypen (Untertypen nach dem Gedankenstrich), die tatsächlich im Deck vorkommen - für das Filter-Dropdown. */
+  readonly availableCreatureTypes = computed(() => {
+    const types = new Set<string>();
+    for (const card of this.viewingDeckCards()) {
+      if (!(card.typeLine ?? '').includes('Creature')) continue;
+      for (const t of DeckViewerService.parseSubtypes(card.typeLine)) types.add(t);
+    }
+    return [...types].sort((a, b) => a.localeCompare(b));
+  });
+
+  readonly availableTypeSections = computed(() => this.groupedDeckCards().map((s) => s.label));
+
+  private static parseSubtypes(typeLine: string | null): string[] {
+    const parts = (typeLine ?? '').split('—');
+    if (parts.length < 2) return [];
+    return parts[1].trim().split(/\s+/).filter(Boolean);
+  }
+
+  private cardMatchesFilters(card: DeckCard): boolean {
+    const query = this.cardSearchQuery().trim().toLowerCase();
+    if (query && !card.cardName.toLowerCase().includes(query)) return false;
+
+    const cmc = this.cmcFilter();
+    if (cmc !== 'all') {
+      const bucket = card.cmc >= 7 ? 7 : Math.round(card.cmc);
+      if (bucket !== cmc) return false;
+    }
+
+    const creatureType = this.creatureTypeFilter();
+    if (creatureType !== 'all' && !DeckViewerService.parseSubtypes(card.typeLine).includes(creatureType)) {
+      return false;
+    }
+
+    const color = this.colorFilter();
+    if (color !== 'all') {
+      const identity = this.viewingCardDetails().get(card.cardName.toLowerCase())?.colorIdentity ?? [];
+      if (color === 'C' ? identity.length > 0 : !identity.includes(color)) return false;
+    }
+
+    return true;
+  }
+
+  /** groupedDeckCards, gefiltert nach Suchtext/Manawert/Typ/Kreaturtyp/Farbe - leere Abschnitte fallen weg. */
+  readonly filteredGroupedDeckCards = computed(() => {
+    const typeFilter = this.typeFilterValue();
+    return this.groupedDeckCards()
+      .filter((section) => typeFilter === 'all' || section.label === typeFilter)
+      .map((section) => ({
+        label: section.label,
+        cards: section.cards.filter((c) => this.cardMatchesFilters(c)),
+      }))
+      .filter((section) => section.cards.length > 0);
+  });
+
+  readonly hasActiveCardFilters = computed(
+    () =>
+      this.cardSearchQuery().trim() !== '' ||
+      this.cmcFilter() !== 'all' ||
+      this.typeFilterValue() !== 'all' ||
+      this.creatureTypeFilter() !== 'all' ||
+      this.colorFilter() !== 'all'
+  );
+
+  resetCardFilters(): void {
+    this.cardSearchQuery.set('');
+    this.cmcFilter.set('all');
+    this.typeFilterValue.set('all');
+    this.creatureTypeFilter.set('all');
+    this.colorFilter.set('all');
+  }
+
   async open(deck: Deck): Promise<void> {
     this.viewingDeck.set(deck);
     this.detailBusy.set(true);
     this.showChangeLog.set(false);
     this.showDeckStatsInfo.set(false);
     this.showDeckAnalysis.set(false);
+    this.resetCardFilters();
     this.showDeckAnalysisInfo.set(false);
     this.viewingCardDetails.set(new Map());
     this.bracketEstimate.set(null);

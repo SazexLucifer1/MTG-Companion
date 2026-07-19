@@ -1,10 +1,11 @@
 import { Component, inject } from '@angular/core';
 import { DatePipe, DecimalPipe } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { DeckViewerService } from '../deck-viewer.service';
 
 @Component({
   selector: 'app-deck-detail-view',
-  imports: [DatePipe, DecimalPipe],
+  imports: [DatePipe, DecimalPipe, FormsModule],
   templateUrl: './deck-detail-view.html',
   styleUrl: './deck-detail-view.scss',
 })

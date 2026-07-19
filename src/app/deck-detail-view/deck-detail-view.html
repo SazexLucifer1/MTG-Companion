@@ -219,7 +219,69 @@
           </div>
         }
       }
-      @for (section of viewer.groupedDeckCards(); track section.label) {
+      <input
+        class="glass-input"
+        type="text"
+        placeholder="Karte suchen …"
+        [ngModel]="viewer.cardSearchQuery()"
+        (ngModelChange)="viewer.cardSearchQuery.set($event)"
+      />
+      <div class="chip-row card-filter-row">
+        <select
+          class="glass-input small"
+          [ngModel]="viewer.cmcFilter()"
+          (ngModelChange)="viewer.cmcFilter.set($event)"
+        >
+          <option [ngValue]="'all'">Manawert: alle</option>
+          @for (n of [0, 1, 2, 3, 4, 5, 6, 7]; track n) {
+            <option [ngValue]="n">{{ n === 7 ? '7+' : n }}</option>
+          }
+        </select>
+        <select
+          class="glass-input small"
+          [ngModel]="viewer.typeFilterValue()"
+          (ngModelChange)="viewer.typeFilterValue.set($event)"
+        >
+          <option [ngValue]="'all'">Typ: alle</option>
+          @for (label of viewer.availableTypeSections(); track label) {
+            <option [ngValue]="label">{{ label }}</option>
+          }
+        </select>
+        @if (viewer.availableCreatureTypes().length > 0) {
+          <select
+            class="glass-input small"
+            [ngModel]="viewer.creatureTypeFilter()"
+            (ngModelChange)="viewer.creatureTypeFilter.set($event)"
+          >
+            <option [ngValue]="'all'">Kreaturtyp: alle</option>
+            @for (t of viewer.availableCreatureTypes(); track t) {
+              <option [ngValue]="t">{{ t }}</option>
+            }
+          </select>
+        }
+        <select
+          class="glass-input small"
+          [ngModel]="viewer.colorFilter()"
+          (ngModelChange)="viewer.colorFilter.set($event)"
+        >
+          <option [ngValue]="'all'">Farbe: alle</option>
+          <option [ngValue]="'W'">Weiß</option>
+          <option [ngValue]="'U'">Blau</option>
+          <option [ngValue]="'B'">Schwarz</option>
+          <option [ngValue]="'R'">Rot</option>
+          <option [ngValue]="'G'">Grün</option>
+          <option [ngValue]="'C'">Farblos</option>
+        </select>
+        @if (viewer.hasActiveCardFilters()) {
+          <button class="glass-chip small" (click)="viewer.resetCardFilters()">✕ Filter zurücksetzen</button>
+        }
+      </div>
+
+      @if (viewer.hasActiveCardFilters() && viewer.filteredGroupedDeckCards().length === 0) {
+        <p class="hint">Keine Karten gefunden.</p>
+      }
+
+      @for (section of viewer.filteredGroupedDeckCards(); track section.label) {
         <h4 class="deck-section-title">{{ section.label }} ({{ section.cards.length }})</h4>
         @if (viewer.viewMode() === 'visual') {
           <div class="deck-visual-grid">
