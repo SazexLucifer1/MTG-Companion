@@ -258,6 +258,9 @@
                     <ul class="add-card-results">
                       @for (card of list.cards; track card.name) {
                         <li>
+                          @if (viewer.edhrecCardImage(card.name); as img) {
+                            <img class="card-thumb" [src]="img" [alt]="card.name" />
+                          }
                           <span class="add-card-name">
                             <span class="add-card-name-text">
                               @if (viewer.isCardInDeck(card.name)) {✓ }{{ card.name }}

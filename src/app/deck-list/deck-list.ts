@@ -147,6 +147,14 @@ export class DeckList {
     this.importService.openNewDeckDialog(this.userId(), () => this.refreshDecks());
   }
 
+  openNewEmptyDeckDialog(): void {
+    this.importService.openNewEmptyDeckDialog(this.userId(), async (deck) => {
+      await this.refreshDecks();
+      await this.viewer.open(deck);
+      this.viewer.toggleEditMode();
+    });
+  }
+
   openEditDeckDialog(deck: Deck): void {
     this.importService.openEditDeckDialog(this.userId(), deck, () => this.refreshDecks());
   }

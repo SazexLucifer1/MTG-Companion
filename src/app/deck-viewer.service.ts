@@ -535,6 +535,7 @@ export class DeckViewerService {
     this.addCardMessage.set('');
     this.addCardMode.set('search');
     this.edhrecLists.set(null);
+    this.edhrecCardDetails.set(new Map());
     this.edhrecBusy.set(false);
     this.edhrecFailed.set(false);
   }
@@ -724,6 +725,8 @@ export class DeckViewerService {
   readonly edhrecLists = signal<EdhrecCardlist[] | null>(null);
   readonly edhrecBusy = signal(false);
   readonly edhrecFailed = signal(false);
+  /** Kartenname (lowercase) -> Scryfall-Daten (Bild, Typenzeile) für alle EDHREC-Vorschläge, damit man die Karte ansehen kann. */
+  readonly edhrecCardDetails = signal<Map<string, ScryfallCard>>(new Map());
   /** Nur der erste/Haupt-Commander - EDHRECs Slug-Schema für Partner-/Background-Paare liess sich nicht zuverlässig ermitteln. */
   readonly edhrecCommanderName = computed(() => this.viewingDeckCards().find((c) => c.isCommander)?.cardName ?? null);
 
@@ -746,6 +749,15 @@ export class DeckViewerService {
     this.edhrecLists.set(lists);
     this.edhrecFailed.set(lists === null);
     this.edhrecBusy.set(false);
+
+    if (lists) {
+      const names = [...new Set(lists.flatMap((l) => l.cards.map((c) => c.name)))];
+      this.edhrecCardDetails.set(await this.scryfall.findCardsBulk(names));
+    }
+  }
+
+  edhrecCardImage(cardName: string): string | null {
+    return this.edhrecCardDetails().get(cardName.toLowerCase())?.imageUrl ?? null;
   }
 
   isCardInDeck(cardName: string): boolean {
@@ -792,6 +804,7 @@ export class DeckViewerService {
     this.addCardMessage.set('');
     this.addCardMode.set('search');
     this.edhrecLists.set(null);
+    this.edhrecCardDetails.set(new Map());
     this.edhrecBusy.set(false);
     this.edhrecFailed.set(false);
     this.showDeckAnalysisInfo.set(false);
@@ -859,6 +872,7 @@ export class DeckViewerService {
     this.addCardMessage.set('');
     this.addCardMode.set('search');
     this.edhrecLists.set(null);
+    this.edhrecCardDetails.set(new Map());
     this.edhrecBusy.set(false);
     this.edhrecFailed.set(false);
   }

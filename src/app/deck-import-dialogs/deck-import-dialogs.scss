@@ -64,6 +64,28 @@
   }
 }
 
+.commander-suggestions {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  max-height: 200px;
+  overflow-y: auto;
+
+  li {
+    padding: 8px 4px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    cursor: pointer;
+
+    &:last-child {
+      border-bottom: none;
+    }
+
+    &:active {
+      background: rgba(255, 255, 255, 0.06);
+    }
+  }
+}
+
 .deck-textarea {
   width: 100%;
   min-height: 160px;

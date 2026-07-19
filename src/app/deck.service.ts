@@ -172,9 +172,9 @@ export class DeckService {
     rawText: string,
     existingDeckId: string | null,
     isPrecon = false
-  ): Promise<boolean> {
+  ): Promise<string | null> {
     const parsed = this.parseDecklistText(rawText);
-    if (parsed.length === 0) return false;
+    if (parsed.length === 0) return null;
 
     const cardMap = await this.scryfall.findCardsBulk(parsed.map((p) => p.name));
 
@@ -188,7 +188,7 @@ export class DeckService {
 
       if (oldError) {
         console.error('Konnte bisherige Kartenliste nicht laden:', oldError);
-        return false;
+        return null;
       }
 
       const oldByKey = new Map((oldRows ?? []).map((r) => [r.card_name.toLowerCase(), r]));
@@ -232,7 +232,7 @@ export class DeckService {
       const { error: deleteError } = await supabase.from('deck_cards').delete().eq('deck_id', deckId);
       if (deleteError) {
         console.error('Konnte alte Kartenliste nicht ersetzen:', deleteError);
-        return false;
+        return null;
       }
 
       const { error: updateError } = await supabase
@@ -241,7 +241,7 @@ export class DeckService {
         .eq('id', deckId);
       if (updateError) {
         console.error('Konnte Deck nicht aktualisieren:', updateError);
-        return false;
+        return null;
       }
     } else {
       const { data, error } = await supabase
@@ -252,7 +252,7 @@ export class DeckService {
 
       if (error || !data) {
         console.error('Konnte Deck nicht anlegen:', error);
-        return false;
+        return null;
       }
       deckId = data.id;
     }
@@ -273,7 +273,7 @@ export class DeckService {
     const { error: insertError } = await supabase.from('deck_cards').insert(cardRows);
     if (insertError) {
       console.error('Konnte Kartenliste nicht speichern:', insertError);
-      return false;
+      return null;
     }
 
     // Nur bei einem brandneuen Deck: alte, bislang nur namentlich getrackte Matches nachträglich
@@ -285,7 +285,7 @@ export class DeckService {
       }
     }
 
-    return true;
+    return deckId;
   }
 
   /**

@@ -1,6 +1,7 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { DeckService, Deck } from './deck.service';
 import { PreconService, PreconSummary } from './precon.service';
+import { ScryfallService } from './scryfall.service';
 
 /**
  * Hält den Zustand der Deck-Import-/Precon-Import-Dialoge global (statt lokal in DeckList), damit
@@ -12,6 +13,7 @@ import { PreconService, PreconSummary } from './precon.service';
 export class DeckImportService {
   private readonly deckService = inject(DeckService);
   private readonly preconService = inject(PreconService);
+  private readonly scryfall = inject(ScryfallService);
 
   private userId = '';
   private onSaved: (() => void) | null = null;
@@ -77,6 +79,86 @@ export class DeckImportService {
       this.importMessage.set(
         'Deck konnte nicht gespeichert werden. Ein Kartenname pro Zeile, z.B. "1 Sol Ring".'
       );
+    }
+  }
+
+  // --- Leeres Deck anlegen (Name + Format + Commander, dann direkt in der Detailansicht per
+  // Hand aufbauen statt eine ganze Kartenliste einzufügen) ---
+
+  private onEmptyDeckCreated: ((deck: Deck) => void) | null = null;
+  private emptyDeckCommanderSearchTimer: ReturnType<typeof setTimeout> | null = null;
+
+  readonly showNewEmptyDeckDialog = signal(false);
+  readonly newDeckName = signal('');
+  readonly newDeckFormat = signal('');
+  readonly newDeckCommanderQuery = signal('');
+  readonly newDeckCommanderSuggestions = signal<string[]>([]);
+  readonly newDeckCommanderSelected = signal<string | null>(null);
+  readonly newDeckBusy = signal(false);
+  readonly newDeckMessage = signal('');
+
+  openNewEmptyDeckDialog(userId: string, onCreated: (deck: Deck) => void): void {
+    this.userId = userId;
+    this.onEmptyDeckCreated = onCreated;
+    this.newDeckName.set('');
+    this.newDeckFormat.set('');
+    this.newDeckCommanderQuery.set('');
+    this.newDeckCommanderSuggestions.set([]);
+    this.newDeckCommanderSelected.set(null);
+    this.newDeckMessage.set('');
+    this.showNewEmptyDeckDialog.set(true);
+  }
+
+  closeNewEmptyDeckDialog(): void {
+    this.showNewEmptyDeckDialog.set(false);
+  }
+
+  onNewDeckCommanderInput(value: string): void {
+    this.newDeckCommanderQuery.set(value);
+    this.newDeckCommanderSelected.set(null);
+    if (this.emptyDeckCommanderSearchTimer) clearTimeout(this.emptyDeckCommanderSearchTimer);
+    this.emptyDeckCommanderSearchTimer = setTimeout(async () => {
+      this.newDeckCommanderSuggestions.set(await this.scryfall.autocomplete(value));
+    }, 250);
+  }
+
+  selectNewDeckCommander(name: string): void {
+    this.newDeckCommanderSelected.set(name);
+    this.newDeckCommanderQuery.set(name);
+    this.newDeckCommanderSuggestions.set([]);
+  }
+
+  async createEmptyDeck(): Promise<void> {
+    const name = this.newDeckName().trim();
+    const commander = this.newDeckCommanderSelected();
+    if (!name || !commander) return;
+
+    this.newDeckBusy.set(true);
+    this.newDeckMessage.set('');
+
+    const format = this.newDeckFormat().trim() || null;
+    const deckId = await this.deckService.saveDeck(
+      this.userId,
+      name,
+      format,
+      `Commander:\n1 ${commander}`,
+      null
+    );
+
+    this.newDeckBusy.set(false);
+
+    if (deckId) {
+      this.showNewEmptyDeckDialog.set(false);
+      this.onEmptyDeckCreated?.({
+        id: deckId,
+        userId: this.userId,
+        name,
+        format,
+        updatedAt: new Date().toISOString(),
+        isPrecon: false,
+      });
+    } else {
+      this.newDeckMessage.set('Deck konnte nicht angelegt werden.');
     }
   }
 

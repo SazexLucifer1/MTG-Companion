@@ -60,6 +60,74 @@
 </div>
 }
 
+@if (importService.showNewEmptyDeckDialog()) {
+<div class="options-menu-overlay" (click)="importService.closeNewEmptyDeckDialog()">
+  <div class="options-menu-sheet" (click)="$event.stopPropagation()">
+    <h3>🆕 Leeres Deck anlegen</h3>
+    <p class="hint">
+      Legt ein Deck ohne Kartenliste an - danach kannst du es in der Detailansicht über
+      "✏️ Bearbeiten" Karte für Karte selbst aufbauen.
+    </p>
+
+    <div class="import-field">
+      <label class="hint" for="empty-deck-name-input">Deckname</label>
+      <input
+        id="empty-deck-name-input"
+        class="glass-input"
+        type="text"
+        placeholder="z.B. Atraxa Superfriends"
+        [ngModel]="importService.newDeckName()"
+        (ngModelChange)="importService.newDeckName.set($event)"
+      />
+    </div>
+
+    <div class="import-field">
+      <label class="hint" for="empty-deck-format-input">Format (optional)</label>
+      <input
+        id="empty-deck-format-input"
+        class="glass-input"
+        type="text"
+        placeholder="z.B. Commander"
+        [ngModel]="importService.newDeckFormat()"
+        (ngModelChange)="importService.newDeckFormat.set($event)"
+      />
+    </div>
+
+    <div class="import-field">
+      <label class="hint" for="empty-deck-commander-input">Commander</label>
+      <input
+        id="empty-deck-commander-input"
+        class="glass-input"
+        type="text"
+        placeholder="Kartenname suchen …"
+        [ngModel]="importService.newDeckCommanderQuery()"
+        (ngModelChange)="importService.onNewDeckCommanderInput($event)"
+      />
+      @if (importService.newDeckCommanderSuggestions().length > 0) {
+        <ul class="commander-suggestions">
+          @for (s of importService.newDeckCommanderSuggestions(); track s) {
+            <li (click)="importService.selectNewDeckCommander(s)">{{ s }}</li>
+          }
+        </ul>
+      }
+    </div>
+
+    @if (importService.newDeckMessage()) {
+      <p class="error">{{ importService.newDeckMessage() }}</p>
+    }
+
+    <button
+      class="glass-button primary"
+      [disabled]="importService.newDeckBusy() || !importService.newDeckName().trim() || !importService.newDeckCommanderSelected()"
+      (click)="importService.createEmptyDeck()"
+    >
+      {{ importService.newDeckBusy() ? 'Lege an …' : 'Anlegen' }}
+    </button>
+    <button class="glass-button" (click)="importService.closeNewEmptyDeckDialog()">Abbrechen</button>
+  </div>
+</div>
+}
+
 @if (importService.showPreconDialog()) {
 <div class="options-menu-overlay" (click)="importService.closePreconDialog()">
   <div class="options-menu-sheet precon-sheet" (click)="$event.stopPropagation()">
