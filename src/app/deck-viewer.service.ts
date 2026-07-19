@@ -327,10 +327,33 @@ export class DeckViewerService {
   readonly addCardCreatureTypeFilter = signal('');
   readonly addCardColorFilter = signal<'all' | 'W' | 'U' | 'B' | 'R' | 'G' | 'C'>('all');
   readonly addCardCmcFilter = signal<'all' | number>('all');
+  readonly addCardEffectFilter = signal('all');
   readonly addCardResults = signal<ScryfallCard[]>([]);
   readonly addCardBusy = signal(false);
   readonly addCardMessage = signal('');
   private addCardSearchTimer: ReturnType<typeof setTimeout> | null = null;
+
+  /**
+   * Effekt-Kategorien für die Add-Karten-Suche, über Scryfalls community-gepflegte Oracle-Tags
+   * (otag:) bzw. offizielle Keyword-Abfragen (keyword:) - viel zuverlässiger als eine eigene
+   * Texterkennung. "Marken" nutzt mangels passendem Tag eine Oracle-Text-Näherung.
+   */
+  readonly effectFilters: { value: string; label: string; query: string }[] = [
+    { value: 'lifelink', label: 'Lifelink', query: 'keyword:lifelink' },
+    { value: 'tokens', label: 'Marken erzeugen', query: 'o:"create a" o:token' },
+    { value: 'draw', label: 'Kartenziehen', query: 'otag:draw' },
+    { value: 'removal', label: 'Entfernung', query: 'otag:removal' },
+    { value: 'boardwipe', label: 'Bretträumung', query: 'otag:board-wipe' },
+    { value: 'ramp', label: 'Rampe', query: 'otag:ramp' },
+    { value: 'lifegain', label: 'Lebenspunkte gewinnen', query: 'otag:lifegain' },
+    { value: 'counters', label: '+1/+1-Zähler', query: 'otag:counters-matter' },
+    { value: 'proliferate', label: 'Proliferate', query: 'keyword:proliferate' },
+    { value: 'protection', label: 'Schutz', query: 'otag:protection' },
+    { value: 'reanimate', label: 'Wiederbelebung', query: 'otag:reanimate' },
+    { value: 'recursion', label: 'Rekursion', query: 'otag:recursion' },
+    { value: 'tutor', label: 'Tutor', query: 'otag:tutor' },
+    { value: 'sacrifice', label: 'Opfern', query: 'otag:sacrifice-outlet' },
+  ];
 
   private static readonly TYPE_TO_SCRYFALL: Record<string, string> = {
     Planeswalker: 'planeswalker',
@@ -438,6 +461,7 @@ export class DeckViewerService {
     this.addCardCreatureTypeFilter.set('');
     this.addCardColorFilter.set('all');
     this.addCardCmcFilter.set('all');
+    this.addCardEffectFilter.set('all');
     this.addCardResults.set([]);
     this.addCardMessage.set('');
   }
@@ -549,6 +573,11 @@ export class DeckViewerService {
     this.triggerAddCardSearch();
   }
 
+  setAddCardEffectFilter(value: string): void {
+    this.addCardEffectFilter.set(value);
+    this.triggerAddCardSearch();
+  }
+
   private triggerAddCardSearch(): void {
     if (this.addCardSearchTimer) clearTimeout(this.addCardSearchTimer);
     const query = this.addCardQuery();
@@ -556,8 +585,16 @@ export class DeckViewerService {
     const creatureType = this.addCardCreatureTypeFilter();
     const color = this.addCardColorFilter();
     const cmc = this.addCardCmcFilter();
+    const effect = this.addCardEffectFilter();
 
-    if (!query.trim() && type === 'all' && !creatureType.trim() && color === 'all' && cmc === 'all') {
+    if (
+      !query.trim() &&
+      type === 'all' &&
+      !creatureType.trim() &&
+      color === 'all' &&
+      cmc === 'all' &&
+      effect === 'all'
+    ) {
       this.addCardResults.set([]);
       return;
     }
@@ -569,6 +606,7 @@ export class DeckViewerService {
         creatureType: creatureType.trim() || undefined,
         color: color === 'all' ? null : color,
         cmc: cmc === 'all' ? null : cmc,
+        effectQuery: effect === 'all' ? undefined : this.effectFilters.find((f) => f.value === effect)?.query,
         colorIdentitySubset: this.deckColorIdentitySubset(),
       });
       this.addCardResults.set(results);

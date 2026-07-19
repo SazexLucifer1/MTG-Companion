@@ -282,11 +282,22 @@ export class ScryfallService {
       cmc?: number | null;
       color?: string | null;
       colorIdentitySubset?: string[] | null;
+      /** Fertiges Scryfall-Query-Fragment für eine Effekt-Kategorie, z.B. "otag:removal" - siehe EFFECT_QUERIES in deck-viewer.service.ts. */
+      effectQuery?: string;
     }
   ): Promise<ScryfallCard[]> {
     const trimmed = query.trim();
     const creatureType = filters.creatureType?.trim();
-    if (!trimmed && !filters.type && !creatureType && filters.cmc == null && !filters.color) return [];
+    if (
+      !trimmed &&
+      !filters.type &&
+      !creatureType &&
+      filters.cmc == null &&
+      !filters.color &&
+      !filters.effectQuery
+    ) {
+      return [];
+    }
 
     const parts = ['legal:commander'];
     if (trimmed) parts.push(`name:"${trimmed.replace(/"/g, '')}"`);
@@ -294,6 +305,7 @@ export class ScryfallService {
     if (creatureType) parts.push(`type:"${creatureType.replace(/"/g, '')}"`);
     if (filters.cmc != null) parts.push(filters.cmc >= 7 ? 'cmc>=7' : `cmc:${filters.cmc}`);
     if (filters.color) parts.push(filters.color === 'C' ? 'id:c' : `id:${filters.color}`);
+    if (filters.effectQuery) parts.push(filters.effectQuery);
     if (filters.colorIdentitySubset) {
       parts.push(filters.colorIdentitySubset.length > 0 ? `id<=${filters.colorIdentitySubset.join('')}` : 'id:c');
     }
