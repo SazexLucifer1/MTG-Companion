@@ -8,6 +8,7 @@ import {
   SPELLBOOK_BRACKET_LABELS,
 } from './commander-spellbook.service';
 import { EdhrecService, EdhrecCardlist, EdhrecTag } from './edhrec.service';
+import { AuthService } from './auth.service';
 
 export interface ManaCurveBucket {
   label: string;
@@ -47,8 +48,22 @@ export class DeckViewerService {
   private readonly scryfall = inject(ScryfallService);
   private readonly commanderSpellbook = inject(CommanderSpellbookService);
   private readonly edhrec = inject(EdhrecService);
+  private readonly auth = inject(AuthService);
 
   readonly viewingDeck = signal<Deck | null>(null);
+
+  /**
+   * Ob das gerade angesehene Deck dem eingeloggten User selbst gehört - alle Bearbeiten-Aktionen
+   * (Karten hinzufügen/entfernen, Commander markieren, Name/Tag ändern, neu einfügen) sind sonst
+   * gesperrt. Wichtig für "Profil ansehen" bei anderen Usern: die Deckliste dort ist zwar
+   * readonlyMode (kein Stift/Löschen-Button), aber "Ansehen" öffnet dieselbe Detailansicht wie bei
+   * eigenen Decks - ohne diesen Check ließe sich darüber trotzdem fremde Decks bearbeiten.
+   */
+  readonly canEditViewingDeck = computed(() => {
+    const deck = this.viewingDeck();
+    const uid = this.auth.currentUser()?.id;
+    return !!deck && !!uid && deck.userId === uid;
+  });
   readonly viewingDeckCards = signal<DeckCard[]>([]);
   readonly viewingChangeLog = signal<DeckChangeEntry[]>([]);
   readonly viewingDeckGameStats = signal<DeckGameStats | null>(null);
@@ -82,7 +97,7 @@ export class DeckViewerService {
   async saveDeckInfo(): Promise<void> {
     const deck = this.viewingDeck();
     const name = this.deckNameDraft().trim();
-    if (!deck || !name) return;
+    if (!deck || !name || !this.canEditViewingDeck()) return;
 
     this.deckInfoSaving.set(true);
     const tag = this.deckTagDraft();
@@ -616,6 +631,7 @@ export class DeckViewerService {
    * gar nicht.
    */
   toggleCommanderMark(card: DeckCard): void {
+    if (!this.canEditViewingDeck()) return;
     this.commanderMarkError.set(null);
 
     if (card.isCommander) {
@@ -642,7 +658,7 @@ export class DeckViewerService {
   }
 
   toggleEditMode(): void {
-    if (this.editMode()) return; // Verlassen geht nur bewusst über saveEdits()/cancelEdits()
+    if (this.editMode() || !this.canEditViewingDeck()) return; // Verlassen geht nur bewusst über saveEdits()/cancelEdits()
     this.editMode.set(true);
     this.pendingChanges.set(new Map());
     this.pendingCommanderChanges.set(new Map());
@@ -711,7 +727,7 @@ export class DeckViewerService {
 
   async saveEdits(): Promise<void> {
     const deck = this.viewingDeck();
-    if (!deck) return;
+    if (!deck || !this.canEditViewingDeck()) return;
     this.editSaveBusy.set(true);
 
     const saved = this.savedQuantityByKey();
@@ -840,6 +856,7 @@ export class DeckViewerService {
 
   /** Fügt eine Karte aus den Suchergebnissen nur lokal zu pendingChanges hinzu - noch nicht gespeichert. */
   addCard(card: ScryfallCard): void {
+    if (!this.canEditViewingDeck()) return;
     const key = card.name.toLowerCase();
     const currentQty = this.editedDeckCards().find((c) => c.cardName.toLowerCase() === key)?.quantity ?? 0;
     const existingInDeck = this.viewingDeckCards().find((c) => c.cardName.toLowerCase() === key);

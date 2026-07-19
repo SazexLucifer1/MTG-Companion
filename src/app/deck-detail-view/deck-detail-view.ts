@@ -25,7 +25,7 @@ export class DeckDetailView {
    */
   async reimportDecklist(): Promise<void> {
     const deck = this.viewer.viewingDeck();
-    if (!deck) return;
+    if (!deck || !this.viewer.canEditViewingDeck()) return;
     await this.importService.openEditDeckDialog(deck.userId, deck, async () => {
       const decks = await this.deckService.loadDecksForUser(deck.userId);
       const fresh = decks.find((d) => d.id === deck.id) ?? deck;
