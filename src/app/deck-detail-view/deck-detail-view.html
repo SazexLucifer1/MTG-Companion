@@ -45,6 +45,9 @@
         <button class="glass-chip small" [class.active]="viewer.viewMode() === 'text'" (click)="viewer.viewMode.set('text')">
           📋 Text
         </button>
+        <button class="glass-chip small" [class.active]="viewer.editMode()" (click)="viewer.toggleEditMode()">
+          ✏️ Bearbeiten
+        </button>
       </div>
     }
   </div>
@@ -53,6 +56,99 @@
     @if (viewer.detailBusy()) {
       <p class="hint">Lade Deck …</p>
     } @else {
+      @if (viewer.editMode()) {
+        <div class="add-card-panel">
+          <h4 class="deck-section-title">➕ Karte hinzufügen</h4>
+          @if (!viewer.deckColorIdentitySubset()) {
+            <p class="hint">Suche über alle Commander-legalen Karten (Farbidentität noch nicht bekannt).</p>
+          } @else if (viewer.deckColorIdentitySubset()!.length > 0) {
+            <p class="hint">
+              Nur Karten innerhalb der Farbidentität deines Commanders ({{ viewer.deckColorIdentitySubset()!.join('/') }}).
+            </p>
+          } @else {
+            <p class="hint">Nur farblose Karten (Commander ohne Farbidentität).</p>
+          }
+
+          <input
+            class="glass-input"
+            type="text"
+            placeholder="Kartenname …"
+            [ngModel]="viewer.addCardQuery()"
+            (ngModelChange)="viewer.onAddCardSearchInput($event)"
+          />
+          <div class="chip-row card-filter-row">
+            <select
+              class="glass-input small"
+              [ngModel]="viewer.addCardTypeFilter()"
+              (ngModelChange)="viewer.setAddCardTypeFilter($event)"
+            >
+              <option [ngValue]="'all'">Typ: alle</option>
+              <option [ngValue]="'Kreatur'">Kreatur</option>
+              <option [ngValue]="'Planeswalker'">Planeswalker</option>
+              <option [ngValue]="'Battle'">Battle</option>
+              <option [ngValue]="'Spontanzauber'">Spontanzauber</option>
+              <option [ngValue]="'Hexerei'">Hexerei</option>
+              <option [ngValue]="'Artefakt'">Artefakt</option>
+              <option [ngValue]="'Verzauberung'">Verzauberung</option>
+              <option [ngValue]="'Land'">Land</option>
+            </select>
+            <input
+              class="glass-input small"
+              type="text"
+              placeholder="Kreaturtyp (z.B. Goblin)"
+              [ngModel]="viewer.addCardCreatureTypeFilter()"
+              (ngModelChange)="viewer.onAddCardCreatureTypeInput($event)"
+            />
+            <select
+              class="glass-input small"
+              [ngModel]="viewer.addCardCmcFilter()"
+              (ngModelChange)="viewer.setAddCardCmcFilter($event)"
+            >
+              <option [ngValue]="'all'">Manawert: alle</option>
+              @for (n of [0, 1, 2, 3, 4, 5, 6, 7]; track n) {
+                <option [ngValue]="n">{{ n === 7 ? '7+' : n }}</option>
+              }
+            </select>
+            <select
+              class="glass-input small"
+              [ngModel]="viewer.addCardColorFilter()"
+              (ngModelChange)="viewer.setAddCardColorFilter($event)"
+            >
+              <option [ngValue]="'all'">Farbe: alle</option>
+              <option [ngValue]="'W'">Weiß</option>
+              <option [ngValue]="'U'">Blau</option>
+              <option [ngValue]="'B'">Schwarz</option>
+              <option [ngValue]="'R'">Rot</option>
+              <option [ngValue]="'G'">Grün</option>
+              <option [ngValue]="'C'">Farblos</option>
+            </select>
+          </div>
+
+          @if (viewer.addCardMessage()) {
+            <p class="hint">{{ viewer.addCardMessage() }}</p>
+          }
+
+          @if (viewer.addCardBusy()) {
+            <p class="hint">Suche …</p>
+          } @else if (viewer.addCardResults().length > 0) {
+            <ul class="add-card-results">
+              @for (card of viewer.addCardResults(); track card.name) {
+                <li>
+                  @if (card.imageUrl) {
+                    <img class="card-thumb" [src]="card.imageUrl" [alt]="card.name" />
+                  }
+                  <span class="add-card-name">
+                    <span class="add-card-name-text">{{ card.name }}</span>
+                    <span class="hint">{{ card.typeLine }}</span>
+                  </span>
+                  <button class="icon-button" (click)="viewer.addCard(card)" aria-label="Hinzufügen">➕</button>
+                </li>
+              }
+            </ul>
+          }
+        </div>
+      }
+
       @if (viewer.viewingDeckCards().length > 0) {
         <div class="deck-analysis-header-row">
           <button class="glass-chip small" (click)="viewer.toggleDeckAnalysis()">
@@ -295,6 +391,9 @@
                 @if (card.quantity > 1) {
                   <span class="deck-card-qty">{{ card.quantity }}×</span>
                 }
+                @if (viewer.editMode() && !card.isCommander) {
+                  <button class="deck-card-remove" (click)="viewer.removeCard(card)" aria-label="Karte entfernen">✕</button>
+                }
               </div>
             }
           </div>
@@ -304,6 +403,9 @@
               <li>
                 <span class="deck-card-qty-text">{{ card.quantity }}×</span>
                 <span>{{ card.cardName }}</span>
+                @if (viewer.editMode() && !card.isCommander) {
+                  <button class="icon-button" (click)="viewer.removeCard(card)" aria-label="Karte entfernen">✕</button>
+                }
               </li>
             }
           </ul>

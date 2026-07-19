@@ -267,6 +267,44 @@ export class ScryfallService {
     return result;
   }
 
+  // NEU
+  /**
+   * Kartensuche zum Hinzufügen einzelner Karten zu einem Deck. Beschränkt sich bewusst auf
+   * Commander-legale Karten (legal:commander) und optional auf eine Farbidentität
+   * (id<=<Farben> - Teilmenge, damit das Ergebnis wirklich in ein Deck mit dieser
+   * Commander-Farbidentität passt; leeres Array = nur farblose Karten über id:c).
+   */
+  async searchCards(
+    query: string,
+    filters: {
+      type?: string;
+      creatureType?: string;
+      cmc?: number | null;
+      color?: string | null;
+      colorIdentitySubset?: string[] | null;
+    }
+  ): Promise<ScryfallCard[]> {
+    const trimmed = query.trim();
+    const creatureType = filters.creatureType?.trim();
+    if (!trimmed && !filters.type && !creatureType && filters.cmc == null && !filters.color) return [];
+
+    const parts = ['legal:commander'];
+    if (trimmed) parts.push(`name:"${trimmed.replace(/"/g, '')}"`);
+    if (filters.type) parts.push(`type:${filters.type}`);
+    if (creatureType) parts.push(`type:"${creatureType.replace(/"/g, '')}"`);
+    if (filters.cmc != null) parts.push(filters.cmc >= 7 ? 'cmc>=7' : `cmc:${filters.cmc}`);
+    if (filters.color) parts.push(filters.color === 'C' ? 'id:c' : `id:${filters.color}`);
+    if (filters.colorIdentitySubset) {
+      parts.push(filters.colorIdentitySubset.length > 0 ? `id<=${filters.colorIdentitySubset.join('')}` : 'id:c');
+    }
+
+    const q = encodeURIComponent(parts.join(' '));
+    const res = await this.fetchWithRetry(`${API}/cards/search?q=${q}&unique=cards&order=name`);
+    if (!res?.ok) return [];
+    const data = await res.json();
+    return ((data.data as any[]) ?? []).slice(0, 30).map((c) => this.toCard(c));
+  }
+
   private toCard(data: any): ScryfallCard {
     return {
       name: data.name as string,

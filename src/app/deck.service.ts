@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { supabase } from './supabase.client';
-import { ScryfallService } from './scryfall.service';
+import { ScryfallService, ScryfallCard } from './scryfall.service';
 import { isPlayerWinner } from './match-utils';
 import { sleep } from './array-utils';
 
@@ -487,6 +487,89 @@ export class DeckService {
     if (error) {
       console.error('Konnte Deck nicht löschen:', error);
     }
+  }
+
+  /**
+   * Fügt eine einzelne Karte hinzu (Bearbeitungsmodus in der Deck-Detailansicht). Erhöht die
+   * Anzahl, falls die Karte schon drin ist, statt eine zweite Zeile anzulegen. `card` kommt direkt
+   * aus der Scryfall-Suche der Add-Karten-UI, damit kein zusätzlicher Lookup nötig ist.
+   */
+  async addCardToDeck(deckId: string, card: ScryfallCard, quantity = 1): Promise<boolean> {
+    const { data: existing, error: lookupError } = await supabase
+      .from('deck_cards')
+      .select('id, quantity')
+      .eq('deck_id', deckId)
+      .ilike('card_name', card.name)
+      .maybeSingle();
+
+    if (lookupError) {
+      console.error('Konnte Deck-Karte nicht nachschlagen:', lookupError);
+      return false;
+    }
+
+    if (existing) {
+      const { error } = await supabase
+        .from('deck_cards')
+        .update({ quantity: existing.quantity + quantity })
+        .eq('id', existing.id);
+      if (error) {
+        console.error('Konnte Kartenanzahl nicht erhöhen:', error);
+        return false;
+      }
+    } else {
+      const { error } = await supabase.from('deck_cards').insert({
+        deck_id: deckId,
+        card_name: card.name,
+        quantity,
+        image_url: card.imageUrl ?? null,
+        type_line: card.typeLine ?? null,
+        cmc: card.cmc ?? 0,
+        is_commander: false,
+      });
+      if (error) {
+        console.error('Konnte Karte nicht hinzufügen:', error);
+        return false;
+      }
+    }
+
+    await supabase.from('deck_change_log').insert({
+      deck_id: deckId,
+      card_name: card.name,
+      change_type: 'added',
+      quantity,
+    });
+    await supabase.from('decks').update({ updated_at: new Date().toISOString() }).eq('id', deckId);
+    return true;
+  }
+
+  /** Entfernt eine Karte komplett (alle Kopien) aus dem Deck. */
+  async removeCardFromDeck(deckId: string, cardName: string): Promise<boolean> {
+    const { data: existing, error: lookupError } = await supabase
+      .from('deck_cards')
+      .select('id, quantity')
+      .eq('deck_id', deckId)
+      .ilike('card_name', cardName)
+      .maybeSingle();
+
+    if (lookupError || !existing) {
+      if (lookupError) console.error('Konnte Deck-Karte nicht nachschlagen:', lookupError);
+      return false;
+    }
+
+    const { error: deleteError } = await supabase.from('deck_cards').delete().eq('id', existing.id);
+    if (deleteError) {
+      console.error('Konnte Karte nicht entfernen:', deleteError);
+      return false;
+    }
+
+    await supabase.from('deck_change_log').insert({
+      deck_id: deckId,
+      card_name: cardName,
+      change_type: 'removed',
+      quantity: existing.quantity,
+    });
+    await supabase.from('decks').update({ updated_at: new Date().toISOString() }).eq('id', deckId);
+    return true;
   }
 
   /**

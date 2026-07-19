@@ -311,6 +311,138 @@ export class DeckViewerService {
     this.colorFilter.set('all');
   }
 
+  // NEU - Bearbeitungsmodus: Karten hinzufügen/entfernen
+  readonly editMode = signal(false);
+  readonly addCardQuery = signal('');
+  readonly addCardTypeFilter = signal<'all' | string>('all');
+  readonly addCardCreatureTypeFilter = signal('');
+  readonly addCardColorFilter = signal<'all' | 'W' | 'U' | 'B' | 'R' | 'G' | 'C'>('all');
+  readonly addCardCmcFilter = signal<'all' | number>('all');
+  readonly addCardResults = signal<ScryfallCard[]>([]);
+  readonly addCardBusy = signal(false);
+  readonly addCardMessage = signal('');
+  private addCardSearchTimer: ReturnType<typeof setTimeout> | null = null;
+
+  private static readonly TYPE_TO_SCRYFALL: Record<string, string> = {
+    Planeswalker: 'planeswalker',
+    Battle: 'battle',
+    Kreatur: 'creature',
+    Spontanzauber: 'instant',
+    Hexerei: 'sorcery',
+    Artefakt: 'artifact',
+    Verzauberung: 'enchantment',
+    Land: 'land',
+  };
+
+  /**
+   * Farbidentität des/der Commander (für die "id<="-Teilmengen-Beschränkung der Add-Karten-Suche,
+   * damit nur wirklich regelkonform ins Deck passende Karten vorgeschlagen werden). null, solange
+   * die Scryfall-Zusatzdaten (viewingCardDetails) noch nicht geladen sind oder kein Commander
+   * gesetzt ist - dann bleibt die Suche unbeschränkt.
+   */
+  readonly deckColorIdentitySubset = computed<string[] | null>(() => {
+    const commanders = this.viewingDeckCards().filter((c) => c.isCommander);
+    if (commanders.length === 0) return null;
+    const details = this.viewingCardDetails();
+    const identities = commanders.map((c) => details.get(c.cardName.toLowerCase())?.colorIdentity);
+    if (identities.some((i) => i === undefined)) return null;
+    const union = new Set<string>();
+    for (const id of identities) for (const c of id ?? []) union.add(c);
+    return [...union];
+  });
+
+  toggleEditMode(): void {
+    this.editMode.update((v) => !v);
+    if (!this.editMode()) {
+      this.addCardQuery.set('');
+      this.addCardTypeFilter.set('all');
+      this.addCardCreatureTypeFilter.set('');
+      this.addCardColorFilter.set('all');
+      this.addCardCmcFilter.set('all');
+      this.addCardResults.set([]);
+      this.addCardMessage.set('');
+    }
+  }
+
+  onAddCardSearchInput(value: string): void {
+    this.addCardQuery.set(value);
+    this.triggerAddCardSearch();
+  }
+
+  onAddCardCreatureTypeInput(value: string): void {
+    this.addCardCreatureTypeFilter.set(value);
+    this.triggerAddCardSearch();
+  }
+
+  setAddCardTypeFilter(value: 'all' | string): void {
+    this.addCardTypeFilter.set(value);
+    this.triggerAddCardSearch();
+  }
+
+  setAddCardColorFilter(value: 'all' | 'W' | 'U' | 'B' | 'R' | 'G' | 'C'): void {
+    this.addCardColorFilter.set(value);
+    this.triggerAddCardSearch();
+  }
+
+  setAddCardCmcFilter(value: 'all' | number): void {
+    this.addCardCmcFilter.set(value);
+    this.triggerAddCardSearch();
+  }
+
+  private triggerAddCardSearch(): void {
+    if (this.addCardSearchTimer) clearTimeout(this.addCardSearchTimer);
+    const query = this.addCardQuery();
+    const type = this.addCardTypeFilter();
+    const creatureType = this.addCardCreatureTypeFilter();
+    const color = this.addCardColorFilter();
+    const cmc = this.addCardCmcFilter();
+
+    if (!query.trim() && type === 'all' && !creatureType.trim() && color === 'all' && cmc === 'all') {
+      this.addCardResults.set([]);
+      return;
+    }
+
+    this.addCardSearchTimer = setTimeout(async () => {
+      this.addCardBusy.set(true);
+      const results = await this.scryfall.searchCards(query, {
+        type: type === 'all' ? undefined : DeckViewerService.TYPE_TO_SCRYFALL[type] ?? type.toLowerCase(),
+        creatureType: creatureType.trim() || undefined,
+        color: color === 'all' ? null : color,
+        cmc: cmc === 'all' ? null : cmc,
+        colorIdentitySubset: this.deckColorIdentitySubset(),
+      });
+      this.addCardResults.set(results);
+      this.addCardBusy.set(false);
+    }, 300);
+  }
+
+  async addCard(card: ScryfallCard): Promise<void> {
+    const deck = this.viewingDeck();
+    if (!deck) return;
+    this.addCardBusy.set(true);
+    const ok = await this.deckService.addCardToDeck(deck.id, card);
+    this.addCardMessage.set(ok ? `"${card.name}" hinzugefügt.` : `Konnte "${card.name}" nicht hinzufügen.`);
+    if (ok) await this.reloadDeckCards();
+    this.addCardBusy.set(false);
+  }
+
+  async removeCard(card: DeckCard): Promise<void> {
+    const deck = this.viewingDeck();
+    if (!deck) return;
+    const ok = await this.deckService.removeCardFromDeck(deck.id, card.cardName);
+    if (ok) {
+      this.viewingDeckCards.update((cards) => cards.filter((c) => c.cardName !== card.cardName));
+    }
+  }
+
+  private async reloadDeckCards(): Promise<void> {
+    const deck = this.viewingDeck();
+    if (!deck) return;
+    const cards = await this.deckService.loadDeckCards(deck.id);
+    this.viewingDeckCards.set(cards);
+    this.loadCardDetails(cards);
+  }
+
   async open(deck: Deck): Promise<void> {
     this.viewingDeck.set(deck);
     this.detailBusy.set(true);
@@ -318,6 +450,9 @@ export class DeckViewerService {
     this.showDeckStatsInfo.set(false);
     this.showDeckAnalysis.set(false);
     this.resetCardFilters();
+    this.editMode.set(false);
+    this.addCardResults.set([]);
+    this.addCardMessage.set('');
     this.showDeckAnalysisInfo.set(false);
     this.viewingCardDetails.set(new Map());
     this.bracketEstimate.set(null);
@@ -376,6 +511,9 @@ export class DeckViewerService {
     this.bracketEstimateBusy.set(false);
     this.bracketEstimateFailed.set(false);
     this.bracketEstimateErrorDetail.set(null);
+    this.editMode.set(false);
+    this.addCardResults.set([]);
+    this.addCardMessage.set('');
   }
 
   toggleChangeLog(): void {
