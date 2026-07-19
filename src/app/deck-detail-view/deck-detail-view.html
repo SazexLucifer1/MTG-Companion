@@ -108,6 +108,16 @@
 
         <div class="add-card-panel">
           <h4 class="deck-section-title">➕ Karte hinzufügen</h4>
+          <div class="chip-row">
+            <button class="glass-chip small" [class.active]="viewer.addCardMode() === 'search'" (click)="viewer.setAddCardMode('search')">
+              🔍 Suche
+            </button>
+            <button class="glass-chip small" [class.active]="viewer.addCardMode() === 'edhrec'" (click)="viewer.setAddCardMode('edhrec')">
+              ✨ EDHREC
+            </button>
+          </div>
+
+          @if (viewer.addCardMode() === 'search') {
           @if (!viewer.deckColorIdentitySubset()) {
             <p class="hint">Suche über alle Commander-legalen Karten (Farbidentität noch nicht bekannt).</p>
           } @else if (viewer.deckColorIdentitySubset()!.length > 0) {
@@ -221,6 +231,59 @@
                 </li>
               }
             </ul>
+          }
+          }
+
+          @if (viewer.addCardMode() === 'edhrec') {
+            @if (!viewer.edhrecCommanderName()) {
+              <p class="hint">Kein Commander im Deck gefunden - EDHREC-Vorschläge brauchen einen Commander.</p>
+            } @else if (viewer.edhrecBusy()) {
+              <p class="hint">Lade EDHREC-Vorschläge für {{ viewer.edhrecCommanderName() }} …</p>
+            } @else if (viewer.edhrecFailed()) {
+              <p class="hint">
+                EDHREC-Vorschläge aktuell nicht verfügbar (inoffizielle Schnittstelle, evtl. kein
+                Eintrag für diesen Commander oder für Partner-/Background-Paare).
+              </p>
+            } @else if (viewer.edhrecLists(); as lists) {
+              <p class="hint bracket-caveat">
+                Inoffizielle EDHREC-Daten für {{ viewer.edhrecCommanderName() }}. Bereits im Deck
+                vorhandene Karten sind markiert.
+              </p>
+              @for (list of lists; track list.tag) {
+                @if (list.cards.length > 0) {
+                  <button class="glass-chip small" (click)="toggleEdhrecCategory(list.tag)">
+                    {{ isEdhrecCategoryExpanded(list.tag) ? '▾' : '▸' }} {{ list.header }} ({{ list.cards.length }})
+                  </button>
+                  @if (isEdhrecCategoryExpanded(list.tag)) {
+                    <ul class="add-card-results">
+                      @for (card of list.cards; track card.name) {
+                        <li>
+                          <span class="add-card-name">
+                            <span class="add-card-name-text">
+                              @if (viewer.isCardInDeck(card.name)) {✓ }{{ card.name }}
+                            </span>
+                            <span class="hint">
+                              {{ card.numDecks }} / {{ card.potentialDecks }} Decks ·
+                              Synergie {{ card.synergy | percent: '1.0-1' }}
+                            </span>
+                          </span>
+                          @if (!viewer.isCardInDeck(card.name)) {
+                            <button
+                              class="icon-button"
+                              [class.flash-add]="viewer.isFlashing(card.name, 'add')"
+                              (click)="viewer.addEdhrecCard(card.name)"
+                              aria-label="Hinzufügen"
+                            >
+                              ➕
+                            </button>
+                          }
+                        </li>
+                      }
+                    </ul>
+                  }
+                }
+              }
+            }
           }
         </div>
       }

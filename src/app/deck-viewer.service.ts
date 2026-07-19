@@ -7,6 +7,7 @@ import {
   BracketCombo,
   SPELLBOOK_BRACKET_LABELS,
 } from './commander-spellbook.service';
+import { EdhrecService, EdhrecCardlist } from './edhrec.service';
 
 export interface ManaCurveBucket {
   label: string;
@@ -45,6 +46,7 @@ export class DeckViewerService {
   private readonly deckService = inject(DeckService);
   private readonly scryfall = inject(ScryfallService);
   private readonly commanderSpellbook = inject(CommanderSpellbookService);
+  private readonly edhrec = inject(EdhrecService);
 
   readonly viewingDeck = signal<Deck | null>(null);
   readonly viewingDeckCards = signal<DeckCard[]>([]);
@@ -531,6 +533,10 @@ export class DeckViewerService {
     this.addCardKeywordFilter.set('all');
     this.addCardResults.set([]);
     this.addCardMessage.set('');
+    this.addCardMode.set('search');
+    this.edhrecLists.set(null);
+    this.edhrecBusy.set(false);
+    this.edhrecFailed.set(false);
   }
 
   private setPendingQuantity(card: DeckCard, quantity: number): void {
@@ -603,6 +609,7 @@ export class DeckViewerService {
 
     this.pendingChanges.set(new Map());
     this.editMode.set(false);
+    this.addCardMode.set('search');
     await this.reloadDeckCards();
     this.editSaveBusy.set(false);
   }
@@ -613,6 +620,7 @@ export class DeckViewerService {
     this.addCardQuery.set('');
     this.addCardResults.set([]);
     this.addCardMessage.set('');
+    this.addCardMode.set('search');
   }
 
   onAddCardSearchInput(value: string): void {
@@ -711,6 +719,51 @@ export class DeckViewerService {
     this.triggerFlash(card.name, 'add');
   }
 
+  // NEU - EDHREC-Vorschläge im Add-Karten-Panel
+  readonly addCardMode = signal<'search' | 'edhrec'>('search');
+  readonly edhrecLists = signal<EdhrecCardlist[] | null>(null);
+  readonly edhrecBusy = signal(false);
+  readonly edhrecFailed = signal(false);
+  /** Nur der erste/Haupt-Commander - EDHRECs Slug-Schema für Partner-/Background-Paare liess sich nicht zuverlässig ermitteln. */
+  readonly edhrecCommanderName = computed(() => this.viewingDeckCards().find((c) => c.isCommander)?.cardName ?? null);
+
+  setAddCardMode(mode: 'search' | 'edhrec'): void {
+    this.addCardMode.set(mode);
+    if (mode === 'edhrec' && this.edhrecLists() === null && !this.edhrecBusy()) {
+      this.loadEdhrecRecommendations();
+    }
+  }
+
+  private async loadEdhrecRecommendations(): Promise<void> {
+    const commander = this.edhrecCommanderName();
+    if (!commander) {
+      this.edhrecFailed.set(true);
+      return;
+    }
+    this.edhrecBusy.set(true);
+    this.edhrecFailed.set(false);
+    const lists = await this.edhrec.getCommanderRecommendations(commander);
+    this.edhrecLists.set(lists);
+    this.edhrecFailed.set(lists === null);
+    this.edhrecBusy.set(false);
+  }
+
+  isCardInDeck(cardName: string): boolean {
+    return this.editedDeckCards().some((c) => c.cardName.toLowerCase() === cardName.toLowerCase());
+  }
+
+  /** Löst den EDHREC-Kartennamen zu vollen Scryfall-Daten auf (EDHREC selbst liefert nur Name+Statistik) und staged ihn wie addCard(). */
+  async addEdhrecCard(cardName: string): Promise<void> {
+    this.addCardBusy.set(true);
+    const found = await this.scryfall.findCard(cardName);
+    this.addCardBusy.set(false);
+    if (!found) {
+      this.addCardMessage.set(`"${cardName}" nicht bei Scryfall gefunden.`);
+      return;
+    }
+    this.addCard(found);
+  }
+
   private async reloadDeckCards(): Promise<void> {
     const deck = this.viewingDeck();
     if (!deck) return;
@@ -737,6 +790,10 @@ export class DeckViewerService {
     this.flashState.set(null);
     this.addCardResults.set([]);
     this.addCardMessage.set('');
+    this.addCardMode.set('search');
+    this.edhrecLists.set(null);
+    this.edhrecBusy.set(false);
+    this.edhrecFailed.set(false);
     this.showDeckAnalysisInfo.set(false);
     this.viewingCardDetails.set(new Map());
     this.bracketEstimate.set(null);
@@ -800,6 +857,10 @@ export class DeckViewerService {
     this.flashState.set(null);
     this.addCardResults.set([]);
     this.addCardMessage.set('');
+    this.addCardMode.set('search');
+    this.edhrecLists.set(null);
+    this.edhrecBusy.set(false);
+    this.edhrecFailed.set(false);
   }
 
   toggleChangeLog(): void {
