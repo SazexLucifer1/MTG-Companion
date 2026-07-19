@@ -258,10 +258,13 @@
         @if (viewer.addCardMode() === 'edhrec' && viewer.edhrecLists(); as lists) {
           @for (list of lists; track list.tag) {
             @if (list.cards.length > 0) {
-              <button class="glass-chip small" (click)="toggleEdhrecCategory(list.tag)">
+              <button class="glass-chip small" (click)="toggleEdhrecCategory(list)">
                 {{ isEdhrecCategoryExpanded(list.tag) ? '▾' : '▸' }} {{ list.header }} ({{ list.cards.length }})
               </button>
               @if (isEdhrecCategoryExpanded(list.tag)) {
+                @if (viewer.isEdhrecCategoryImagesBusy(list.tag)) {
+                  <p class="hint">Lade Bilder …</p>
+                }
                 <div class="card-pick-grid">
                   @for (card of list.cards; track card.name) {
                     <div class="card-pick-tile">

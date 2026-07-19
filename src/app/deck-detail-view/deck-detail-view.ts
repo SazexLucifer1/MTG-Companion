@@ -2,6 +2,7 @@ import { Component, inject } from '@angular/core';
 import { DatePipe, DecimalPipe, PercentPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { DeckViewerService } from '../deck-viewer.service';
+import { EdhrecCardlist } from '../edhrec.service';
 
 @Component({
   selector: 'app-deck-detail-view',
@@ -28,8 +29,15 @@ export class DeckDetailView {
     return this.expandedEdhrecCategories.has(tag);
   }
 
-  toggleEdhrecCategory(tag: string): void {
-    if (this.expandedEdhrecCategories.has(tag)) this.expandedEdhrecCategories.delete(tag);
-    else this.expandedEdhrecCategories.add(tag);
+  toggleEdhrecCategory(list: EdhrecCardlist): void {
+    if (this.expandedEdhrecCategories.has(list.tag)) {
+      this.expandedEdhrecCategories.delete(list.tag);
+    } else {
+      this.expandedEdhrecCategories.add(list.tag);
+      this.viewer.loadEdhrecCategoryImages(
+        list.tag,
+        list.cards.map((c) => c.name)
+      );
+    }
   }
 }

@@ -246,21 +246,27 @@ export class ScryfallService {
     }
     const searchNames = [...new Set(unique.map(frontFaceName))];
 
-    for (let i = 0; i < searchNames.length; i += 75) {
-      const chunk = searchNames.slice(i, i + 75);
-      const res = await this.fetchWithRetry(`${API}/cards/collection`, 2, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ identifiers: chunk.map((name) => ({ name })) }),
-      });
-      if (!res?.ok) continue; // Chunk übersprungen (auch nach Wiederholungen fehlgeschlagen) - betroffene Karten bleiben einfach ohne Bild.
-      const data = await res.json();
-      for (const card of (data.data as any[]) ?? []) {
-        const original = searchNameToOriginal.get(frontFaceName(card.name as string).toLowerCase());
-        const key = original?.toLowerCase() ?? (card.name as string).toLowerCase();
-        result.set(key, this.toCard(card));
-      }
-    }
+    const chunks: string[][] = [];
+    for (let i = 0; i < searchNames.length; i += 75) chunks.push(searchNames.slice(i, i + 75));
+
+    // Chunks parallel statt nacheinander abfragen - bei größeren Decks/Kartenlisten (mehr als ein
+    // Chunk) spart das spürbar Zeit, da jeder Chunk ein eigener, unabhängiger Request ist.
+    await Promise.all(
+      chunks.map(async (chunk) => {
+        const res = await this.fetchWithRetry(`${API}/cards/collection`, 2, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ identifiers: chunk.map((name) => ({ name })) }),
+        });
+        if (!res?.ok) return; // Chunk übersprungen (auch nach Wiederholungen fehlgeschlagen) - betroffene Karten bleiben einfach ohne Bild.
+        const data = await res.json();
+        for (const card of (data.data as any[]) ?? []) {
+          const original = searchNameToOriginal.get(frontFaceName(card.name as string).toLowerCase());
+          const key = original?.toLowerCase() ?? (card.name as string).toLowerCase();
+          result.set(key, this.toCard(card));
+        }
+      })
+    );
 
     return result;
   }

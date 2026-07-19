@@ -536,6 +536,7 @@ export class DeckViewerService {
     this.addCardMode.set('search');
     this.edhrecLists.set(null);
     this.edhrecCardDetails.set(new Map());
+    this.edhrecCategoryImagesBusy.set(new Set());
     this.edhrecBusy.set(false);
     this.edhrecFailed.set(false);
   }
@@ -749,11 +750,32 @@ export class DeckViewerService {
     this.edhrecLists.set(lists);
     this.edhrecFailed.set(lists === null);
     this.edhrecBusy.set(false);
+    // Bilder werden bewusst NICHT hier für alle ~300 Vorschläge auf einmal geladen - das machte
+    // das Öffnen des EDHREC-Tabs spürbar langsam, obwohl die meisten Kategorien eingeklappt bleiben
+    // und ihre Bilder nie zu sehen sind. Stattdessen holt loadEdhrecCategoryImages() sie erst,
+    // wenn eine Kategorie tatsächlich aufgeklappt wird (siehe toggleEdhrecCategory im Component).
+  }
 
-    if (lists) {
-      const names = [...new Set(lists.flatMap((l) => l.cards.map((c) => c.name)))];
-      this.edhrecCardDetails.set(await this.scryfall.findCardsBulk(names));
-    }
+  readonly edhrecCategoryImagesBusy = signal<Set<string>>(new Set());
+
+  /** Lädt Bilder nur für die Karten EINER Kategorie nach, sobald sie aufgeklappt wird - bereits geladene Karten werden übersprungen. */
+  async loadEdhrecCategoryImages(tag: string, cardNames: string[]): Promise<void> {
+    const known = this.edhrecCardDetails();
+    const missing = cardNames.filter((n) => !known.has(n.toLowerCase()));
+    if (missing.length === 0) return;
+
+    this.edhrecCategoryImagesBusy.update((set) => new Set(set).add(tag));
+    const found = await this.scryfall.findCardsBulk(missing);
+    this.edhrecCardDetails.update((current) => new Map([...current, ...found]));
+    this.edhrecCategoryImagesBusy.update((set) => {
+      const next = new Set(set);
+      next.delete(tag);
+      return next;
+    });
+  }
+
+  isEdhrecCategoryImagesBusy(tag: string): boolean {
+    return this.edhrecCategoryImagesBusy().has(tag);
   }
 
   edhrecCardImage(cardName: string): string | null {
@@ -814,6 +836,7 @@ export class DeckViewerService {
     this.addCardMode.set('search');
     this.edhrecLists.set(null);
     this.edhrecCardDetails.set(new Map());
+    this.edhrecCategoryImagesBusy.set(new Set());
     this.edhrecBusy.set(false);
     this.edhrecFailed.set(false);
     this.showDeckAnalysisInfo.set(false);
@@ -882,6 +905,7 @@ export class DeckViewerService {
     this.addCardMode.set('search');
     this.edhrecLists.set(null);
     this.edhrecCardDetails.set(new Map());
+    this.edhrecCategoryImagesBusy.set(new Set());
     this.edhrecBusy.set(false);
     this.edhrecFailed.set(false);
   }
