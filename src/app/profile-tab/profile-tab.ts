@@ -29,6 +29,8 @@ export class ProfileTab {
   readonly deckListRef = viewChild<DeckList>('deckListRef');
 
   readonly unassignedCommanderStats = signal<CommanderGameStats[]>([]);
+  /** Gleiches wie unassignedCommanderStats, aber für ein FREMDES Profil - rein zum Ansehen, ohne Reparieren/Verlinken (das kann nur der Account-Besitzer selbst). */
+  readonly viewingUnassignedCommanderStats = signal<CommanderGameStats[]>([]);
 
   private async refreshUnassignedAndDecks(): Promise<void> {
     const userId = this.profileService.profile()?.id;
@@ -51,6 +53,17 @@ export class ProfileTab {
     });
 
     effect(() => {
+      const userId = this.profileService.viewingUserId();
+      if (!userId) {
+        this.viewingUnassignedCommanderStats.set([]);
+        return;
+      }
+      this.deckService.getUnassignedCommanderStats(userId).then((stats) => {
+        this.viewingUnassignedCommanderStats.set(stats);
+      });
+    });
+
+    effect(() => {
       const names = this.profileService.profile()?.favoriteCommanders ?? [];
       if (names.length === 0) {
         this.favoriteCommanderImages.set({});
@@ -64,7 +77,10 @@ export class ProfileTab {
     });
 
     effect(() => {
-      const names = this.pagedCommanderStats().map((c) => c.commander);
+      const names = [
+        ...this.pagedCommanderStats().map((c) => c.commander),
+        ...this.viewingUnassignedCommanderStats().map((c) => c.commander),
+      ];
       const cache = this.commanderCardImages();
       const missing = [...new Set(names)].filter((n) => !(n.toLowerCase() in cache));
       if (missing.length === 0) return;

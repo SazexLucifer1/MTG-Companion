@@ -26,6 +26,29 @@
       <app-deck-list [userId]="userId" [readonlyMode]="true" />
     </section>
   }
+
+  @if (viewingUnassignedCommanderStats().length > 0) {
+    <section class="glass-card">
+      <h2>Commander-Statistik</h2>
+      <p class="hint">
+        Partien mit einem Commander, der keinem der oben gelisteten Decks zugeordnet ist (z.B. alte
+        Importe oder geliehene Decks).
+      </p>
+      <ul class="player-list">
+        @for (c of viewingUnassignedCommanderStats(); track c.commander) {
+          <li>
+            <span class="player-name card-name-cell">
+              @if (commanderImage(c.commander); as img) {
+              <img class="card-thumb" [src]="img" [alt]="c.commander" />
+              }
+              <span class="card-name-text">{{ c.commander }}</span>
+            </span>
+            <span class="hint">{{ c.wins }} / {{ c.games }} Siege · {{ c.winRate | number: '1.0-0' }}%</span>
+          </li>
+        }
+      </ul>
+    </section>
+  }
 } @else {
 
 <section class="glass-card">
