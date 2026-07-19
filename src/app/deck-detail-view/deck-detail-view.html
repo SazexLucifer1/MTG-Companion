@@ -190,7 +190,14 @@
                     <span class="add-card-name-text">{{ card.name }}</span>
                     <span class="hint">{{ card.typeLine }}</span>
                   </span>
-                  <button class="icon-button" (click)="viewer.addCard(card)" aria-label="Hinzufügen">➕</button>
+                  <button
+                    class="icon-button"
+                    [class.flash-add]="viewer.isFlashing(card.name, 'add')"
+                    (click)="viewer.addCard(card)"
+                    aria-label="Hinzufügen"
+                  >
+                    ➕
+                  </button>
                 </li>
               }
             </ul>
@@ -440,7 +447,7 @@
                 @if (viewer.editMode() && !card.isCommander) {
                   <div class="deck-card-stepper">
                     <button
-                      [class.flash-remove]="viewer.isFlashing(card, 'remove')"
+                      [class.flash-remove]="viewer.isFlashing(card.cardName, 'remove')"
                       (click)="viewer.decrementCard(card)"
                       aria-label="Eine weniger"
                     >
@@ -448,7 +455,7 @@
                     </button>
                     <span>{{ card.quantity }}</span>
                     <button
-                      [class.flash-add]="viewer.isFlashing(card, 'add')"
+                      [class.flash-add]="viewer.isFlashing(card.cardName, 'add')"
                       (click)="viewer.incrementCard(card)"
                       aria-label="Eine mehr"
                     >
@@ -470,14 +477,14 @@
                 @if (viewer.editMode() && !card.isCommander) {
                   <div class="deck-card-stepper inline">
                     <button
-                      [class.flash-remove]="viewer.isFlashing(card, 'remove')"
+                      [class.flash-remove]="viewer.isFlashing(card.cardName, 'remove')"
                       (click)="viewer.decrementCard(card)"
                       aria-label="Eine weniger"
                     >
                       −
                     </button>
                     <button
-                      [class.flash-add]="viewer.isFlashing(card, 'add')"
+                      [class.flash-add]="viewer.isFlashing(card.cardName, 'add')"
                       (click)="viewer.incrementCard(card)"
                       aria-label="Eine mehr"
                     >

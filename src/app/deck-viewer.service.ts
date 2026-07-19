@@ -461,26 +461,26 @@ export class DeckViewerService {
   readonly flashState = signal<{ key: string; type: 'add' | 'remove' } | null>(null);
   private flashTimer: ReturnType<typeof setTimeout> | null = null;
 
-  private triggerFlash(card: DeckCard, type: 'add' | 'remove'): void {
+  private triggerFlash(cardName: string, type: 'add' | 'remove'): void {
     if (this.flashTimer) clearTimeout(this.flashTimer);
-    this.flashState.set({ key: card.cardName.toLowerCase(), type });
+    this.flashState.set({ key: cardName.toLowerCase(), type });
     this.flashTimer = setTimeout(() => this.flashState.set(null), 400);
   }
 
-  isFlashing(card: DeckCard, type: 'add' | 'remove'): boolean {
+  isFlashing(cardName: string, type: 'add' | 'remove'): boolean {
     const state = this.flashState();
-    return state?.key === card.cardName.toLowerCase() && state.type === type;
+    return state?.key === cardName.toLowerCase() && state.type === type;
   }
 
   /** card.quantity ist hier bereits der aktuell angezeigte (ggf. schon angepasste) Stand aus editedDeckCards(). */
   incrementCard(card: DeckCard): void {
     this.setPendingQuantity(card, card.quantity + 1);
-    this.triggerFlash(card, 'add');
+    this.triggerFlash(card.cardName, 'add');
   }
 
   decrementCard(card: DeckCard): void {
     this.setPendingQuantity(card, card.quantity - 1);
-    this.triggerFlash(card, 'remove');
+    this.triggerFlash(card.cardName, 'remove');
   }
 
   async saveEdits(): Promise<void> {
@@ -595,6 +595,7 @@ export class DeckViewerService {
       return next;
     });
     this.addCardMessage.set(`"${card.name}" hinzugefügt (noch nicht gespeichert).`);
+    this.triggerFlash(card.name, 'add');
   }
 
   private async reloadDeckCards(): Promise<void> {
