@@ -16,28 +16,40 @@
   position: sticky;
   top: 0;
   z-index: 2;
+  // Nur Zurück-Button + Name kleben oben fest - Name-/Tag-Bearbeitung, Statistik und die
+  // Ansicht-Buttons sind bewusst NICHT hier drin, sonst frisst der Kopf dauerhaft einen Großteil
+  // des Bildschirms (v.a. im Hochformat/Querformat mit wenig Höhe). Die gehören stattdessen ganz
+  // oben in den scrollenden Rumpf, wo sie beim Runterscrollen zu den Karten mit wegscrollen.
+  display: flex;
+  align-items: center;
+  gap: 10px;
   // Eigener, undurchsichtiger Hintergrund nötig, da der Rumpf jetzt UNTER dem "klebenden" Kopf
   // hindurchscrollt statt ihn nie zu berühren.
   background: rgba(12, 8, 23, 0.98);
   // max-width + auto-margin statt fixer Breite: wirkt sich auf schmalen (Hochformat-)Screens gar
   // nicht aus (dort ist der Viewport ohnehin schmaler), begrenzt den Inhalt im Querformat/Desktop
-  // aber auf eine großzügige Breite statt ihn endlos zu strecken - die Kartenraster (auto-fill)
-  // nutzen den zusätzlichen Platz selbst für mehr Spalten.
+  // aber auf eine großzügige Breite statt ihn endlos zu strecken.
   width: min(100%, 1100px);
   margin: 0 auto;
-  // env(safe-area-inset-top) statt fixem 16px: die Detailansicht ist position:fixed;inset:0 und
+  // env(safe-area-inset-top) statt fixem 12px: die Detailansicht ist position:fixed;inset:0 und
   // liegt damit auch unter der Handy-Statusleiste/Notch - ohne den Inset rutscht der
   // Zurück-Button teilweise dahinter.
-  padding: calc(env(safe-area-inset-top, 0px) + 16px) 20px 12px;
+  padding: calc(env(safe-area-inset-top, 0px) + 12px) 20px 12px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.12);
-
-  h3 {
-    margin-top: 4px;
-  }
 }
 
 .deck-detail-back {
-  margin-bottom: 4px;
+  flex-shrink: 0;
+}
+
+.deck-detail-header-name {
+  flex: 1;
+  min-width: 0;
+  font-weight: 700;
+  font-size: 1rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .deck-info-edit {

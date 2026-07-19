@@ -2,85 +2,90 @@
 <div class="deck-detail-fullscreen">
   <div class="deck-detail-header">
     <button class="glass-button small deck-detail-back" (click)="viewer.close()">← Zurück</button>
+    <span class="deck-detail-header-name">{{ deck.name }}</span>
+  </div>
 
-    <div class="deck-info-edit">
-      <input
-        class="glass-input deck-name-input"
-        type="text"
-        aria-label="Deckname"
-        [ngModel]="viewer.deckNameDraft()"
-        (ngModelChange)="viewer.deckNameDraft.set($event)"
-      />
-      @if (viewer.edhrecTagsBusy()) {
-        <p class="hint">Lade EDHREC-Tags …</p>
-      } @else if (viewer.edhrecAvailableTags().length === 0) {
-        <p class="hint">
-          {{ viewer.edhrecCommanderName() ? 'Keine EDHREC-Tags für diesen Commander gefunden.' : 'Noch kein Commander markiert - Tags erscheinen danach hier.' }}
-        </p>
-      } @else {
-        <select
-          class="glass-input"
-          aria-label="EDHREC-Tag"
-          [ngModel]="viewer.deckTagDraft()"
-          (ngModelChange)="viewer.deckTagDraft.set($event)"
-        >
-          <option [ngValue]="null">Kein Tag</option>
-          @for (t of viewer.edhrecAvailableTags(); track t.slug) {
-            <option [ngValue]="t.slug">{{ t.value }} ({{ t.count }})</option>
-          }
-        </select>
-      }
-      @if (viewer.deckInfoDirty()) {
-        <div class="chip-row">
-          <button
-            class="glass-button small primary"
-            [disabled]="viewer.deckInfoSaving() || !viewer.deckNameDraft().trim()"
-            (click)="viewer.saveDeckInfo()"
-          >
-            {{ viewer.deckInfoSaving() ? 'Speichere …' : '💾 Speichern' }}
-          </button>
-          <button class="glass-button small" [disabled]="viewer.deckInfoSaving()" (click)="viewer.resetDeckInfoDraft()">
-            Verwerfen
-          </button>
-        </div>
-      }
-    </div>
-
-    @if (deck.format) {
-      <p class="hint">{{ deck.format }} · {{ viewer.viewingTotalCards() }} Karten</p>
+  <div class="deck-detail-body">
+    @if (viewer.detailBusy()) {
+      <p class="hint">Lade Deck …</p>
     } @else {
-      <p class="hint">{{ viewer.viewingTotalCards() }} Karten</p>
-    }
-
-    @if (viewer.viewingDeckGameStats(); as gameStats) {
-      <div class="deck-game-stats">
-        <div class="stat-tiles">
-          <div class="stat-tile">
-            <span class="stat-value">{{ gameStats.games }}</span>
-            <span class="stat-label">Gespielt</span>
-          </div>
-          <div class="stat-tile">
-            <span class="stat-value">{{ gameStats.wins }}</span>
-            <span class="stat-label">Siege</span>
-          </div>
-          <div class="stat-tile">
-            <span class="stat-value">{{ gameStats.winRate | number: '1.0-0' }}%</span>
-            <span class="stat-label">Winrate</span>
-          </div>
-        </div>
-        <button class="icon-button deck-stats-info-toggle" (click)="viewer.toggleDeckStatsInfo()" aria-label="Was zählt diese Statistik?">
-          ⓘ
-        </button>
-        @if (viewer.showDeckStatsInfo()) {
+      <div class="deck-info-edit">
+        <input
+          class="glass-input deck-name-input"
+          type="text"
+          aria-label="Deckname"
+          [ngModel]="viewer.deckNameDraft()"
+          (ngModelChange)="viewer.deckNameDraft.set($event)"
+        />
+        @if (viewer.edhrecTagsBusy()) {
+          <p class="hint">Lade EDHREC-Tags …</p>
+        } @else if (viewer.edhrecAvailableTags().length === 0) {
           <p class="hint">
-            Zählt alle Spiele mit diesem Deck über alle Gruppen hinweg – unabhängig davon, wer es
-            gespielt hat. Wurde es mal verliehen, fließen auch diese Spiele mit ein.
+            {{ viewer.edhrecCommanderName() ? 'Keine EDHREC-Tags für diesen Commander gefunden.' : 'Noch kein Commander markiert - Tags erscheinen danach hier.' }}
           </p>
+        } @else {
+          <select
+            class="glass-input"
+            aria-label="EDHREC-Tag"
+            [ngModel]="viewer.deckTagDraft()"
+            (ngModelChange)="viewer.deckTagDraft.set($event)"
+          >
+            <option [ngValue]="null">Kein Tag</option>
+            @for (t of viewer.edhrecAvailableTags(); track t.slug) {
+              <option [ngValue]="t.slug">{{ t.value }} ({{ t.count }})</option>
+            }
+          </select>
+        }
+        @if (viewer.deckInfoDirty()) {
+          <div class="chip-row">
+            <button
+              class="glass-button small primary"
+              [disabled]="viewer.deckInfoSaving() || !viewer.deckNameDraft().trim()"
+              (click)="viewer.saveDeckInfo()"
+            >
+              {{ viewer.deckInfoSaving() ? 'Speichere …' : '💾 Speichern' }}
+            </button>
+            <button class="glass-button small" [disabled]="viewer.deckInfoSaving()" (click)="viewer.resetDeckInfoDraft()">
+              Verwerfen
+            </button>
+          </div>
         }
       </div>
-    }
 
-    @if (!viewer.detailBusy()) {
+      @if (deck.format) {
+        <p class="hint">{{ deck.format }} · {{ viewer.viewingTotalCards() }} Karten</p>
+      } @else {
+        <p class="hint">{{ viewer.viewingTotalCards() }} Karten</p>
+      }
+
+      @if (viewer.viewingDeckGameStats(); as gameStats) {
+        <div class="deck-game-stats">
+          <div class="stat-tiles">
+            <div class="stat-tile">
+              <span class="stat-value">{{ gameStats.games }}</span>
+              <span class="stat-label">Gespielt</span>
+            </div>
+            <div class="stat-tile">
+              <span class="stat-value">{{ gameStats.wins }}</span>
+              <span class="stat-label">Siege</span>
+            </div>
+            <div class="stat-tile">
+              <span class="stat-value">{{ gameStats.winRate | number: '1.0-0' }}%</span>
+              <span class="stat-label">Winrate</span>
+            </div>
+          </div>
+          <button class="icon-button deck-stats-info-toggle" (click)="viewer.toggleDeckStatsInfo()" aria-label="Was zählt diese Statistik?">
+            ⓘ
+          </button>
+          @if (viewer.showDeckStatsInfo()) {
+            <p class="hint">
+              Zählt alle Spiele mit diesem Deck über alle Gruppen hinweg – unabhängig davon, wer es
+              gespielt hat. Wurde es mal verliehen, fließen auch diese Spiele mit ein.
+            </p>
+          }
+        </div>
+      }
+
       <div class="chip-row">
         <button class="glass-chip small" [class.active]="viewer.viewMode() === 'visual'" (click)="viewer.viewMode.set('visual')">
           🖼️ Bilder
@@ -96,13 +101,7 @@
         </button>
         <button class="glass-chip small" (click)="reimportDecklist()">📋 Kartenliste neu einfügen</button>
       </div>
-    }
-  </div>
 
-  <div class="deck-detail-body">
-    @if (viewer.detailBusy()) {
-      <p class="hint">Lade Deck …</p>
-    } @else {
       @if (viewer.showChangeLog()) {
         <div class="change-log-panel">
           @if (viewer.viewingChangeLog().length === 0) {
