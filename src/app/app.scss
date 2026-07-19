@@ -3,12 +3,13 @@
   min-height: 100dvh;
 }
 
-// max-width + auto-margin auf Kopfbereich/Inhalt/Tab-Leiste: wirkt sich auf einem schmalen
-// Hochformat-Handy gar nicht aus (dort ist der Viewport ohnehin schmaler als das Limit), zentriert
-// den Inhalt aber als kompakte Spalte im Querformat, auf Tablets und am Desktop, statt ihn über
-// die volle, viel zu breite Bildschirmbreite zu strecken.
+// max-width + auto-margin auf Kopfbereich/Inhalt: wirkt sich auf einem schmalen Hochformat-Handy
+// gar nicht aus (dort ist der Viewport ohnehin schmaler als das Limit), begrenzt den Inhalt aber
+// im Querformat/Desktop auf eine großzügige, aber nicht endlose Breite - einzelne Bereiche wie die
+// Deckliste nutzen die zusätzliche Breite dann selbst für ein echtes Mehrspalten-Layout (siehe
+// deck-list.scss), statt dass hier nur leerer Rand entsteht.
 .app-header {
-  width: min(100%, 720px);
+  width: min(100%, 1100px);
   margin: 0 auto;
   padding: calc(env(safe-area-inset-top, 0px) + 18px) 18px 4px;
 
@@ -21,7 +22,7 @@
 }
 
 .content {
-  width: min(100%, 720px);
+  width: min(100%, 1100px);
   margin: 0 auto;
   padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 110px);
 }

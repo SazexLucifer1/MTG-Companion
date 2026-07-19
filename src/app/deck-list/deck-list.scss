@@ -16,6 +16,26 @@
   }
 }
 
+// Ab hier passen mehrere Decks nebeneinander (Querformat/Tablet/Desktop) - echtes Karten-Grid
+// statt einer einzelnen, immer breiter werdenden Liste. Unterhalb bleibt die gewohnte
+// Hochformat-Handy-Liste unverändert (Media Query wirkt sich dort gar nicht aus).
+@media (min-width: 640px) {
+  .deck-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 12px;
+
+    li {
+      align-items: center;
+      padding: 12px;
+      border-bottom: none;
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--glass-border);
+    }
+  }
+}
+
 .deck-thumb {
   flex: 0 0 64px;
   width: 64px;

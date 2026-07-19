@@ -12,11 +12,15 @@
 .deck-detail-header {
   flex-shrink: 0;
   // max-width + auto-margin statt fixer Breite: wirkt sich auf schmalen (Hochformat-)Screens gar
-  // nicht aus (dort ist der Viewport ohnehin schmaler), zentriert den Inhalt aber im Querformat
-  // und am Desktop, statt ihn über die volle Breite zu strecken.
-  width: min(100%, 720px);
+  // nicht aus (dort ist der Viewport ohnehin schmaler), begrenzt den Inhalt im Querformat/Desktop
+  // aber auf eine großzügige Breite statt ihn endlos zu strecken - die Kartenraster (auto-fill)
+  // nutzen den zusätzlichen Platz selbst für mehr Spalten.
+  width: min(100%, 1100px);
   margin: 0 auto;
-  padding: 16px 20px 12px;
+  // env(safe-area-inset-top) statt fixem 16px: die Detailansicht ist position:fixed;inset:0 und
+  // liegt damit auch unter der Handy-Statusleiste/Notch - ohne den Inset rutscht der
+  // Zurück-Button teilweise dahinter.
+  padding: calc(env(safe-area-inset-top, 0px) + 16px) 20px 12px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.12);
 
   h3 {
@@ -49,7 +53,7 @@
   flex: 1;
   overflow-y: auto;
   min-height: 0;
-  width: min(100%, 720px);
+  width: min(100%, 1100px);
   margin: 0 auto;
   padding: 16px 20px calc(20px + env(safe-area-inset-bottom));
 }
