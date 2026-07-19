@@ -3,7 +3,13 @@
   min-height: 100dvh;
 }
 
+// max-width + auto-margin auf Kopfbereich/Inhalt/Tab-Leiste: wirkt sich auf einem schmalen
+// Hochformat-Handy gar nicht aus (dort ist der Viewport ohnehin schmaler als das Limit), zentriert
+// den Inhalt aber als kompakte Spalte im Querformat, auf Tablets und am Desktop, statt ihn über
+// die volle, viel zu breite Bildschirmbreite zu strecken.
 .app-header {
+  width: min(100%, 720px);
+  margin: 0 auto;
   padding: calc(env(safe-area-inset-top, 0px) + 18px) 18px 4px;
 
   h1 {
@@ -15,14 +21,17 @@
 }
 
 .content {
+  width: min(100%, 720px);
+  margin: 0 auto;
   padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 110px);
 }
 
 /* Floating Liquid-Glass-Tab-Bar im iOS-Stil */
 .tab-bar {
   position: fixed;
-  left: 14px;
-  right: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(calc(100% - 28px), 692px);
   bottom: calc(env(safe-area-inset-bottom, 0px) + 14px);
   z-index: 100;
   display: flex;

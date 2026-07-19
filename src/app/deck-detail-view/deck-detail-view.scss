@@ -11,6 +11,11 @@
 
 .deck-detail-header {
   flex-shrink: 0;
+  // max-width + auto-margin statt fixer Breite: wirkt sich auf schmalen (Hochformat-)Screens gar
+  // nicht aus (dort ist der Viewport ohnehin schmaler), zentriert den Inhalt aber im Querformat
+  // und am Desktop, statt ihn über die volle Breite zu strecken.
+  width: min(100%, 720px);
+  margin: 0 auto;
   padding: 16px 20px 12px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.12);
 
@@ -44,6 +49,8 @@
   flex: 1;
   overflow-y: auto;
   min-height: 0;
+  width: min(100%, 720px);
+  margin: 0 auto;
   padding: 16px 20px calc(20px + env(safe-area-inset-bottom));
 }
 
@@ -273,7 +280,11 @@
 
 .deck-visual-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  // auto-fill mit fester Min/Max-Breite statt fester Spaltenzahl (vorher repeat(3, 1fr)) - so
+  // bleiben die Kartenbilder in JEDER Breite (Hochformat, Querformat, Desktop) gleich groß, es
+  // werden nur mehr/weniger Spalten daraus, statt dass 3 fixe Spalten im Querformat riesig werden.
+  grid-template-columns: repeat(auto-fill, minmax(100px, 130px));
+  justify-content: center;
   gap: 12px;
   margin: 0 0 16px;
 }
@@ -529,7 +540,9 @@
 // im schmaleren, eingerahmten Bearbeiten-Kästchen gequetscht zu sein.
 .card-pick-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  // Gleiche Begründung wie bei .deck-visual-grid - feste Kartenbild-Größe, variable Spaltenzahl.
+  grid-template-columns: repeat(auto-fill, minmax(100px, 130px));
+  justify-content: center;
   gap: 12px;
   margin: 10px 0 16px;
 }

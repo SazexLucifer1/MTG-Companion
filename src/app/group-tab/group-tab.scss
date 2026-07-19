@@ -32,12 +32,15 @@
 .choice-sheet {
   width: min(94vw, 480px);
   max-width: 480px;
-  max-height: 88vh;
+  // dvh statt vh: auf iOS ändert sich die Adressleisten-Höhe je nach Scroll-/Rotationszustand -
+  // mit vh bleibt dann teils eine falsche (zu kleine oder abgeschnittene) Höhe hängen, dvh
+  // rechnet den tatsächlich sichtbaren Bereich immer neu.
+  max-height: 88dvh;
   overflow-y: auto;
 }
 
 .choice-candidate-list {
-  max-height: 50vh;
+  max-height: 50dvh;
   overflow-y: auto;
 }
 
