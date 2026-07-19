@@ -116,6 +116,34 @@
   word-break: break-word;
 }
 
+@media (max-width: 640px) {
+  .profile-main-row {
+    flex-direction: column;
+  }
+
+  .profile-left,
+  .favorite-commanders-col {
+    flex-basis: auto;
+    min-width: 0;
+    width: 100%;
+  }
+
+  .header-icon-col {
+    flex-direction: row;
+    justify-content: flex-end;
+    width: 100%;
+    order: -1;
+  }
+
+  .favorite-commander-card {
+    min-width: 0;
+  }
+
+  .favorite-commanders-row {
+    gap: 10px;
+  }
+}
+
 .narrow-list {
   max-width: 260px;
 
