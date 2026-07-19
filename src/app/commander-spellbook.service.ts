@@ -50,41 +50,56 @@ export const SPELLBOOK_BRACKET_LABELS: Record<SpellbookBracketTag, string> = {
  */
 @Injectable({ providedIn: 'root' })
 export class CommanderSpellbookService {
+  private async requestOnce(
+    commanders: BracketDeckCard[],
+    main: BracketDeckCard[]
+  ): Promise<BracketEstimate> {
+    const res = await fetch('/api/estimate-bracket', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ commanders, main }),
+    });
+    if (!res.ok) throw new Error(`estimate-bracket: HTTP ${res.status}`);
+    const data = await res.json();
+    return {
+      bracketTag: data.bracketTag,
+      cards: ((data.cards ?? []) as any[]).map((c) => ({
+        cardName: c.card?.name ?? '',
+        quantity: c.quantity,
+        banned: c.banned,
+        gameChanger: c.gameChanger,
+        massLandDenial: c.massLandDenial,
+        extraTurn: c.extraTurn,
+      })),
+      combos: ((data.combos ?? []) as any[]).map((c) => ({
+        cardNames: ((c.combo?.uses ?? []) as any[]).map((u) => u.card?.name).filter(Boolean),
+        produces: ((c.combo?.produces ?? []) as any[]).map((p) => p.feature?.name).filter(Boolean),
+        description: c.combo?.description ?? '',
+        definitelyTwoCard: c.definitelyTwoCard,
+        arguablyTwoCard: c.arguablyTwoCard,
+        massLandDenial: c.massLandDenial,
+        extraTurn: c.extraTurn,
+        lock: c.lock,
+      })),
+    };
+  }
+
   async estimateBracket(
     commanders: BracketDeckCard[],
     main: BracketDeckCard[]
   ): Promise<BracketEstimate | null> {
     try {
-      const res = await fetch('/api/estimate-bracket', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ commanders, main }),
-      });
-      if (!res.ok) return null;
-      const data = await res.json();
-      return {
-        bracketTag: data.bracketTag,
-        cards: ((data.cards ?? []) as any[]).map((c) => ({
-          cardName: c.card?.name ?? '',
-          quantity: c.quantity,
-          banned: c.banned,
-          gameChanger: c.gameChanger,
-          massLandDenial: c.massLandDenial,
-          extraTurn: c.extraTurn,
-        })),
-        combos: ((data.combos ?? []) as any[]).map((c) => ({
-          cardNames: ((c.combo?.uses ?? []) as any[]).map((u) => u.card?.name).filter(Boolean),
-          produces: ((c.combo?.produces ?? []) as any[]).map((p) => p.feature?.name).filter(Boolean),
-          description: c.combo?.description ?? '',
-          definitelyTwoCard: c.definitelyTwoCard,
-          arguablyTwoCard: c.arguablyTwoCard,
-          massLandDenial: c.massLandDenial,
-          extraTurn: c.extraTurn,
-          lock: c.lock,
-        })),
-      };
-    } catch {
-      return null;
+      return await this.requestOnce(commanders, main);
+    } catch (err) {
+      // Ein Fehlversuch (kurzer Netzwerkhänger, kalter Funktions-Start) reicht nicht, um die
+      // ganze Deck-Analyse als "nicht verfügbar" zu markieren - einmal automatisch erneut versuchen.
+      console.warn('estimate-bracket fehlgeschlagen, versuche erneut', err);
+      try {
+        return await this.requestOnce(commanders, main);
+      } catch (retryErr) {
+        console.error('estimate-bracket auch im zweiten Versuch fehlgeschlagen', retryErr);
+        return null;
+      }
     }
   }
 }
