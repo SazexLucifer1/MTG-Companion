@@ -45,7 +45,7 @@
         <button class="glass-chip small" [class.active]="viewer.viewMode() === 'text'" (click)="viewer.viewMode.set('text')">
           📋 Text
         </button>
-        <button class="glass-chip small" [class.active]="viewer.editMode()" (click)="viewer.toggleEditMode()">
+        <button class="glass-chip small" [class.active]="viewer.editMode()" [disabled]="viewer.editMode()" (click)="viewer.toggleEditMode()">
           ✏️ Bearbeiten
         </button>
       </div>
@@ -57,6 +57,28 @@
       <p class="hint">Lade Deck …</p>
     } @else {
       @if (viewer.editMode()) {
+        <div class="edit-mode-bar">
+          @if (viewer.hasPendingChanges()) {
+            <p class="hint">
+              Ungespeicherte Änderungen: +{{ viewer.pendingChangeSummary().added }} / −{{ viewer.pendingChangeSummary().removed }}
+            </p>
+          } @else {
+            <p class="hint">Noch keine Änderungen.</p>
+          }
+          <div class="chip-row">
+            <button
+              class="glass-button primary small"
+              [disabled]="!viewer.hasPendingChanges() || viewer.editSaveBusy()"
+              (click)="viewer.saveEdits()"
+            >
+              {{ viewer.editSaveBusy() ? 'Speichert …' : '💾 Speichern' }}
+            </button>
+            <button class="glass-button small" [disabled]="viewer.editSaveBusy()" (click)="viewer.cancelEdits()">
+              ✕ Abbrechen
+            </button>
+          </div>
+        </div>
+
         <div class="add-card-panel">
           <h4 class="deck-section-title">➕ Karte hinzufügen</h4>
           @if (!viewer.deckColorIdentitySubset()) {
@@ -388,11 +410,14 @@
                 } @else {
                   <div class="deck-card-placeholder">{{ card.cardName }}</div>
                 }
-                @if (card.quantity > 1) {
-                  <span class="deck-card-qty">{{ card.quantity }}×</span>
-                }
                 @if (viewer.editMode() && !card.isCommander) {
-                  <button class="deck-card-remove" (click)="viewer.removeCard(card)" aria-label="Karte entfernen">✕</button>
+                  <div class="deck-card-stepper">
+                    <button (click)="viewer.decrementCard(card)" aria-label="Eine weniger">−</button>
+                    <span>{{ card.quantity }}</span>
+                    <button (click)="viewer.incrementCard(card)" aria-label="Eine mehr">+</button>
+                  </div>
+                } @else if (card.quantity > 1) {
+                  <span class="deck-card-qty">{{ card.quantity }}×</span>
                 }
               </div>
             }
@@ -404,7 +429,10 @@
                 <span class="deck-card-qty-text">{{ card.quantity }}×</span>
                 <span>{{ card.cardName }}</span>
                 @if (viewer.editMode() && !card.isCommander) {
-                  <button class="icon-button" (click)="viewer.removeCard(card)" aria-label="Karte entfernen">✕</button>
+                  <div class="deck-card-stepper inline">
+                    <button (click)="viewer.decrementCard(card)" aria-label="Eine weniger">−</button>
+                    <button (click)="viewer.incrementCard(card)" aria-label="Eine mehr">+</button>
+                  </div>
                 }
               </li>
             }

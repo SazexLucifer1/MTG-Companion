@@ -24,6 +24,15 @@ export interface GameChangerEntry {
   quantity: number;
 }
 
+interface PendingCardChange {
+  cardName: string;
+  quantity: number;
+  imageUrl: string | null;
+  typeLine: string | null;
+  cmc: number;
+  isCommander: boolean;
+}
+
 /**
  * Hält den Zustand der Deck-Detail-Vollbildansicht global (statt lokal in DeckList), damit die
  * Ansicht als eigene, root-level gerenderte Komponente existieren kann (analog IngameTracker in
@@ -53,7 +62,7 @@ export class DeckViewerService {
   readonly analysisBusy = signal(false);
 
   readonly viewingTotalCards = computed(() =>
-    this.viewingDeckCards().reduce((sum, c) => sum + c.quantity, 0)
+    this.editedDeckCards().reduce((sum, c) => sum + c.quantity, 0)
   );
 
   /** Nicht-Land-Karten - Basis für Manakurve, Pip-Verteilung und Game-Changer-Auswertung. */
@@ -206,8 +215,8 @@ export class DeckViewerService {
 
   /** Karten gruppiert nach Commander -> Typ, innerhalb jeder Gruppe nach Manawert sortiert. */
   readonly groupedDeckCards = computed(() => {
-    const commander = this.viewingDeckCards().filter((c) => c.isCommander);
-    const rest = this.viewingDeckCards().filter((c) => !c.isCommander);
+    const commander = this.editedDeckCards().filter((c) => c.isCommander);
+    const rest = this.editedDeckCards().filter((c) => !c.isCommander);
 
     const groups = new Map<string, DeckCard[]>();
     for (const card of rest) {
@@ -351,17 +360,149 @@ export class DeckViewerService {
     return [...union];
   });
 
-  toggleEditMode(): void {
-    this.editMode.update((v) => !v);
-    if (!this.editMode()) {
-      this.addCardQuery.set('');
-      this.addCardTypeFilter.set('all');
-      this.addCardCreatureTypeFilter.set('');
-      this.addCardColorFilter.set('all');
-      this.addCardCmcFilter.set('all');
-      this.addCardResults.set([]);
-      this.addCardMessage.set('');
+  /**
+   * Änderungen im Bearbeitungsmodus (Karten hinzufügen/entfernen, Anzahl anpassen) werden NUR
+   * lokal in pendingChanges gesammelt - erst saveEdits() schreibt sie in die Datenbank. So
+   * verwirft cancelEdits() (oder Schließen der Ansicht/App ohne zu speichern) sie einfach wieder,
+   * ohne dass vorher irgendetwas gespeichert wurde.
+   */
+  readonly pendingChanges = signal<Map<string, PendingCardChange>>(new Map());
+  readonly editSaveBusy = signal(false);
+
+  /** Kartenname (lowercase) -> gespeicherte Anzahl, als schnelle Nachschlagehilfe für Diff-Berechnungen. */
+  private readonly savedQuantityByKey = computed(() => {
+    const map = new Map<string, number>();
+    for (const c of this.viewingDeckCards()) map.set(c.cardName.toLowerCase(), c.quantity);
+    return map;
+  });
+
+  /** viewingDeckCards, überlagert von den noch ungespeicherten Änderungen - das, was während des Bearbeitens angezeigt wird. */
+  readonly editedDeckCards = computed<DeckCard[]>(() => {
+    if (!this.editMode()) return this.viewingDeckCards();
+
+    const pending = this.pendingChanges();
+    const result: DeckCard[] = [];
+    for (const card of this.viewingDeckCards()) {
+      const change = pending.get(card.cardName.toLowerCase());
+      if (!change) {
+        result.push(card);
+      } else if (change.quantity > 0) {
+        result.push({ ...card, quantity: change.quantity });
+      }
     }
+    const savedKeys = this.savedQuantityByKey();
+    for (const change of pending.values()) {
+      if (!savedKeys.has(change.cardName.toLowerCase()) && change.quantity > 0) {
+        result.push({
+          cardName: change.cardName,
+          quantity: change.quantity,
+          imageUrl: change.imageUrl,
+          typeLine: change.typeLine,
+          cmc: change.cmc,
+          isCommander: false,
+        });
+      }
+    }
+    return result;
+  });
+
+  readonly hasPendingChanges = computed(() => {
+    const saved = this.savedQuantityByKey();
+    for (const change of this.pendingChanges().values()) {
+      if (change.quantity !== (saved.get(change.cardName.toLowerCase()) ?? 0)) return true;
+    }
+    return false;
+  });
+
+  /** Für die Anzeige "3 hinzugefügt, 1 entfernt" o.ä. vor dem Speichern. */
+  readonly pendingChangeSummary = computed(() => {
+    const saved = this.savedQuantityByKey();
+    let added = 0;
+    let removed = 0;
+    for (const change of this.pendingChanges().values()) {
+      const diff = change.quantity - (saved.get(change.cardName.toLowerCase()) ?? 0);
+      if (diff > 0) added += diff;
+      else if (diff < 0) removed += -diff;
+    }
+    return { added, removed };
+  });
+
+  toggleEditMode(): void {
+    if (this.editMode()) return; // Verlassen geht nur bewusst über saveEdits()/cancelEdits()
+    this.editMode.set(true);
+    this.pendingChanges.set(new Map());
+    this.addCardQuery.set('');
+    this.addCardTypeFilter.set('all');
+    this.addCardCreatureTypeFilter.set('');
+    this.addCardColorFilter.set('all');
+    this.addCardCmcFilter.set('all');
+    this.addCardResults.set([]);
+    this.addCardMessage.set('');
+  }
+
+  private setPendingQuantity(card: DeckCard, quantity: number): void {
+    this.pendingChanges.update((map) => {
+      const next = new Map(map);
+      next.set(card.cardName.toLowerCase(), {
+        cardName: card.cardName,
+        quantity: Math.max(0, quantity),
+        imageUrl: card.imageUrl,
+        typeLine: card.typeLine,
+        cmc: card.cmc,
+        isCommander: card.isCommander,
+      });
+      return next;
+    });
+  }
+
+  /** card.quantity ist hier bereits der aktuell angezeigte (ggf. schon angepasste) Stand aus editedDeckCards(). */
+  incrementCard(card: DeckCard): void {
+    this.setPendingQuantity(card, card.quantity + 1);
+  }
+
+  decrementCard(card: DeckCard): void {
+    this.setPendingQuantity(card, card.quantity - 1);
+  }
+
+  async saveEdits(): Promise<void> {
+    const deck = this.viewingDeck();
+    if (!deck) return;
+    this.editSaveBusy.set(true);
+
+    const saved = this.savedQuantityByKey();
+    for (const change of this.pendingChanges().values()) {
+      const savedQty = saved.get(change.cardName.toLowerCase()) ?? 0;
+      const diff = change.quantity - savedQty;
+      if (diff === 0) continue;
+
+      if (diff > 0) {
+        await this.deckService.addCardToDeck(
+          deck.id,
+          {
+            name: change.cardName,
+            imageUrl: change.imageUrl ?? undefined,
+            typeLine: change.typeLine ?? undefined,
+            cmc: change.cmc,
+          },
+          diff
+        );
+      } else {
+        await this.deckService.removeCardFromDeck(deck.id, change.cardName, -diff);
+      }
+    }
+
+    this.pendingChanges.set(new Map());
+    this.editMode.set(false);
+    await this.reloadDeckCards();
+    this.editSaveBusy.set(false);
+  }
+
+  cancelEdits(): void {
+    this.pendingChanges.set(new Map());
+    this.editMode.set(false);
+    this.addCardQuery.set('');
+    this.addCardResults.set([]);
+    this.addCardMessage.set('');
   }
 
   onAddCardSearchInput(value: string): void {
@@ -416,23 +557,25 @@ export class DeckViewerService {
     }, 300);
   }
 
-  async addCard(card: ScryfallCard): Promise<void> {
-    const deck = this.viewingDeck();
-    if (!deck) return;
-    this.addCardBusy.set(true);
-    const ok = await this.deckService.addCardToDeck(deck.id, card);
-    this.addCardMessage.set(ok ? `"${card.name}" hinzugefügt.` : `Konnte "${card.name}" nicht hinzufügen.`);
-    if (ok) await this.reloadDeckCards();
-    this.addCardBusy.set(false);
-  }
+  /** Fügt eine Karte aus den Suchergebnissen nur lokal zu pendingChanges hinzu - noch nicht gespeichert. */
+  addCard(card: ScryfallCard): void {
+    const key = card.name.toLowerCase();
+    const currentQty = this.editedDeckCards().find((c) => c.cardName.toLowerCase() === key)?.quantity ?? 0;
+    const existingInDeck = this.viewingDeckCards().find((c) => c.cardName.toLowerCase() === key);
 
-  async removeCard(card: DeckCard): Promise<void> {
-    const deck = this.viewingDeck();
-    if (!deck) return;
-    const ok = await this.deckService.removeCardFromDeck(deck.id, card.cardName);
-    if (ok) {
-      this.viewingDeckCards.update((cards) => cards.filter((c) => c.cardName !== card.cardName));
-    }
+    this.pendingChanges.update((map) => {
+      const next = new Map(map);
+      next.set(key, {
+        cardName: card.name,
+        quantity: currentQty + 1,
+        imageUrl: card.imageUrl ?? existingInDeck?.imageUrl ?? null,
+        typeLine: card.typeLine ?? existingInDeck?.typeLine ?? null,
+        cmc: card.cmc ?? existingInDeck?.cmc ?? 0,
+        isCommander: existingInDeck?.isCommander ?? false,
+      });
+      return next;
+    });
+    this.addCardMessage.set(`"${card.name}" hinzugefügt (noch nicht gespeichert).`);
   }
 
   private async reloadDeckCards(): Promise<void> {
@@ -441,6 +584,7 @@ export class DeckViewerService {
     const cards = await this.deckService.loadDeckCards(deck.id);
     this.viewingDeckCards.set(cards);
     this.loadCardDetails(cards);
+    this.loadBracketEstimate(cards);
   }
 
   async open(deck: Deck): Promise<void> {
@@ -451,6 +595,7 @@ export class DeckViewerService {
     this.showDeckAnalysis.set(false);
     this.resetCardFilters();
     this.editMode.set(false);
+    this.pendingChanges.set(new Map());
     this.addCardResults.set([]);
     this.addCardMessage.set('');
     this.showDeckAnalysisInfo.set(false);
@@ -512,6 +657,7 @@ export class DeckViewerService {
     this.bracketEstimateFailed.set(false);
     this.bracketEstimateErrorDetail.set(null);
     this.editMode.set(false);
+    this.pendingChanges.set(new Map());
     this.addCardResults.set([]);
     this.addCardMessage.set('');
   }

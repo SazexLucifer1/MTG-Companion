@@ -542,8 +542,8 @@ export class DeckService {
     return true;
   }
 
-  /** Entfernt eine Karte komplett (alle Kopien) aus dem Deck. */
-  async removeCardFromDeck(deckId: string, cardName: string): Promise<boolean> {
+  /** Entfernt eine bestimmte Anzahl Kopien einer Karte (Standard: alle) aus dem Deck. */
+  async removeCardFromDeck(deckId: string, cardName: string, quantity?: number): Promise<boolean> {
     const { data: existing, error: lookupError } = await supabase
       .from('deck_cards')
       .select('id, quantity')
@@ -556,17 +556,28 @@ export class DeckService {
       return false;
     }
 
-    const { error: deleteError } = await supabase.from('deck_cards').delete().eq('id', existing.id);
-    if (deleteError) {
-      console.error('Konnte Karte nicht entfernen:', deleteError);
-      return false;
+    const removeQty = Math.min(quantity ?? existing.quantity, existing.quantity);
+    const remaining = existing.quantity - removeQty;
+
+    if (remaining > 0) {
+      const { error } = await supabase.from('deck_cards').update({ quantity: remaining }).eq('id', existing.id);
+      if (error) {
+        console.error('Konnte Kartenanzahl nicht verringern:', error);
+        return false;
+      }
+    } else {
+      const { error } = await supabase.from('deck_cards').delete().eq('id', existing.id);
+      if (error) {
+        console.error('Konnte Karte nicht entfernen:', error);
+        return false;
+      }
     }
 
     await supabase.from('deck_change_log').insert({
       deck_id: deckId,
       card_name: cardName,
       change_type: 'removed',
-      quantity: existing.quantity,
+      quantity: removeQty,
     });
     await supabase.from('decks').update({ updated_at: new Date().toISOString() }).eq('id', deckId);
     return true;

@@ -362,27 +362,66 @@
 }
 
 // NEU
-.deck-card-remove {
+.deck-card-stepper {
   position: absolute;
   top: 4px;
   right: 4px;
-  width: 24px;
-  height: 24px;
-  min-width: 0;
-  padding: 0;
-  border-radius: 50%;
-  border: none;
-  background: rgba(255, 80, 80, 0.75);
-  color: #fff;
-  font-size: 0.8rem;
   display: flex;
   align-items: center;
-  justify-content: center;
-  cursor: pointer;
+  gap: 4px;
+  padding: 2px 4px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.75);
+  font-size: 0.78rem;
+  font-weight: 700;
+
+  span {
+    min-width: 14px;
+    text-align: center;
+  }
+
+  button {
+    width: 20px;
+    height: 20px;
+    min-width: 0;
+    padding: 0;
+    border-radius: 50%;
+    border: none;
+    background: rgba(255, 255, 255, 0.15);
+    color: #fff;
+    font-size: 0.85rem;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+
+    &:active {
+      background: rgba(255, 255, 255, 0.3);
+    }
+  }
+
+  &.inline {
+    position: static;
+    margin-left: auto;
+    background: rgba(255, 255, 255, 0.08);
+  }
 }
 
-.deck-text-list li .icon-button {
-  margin-left: auto;
+.edit-mode-bar {
+  margin: 4px 0 12px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(138, 180, 255, 0.08);
+  border: 1px solid rgba(138, 180, 255, 0.3);
+
+  .hint {
+    margin: 0 0 8px;
+  }
+
+  .chip-row {
+    margin: 0;
+  }
 }
 
 .add-card-panel {
