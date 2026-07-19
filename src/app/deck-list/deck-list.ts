@@ -82,6 +82,16 @@ export class DeckList {
         });
       });
     });
+
+    // Lädt die Liste neu, sobald die Detailansicht (Ansehen/Bearbeiten) wieder geschlossen wird -
+    // dort können Name, EDHREC-Tag oder der markierte Commander geändert worden sein, die sich
+    // sonst erst nach einem manuellen Neuladen der Seite in dieser Liste zeigen würden.
+    let wasViewingDeck = false;
+    effect(() => {
+      const isViewing = this.viewer.viewingDeck() !== null;
+      if (wasViewingDeck && !isViewing) this.refreshDecks();
+      wasViewingDeck = isViewing;
+    });
   }
 
   /** Kartenbild-URL für einen Commander-Namen, falls schon geladen. */
@@ -93,7 +103,10 @@ export class DeckList {
   private readonly decksWithStats = computed<DeckWithStats[]>(() =>
     this.decks().map((d) => {
       const s = this.deckStats().get(d.id) ?? { games: 0, wins: 0, winRate: 0 };
-      const commander = s.commander ?? this.storedCommanders().get(d.id);
+      // Markierter Commander (deck_cards.is_commander) hat Vorrang vor dem in Partien
+      // hinterlegten Namen, da der markierte Commander die aktuelle Wahrheit ist und sich
+      // nach der letzten Partie geändert haben kann.
+      const commander = this.storedCommanders().get(d.id) ?? s.commander;
       return { ...d, ...s, commander };
     })
   );
@@ -149,7 +162,13 @@ export class DeckList {
   async refreshDecks(): Promise<void> {
     const decks = await this.deckService.loadDecksForUser(this.userId());
     this.decks.set(decks);
-    this.deckStats.set(await this.deckService.getDeckStatsForDecks(decks.map((d) => d.id)));
+    const deckIds = decks.map((d) => d.id);
+    const [stats, storedCommanders] = await Promise.all([
+      this.deckService.getDeckStatsForDecks(deckIds),
+      this.deckService.getStoredCommanders(deckIds),
+    ]);
+    this.deckStats.set(stats);
+    this.storedCommanders.set(storedCommanders);
   }
 
   openNewDeckDialog(): void {
@@ -162,10 +181,6 @@ export class DeckList {
       await this.viewer.open(deck);
       this.viewer.toggleEditMode();
     });
-  }
-
-  openEditDeckDialog(deck: Deck): void {
-    this.importService.openEditDeckDialog(this.userId(), deck, () => this.refreshDecks());
   }
 
   openPreconDialog(): void {

@@ -587,6 +587,20 @@ export class DeckService {
     return true;
   }
 
+  /** Ändert nur Name und EDHREC-Tag eines bestehenden Decks, ohne die Kartenliste anzufassen. */
+  async updateDeckInfo(deckId: string, name: string, edhrecTag: string | null): Promise<boolean> {
+    const { error } = await supabase
+      .from('decks')
+      .update({ name, edhrec_tag: edhrecTag, updated_at: new Date().toISOString() })
+      .eq('id', deckId);
+
+    if (error) {
+      console.error('Konnte Deckname/Tag nicht ändern:', error);
+      return false;
+    }
+    return true;
+  }
+
   /** Markiert/entmarkiert eine bereits im Deck vorhandene Karte als Commander (z.B. wenn der Import keinen erkannt hat). */
   async setCardCommanderFlag(deckId: string, cardName: string, isCommander: boolean): Promise<boolean> {
     const { error } = await supabase

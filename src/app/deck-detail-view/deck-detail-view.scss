@@ -23,6 +23,23 @@
   margin-bottom: 4px;
 }
 
+.deck-info-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 4px 0;
+
+  .deck-name-input {
+    font-size: 1.15rem;
+    font-weight: 700;
+    padding: 8px 10px;
+  }
+
+  .chip-row {
+    margin: 2px 0 0;
+  }
+}
+
 .deck-detail-body {
   flex: 1;
   overflow-y: auto;

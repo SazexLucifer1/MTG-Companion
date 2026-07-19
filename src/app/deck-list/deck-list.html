@@ -57,7 +57,6 @@
           <div class="deck-actions">
             <button class="glass-button small" (click)="openDeckDetail(deck)">👁️ Ansehen</button>
             @if (!readonlyMode()) {
-              <button class="icon-button" (click)="openEditDeckDialog(deck)" aria-label="Deck aktualisieren">✏️</button>
               <button class="icon-button" (click)="deleteDeck(deck)" aria-label="Deck löschen">🗑</button>
             }
           </div>

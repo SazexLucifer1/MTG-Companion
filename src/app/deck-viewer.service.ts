@@ -59,6 +59,41 @@ export class DeckViewerService {
   readonly showDeckAnalysis = signal(false);
   readonly showDeckAnalysisInfo = signal(false);
 
+  // NEU - Name/Tag sind immer (nicht nur im Bearbeitungsmodus) im Kopfbereich der Detailansicht
+  // änderbar, damit dafür kein separater Dialog mehr nötig ist (siehe deck-list.ts, der frühere
+  // Stift-Button wurde entfernt).
+  readonly deckNameDraft = signal('');
+  readonly deckTagDraft = signal<string | null>(null);
+  readonly deckInfoSaving = signal(false);
+
+  readonly deckInfoDirty = computed(() => {
+    const deck = this.viewingDeck();
+    if (!deck) return false;
+    return this.deckNameDraft().trim() !== deck.name || this.deckTagDraft() !== deck.edhrecTag;
+  });
+
+  /** Verwirft Name/Tag-Entwurf und setzt auf die gespeicherten Werte zurück. */
+  resetDeckInfoDraft(): void {
+    const deck = this.viewingDeck();
+    this.deckNameDraft.set(deck?.name ?? '');
+    this.deckTagDraft.set(deck?.edhrecTag ?? null);
+  }
+
+  async saveDeckInfo(): Promise<void> {
+    const deck = this.viewingDeck();
+    const name = this.deckNameDraft().trim();
+    if (!deck || !name) return;
+
+    this.deckInfoSaving.set(true);
+    const tag = this.deckTagDraft();
+    const ok = await this.deckService.updateDeckInfo(deck.id, name, tag);
+    this.deckInfoSaving.set(false);
+    if (ok) {
+      this.viewingDeck.set({ ...deck, name, edhrecTag: tag });
+      this.deckNameDraft.set(name);
+    }
+  }
+
   /** Kartenname (lowercase) -> Scryfall-Zusatzdaten (Manakosten, Farbidentität, Game-Changer-Flag). */
   readonly viewingCardDetails = signal<Map<string, ScryfallCard>>(new Map());
   readonly analysisBusy = signal(false);
@@ -873,24 +908,25 @@ export class DeckViewerService {
     this.addCardMode.set(mode);
   }
 
-  /** Merkt sich, für welchen Commander zuletzt geladen wurde, um Doppel-Anfragen beim reinen Tab-Wechsel zu vermeiden (siehe edhrecAutoLoad). */
-  private edhrecLoadedFor: string | null = null;
+  /** Merkt sich, für welchen Commander die Vorschlagsliste zuletzt geladen wurde, um Doppel-Anfragen beim reinen Tab-Wechsel zu vermeiden. */
+  private edhrecListsLoadedFor: string | null = null;
+  /** Merkt sich, für welchen Commander die Tag-Liste zuletzt geladen wurde (siehe edhrecTagsAutoLoad). */
+  private edhrecTagsLoadedFor: string | null = null;
 
   /**
-   * Lädt EDHREC-Vorschläge/Tags automatisch (neu), sobald der EDHREC-Tab offen ist und sich der
-   * (ggf. noch ungespeicherte) Commander ändert - deckt sowohl das erste Öffnen des Tabs als auch
-   * eine Krone-Markierung währenddessen einheitlich ab, ohne doppelte Anfragen.
+   * Lädt EDHREC-Vorschläge automatisch (neu), sobald der EDHREC-Tab offen ist und sich der (ggf.
+   * noch ungespeicherte) Commander ändert - deckt sowohl das erste Öffnen des Tabs als auch eine
+   * Krone-Markierung währenddessen einheitlich ab, ohne doppelte Anfragen.
    */
-  private readonly edhrecAutoLoad = effect(() => {
+  private readonly edhrecListsAutoLoad = effect(() => {
     const mode = this.addCardMode();
     const commander = this.edhrecCommanderName();
     if (mode !== 'edhrec') return;
     const key = commander ?? '';
-    if (this.edhrecLoadedFor === key) return;
-    this.edhrecLoadedFor = key;
+    if (this.edhrecListsLoadedFor === key) return;
+    this.edhrecListsLoadedFor = key;
     this.edhrecLists.set(null);
     this.edhrecFailed.set(false);
-    this.edhrecAvailableTags.set([]);
     this.edhrecBrowseTagActive.set(false);
     this.edhrecBrowseTag.set(null);
     if (!commander) {
@@ -898,7 +934,20 @@ export class DeckViewerService {
       return;
     }
     this.loadEdhrecRecommendations();
-    this.loadEdhrecAvailableTags();
+  });
+
+  /**
+   * Lädt die verfügbaren EDHREC-Tags unabhängig vom EDHREC-Tab, sobald sich der Commander ändert -
+   * wird auch für die immer sichtbare Tag-Auswahl im Kopfbereich der Detailansicht gebraucht.
+   */
+  private readonly edhrecTagsAutoLoad = effect(() => {
+    const commander = this.edhrecCommanderName();
+    const key = commander ?? '';
+    if (this.edhrecTagsLoadedFor === key) return;
+    this.edhrecTagsLoadedFor = key;
+    this.edhrecAvailableTags.set([]);
+    if (!commander) return;
+    this.loadEdhrecAvailableTags(commander);
   });
 
   /** Wechselt die angezeigten Vorschläge testweise auf einen anderen Tag - nur für diese Sitzung, nicht gespeichert. */
@@ -920,13 +969,20 @@ export class DeckViewerService {
     this.loadEdhrecRecommendations();
   }
 
-  private async loadEdhrecAvailableTags(): Promise<void> {
-    const commander = this.edhrecCommanderName();
-    if (!commander || this.edhrecAvailableTags().length > 0) return;
+  private async loadEdhrecAvailableTags(commander: string): Promise<void> {
     this.edhrecTagsBusy.set(true);
     const tags = await this.edhrec.getCommanderTags(commander);
     this.edhrecTagsBusy.set(false);
-    this.edhrecAvailableTags.set(tags ?? []);
+
+    let list = tags ?? [];
+    // Aktuell gespeicherten/im Entwurf stehenden Tag immer als Option anbieten, auch falls er in
+    // der frisch geladenen Liste fehlen sollte (z.B. EDHREC hat ihn seither umbenannt) - sonst
+    // würde die Kopfbereich-Auswahl unsichtbar auf "nichts ausgewählt" zurückfallen.
+    const keepTag = this.deckTagDraft() ?? this.viewingDeck()?.edhrecTag ?? null;
+    if (keepTag && !list.some((t) => t.slug === keepTag)) {
+      list = [{ slug: keepTag, value: keepTag, count: 0 }, ...list];
+    }
+    this.edhrecAvailableTags.set(list);
   }
 
   private async loadEdhrecRecommendations(): Promise<void> {
@@ -1019,6 +1075,9 @@ export class DeckViewerService {
 
   async open(deck: Deck): Promise<void> {
     this.viewingDeck.set(deck);
+    this.deckNameDraft.set(deck.name);
+    this.deckTagDraft.set(deck.edhrecTag);
+    this.deckInfoSaving.set(false);
     this.detailBusy.set(true);
     this.showChangeLog.set(false);
     this.showDeckStatsInfo.set(false);
@@ -1033,7 +1092,8 @@ export class DeckViewerService {
     this.addCardResults.set([]);
     this.addCardMessage.set('');
     this.addCardMode.set('search');
-    this.edhrecLoadedFor = null;
+    this.edhrecListsLoadedFor = null;
+    this.edhrecTagsLoadedFor = null;
     this.edhrecLists.set(null);
     this.edhrecCardDetails.set(new Map());
     this.edhrecCategoryImagesBusy.set(new Set());
@@ -1093,6 +1153,9 @@ export class DeckViewerService {
 
   close(): void {
     this.viewingDeck.set(null);
+    this.deckNameDraft.set('');
+    this.deckTagDraft.set(null);
+    this.deckInfoSaving.set(false);
     this.viewingDeckCards.set([]);
     this.viewingChangeLog.set([]);
     this.viewingDeckGameStats.set(null);
@@ -1109,7 +1172,8 @@ export class DeckViewerService {
     this.addCardResults.set([]);
     this.addCardMessage.set('');
     this.addCardMode.set('search');
-    this.edhrecLoadedFor = null;
+    this.edhrecListsLoadedFor = null;
+    this.edhrecTagsLoadedFor = null;
     this.edhrecLists.set(null);
     this.edhrecCardDetails.set(new Map());
     this.edhrecCategoryImagesBusy.set(new Set());

@@ -2,7 +2,50 @@
 <div class="deck-detail-fullscreen">
   <div class="deck-detail-header">
     <button class="glass-button small deck-detail-back" (click)="viewer.close()">← Zurück</button>
-    <h3>{{ deck.name }}</h3>
+
+    <div class="deck-info-edit">
+      <input
+        class="glass-input deck-name-input"
+        type="text"
+        aria-label="Deckname"
+        [ngModel]="viewer.deckNameDraft()"
+        (ngModelChange)="viewer.deckNameDraft.set($event)"
+      />
+      @if (viewer.edhrecTagsBusy()) {
+        <p class="hint">Lade EDHREC-Tags …</p>
+      } @else if (viewer.edhrecAvailableTags().length === 0) {
+        <p class="hint">
+          {{ viewer.edhrecCommanderName() ? 'Keine EDHREC-Tags für diesen Commander gefunden.' : 'Noch kein Commander markiert - Tags erscheinen danach hier.' }}
+        </p>
+      } @else {
+        <select
+          class="glass-input"
+          aria-label="EDHREC-Tag"
+          [ngModel]="viewer.deckTagDraft()"
+          (ngModelChange)="viewer.deckTagDraft.set($event)"
+        >
+          <option [ngValue]="null">Kein Tag</option>
+          @for (t of viewer.edhrecAvailableTags(); track t.slug) {
+            <option [ngValue]="t.slug">{{ t.value }} ({{ t.count }})</option>
+          }
+        </select>
+      }
+      @if (viewer.deckInfoDirty()) {
+        <div class="chip-row">
+          <button
+            class="glass-button small primary"
+            [disabled]="viewer.deckInfoSaving() || !viewer.deckNameDraft().trim()"
+            (click)="viewer.saveDeckInfo()"
+          >
+            {{ viewer.deckInfoSaving() ? 'Speichere …' : '💾 Speichern' }}
+          </button>
+          <button class="glass-button small" [disabled]="viewer.deckInfoSaving()" (click)="viewer.resetDeckInfoDraft()">
+            Verwerfen
+          </button>
+        </div>
+      }
+    </div>
+
     @if (deck.format) {
       <p class="hint">{{ deck.format }} · {{ viewer.viewingTotalCards() }} Karten</p>
     } @else {
@@ -51,6 +94,7 @@
         <button class="glass-chip small" [class.active]="viewer.showChangeLog()" (click)="viewer.toggleChangeLog()">
           🕘 Verlauf @if (viewer.viewingChangeLog().length > 0) {({{ viewer.viewingChangeLog().length }})}
         </button>
+        <button class="glass-chip small" (click)="reimportDecklist()">📋 Kartenliste neu einfügen</button>
       </div>
     }
   </div>
