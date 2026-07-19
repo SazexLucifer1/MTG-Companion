@@ -2,15 +2,23 @@
   position: fixed;
   inset: 0;
   z-index: 700;
-  display: flex;
-  flex-direction: column;
+  // Ein einziger scrollender Block statt fixer Kopf + separat scrollender Rumpf (flex:1) - bei
+  // wenig Höhe (z.B. Querformat auf dem Handy) wurde der Kopfbereich mit Name/Tag/Statistik/
+  // Buttons oft höher als der ganze verfügbare Platz, wodurch für den Rumpf praktisch nichts mehr
+  // übrig blieb und sich kaum noch scrollen ließ. Der Kopf bleibt trotzdem "sticky" oben kleben.
+  overflow-y: auto;
   background: rgba(12, 8, 23, 0.98);
   backdrop-filter: blur(30px) saturate(160%);
   -webkit-backdrop-filter: blur(30px) saturate(160%);
 }
 
 .deck-detail-header {
-  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  // Eigener, undurchsichtiger Hintergrund nötig, da der Rumpf jetzt UNTER dem "klebenden" Kopf
+  // hindurchscrollt statt ihn nie zu berühren.
+  background: rgba(12, 8, 23, 0.98);
   // max-width + auto-margin statt fixer Breite: wirkt sich auf schmalen (Hochformat-)Screens gar
   // nicht aus (dort ist der Viewport ohnehin schmaler), begrenzt den Inhalt im Querformat/Desktop
   // aber auf eine großzügige Breite statt ihn endlos zu strecken - die Kartenraster (auto-fill)
@@ -50,9 +58,6 @@
 }
 
 .deck-detail-body {
-  flex: 1;
-  overflow-y: auto;
-  min-height: 0;
   width: min(100%, 1100px);
   margin: 0 auto;
   padding: 16px 20px calc(20px + env(safe-area-inset-bottom));
