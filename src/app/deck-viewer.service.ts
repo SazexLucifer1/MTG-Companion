@@ -1,4 +1,4 @@
-import { Injectable, computed, inject, signal } from '@angular/core';
+import { Injectable, computed, effect, inject, signal } from '@angular/core';
 import { DeckService, Deck, DeckCard, DeckChangeEntry, DeckGameStats } from './deck.service';
 import { ScryfallService, ScryfallCard } from './scryfall.service';
 import {
@@ -550,13 +550,60 @@ export class DeckViewerService {
     return changed;
   });
 
-  /** Markiert/entmarkiert eine Karte im Bearbeitungsmodus als Commander - nur lokal, bis saveEdits(). */
+  readonly commanderMarkError = signal<string | null>(null);
+
+  /**
+   * Prüft, ob zwei Karten zusammen als Commander-Paar erlaubt wären: Partner (inkl. "Partner
+   * with" und "Friends forever" - Scryfall führt beide unter dem Keyword "Partner"), "Choose a
+   * Background" + eine Background-Karte, oder Doctor Who "Doctor's companion" + ein Time Lord
+   * Doctor.
+   */
+  private canBeSecondCommander(existing: DeckCard, candidate: DeckCard): boolean {
+    const details = this.viewingCardDetails();
+    const existingKw = details.get(existing.cardName.toLowerCase())?.keywords ?? [];
+    const candidateKw = details.get(candidate.cardName.toLowerCase())?.keywords ?? [];
+    const existingType = existing.typeLine ?? '';
+    const candidateType = candidate.typeLine ?? '';
+
+    if (existingKw.includes('Partner') && candidateKw.includes('Partner')) return true;
+    if (existingKw.includes('Choose a background') && candidateType.includes('Background')) return true;
+    if (candidateKw.includes('Choose a background') && existingType.includes('Background')) return true;
+    if (existingKw.includes("Doctor's companion") && candidateType.includes('Time Lord Doctor')) return true;
+    if (candidateKw.includes("Doctor's companion") && existingType.includes('Time Lord Doctor')) return true;
+
+    return false;
+  }
+
+  /**
+   * Markiert/entmarkiert eine Karte im Bearbeitungsmodus als Commander - nur lokal, bis
+   * saveEdits(). Entmarkieren geht immer; ein zweiter Commander nur, wenn er mit dem
+   * bestehenden zusammen als Partner/Background/Doctor's companion gültig wäre, ein dritter
+   * gar nicht.
+   */
   toggleCommanderMark(card: DeckCard): void {
-    this.pendingCommanderChanges.update((map) => {
-      const next = new Map(map);
-      next.set(card.cardName.toLowerCase(), !card.isCommander);
-      return next;
-    });
+    this.commanderMarkError.set(null);
+
+    if (card.isCommander) {
+      this.pendingCommanderChanges.update((map) => new Map(map).set(card.cardName.toLowerCase(), false));
+      return;
+    }
+
+    const currentCommanders = this.editedDeckCards().filter((c) => c.isCommander);
+    if (currentCommanders.length >= 2) {
+      this.commanderMarkError.set('Es können maximal 2 Commander gleichzeitig markiert sein.');
+      return;
+    }
+    if (currentCommanders.length === 1) {
+      const existing = currentCommanders[0];
+      if (!this.canBeSecondCommander(existing, card)) {
+        this.commanderMarkError.set(
+          `${existing.cardName} ist bereits Commander. ${card.cardName} kann nur zusätzlich markiert werden, wenn eine der beiden Karten Partner, Background oder Doctor's companion hat - sonst zuerst ${existing.cardName} entmarkieren.`
+        );
+        return;
+      }
+    }
+
+    this.pendingCommanderChanges.update((map) => new Map(map).set(card.cardName.toLowerCase(), true));
   }
 
   toggleEditMode(): void {
@@ -564,6 +611,7 @@ export class DeckViewerService {
     this.editMode.set(true);
     this.pendingChanges.set(new Map());
     this.pendingCommanderChanges.set(new Map());
+    this.commanderMarkError.set(null);
     this.addCardQuery.set('');
     this.addCardTypeFilter.set('all');
     this.addCardCreatureTypeFilter.set('');
@@ -663,6 +711,7 @@ export class DeckViewerService {
 
     this.pendingChanges.set(new Map());
     this.pendingCommanderChanges.set(new Map());
+    this.commanderMarkError.set(null);
     this.editMode.set(false);
     this.addCardMode.set('search');
     await this.reloadDeckCards();
@@ -672,6 +721,7 @@ export class DeckViewerService {
   cancelEdits(): void {
     this.pendingChanges.set(new Map());
     this.pendingCommanderChanges.set(new Map());
+    this.commanderMarkError.set(null);
     this.editMode.set(false);
     this.addCardQuery.set('');
     this.addCardResults.set([]);
@@ -771,6 +821,10 @@ export class DeckViewerService {
       });
       return next;
     });
+    // Direkt mit in viewingCardDetails übernehmen, damit z.B. die Partner-Prüfung beim
+    // Commander-Markieren auch für gerade erst (noch ungespeichert) hinzugefügte Karten
+    // funktioniert, ohne auf den nächsten vollen Reload zu warten.
+    this.viewingCardDetails.update((map) => new Map(map).set(key, card));
     this.addCardMessage.set(`"${card.name}" hinzugefügt (noch nicht gespeichert).`);
     this.triggerFlash(card.name, 'add');
   }
@@ -782,8 +836,13 @@ export class DeckViewerService {
   readonly edhrecFailed = signal(false);
   /** Kartenname (lowercase) -> Scryfall-Daten (Bild, Typenzeile) für alle EDHREC-Vorschläge, damit man die Karte ansehen kann. */
   readonly edhrecCardDetails = signal<Map<string, ScryfallCard>>(new Map());
-  /** Nur der erste/Haupt-Commander - EDHRECs Slug-Schema für Partner-/Background-Paare liess sich nicht zuverlässig ermitteln. */
-  readonly edhrecCommanderName = computed(() => this.viewingDeckCards().find((c) => c.isCommander)?.cardName ?? null);
+  /**
+   * Nur der erste/Haupt-Commander - EDHRECs Slug-Schema für Partner-/Background-Paare liess sich
+   * nicht zuverlässig ermitteln. Liest bewusst aus editedDeckCards() (nicht viewingDeckCards()),
+   * damit eine noch ungespeicherte Krone-Markierung im Bearbeitungsmodus sofort neue
+   * Vorschläge/Tags nachlädt, ohne erst Speichern + neu öffnen zu erfordern.
+   */
+  readonly edhrecCommanderName = computed(() => this.editedDeckCards().find((c) => c.isCommander)?.cardName ?? null);
   /** Beim Deck-Anlegen gewählter EDHREC-Theme-Tag (z.B. "ramp") - kombiniert die Vorschläge mit dem Commander statt nur Commander allein. */
   readonly edhrecTagSlug = computed(() => this.viewingDeck()?.edhrecTag ?? null);
 
@@ -812,11 +871,35 @@ export class DeckViewerService {
 
   setAddCardMode(mode: 'search' | 'edhrec'): void {
     this.addCardMode.set(mode);
-    if (mode === 'edhrec' && this.edhrecLists() === null && !this.edhrecBusy()) {
-      this.loadEdhrecRecommendations();
-      this.loadEdhrecAvailableTags();
-    }
   }
+
+  /** Merkt sich, für welchen Commander zuletzt geladen wurde, um Doppel-Anfragen beim reinen Tab-Wechsel zu vermeiden (siehe edhrecAutoLoad). */
+  private edhrecLoadedFor: string | null = null;
+
+  /**
+   * Lädt EDHREC-Vorschläge/Tags automatisch (neu), sobald der EDHREC-Tab offen ist und sich der
+   * (ggf. noch ungespeicherte) Commander ändert - deckt sowohl das erste Öffnen des Tabs als auch
+   * eine Krone-Markierung währenddessen einheitlich ab, ohne doppelte Anfragen.
+   */
+  private readonly edhrecAutoLoad = effect(() => {
+    const mode = this.addCardMode();
+    const commander = this.edhrecCommanderName();
+    if (mode !== 'edhrec') return;
+    const key = commander ?? '';
+    if (this.edhrecLoadedFor === key) return;
+    this.edhrecLoadedFor = key;
+    this.edhrecLists.set(null);
+    this.edhrecFailed.set(false);
+    this.edhrecAvailableTags.set([]);
+    this.edhrecBrowseTagActive.set(false);
+    this.edhrecBrowseTag.set(null);
+    if (!commander) {
+      this.edhrecFailed.set(true);
+      return;
+    }
+    this.loadEdhrecRecommendations();
+    this.loadEdhrecAvailableTags();
+  });
 
   /** Wechselt die angezeigten Vorschläge testweise auf einen anderen Tag - nur für diese Sitzung, nicht gespeichert. */
   setEdhrecBrowseTag(slug: string | null): void {
@@ -945,10 +1028,12 @@ export class DeckViewerService {
     this.editMode.set(false);
     this.pendingChanges.set(new Map());
     this.pendingCommanderChanges.set(new Map());
+    this.commanderMarkError.set(null);
     this.flashState.set(null);
     this.addCardResults.set([]);
     this.addCardMessage.set('');
     this.addCardMode.set('search');
+    this.edhrecLoadedFor = null;
     this.edhrecLists.set(null);
     this.edhrecCardDetails.set(new Map());
     this.edhrecCategoryImagesBusy.set(new Set());
@@ -1019,10 +1104,12 @@ export class DeckViewerService {
     this.editMode.set(false);
     this.pendingChanges.set(new Map());
     this.pendingCommanderChanges.set(new Map());
+    this.commanderMarkError.set(null);
     this.flashState.set(null);
     this.addCardResults.set([]);
     this.addCardMessage.set('');
     this.addCardMode.set('search');
+    this.edhrecLoadedFor = null;
     this.edhrecLists.set(null);
     this.edhrecCardDetails.set(new Map());
     this.edhrecCategoryImagesBusy.set(new Set());

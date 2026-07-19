@@ -79,6 +79,9 @@
 
       @if (viewer.editMode()) {
         <div class="edit-mode-bar">
+          @if (viewer.commanderMarkError()) {
+            <p class="error">👑 {{ viewer.commanderMarkError() }}</p>
+          }
           @if (!viewer.hasPendingChanges()) {
             <p class="hint">Noch keine Änderungen.</p>
           } @else {
