@@ -31,10 +31,12 @@
   // aber auf eine großzügige Breite statt ihn endlos zu strecken.
   width: min(100%, 1100px);
   margin: 0 auto;
-  // env(safe-area-inset-top) statt fixem 12px: die Detailansicht ist position:fixed;inset:0 und
-  // liegt damit auch unter der Handy-Statusleiste/Notch - ohne den Inset rutscht der
-  // Zurück-Button teilweise dahinter.
-  padding: calc(env(safe-area-inset-top, 0px) + 12px) 20px 12px;
+  // env(safe-area-inset-*) statt fixer Werte: die Detailansicht ist position:fixed;inset:0 und
+  // liegt damit auch unter Statusleiste/Notch. Im Querformat wandert die Notch/Kamera-Aussparung
+  // an den linken oder rechten Rand statt oben zu sitzen - ohne die Insets links/rechts würde der
+  // Inhalt dort ein Stück verdeckt/überlappt wirken.
+  padding: calc(env(safe-area-inset-top, 0px) + 12px) calc(env(safe-area-inset-right, 0px) + 20px)
+    12px calc(env(safe-area-inset-left, 0px) + 20px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.12);
 }
 
@@ -72,7 +74,8 @@
 .deck-detail-body {
   width: min(100%, 1100px);
   margin: 0 auto;
-  padding: 16px 20px calc(20px + env(safe-area-inset-bottom));
+  padding: 16px calc(env(safe-area-inset-right, 0px) + 20px) calc(20px + env(safe-area-inset-bottom))
+    calc(env(safe-area-inset-left, 0px) + 20px);
 }
 
 .deck-game-stats {
@@ -304,9 +307,11 @@
   // auto-fill mit fester Min/Max-Breite statt fester Spaltenzahl (vorher repeat(3, 1fr)) - so
   // bleiben die Kartenbilder in JEDER Breite (Hochformat, Querformat, Desktop) gleich groß, es
   // werden nur mehr/weniger Spalten daraus, statt dass 3 fixe Spalten im Querformat riesig werden.
-  grid-template-columns: repeat(auto-fill, minmax(100px, 130px));
+  // Min-Breite bewusst niedrig (85px statt vorher 100px) gewählt, damit auch auf schmaleren
+  // Hochformat-Handys (~360px) noch zuverlässig 3 Spalten passen statt auf 2 zurückzufallen.
+  grid-template-columns: repeat(auto-fill, minmax(85px, 140px));
   justify-content: center;
-  gap: 12px;
+  gap: 10px;
   margin: 0 0 16px;
 }
 
@@ -562,9 +567,9 @@
 .card-pick-grid {
   display: grid;
   // Gleiche Begründung wie bei .deck-visual-grid - feste Kartenbild-Größe, variable Spaltenzahl.
-  grid-template-columns: repeat(auto-fill, minmax(100px, 130px));
+  grid-template-columns: repeat(auto-fill, minmax(85px, 140px));
   justify-content: center;
-  gap: 12px;
+  gap: 10px;
   margin: 10px 0 16px;
 }
 

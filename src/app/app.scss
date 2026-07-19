@@ -11,7 +11,10 @@
 .app-header {
   width: min(100%, 1100px);
   margin: 0 auto;
-  padding: calc(env(safe-area-inset-top, 0px) + 18px) 18px 4px;
+  // env(safe-area-inset-left/right) zusätzlich zum top-Inset: im Querformat wandert die
+  // Notch/Kamera-Aussparung an den linken oder rechten Rand statt oben zu sitzen.
+  padding: calc(env(safe-area-inset-top, 0px) + 18px) calc(env(safe-area-inset-right, 0px) + 18px) 4px
+    calc(env(safe-area-inset-left, 0px) + 18px);
 
   h1 {
     font-size: 1.5rem;
@@ -24,7 +27,8 @@
 .content {
   width: min(100%, 1100px);
   margin: 0 auto;
-  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 110px);
+  padding: 0 env(safe-area-inset-right, 0px) calc(env(safe-area-inset-bottom, 0px) + 110px)
+    env(safe-area-inset-left, 0px);
 }
 
 /* Floating Liquid-Glass-Tab-Bar im iOS-Stil */
