@@ -119,6 +119,7 @@
 @media (max-width: 640px) {
   .profile-main-row {
     flex-direction: column;
+    position: relative;
   }
 
   .profile-left,
@@ -128,11 +129,16 @@
     width: 100%;
   }
 
+  .profile-left h2 {
+    margin-right: 150px;
+  }
+
   .header-icon-col {
+    position: absolute;
+    top: 0;
+    right: 0;
     flex-direction: row;
-    justify-content: flex-end;
-    width: 100%;
-    order: -1;
+    width: auto;
   }
 
   .favorite-commander-card {
