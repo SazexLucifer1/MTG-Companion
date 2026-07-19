@@ -182,6 +182,15 @@
   margin-bottom: 14px;
 }
 
+// NEU
+.viewing-profile-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
 .avatar-circle {
   position: relative;
   width: 72px;

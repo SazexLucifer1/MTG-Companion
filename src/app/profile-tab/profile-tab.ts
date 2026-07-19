@@ -60,6 +60,9 @@ export class ProfileTab {
       }
       this.deckService.getUnassignedCommanderStats(userId).then((stats) => {
         this.viewingUnassignedCommanderStats.set(stats);
+        this.viewingCommanderSearchQuery.set('');
+        this.viewingCommanderSortMode.set('alpha');
+        this.viewingCommanderPage.set(0);
       });
     });
 
@@ -208,6 +211,63 @@ export class ProfileTab {
 
   nextCommanderPage(): void {
     this.commanderPage.update((p) => Math.min(this.commanderTotalPages() - 1, p + 1));
+  }
+
+  // --- Gleiches wie oben, aber für die Commander-Statistik eines FREMDEN Profils - eigene Signale,
+  // damit Suche/Sortierung/Seite dort unabhängig vom eigenen Profil bleiben. ---
+
+  readonly viewingCommanderSearchQuery = signal('');
+  readonly viewingCommanderSortMode = signal<'alpha' | 'winRate' | 'games'>('alpha');
+  readonly viewingCommanderPage = signal(0);
+
+  readonly filteredSortedViewingCommanderStats = computed<CommanderGameStats[]>(() => {
+    const query = this.viewingCommanderSearchQuery().trim().toLowerCase();
+    let list = this.viewingUnassignedCommanderStats();
+    if (query) {
+      list = list.filter((c) => c.commander.toLowerCase().includes(query));
+    }
+
+    const mode = this.viewingCommanderSortMode();
+    list = [...list];
+    if (mode === 'alpha') {
+      list.sort((a, b) => a.commander.localeCompare(b.commander));
+    } else if (mode === 'winRate') {
+      list.sort((a, b) => b.winRate - a.winRate || b.games - a.games);
+    } else {
+      list.sort((a, b) => b.games - a.games || b.winRate - a.winRate);
+    }
+    return list;
+  });
+
+  readonly viewingCommanderTotalPages = computed(() =>
+    Math.max(1, Math.ceil(this.filteredSortedViewingCommanderStats().length / ProfileTab.PAGE_SIZE))
+  );
+
+  readonly pagedViewingCommanderStats = computed<CommanderGameStats[]>(() => {
+    const start = this.viewingCommanderPage() * ProfileTab.PAGE_SIZE;
+    return this.filteredSortedViewingCommanderStats().slice(start, start + ProfileTab.PAGE_SIZE);
+  });
+
+  readonly viewingCommanderPageRangeEnd = computed(() =>
+    Math.min((this.viewingCommanderPage() + 1) * ProfileTab.PAGE_SIZE, this.filteredSortedViewingCommanderStats().length)
+  );
+
+  setViewingCommanderSearchQuery(value: string): void {
+    this.viewingCommanderSearchQuery.set(value);
+    this.viewingCommanderPage.set(0);
+  }
+
+  setViewingCommanderSortMode(mode: 'alpha' | 'winRate' | 'games'): void {
+    this.viewingCommanderSortMode.set(mode);
+    this.viewingCommanderPage.set(0);
+  }
+
+  prevViewingCommanderPage(): void {
+    this.viewingCommanderPage.update((p) => Math.max(0, p - 1));
+  }
+
+  nextViewingCommanderPage(): void {
+    this.viewingCommanderPage.update((p) => Math.min(this.viewingCommanderTotalPages() - 1, p + 1));
   }
 
   readonly editedName = signal('');

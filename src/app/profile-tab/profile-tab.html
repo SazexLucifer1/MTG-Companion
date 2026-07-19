@@ -1,22 +1,26 @@
 @if (profileService.viewingUserId()) {
   <section class="glass-card">
-    <button class="glass-button small" (click)="profileService.stopViewingProfile()">← Zurück zu meinem Profil</button>
     @if (profileService.viewingBusy()) {
       <p class="hint">Lade Profil …</p>
+      <button class="glass-button small" (click)="profileService.stopViewingProfile()">← Zurück zu meinem Profil</button>
     } @else if (profileService.viewingProfile(); as viewed) {
-      <div class="avatar-row">
-        <div
-          class="avatar-circle"
-          [style.background-image]="viewed.avatarUrl ? 'url(' + viewed.avatarUrl + ')' : null"
-        >
-          @if (!viewed.avatarUrl) {
-            <span class="avatar-placeholder">👤</span>
-          }
+      <div class="viewing-profile-header-row">
+        <div class="avatar-row">
+          <div
+            class="avatar-circle"
+            [style.background-image]="viewed.avatarUrl ? 'url(' + viewed.avatarUrl + ')' : null"
+          >
+            @if (!viewed.avatarUrl) {
+              <span class="avatar-placeholder">👤</span>
+            }
+          </div>
+          <span class="profile-name">{{ viewed.displayName }}</span>
         </div>
-        <span class="profile-name">{{ viewed.displayName }}</span>
+        <button class="glass-button small" (click)="profileService.stopViewingProfile()">← Zurück zu meinem Profil</button>
       </div>
     } @else {
       <p class="hint">Profil konnte nicht geladen werden.</p>
+      <button class="glass-button small" (click)="profileService.stopViewingProfile()">← Zurück zu meinem Profil</button>
     }
   </section>
 
@@ -34,19 +38,45 @@
         Partien mit einem Commander, der keinem der oben gelisteten Decks zugeordnet ist (z.B. alte
         Importe oder geliehene Decks).
       </p>
-      <ul class="player-list">
-        @for (c of viewingUnassignedCommanderStats(); track c.commander) {
-          <li>
-            <span class="player-name card-name-cell">
-              @if (commanderImage(c.commander); as img) {
-              <img class="card-thumb" [src]="img" [alt]="c.commander" />
-              }
-              <span class="card-name-text">{{ c.commander }}</span>
-            </span>
-            <span class="hint">{{ c.wins }} / {{ c.games }} Siege · {{ c.winRate | number: '1.0-0' }}%</span>
-          </li>
+
+      <input
+        class="glass-input"
+        type="text"
+        placeholder="Commander suchen …"
+        [ngModel]="viewingCommanderSearchQuery()"
+        (ngModelChange)="setViewingCommanderSearchQuery($event)"
+      />
+      <div class="chip-row sort-toggle">
+        <button class="glass-chip small" [class.active]="viewingCommanderSortMode() === 'alpha'" (click)="setViewingCommanderSortMode('alpha')">A-Z</button>
+        <button class="glass-chip small" [class.active]="viewingCommanderSortMode() === 'winRate'" (click)="setViewingCommanderSortMode('winRate')">Winrate</button>
+        <button class="glass-chip small" [class.active]="viewingCommanderSortMode() === 'games'" (click)="setViewingCommanderSortMode('games')">Meistgespielt</button>
+      </div>
+
+      @if (filteredSortedViewingCommanderStats().length === 0) {
+        <p class="hint">Kein Commander gefunden.</p>
+      } @else {
+        <ul class="player-list">
+          @for (c of pagedViewingCommanderStats(); track c.commander) {
+            <li>
+              <span class="player-name card-name-cell">
+                @if (commanderImage(c.commander); as img) {
+                <img class="card-thumb" [src]="img" [alt]="c.commander" />
+                }
+                <span class="card-name-text">{{ c.commander }}</span>
+              </span>
+              <span class="hint">{{ c.wins }} / {{ c.games }} Siege · {{ c.winRate | number: '1.0-0' }}%</span>
+            </li>
+          }
+        </ul>
+
+        @if (viewingCommanderTotalPages() > 1) {
+          <div class="chip-row pager">
+            <button class="icon-button" (click)="prevViewingCommanderPage()" [disabled]="viewingCommanderPage() === 0" aria-label="Vorherige Seite">◀</button>
+            <span class="hint">{{ viewingCommanderPage() * 10 + 1 }}–{{ viewingCommanderPageRangeEnd() }} von {{ filteredSortedViewingCommanderStats().length }}</span>
+            <button class="icon-button" (click)="nextViewingCommanderPage()" [disabled]="viewingCommanderPage() >= viewingCommanderTotalPages() - 1" aria-label="Nächste Seite">▶</button>
+          </div>
         }
-      </ul>
+      }
     </section>
   }
 } @else {
