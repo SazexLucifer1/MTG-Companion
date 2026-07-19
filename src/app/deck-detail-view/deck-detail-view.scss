@@ -395,6 +395,17 @@
     align-items: center;
     justify-content: center;
     cursor: pointer;
+    transition: background-color 0.35s ease-out, transform 0.15s ease-out;
+
+    &.flash-add {
+      background-color: #4ade80;
+      transform: scale(1.25);
+    }
+
+    &.flash-remove {
+      background-color: #f87171;
+      transform: scale(1.25);
+    }
 
     &:active {
       background: rgba(255, 255, 255, 0.3);

@@ -439,9 +439,21 @@
                 }
                 @if (viewer.editMode() && !card.isCommander) {
                   <div class="deck-card-stepper">
-                    <button (click)="viewer.decrementCard(card)" aria-label="Eine weniger">−</button>
+                    <button
+                      [class.flash-remove]="viewer.isFlashing(card, 'remove')"
+                      (click)="viewer.decrementCard(card)"
+                      aria-label="Eine weniger"
+                    >
+                      −
+                    </button>
                     <span>{{ card.quantity }}</span>
-                    <button (click)="viewer.incrementCard(card)" aria-label="Eine mehr">+</button>
+                    <button
+                      [class.flash-add]="viewer.isFlashing(card, 'add')"
+                      (click)="viewer.incrementCard(card)"
+                      aria-label="Eine mehr"
+                    >
+                      +
+                    </button>
                   </div>
                 } @else if (card.quantity > 1) {
                   <span class="deck-card-qty">{{ card.quantity }}×</span>
@@ -457,8 +469,20 @@
                 <span>{{ card.cardName }}</span>
                 @if (viewer.editMode() && !card.isCommander) {
                   <div class="deck-card-stepper inline">
-                    <button (click)="viewer.decrementCard(card)" aria-label="Eine weniger">−</button>
-                    <button (click)="viewer.incrementCard(card)" aria-label="Eine mehr">+</button>
+                    <button
+                      [class.flash-remove]="viewer.isFlashing(card, 'remove')"
+                      (click)="viewer.decrementCard(card)"
+                      aria-label="Eine weniger"
+                    >
+                      −
+                    </button>
+                    <button
+                      [class.flash-add]="viewer.isFlashing(card, 'add')"
+                      (click)="viewer.incrementCard(card)"
+                      aria-label="Eine mehr"
+                    >
+                      +
+                    </button>
                   </div>
                 }
               </li>

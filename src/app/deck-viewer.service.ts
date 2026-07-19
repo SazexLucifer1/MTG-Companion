@@ -457,13 +457,30 @@ export class DeckViewerService {
     });
   }
 
+  /** Kurzes grünes/rotes Aufleuchten des zuletzt geklickten +/--Buttons als Klick-Feedback. */
+  readonly flashState = signal<{ key: string; type: 'add' | 'remove' } | null>(null);
+  private flashTimer: ReturnType<typeof setTimeout> | null = null;
+
+  private triggerFlash(card: DeckCard, type: 'add' | 'remove'): void {
+    if (this.flashTimer) clearTimeout(this.flashTimer);
+    this.flashState.set({ key: card.cardName.toLowerCase(), type });
+    this.flashTimer = setTimeout(() => this.flashState.set(null), 400);
+  }
+
+  isFlashing(card: DeckCard, type: 'add' | 'remove'): boolean {
+    const state = this.flashState();
+    return state?.key === card.cardName.toLowerCase() && state.type === type;
+  }
+
   /** card.quantity ist hier bereits der aktuell angezeigte (ggf. schon angepasste) Stand aus editedDeckCards(). */
   incrementCard(card: DeckCard): void {
     this.setPendingQuantity(card, card.quantity + 1);
+    this.triggerFlash(card, 'add');
   }
 
   decrementCard(card: DeckCard): void {
     this.setPendingQuantity(card, card.quantity - 1);
+    this.triggerFlash(card, 'remove');
   }
 
   async saveEdits(): Promise<void> {
@@ -602,6 +619,7 @@ export class DeckViewerService {
     this.resetCardFilters();
     this.editMode.set(false);
     this.pendingChanges.set(new Map());
+    this.flashState.set(null);
     this.addCardResults.set([]);
     this.addCardMessage.set('');
     this.showDeckAnalysisInfo.set(false);
@@ -664,6 +682,7 @@ export class DeckViewerService {
     this.bracketEstimateErrorDetail.set(null);
     this.editMode.set(false);
     this.pendingChanges.set(new Map());
+    this.flashState.set(null);
     this.addCardResults.set([]);
     this.addCardMessage.set('');
   }
