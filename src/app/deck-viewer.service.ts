@@ -128,8 +128,11 @@ export class DeckViewerService {
   // NEU
   private static readonly TUTOR_RE =
     /search(?:es)?\s+(?:your|a|their|that player'?s)\s+library\s+for/i;
+  // Erfasst neben "... for a land card" auch Karten, die eine Basisland-Art direkt beim Namen
+  // nennen statt "land" zu schreiben (z.B. Farseek: "... for a Plains, Island, Swamp, or
+  // Mountain card"; Landcycling-Karten: "... for a Forest card").
   private static readonly LAND_TUTOR_RE =
-    /search(?:es)?\s+(?:your|a|their|that player'?s)\s+library\s+for\s+(?:up to \w+\s+)?(?:an?|the|\d+)?\s*(?:[a-z]+\s+){0,2}lands?\b/i;
+    /search(?:es)?\s+(?:your|a|their|that player'?s)\s+library\s+for\s+(?:up to \w+\s+)?(?:an?|the|\d+)?\s*(?:[a-z]+\s+){0,2}(?:lands?|plains|islands?|swamps?|mountains?|forests?)\b/i;
 
   /**
    * Tutoren (außer für Länder, wie im offiziellen Bracket-Kriterium) - per Texterkennung im
