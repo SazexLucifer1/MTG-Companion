@@ -59,7 +59,15 @@ export class CommanderSpellbookService {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ commanders, main }),
     });
-    if (!res.ok) throw new Error(`estimate-bracket: HTTP ${res.status}`);
+    if (!res.ok) {
+      let detail = '';
+      try {
+        detail = ((await res.json()) as { detail?: string }).detail ?? '';
+      } catch {
+        // Antwort war kein JSON - Status reicht dann als Info.
+      }
+      throw new Error(`estimate-bracket: HTTP ${res.status}${detail ? ` (${detail})` : ''}`);
+    }
     const data = await res.json();
     return {
       bracketTag: data.bracketTag,
@@ -84,21 +92,26 @@ export class CommanderSpellbookService {
     };
   }
 
+  /**
+   * Liefert bei Fehlschlag zusätzlich einen kurzen Klartext-Grund (errorDetail), damit sich ein
+   * Fehlschlag ohne Browser-Devtools diagnostizieren lässt - wird in der UI mit angezeigt.
+   */
   async estimateBracket(
     commanders: BracketDeckCard[],
     main: BracketDeckCard[]
-  ): Promise<BracketEstimate | null> {
+  ): Promise<{ estimate: BracketEstimate | null; errorDetail: string | null }> {
     try {
-      return await this.requestOnce(commanders, main);
+      return { estimate: await this.requestOnce(commanders, main), errorDetail: null };
     } catch (err) {
       // Ein Fehlversuch (kurzer Netzwerkhänger, kalter Funktions-Start) reicht nicht, um die
       // ganze Deck-Analyse als "nicht verfügbar" zu markieren - einmal automatisch erneut versuchen.
       console.warn('estimate-bracket fehlgeschlagen, versuche erneut', err);
       try {
-        return await this.requestOnce(commanders, main);
+        return { estimate: await this.requestOnce(commanders, main), errorDetail: null };
       } catch (retryErr) {
         console.error('estimate-bracket auch im zweiten Versuch fehlgeschlagen', retryErr);
-        return null;
+        const message = retryErr instanceof Error ? retryErr.message : String(retryErr);
+        return { estimate: null, errorDetail: message };
       }
     }
   }

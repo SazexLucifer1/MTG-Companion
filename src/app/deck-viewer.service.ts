@@ -156,6 +156,7 @@ export class DeckViewerService {
   readonly bracketEstimate = signal<BracketEstimate | null>(null);
   readonly bracketEstimateBusy = signal(false);
   readonly bracketEstimateFailed = signal(false);
+  readonly bracketEstimateErrorDetail = signal<string | null>(null);
 
   readonly massLandDenialCards = computed<GameChangerEntry[]>(() =>
     (this.bracketEstimate()?.cards ?? [])
@@ -237,6 +238,7 @@ export class DeckViewerService {
     this.viewingCardDetails.set(new Map());
     this.bracketEstimate.set(null);
     this.bracketEstimateFailed.set(false);
+    this.bracketEstimateErrorDetail.set(null);
     this.viewMode.set('visual');
 
     const [cards, log, gameStats] = await Promise.all([
@@ -273,9 +275,10 @@ export class DeckViewerService {
       .filter((c) => !c.isCommander)
       .map((c) => ({ card: c.cardName, quantity: c.quantity }));
 
-    const result = await this.commanderSpellbook.estimateBracket(commanders, main);
-    this.bracketEstimate.set(result);
-    this.bracketEstimateFailed.set(result === null);
+    const { estimate, errorDetail } = await this.commanderSpellbook.estimateBracket(commanders, main);
+    this.bracketEstimate.set(estimate);
+    this.bracketEstimateFailed.set(estimate === null);
+    this.bracketEstimateErrorDetail.set(errorDetail);
     this.bracketEstimateBusy.set(false);
   }
 
@@ -288,6 +291,7 @@ export class DeckViewerService {
     this.bracketEstimate.set(null);
     this.bracketEstimateBusy.set(false);
     this.bracketEstimateFailed.set(false);
+    this.bracketEstimateErrorDetail.set(null);
   }
 
   toggleChangeLog(): void {

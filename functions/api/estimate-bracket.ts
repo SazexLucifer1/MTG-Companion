@@ -4,7 +4,7 @@
  * direkter Aufruf aus dem Browser der App würde von deren Server blockiert. Läuft als Cloudflare
  * Pages Function (server-zu-server, also kein CORS-Problem) und reicht Anfrage/Antwort 1:1 durch.
  */
-export const onRequestPost: PagesFunction = async (context) => {
+export const onRequestPost = async (context: { request: Request }): Promise<Response> => {
   const body = await context.request.text();
 
   let upstream: Response;
@@ -14,8 +14,9 @@ export const onRequestPost: PagesFunction = async (context) => {
       headers: { 'Content-Type': 'application/json' },
       body,
     });
-  } catch {
-    return new Response(JSON.stringify({ error: 'Commander Spellbook nicht erreichbar' }), {
+  } catch (err) {
+    const detail = err instanceof Error ? err.message : String(err);
+    return new Response(JSON.stringify({ error: 'Commander Spellbook nicht erreichbar', detail }), {
       status: 502,
       headers: { 'Content-Type': 'application/json' },
     });

@@ -137,6 +137,9 @@
                 <p class="hint">Lade Auswertung von Commander Spellbook …</p>
               } @else if (viewer.bracketEstimateFailed()) {
                 <p class="hint">Auswertung aktuell nicht verfügbar (Commander Spellbook nicht erreichbar).</p>
+                @if (viewer.bracketEstimateErrorDetail(); as detail) {
+                  <p class="hint bracket-caveat">Technische Meldung: {{ detail }}</p>
+                }
               } @else if (viewer.bracketEstimate()) {
                 @if (viewer.massLandDenialCards().length > 0) {
                   <p class="hint"><strong>Mass Land Denial:</strong></p>
