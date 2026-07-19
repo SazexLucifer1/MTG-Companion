@@ -10,4 +10,14 @@ import { DeckViewerService } from '../deck-viewer.service';
 })
 export class DeckDetailView {
   readonly viewer = inject(DeckViewerService);
+
+  curveBarHeight(count: number): number {
+    const max = Math.max(1, ...this.viewer.manaCurve().map((b) => b.count));
+    return count === 0 ? 0 : Math.max(6, (count / max) * 100);
+  }
+
+  pipBarWidth(count: number): number {
+    const max = Math.max(1, ...this.viewer.pipDistribution().map((p) => p.count));
+    return count === 0 ? 0 : Math.max(6, (count / max) * 100);
+  }
 }

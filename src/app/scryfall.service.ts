@@ -6,6 +6,10 @@ export interface ScryfallCard {
   imageUrl?: string;
   typeLine?: string;
   cmc?: number;
+  manaCost?: string;
+  colorIdentity?: string[];
+  /** Teil der offiziellen Commander-Bracket-"Game Changers"-Liste (von Scryfall selbst gepflegt). */
+  gameChanger?: boolean;
 }
 
 export interface ScryfallSet {
@@ -272,6 +276,9 @@ export class ScryfallService {
         data.card_faces?.[0]?.image_uris?.art_crop,
       typeLine: data.type_line as string | undefined,
       cmc: data.cmc as number | undefined,
+      manaCost: (data.mana_cost || data.card_faces?.[0]?.mana_cost) as string | undefined,
+      colorIdentity: data.color_identity as string[] | undefined,
+      gameChanger: data.game_changer as boolean | undefined,
     };
   }
 }

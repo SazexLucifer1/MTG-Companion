@@ -76,6 +76,152 @@
   }
 }
 
+// NEU
+// Farben orientieren sich an den fünf MTG-Manafarben (W/U/B/R/G), abgestimmt auf ausreichenden
+// Kontrast/Unterscheidbarkeit (inkl. Farbenblindheit) vor dem dunklen App-Hintergrund.
+.deck-analysis {
+  margin: 4px 0 12px;
+
+  --pip-w: #c18010;
+  --pip-u: #213ced;
+  --pip-b: #81548c;
+  --pip-r: #ec1313;
+  --pip-g: #0fb345;
+}
+
+.curve-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  height: 120px;
+  padding-top: 20px;
+}
+
+.curve-bar-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  height: 100%;
+}
+
+.curve-bar-track {
+  flex: 1;
+  width: 100%;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.curve-bar {
+  width: 100%;
+  max-width: 24px;
+  min-height: 0;
+  background: var(--accent);
+  border-radius: 4px 4px 0 0;
+  position: relative;
+  transition: height 0.2s ease;
+}
+
+.curve-bar-value {
+  position: absolute;
+  top: -18px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.72rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.curve-bar-label {
+  font-size: 0.72rem;
+  opacity: 0.75;
+}
+
+.pip-chart {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pip-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pip-swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.pip-label {
+  font-size: 0.82rem;
+  opacity: 0.85;
+  flex: 0 0 62px;
+  white-space: nowrap;
+}
+
+.pip-bar-track {
+  flex: 1;
+  height: 12px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.pip-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  min-width: 6px;
+  transition: width 0.2s ease;
+}
+
+.pip-value {
+  font-size: 0.82rem;
+  font-weight: 600;
+  flex: 0 0 24px;
+  text-align: right;
+}
+
+.pip-W {
+  background: var(--pip-w);
+}
+.pip-U {
+  background: var(--pip-u);
+}
+.pip-B {
+  background: var(--pip-b);
+}
+.pip-R {
+  background: var(--pip-r);
+}
+.pip-G {
+  background: var(--pip-g);
+}
+
+.game-changer-list {
+  list-style: none;
+  margin: 8px 0;
+  padding: 0;
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 0;
+    font-size: 0.9rem;
+  }
+}
+
+.bracket-caveat {
+  font-size: 0.78rem;
+  opacity: 0.65;
+}
+
 .deck-visual-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);

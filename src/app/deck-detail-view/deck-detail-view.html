@@ -53,6 +53,74 @@
     @if (viewer.detailBusy()) {
       <p class="hint">Lade Deck …</p>
     } @else {
+      @if (viewer.viewingDeckCards().length > 0) {
+        <button class="glass-chip small" (click)="viewer.toggleDeckAnalysis()">
+          {{ viewer.showDeckAnalysis() ? '▾' : '▸' }} 📊 Deck-Analyse
+        </button>
+
+        @if (viewer.showDeckAnalysis()) {
+          <div class="deck-analysis">
+            @if (viewer.analysisBusy()) {
+              <p class="hint">Lade Analyse …</p>
+            } @else {
+              <h4 class="deck-section-title">Manakurve</h4>
+              <div class="curve-chart">
+                @for (bucket of viewer.manaCurve(); track bucket.label) {
+                  <div class="curve-bar-col">
+                    <div class="curve-bar-track">
+                      <div class="curve-bar" [style.height.%]="curveBarHeight(bucket.count)">
+                        @if (bucket.count > 0) {
+                          <span class="curve-bar-value">{{ bucket.count }}</span>
+                        }
+                      </div>
+                    </div>
+                    <span class="curve-bar-label">{{ bucket.label }}</span>
+                  </div>
+                }
+              </div>
+
+              <h4 class="deck-section-title">Pip-Verteilung</h4>
+              @if (viewer.pipDistribution().length > 0) {
+                <div class="pip-chart">
+                  @for (pip of viewer.pipDistribution(); track pip.color) {
+                    @if (pip.count > 0) {
+                      <div class="pip-row">
+                        <span class="pip-swatch" [class]="'pip-' + pip.color"></span>
+                        <span class="pip-label">{{ pip.label }}</span>
+                        <div class="pip-bar-track">
+                          <div class="pip-bar-fill" [class]="'pip-' + pip.color" [style.width.%]="pipBarWidth(pip.count)"></div>
+                        </div>
+                        <span class="pip-value">{{ pip.count }}</span>
+                      </div>
+                    }
+                  }
+                </div>
+              }
+
+              <h4 class="deck-section-title">Game Changer &amp; Bracket-Richtwert</h4>
+              <p class="hint">
+                {{ viewer.gameChangerCount() }} von {{ viewer.viewingTotalCards() }} Karten auf der
+                offiziellen Game-Changer-Liste · {{ viewer.estimatedBracketHint() }}
+              </p>
+              @if (viewer.gameChangerCards().length > 0) {
+                <ul class="game-changer-list">
+                  @for (gc of viewer.gameChangerCards(); track gc.cardName) {
+                    <li>
+                      @if (gc.quantity > 1) {<span class="deck-card-qty-text">{{ gc.quantity }}×</span>}
+                      <span>{{ gc.cardName }}</span>
+                    </li>
+                  }
+                </ul>
+              }
+              <p class="hint bracket-caveat">
+                Richtwert nur anhand der Game-Changer-Anzahl. Andere offizielle Bracket-Kriterien
+                (Mass Land Denial, Extra-Turn-Ketten, Zwei-Karten-Combos, Tutor-Dichte) lassen sich
+                nicht aus der Kartenliste allein ableiten und fließen hier nicht ein.
+              </p>
+            }
+          </div>
+        }
+      }
       @for (section of viewer.groupedDeckCards(); track section.label) {
         <h4 class="deck-section-title">{{ section.label }} ({{ section.cards.length }})</h4>
         @if (viewer.viewMode() === 'visual') {
