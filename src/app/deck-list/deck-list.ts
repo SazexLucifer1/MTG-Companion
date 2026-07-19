@@ -35,6 +35,8 @@ export class DeckList {
 
   readonly decks = signal<Deck[]>([]);
   private readonly deckStats = signal<Map<string, DeckGameStats>>(new Map());
+  /** Fallback-Commander direkt aus dem Deck (deck_cards), falls noch keine Partie mit Commander-Angabe existiert. */
+  private readonly storedCommanders = signal<Map<string, string>>(new Map());
   readonly loading = signal(true);
 
   readonly searchQuery = signal('');
@@ -51,7 +53,13 @@ export class DeckList {
       this.page.set(0);
       this.deckService.loadDecksForUser(uid).then(async (decks) => {
         this.decks.set(decks);
-        this.deckStats.set(await this.deckService.getDeckStatsForDecks(decks.map((d) => d.id)));
+        const deckIds = decks.map((d) => d.id);
+        const [stats, storedCommanders] = await Promise.all([
+          this.deckService.getDeckStatsForDecks(deckIds),
+          this.deckService.getStoredCommanders(deckIds),
+        ]);
+        this.deckStats.set(stats);
+        this.storedCommanders.set(storedCommanders);
         this.loading.set(false);
       });
     });
@@ -85,7 +93,8 @@ export class DeckList {
   private readonly decksWithStats = computed<DeckWithStats[]>(() =>
     this.decks().map((d) => {
       const s = this.deckStats().get(d.id) ?? { games: 0, wins: 0, winRate: 0 };
-      return { ...d, ...s };
+      const commander = s.commander ?? this.storedCommanders().get(d.id);
+      return { ...d, ...s, commander };
     })
   );
 

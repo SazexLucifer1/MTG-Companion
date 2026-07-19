@@ -661,6 +661,33 @@ export class DeckService {
   }
 
   /**
+   * Der im Deck selbst hinterlegte Commander (deck_cards.is_commander) je Deck-ID - als Fallback
+   * für die Deckliste, wenn getDeckStatsForDecks() keinen Commander liefert (noch keine Partie
+   * gespielt, z.B. bei einem frisch angelegten leeren Deck). Bei Partner-Commandern wird nur
+   * einer davon zurückgegeben, wie auch sonst in der App für Karten-Thumbnails üblich.
+   */
+  async getStoredCommanders(deckIds: string[]): Promise<Map<string, string>> {
+    const result = new Map<string, string>();
+    if (deckIds.length === 0) return result;
+
+    const { data, error } = await supabase
+      .from('deck_cards')
+      .select('deck_id, card_name')
+      .eq('is_commander', true)
+      .in('deck_id', deckIds);
+
+    if (error || !data) {
+      console.error('Konnte hinterlegte Commander nicht laden:', error);
+      return result;
+    }
+
+    for (const row of data) {
+      if (!result.has(row.deck_id)) result.set(row.deck_id, row.card_name);
+    }
+    return result;
+  }
+
+  /**
    * Commander-Statistik über ALLE Gruppen hinweg für Matches OHNE Deck-Zuordnung (z.B. alte
    * Excel-Importe oder live getrackte Spiele, bei denen kein eigenes Deck ausgewählt wurde) -
    * ergänzt getDeckStats() im Profil, wo sonst nur deck-gebundene Spiele auftauchen würden.
