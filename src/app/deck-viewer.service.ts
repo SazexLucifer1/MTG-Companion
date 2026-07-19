@@ -46,6 +46,7 @@ export class DeckViewerService {
   readonly showChangeLog = signal(false);
   readonly showDeckStatsInfo = signal(false);
   readonly showDeckAnalysis = signal(false);
+  readonly showDeckAnalysisInfo = signal(false);
 
   /** Kartenname (lowercase) -> Scryfall-Zusatzdaten (Manakosten, Farbidentität, Game-Changer-Flag). */
   readonly viewingCardDetails = signal<Map<string, ScryfallCard>>(new Map());
@@ -235,6 +236,7 @@ export class DeckViewerService {
     this.showChangeLog.set(false);
     this.showDeckStatsInfo.set(false);
     this.showDeckAnalysis.set(false);
+    this.showDeckAnalysisInfo.set(false);
     this.viewingCardDetails.set(new Map());
     this.bracketEstimate.set(null);
     this.bracketEstimateFailed.set(false);
@@ -304,5 +306,9 @@ export class DeckViewerService {
 
   toggleDeckAnalysis(): void {
     this.showDeckAnalysis.update((v) => !v);
+  }
+
+  toggleDeckAnalysisInfo(): void {
+    this.showDeckAnalysisInfo.update((v) => !v);
   }
 }

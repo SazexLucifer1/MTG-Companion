@@ -54,9 +54,53 @@
       <p class="hint">Lade Deck …</p>
     } @else {
       @if (viewer.viewingDeckCards().length > 0) {
-        <button class="glass-chip small" (click)="viewer.toggleDeckAnalysis()">
-          {{ viewer.showDeckAnalysis() ? '▾' : '▸' }} 📊 Deck-Analyse
-        </button>
+        <div class="deck-analysis-header-row">
+          <button class="glass-chip small" (click)="viewer.toggleDeckAnalysis()">
+            {{ viewer.showDeckAnalysis() ? '▾' : '▸' }} 📊 Deck-Analyse
+          </button>
+          <button class="icon-button" (click)="viewer.toggleDeckAnalysisInfo()" aria-label="Was bedeuten diese Werte?">
+            ⓘ
+          </button>
+        </div>
+
+        @if (viewer.showDeckAnalysisInfo()) {
+          <div class="deck-analysis-info">
+            <p class="hint"><strong>Manakurve:</strong> Anzahl Karten (ohne Länder) je Manawert.</p>
+            <p class="hint">
+              <strong>Pip-Verteilung:</strong> Wie oft jede Farbe (Weiß/Blau/Schwarz/Rot/Grün) in
+              den Manakosten aller Nicht-Land-Karten vorkommt. Hybrid- und
+              Phyrexianisch-Manasymbole zählen für ihre Farbe(n) mit.
+            </p>
+            <p class="hint">
+              <strong>Game Changer &amp; Bracket-Richtwert:</strong> Karten von der offiziellen
+              Wizards-Game-Changer-Liste. Richtwert nach den offiziellen Grenzwerten: 0 → Bracket
+              1–3 möglich, 1–3 → mindestens Bracket 3, 4+ → Bracket 4–5.
+            </p>
+            <p class="hint">
+              <strong>Tutoren:</strong> Per Texterkennung im Kartentext geschätzt ("… durchsucht
+              deine Bibliothek …"). Reine Land-Tutoren zählen laut offiziellem Kriterium nicht mit
+              - keine exakte Erkennung.
+            </p>
+            <p class="hint">
+              <strong>Mass Land Denial, Extra-Turns &amp; Combos:</strong> Kommen von Commander
+              Spellbook (externe Community-Datenbank für Karteninteraktionen), unabhängig von der
+              Game-Changer-Zahl oben - können deshalb zu einer leicht anderen Einschätzung führen.
+            </p>
+            <p class="hint">
+              <strong>Commander-Spellbook-Einschätzung:</strong> deren eigene, siebenstufige Skala
+              (nicht identisch mit der offiziellen 1-5er-Skala von Wizards):
+            </p>
+            <ul class="game-changer-list">
+              <li>Exhibition – sehr casual, janky</li>
+              <li>Core – Precon-Niveau</li>
+              <li>Oddball – ungewöhnlich, schwer einzuordnen</li>
+              <li>Spicy – gehoben</li>
+              <li>Powerful – stark</li>
+              <li>Ruthless – sehr kompetitiv, cEDH-nah</li>
+              <li>Banned – enthält für Brackets gesperrte Karten</li>
+            </ul>
+          </div>
+        }
 
         @if (viewer.showDeckAnalysis()) {
           <div class="deck-analysis">
@@ -126,11 +170,6 @@
                   }
                 </ul>
               }
-              <p class="hint bracket-caveat">
-                Per Texterkennung im Kartentext geschätzt ("… durchsucht deine Bibliothek …"),
-                reine Land-Tutoren zählen laut offiziellem Kriterium nicht mit - keine exakte
-                Erkennung.
-              </p>
 
               <h4 class="deck-section-title">Mass Land Denial, Extra-Turns &amp; Combos</h4>
               @if (viewer.bracketEstimateBusy()) {
@@ -176,12 +215,6 @@
                   <p class="hint">Commander-Spellbook-Einschätzung: <strong>{{ label }}</strong></p>
                 }
               }
-              <p class="hint bracket-caveat">
-                Richtwerte, keine verbindliche Einstufung. Game-Changer-Zahl folgt der offiziellen
-                WotC-Liste; Mass Land Denial, Extra-Turns und Combos kommen zusätzlich von
-                Commander Spellbook (externe Community-Datenbank) und können deshalb zu einer
-                leicht anderen Einschätzung kommen als die reine Game-Changer-Zahl oben.
-              </p>
             }
           </div>
         }
