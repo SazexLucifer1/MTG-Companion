@@ -1,6 +1,12 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { DeckService, Deck, DeckCard, DeckChangeEntry, DeckGameStats } from './deck.service';
 import { ScryfallService, ScryfallCard } from './scryfall.service';
+import {
+  CommanderSpellbookService,
+  BracketEstimate,
+  BracketCombo,
+  SPELLBOOK_BRACKET_LABELS,
+} from './commander-spellbook.service';
 
 export interface ManaCurveBucket {
   label: string;
@@ -29,6 +35,7 @@ export interface GameChangerEntry {
 export class DeckViewerService {
   private readonly deckService = inject(DeckService);
   private readonly scryfall = inject(ScryfallService);
+  private readonly commanderSpellbook = inject(CommanderSpellbookService);
 
   readonly viewingDeck = signal<Deck | null>(null);
   readonly viewingDeckCards = signal<DeckCard[]>([]);
@@ -105,15 +112,70 @@ export class DeckViewerService {
 
   /**
    * Grobe Einordnung ausschließlich anhand der offiziellen Game-Changer-Grenzwerte
-   * (Bracket 1-2: keine, Bracket 3: bis zu 3, Bracket 4-5: unbegrenzt). Andere offizielle
-   * Bracket-Kriterien (Mass Land Denial, Extra-Turn-Ketten, Zwei-Karten-Combos, Tutor-Dichte)
-   * lassen sich nicht zuverlässig aus der Kartenliste allein ableiten - deshalb nur ein Richtwert.
+   * (Bracket 1-2: keine, Bracket 3: bis zu 3, Bracket 4-5: unbegrenzt). Ergänzt durch die
+   * Commander-Spellbook-Auswertung (Mass Land Denial, Extra-Turns, Combos) weiter unten -
+   * Tutor-Dichte lässt sich damit immer noch nicht scharf gewichten, deshalb bleibt das ein
+   * Richtwert statt einer verbindlichen Einstufung.
    */
   readonly estimatedBracketHint = computed(() => {
     const count = this.gameChangerCount();
     if (count === 0) return 'Bracket 1–3 möglich';
     if (count <= 3) return 'mindestens Bracket 3';
     return 'Bracket 4–5';
+  });
+
+  // NEU
+  private static readonly TUTOR_RE =
+    /search(?:es)?\s+(?:your|a|their|that player'?s)\s+library\s+for/i;
+  private static readonly LAND_TUTOR_RE =
+    /search(?:es)?\s+(?:your|a|their|that player'?s)\s+library\s+for\s+(?:up to \w+\s+)?(?:an?|the|\d+)?\s*(?:[a-z]+\s+){0,2}lands?\b/i;
+
+  /**
+   * Tutoren (außer für Länder, wie im offiziellen Bracket-Kriterium) - per Texterkennung im
+   * Oracle-Text ("search your library for ..."), da Scryfall dafür kein eigenes Flag hat (anders
+   * als bei Game Changers). Nur eine Näherung, keine exakte Erkennung.
+   */
+  readonly tutorCards = computed<GameChangerEntry[]>(() => {
+    const details = this.viewingCardDetails();
+    return this.viewingDeckCards()
+      .filter((c) => {
+        const text = details.get(c.cardName.toLowerCase())?.oracleText ?? '';
+        return DeckViewerService.TUTOR_RE.test(text) && !DeckViewerService.LAND_TUTOR_RE.test(text);
+      })
+      .map((c) => ({ cardName: c.cardName, quantity: c.quantity }));
+  });
+
+  /**
+   * Mass Land Denial, Extra-Turns und Zwei-Karten-Combos kommen von Commander Spellbooks
+   * Bracket-API (über unseren eigenen Server-Proxy, siehe commander-spellbook.service.ts) - das
+   * ist die einzige praktikable Quelle dafür, eine reine Kartenlisten-Heuristik wäre hier zu
+   * unzuverlässig. Bleibt null, wenn der Aufruf fehlschlägt (z.B. lokale Entwicklung ohne
+   * Cloudflare Pages Functions, oder Commander Spellbook nicht erreichbar) - die übrige Analyse
+   * bleibt davon unberührt.
+   */
+  readonly bracketEstimate = signal<BracketEstimate | null>(null);
+  readonly bracketEstimateBusy = signal(false);
+  readonly bracketEstimateFailed = signal(false);
+
+  readonly massLandDenialCards = computed<GameChangerEntry[]>(() =>
+    (this.bracketEstimate()?.cards ?? [])
+      .filter((c) => c.massLandDenial)
+      .map((c) => ({ cardName: c.cardName, quantity: c.quantity }))
+  );
+
+  readonly extraTurnCards = computed<GameChangerEntry[]>(() =>
+    (this.bracketEstimate()?.cards ?? [])
+      .filter((c) => c.extraTurn)
+      .map((c) => ({ cardName: c.cardName, quantity: c.quantity }))
+  );
+
+  readonly twoCardCombos = computed<BracketCombo[]>(() =>
+    (this.bracketEstimate()?.combos ?? []).filter((c) => c.definitelyTwoCard || c.arguablyTwoCard)
+  );
+
+  readonly spellbookBracketLabel = computed(() => {
+    const tag = this.bracketEstimate()?.bracketTag;
+    return tag ? SPELLBOOK_BRACKET_LABELS[tag] : null;
   });
 
   /** Reihenfolge der Typ-Abschnitte (Commander steht immer separat ganz vorn). */
@@ -173,6 +235,8 @@ export class DeckViewerService {
     this.showDeckStatsInfo.set(false);
     this.showDeckAnalysis.set(false);
     this.viewingCardDetails.set(new Map());
+    this.bracketEstimate.set(null);
+    this.bracketEstimateFailed.set(false);
     this.viewMode.set('visual');
 
     const [cards, log, gameStats] = await Promise.all([
@@ -187,9 +251,10 @@ export class DeckViewerService {
     this.detailBusy.set(false);
 
     this.loadCardDetails(cards);
+    this.loadBracketEstimate(cards);
   }
 
-  /** Lädt Manakosten/Farbidentität/Game-Changer-Flag nach - unabhängig vom Kartenbild-Laden, da für die Deck-Analyse (Kurve/Pips/Bracket) benötigt. */
+  /** Lädt Manakosten/Farbidentität/Game-Changer-Flag/Oracle-Text nach - unabhängig vom Kartenbild-Laden, da für die Deck-Analyse (Kurve/Pips/Tutoren) benötigt. */
   private async loadCardDetails(cards: DeckCard[]): Promise<void> {
     this.analysisBusy.set(true);
     const names = [...new Set(cards.map((c) => c.cardName))];
@@ -198,12 +263,31 @@ export class DeckViewerService {
     this.analysisBusy.set(false);
   }
 
+  /** Lädt Mass-Land-Denial/Extra-Turn/Combo-Auswertung von Commander Spellbook nach (siehe bracketEstimate). */
+  private async loadBracketEstimate(cards: DeckCard[]): Promise<void> {
+    this.bracketEstimateBusy.set(true);
+    const commanders = cards
+      .filter((c) => c.isCommander)
+      .map((c) => ({ card: c.cardName, quantity: c.quantity }));
+    const main = cards
+      .filter((c) => !c.isCommander)
+      .map((c) => ({ card: c.cardName, quantity: c.quantity }));
+
+    const result = await this.commanderSpellbook.estimateBracket(commanders, main);
+    this.bracketEstimate.set(result);
+    this.bracketEstimateFailed.set(result === null);
+    this.bracketEstimateBusy.set(false);
+  }
+
   close(): void {
     this.viewingDeck.set(null);
     this.viewingDeckCards.set([]);
     this.viewingChangeLog.set([]);
     this.viewingDeckGameStats.set(null);
     this.viewingCardDetails.set(new Map());
+    this.bracketEstimate.set(null);
+    this.bracketEstimateBusy.set(false);
+    this.bracketEstimateFailed.set(false);
   }
 
   toggleChangeLog(): void {

@@ -112,10 +112,72 @@
                   }
                 </ul>
               }
+
+              <h4 class="deck-section-title">Tutoren</h4>
+              @if (viewer.tutorCards().length === 0) {
+                <p class="hint">Keine gefunden.</p>
+              } @else {
+                <ul class="game-changer-list">
+                  @for (t of viewer.tutorCards(); track t.cardName) {
+                    <li>
+                      @if (t.quantity > 1) {<span class="deck-card-qty-text">{{ t.quantity }}×</span>}
+                      <span>{{ t.cardName }}</span>
+                    </li>
+                  }
+                </ul>
+              }
               <p class="hint bracket-caveat">
-                Richtwert nur anhand der Game-Changer-Anzahl. Andere offizielle Bracket-Kriterien
-                (Mass Land Denial, Extra-Turn-Ketten, Zwei-Karten-Combos, Tutor-Dichte) lassen sich
-                nicht aus der Kartenliste allein ableiten und fließen hier nicht ein.
+                Per Texterkennung im Kartentext geschätzt ("… durchsucht deine Bibliothek …"),
+                reine Land-Tutoren zählen laut offiziellem Kriterium nicht mit - keine exakte
+                Erkennung.
+              </p>
+
+              <h4 class="deck-section-title">Mass Land Denial, Extra-Turns &amp; Combos</h4>
+              @if (viewer.bracketEstimateBusy()) {
+                <p class="hint">Lade Auswertung von Commander Spellbook …</p>
+              } @else if (viewer.bracketEstimateFailed()) {
+                <p class="hint">Auswertung aktuell nicht verfügbar (Commander Spellbook nicht erreichbar).</p>
+              } @else if (viewer.bracketEstimate()) {
+                @if (viewer.massLandDenialCards().length > 0) {
+                  <p class="hint"><strong>Mass Land Denial:</strong></p>
+                  <ul class="game-changer-list">
+                    @for (c of viewer.massLandDenialCards(); track c.cardName) {
+                      <li>{{ c.cardName }}</li>
+                    }
+                  </ul>
+                }
+                @if (viewer.extraTurnCards().length > 0) {
+                  <p class="hint"><strong>Extra-Turns:</strong></p>
+                  <ul class="game-changer-list">
+                    @for (c of viewer.extraTurnCards(); track c.cardName) {
+                      <li>{{ c.cardName }}</li>
+                    }
+                  </ul>
+                }
+                @if (viewer.twoCardCombos().length > 0) {
+                  <p class="hint"><strong>Zwei-Karten-Combos:</strong></p>
+                  <ul class="game-changer-list">
+                    @for (combo of viewer.twoCardCombos(); track combo.cardNames.join('+')) {
+                      <li>{{ combo.cardNames.join(' + ') }} → {{ combo.produces.join(', ') }}</li>
+                    }
+                  </ul>
+                }
+                @if (
+                  viewer.massLandDenialCards().length === 0 &&
+                  viewer.extraTurnCards().length === 0 &&
+                  viewer.twoCardCombos().length === 0
+                ) {
+                  <p class="hint">Nichts davon gefunden.</p>
+                }
+                @if (viewer.spellbookBracketLabel(); as label) {
+                  <p class="hint">Commander-Spellbook-Einschätzung: <strong>{{ label }}</strong></p>
+                }
+              }
+              <p class="hint bracket-caveat">
+                Richtwerte, keine verbindliche Einstufung. Game-Changer-Zahl folgt der offiziellen
+                WotC-Liste; Mass Land Denial, Extra-Turns und Combos kommen zusätzlich von
+                Commander Spellbook (externe Community-Datenbank) und können deshalb zu einer
+                leicht anderen Einschätzung kommen als die reine Game-Changer-Zahl oben.
               </p>
             }
           </div>

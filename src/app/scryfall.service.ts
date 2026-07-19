@@ -10,6 +10,7 @@ export interface ScryfallCard {
   colorIdentity?: string[];
   /** Teil der offiziellen Commander-Bracket-"Game Changers"-Liste (von Scryfall selbst gepflegt). */
   gameChanger?: boolean;
+  oracleText?: string;
 }
 
 export interface ScryfallSet {
@@ -279,6 +280,7 @@ export class ScryfallService {
       manaCost: (data.mana_cost || data.card_faces?.[0]?.mana_cost) as string | undefined,
       colorIdentity: data.color_identity as string[] | undefined,
       gameChanger: data.game_changer as boolean | undefined,
+      oracleText: (data.oracle_text || data.card_faces?.[0]?.oracle_text) as string | undefined,
     };
   }
 }
