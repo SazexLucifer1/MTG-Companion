@@ -44,10 +44,10 @@ export class ScryfallService {
    * warten reicht" unterscheiden - deshalb bei JEDEM Fehler einfach abwarten und erneut versuchen,
    * mit wachsender Pause, statt sofort aufzugeben.
    */
-  private async fetchWithRetry(url: string, retries = 2): Promise<Response | null> {
+  private async fetchWithRetry(url: string, retries = 2, init?: RequestInit): Promise<Response | null> {
     for (let attempt = 0; attempt <= retries; attempt++) {
       try {
-        const res = await fetch(url, { headers: this.buildHeaders() });
+        const res = await fetch(url, { ...init, headers: { ...this.buildHeaders(), ...init?.headers } });
         if (res.ok || res.status === 404) return res;
       } catch {
         // Von Scryfall geblockte 429-Antworten kommen als Promise-Rejection an - abfangen und unten erneut versuchen.
@@ -248,21 +248,17 @@ export class ScryfallService {
 
     for (let i = 0; i < searchNames.length; i += 75) {
       const chunk = searchNames.slice(i, i + 75);
-      try {
-        const res = await fetch(`${API}/cards/collection`, {
-          method: 'POST',
-          headers: { ...this.buildHeaders(), 'Content-Type': 'application/json' },
-          body: JSON.stringify({ identifiers: chunk.map((name) => ({ name })) }),
-        });
-        if (!res.ok) continue;
-        const data = await res.json();
-        for (const card of (data.data as any[]) ?? []) {
-          const original = searchNameToOriginal.get(frontFaceName(card.name as string).toLowerCase());
-          const key = original?.toLowerCase() ?? (card.name as string).toLowerCase();
-          result.set(key, this.toCard(card));
-        }
-      } catch {
-        // Chunk übersprungen - betroffene Karten bleiben einfach ohne Bild.
+      const res = await this.fetchWithRetry(`${API}/cards/collection`, 2, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identifiers: chunk.map((name) => ({ name })) }),
+      });
+      if (!res?.ok) continue; // Chunk übersprungen (auch nach Wiederholungen fehlgeschlagen) - betroffene Karten bleiben einfach ohne Bild.
+      const data = await res.json();
+      for (const card of (data.data as any[]) ?? []) {
+        const original = searchNameToOriginal.get(frontFaceName(card.name as string).toLowerCase());
+        const key = original?.toLowerCase() ?? (card.name as string).toLowerCase();
+        result.set(key, this.toCard(card));
       }
     }
 

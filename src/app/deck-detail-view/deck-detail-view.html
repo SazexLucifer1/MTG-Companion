@@ -255,34 +255,34 @@
                     {{ isEdhrecCategoryExpanded(list.tag) ? '▾' : '▸' }} {{ list.header }} ({{ list.cards.length }})
                   </button>
                   @if (isEdhrecCategoryExpanded(list.tag)) {
-                    <ul class="add-card-results">
+                    <div class="edhrec-card-grid">
                       @for (card of list.cards; track card.name) {
-                        <li>
-                          @if (viewer.edhrecCardImage(card.name); as img) {
-                            <img class="card-thumb" [src]="img" [alt]="card.name" />
-                          }
-                          <span class="add-card-name">
-                            <span class="add-card-name-text">
-                              @if (viewer.isCardInDeck(card.name)) {✓ }{{ card.name }}
-                            </span>
-                            <span class="hint">
-                              {{ card.numDecks }} / {{ card.potentialDecks }} Decks ·
-                              Synergie {{ card.synergy | percent: '1.0-1' }}
-                            </span>
+                        <div class="edhrec-card-tile">
+                          <div class="edhrec-card-image">
+                            @if (viewer.edhrecCardImage(card.name); as img) {
+                              <img [src]="img" [alt]="card.name" loading="lazy" />
+                            } @else {
+                              <div class="deck-card-placeholder">{{ card.name }}</div>
+                            }
+                            @if (viewer.isCardInDeck(card.name)) {
+                              <span class="edhrec-in-deck-badge" aria-label="Bereits im Deck">✓</span>
+                            } @else {
+                              <button
+                                class="edhrec-add-button"
+                                [class.flash-add]="viewer.isFlashing(card.name, 'add')"
+                                (click)="viewer.addEdhrecCard(card.name)"
+                                aria-label="Hinzufügen"
+                              >
+                                ➕
+                              </button>
+                            }
+                          </div>
+                          <span class="edhrec-card-stats">
+                            {{ card.numDecks }}/{{ card.potentialDecks }} · {{ card.synergy | percent: '1.0-1' }}
                           </span>
-                          @if (!viewer.isCardInDeck(card.name)) {
-                            <button
-                              class="icon-button"
-                              [class.flash-add]="viewer.isFlashing(card.name, 'add')"
-                              (click)="viewer.addEdhrecCard(card.name)"
-                              aria-label="Hinzufügen"
-                            >
-                              ➕
-                            </button>
-                          }
-                        </li>
+                        </div>
                       }
-                    </ul>
+                    </div>
                   }
                 }
               }
