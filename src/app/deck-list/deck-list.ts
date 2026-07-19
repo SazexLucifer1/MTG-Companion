@@ -1,5 +1,5 @@
 import { Component, computed, effect, inject, input, signal } from '@angular/core';
-import { DatePipe, DecimalPipe } from '@angular/common';
+import { DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { DeckService, Deck, DeckGameStats } from '../deck.service';
 import { DeckViewerService } from '../deck-viewer.service';
@@ -19,7 +19,7 @@ const PAGE_SIZE = 10;
 
 @Component({
   selector: 'app-deck-list',
-  imports: [DatePipe, DecimalPipe, FormsModule],
+  imports: [DecimalPipe, FormsModule],
   templateUrl: './deck-list.html',
   styleUrl: './deck-list.scss',
 })

@@ -1,6 +1,6 @@
 @if (importService.showImportDialog()) {
 <div class="options-menu-overlay" (click)="importService.closeImportDialog()">
-  <div class="options-menu-sheet" (click)="$event.stopPropagation()">
+  <div class="options-menu-sheet import-sheet" (click)="$event.stopPropagation()">
     <h3>{{ importService.editingDeckId() ? 'Deck aktualisieren' : 'Deck importieren' }}</h3>
     <p class="hint">
       Kopiere deine Decklist von deckstats.net, Moxfield, Archidekt o.ä. hierhin – ein Kartenname
@@ -75,7 +75,7 @@
 
 @if (importService.showNewEmptyDeckDialog()) {
 <div class="options-menu-overlay" (click)="importService.closeNewEmptyDeckDialog()">
-  <div class="options-menu-sheet" (click)="$event.stopPropagation()">
+  <div class="options-menu-sheet import-sheet" (click)="$event.stopPropagation()">
     <h3>🆕 Leeres Deck anlegen</h3>
     <p class="hint">
       Legt ein Deck ohne Kartenliste an - danach kannst du es in der Detailansicht über

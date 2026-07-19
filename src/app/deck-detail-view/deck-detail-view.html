@@ -90,6 +90,9 @@
               @for (c of viewer.pendingChangeDetails().removed; track c.cardName) {
                 <li class="removed">➖ {{ c.quantity }}× {{ c.cardName }}</li>
               }
+              @for (c of viewer.pendingCommanderChangeDetails(); track c.cardName) {
+                <li class="added">👑 {{ c.cardName }} {{ c.isCommander ? 'wird Commander' : 'ist nicht mehr Commander' }}</li>
+              }
             </ul>
           }
           <div class="chip-row">
@@ -207,22 +210,47 @@
           @if (viewer.addCardMode() === 'edhrec') {
             @if (!viewer.edhrecCommanderName()) {
               <p class="hint">Kein Commander im Deck gefunden - EDHREC-Vorschläge brauchen einen Commander.</p>
-            } @else if (viewer.edhrecBusy()) {
-              <p class="hint">
-                Lade EDHREC-Vorschläge für {{ viewer.edhrecCommanderName() }}
-                @if (viewer.edhrecTagLabel(); as tag) { + {{ tag }} } …
-              </p>
-            } @else if (viewer.edhrecFailed()) {
-              <p class="hint">
-                EDHREC-Vorschläge aktuell nicht verfügbar (inoffizielle Schnittstelle, evtl. kein
-                Eintrag für diesen Commander oder für Partner-/Background-Paare).
-              </p>
-            } @else if (viewer.edhrecLists()) {
-              <p class="hint bracket-caveat">
-                Inoffizielle EDHREC-Daten für {{ viewer.edhrecCommanderName() }}
-                @if (viewer.edhrecTagLabel(); as tag) { + {{ tag }} }. Bereits im Deck vorhandene
-                Karten sind markiert.
-              </p>
+            } @else {
+              @if (viewer.edhrecAvailableTags().length > 0) {
+                <div class="import-field">
+                  <label class="hint" for="edhrec-browse-tag-select">Vorschläge testweise für anderen Tag anzeigen</label>
+                  <select
+                    id="edhrec-browse-tag-select"
+                    class="glass-input small"
+                    [ngModel]="viewer.effectiveEdhrecTag()"
+                    (ngModelChange)="viewer.setEdhrecBrowseTag($event)"
+                  >
+                    <option [ngValue]="null">Kein Tag</option>
+                    @for (t of viewer.edhrecAvailableTags(); track t.slug) {
+                      <option [ngValue]="t.slug">{{ t.value }} ({{ t.count }})</option>
+                    }
+                  </select>
+                  @if (viewer.edhrecBrowseTagActive() && viewer.edhrecBrowseTag() !== viewer.edhrecTagSlug()) {
+                    <p class="hint bracket-caveat">
+                      Nur zum Durchstöbern - der im Deck gespeicherte Tag ändert sich dadurch nicht.
+                      <button class="glass-chip small" (click)="viewer.resetEdhrecBrowseTag()">Zurücksetzen</button>
+                    </p>
+                  }
+                </div>
+              }
+
+              @if (viewer.edhrecBusy()) {
+                <p class="hint">
+                  Lade EDHREC-Vorschläge für {{ viewer.edhrecCommanderName() }}
+                  @if (viewer.edhrecTagLabel(); as tag) { + {{ tag }} } …
+                </p>
+              } @else if (viewer.edhrecFailed()) {
+                <p class="hint">
+                  EDHREC-Vorschläge aktuell nicht verfügbar (inoffizielle Schnittstelle, evtl. kein
+                  Eintrag für diesen Commander oder für Partner-/Background-Paare).
+                </p>
+              } @else if (viewer.edhrecLists()) {
+                <p class="hint bracket-caveat">
+                  Inoffizielle EDHREC-Daten für {{ viewer.edhrecCommanderName() }}
+                  @if (viewer.edhrecTagLabel(); as tag) { + {{ tag }} }. Bereits im Deck vorhandene
+                  Karten sind markiert.
+                </p>
+              }
             }
           }
 
@@ -564,6 +592,16 @@
                 } @else {
                   <div class="deck-card-placeholder">{{ card.cardName }}</div>
                 }
+                @if (viewer.editMode()) {
+                  <button
+                    class="deck-card-commander-toggle"
+                    [class.active]="card.isCommander"
+                    (click)="viewer.toggleCommanderMark(card)"
+                    [attr.aria-label]="card.isCommander ? 'Als Commander entfernen' : 'Als Commander markieren'"
+                  >
+                    👑
+                  </button>
+                }
                 @if (viewer.editMode() && !card.isCommander) {
                   <div class="deck-card-stepper">
                     <button
@@ -594,6 +632,16 @@
               <li>
                 <span class="deck-card-qty-text">{{ card.quantity }}×</span>
                 <span>{{ card.cardName }}</span>
+                @if (viewer.editMode()) {
+                  <button
+                    class="icon-button"
+                    [class.active]="card.isCommander"
+                    (click)="viewer.toggleCommanderMark(card)"
+                    [attr.aria-label]="card.isCommander ? 'Als Commander entfernen' : 'Als Commander markieren'"
+                  >
+                    👑
+                  </button>
+                }
                 @if (viewer.editMode() && !card.isCommander) {
                   <div class="deck-card-stepper inline">
                     <button

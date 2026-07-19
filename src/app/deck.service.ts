@@ -587,6 +587,21 @@ export class DeckService {
     return true;
   }
 
+  /** Markiert/entmarkiert eine bereits im Deck vorhandene Karte als Commander (z.B. wenn der Import keinen erkannt hat). */
+  async setCardCommanderFlag(deckId: string, cardName: string, isCommander: boolean): Promise<boolean> {
+    const { error } = await supabase
+      .from('deck_cards')
+      .update({ is_commander: isCommander })
+      .eq('deck_id', deckId)
+      .ilike('card_name', cardName);
+
+    if (error) {
+      console.error('Konnte Commander-Markierung nicht ändern:', error);
+      return false;
+    }
+    return true;
+  }
+
   /**
    * Gesamt-Statistik für ein Deck über ALLE Gruppen hinweg (nicht nur die aktuell aktive) und
    * unabhängig davon, wer es jeweils gespielt hat (eigener Pilot oder ausgeliehen) - im

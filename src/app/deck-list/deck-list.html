@@ -37,29 +37,31 @@
   <ul class="deck-list">
     @for (deck of pagedDecks(); track deck.id) {
       <li>
-        <div class="deck-row">
-          <span class="deck-name card-name-cell">
-            @if (commanderImage(deck.commander); as img) {
-            <img class="card-thumb" [src]="img" [alt]="deck.commander" />
-            }
-            <span class="card-name-text">
-              @if (deck.isPrecon) {<span title="Precon">📦</span>}
-              {{ deck.name }}
-            </span>
-          </span>
-          @if (deck.format) {
-            <span class="hint">{{ deck.format }}</span>
+        <div class="deck-thumb">
+          @if (commanderImage(deck.commander); as img) {
+            <img [src]="img" [alt]="deck.commander" />
+          } @else {
+            <div class="deck-thumb-placeholder">{{ deck.name }}</div>
           }
+        </div>
+        <div class="deck-info">
+          <span class="deck-name-text">
+            @if (deck.isPrecon) {<span title="Precon">📦</span>}
+            {{ deck.name }}
+          </span>
           @if (deck.games > 0) {
             <span class="hint">{{ deck.wins }} / {{ deck.games }} Siege · {{ deck.winRate | number: '1.0-0' }}%</span>
+          } @else {
+            <span class="hint">Noch nicht gespielt</span>
           }
-          <span class="hint">Aktualisiert {{ deck.updatedAt | date: 'dd.MM.yyyy' }}</span>
+          <div class="deck-actions">
+            <button class="glass-button small" (click)="openDeckDetail(deck)">👁️ Ansehen</button>
+            @if (!readonlyMode()) {
+              <button class="icon-button" (click)="openEditDeckDialog(deck)" aria-label="Deck aktualisieren">✏️</button>
+              <button class="icon-button" (click)="deleteDeck(deck)" aria-label="Deck löschen">🗑</button>
+            }
+          </div>
         </div>
-        <button class="glass-button small" (click)="openDeckDetail(deck)">👁️ Ansehen</button>
-        @if (!readonlyMode()) {
-          <button class="icon-button" (click)="openEditDeckDialog(deck)" aria-label="Deck aktualisieren">✏️</button>
-          <button class="icon-button" (click)="deleteDeck(deck)" aria-label="Deck löschen">🗑</button>
-        }
       </li>
     }
   </ul>

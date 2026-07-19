@@ -7,7 +7,7 @@ import {
   BracketCombo,
   SPELLBOOK_BRACKET_LABELS,
 } from './commander-spellbook.service';
-import { EdhrecService, EdhrecCardlist } from './edhrec.service';
+import { EdhrecService, EdhrecCardlist, EdhrecTag } from './edhrec.service';
 
 export interface ManaCurveBucket {
   label: string;
@@ -458,6 +458,8 @@ export class DeckViewerService {
    * ohne dass vorher irgendetwas gespeichert wurde.
    */
   readonly pendingChanges = signal<Map<string, PendingCardChange>>(new Map());
+  /** Kartenname (lowercase) -> neuer Commander-Status, ebenfalls nur lokal bis saveEdits(). */
+  readonly pendingCommanderChanges = signal<Map<string, boolean>>(new Map());
   readonly editSaveBusy = signal(false);
 
   /** Kartenname (lowercase) -> gespeicherte Anzahl, als schnelle Nachschlagehilfe für Diff-Berechnungen. */
@@ -467,18 +469,28 @@ export class DeckViewerService {
     return map;
   });
 
+  /** Kartenname (lowercase) -> gespeicherter Commander-Status, analog savedQuantityByKey. */
+  private readonly savedCommanderByKey = computed(() => {
+    const map = new Map<string, boolean>();
+    for (const c of this.viewingDeckCards()) map.set(c.cardName.toLowerCase(), c.isCommander);
+    return map;
+  });
+
   /** viewingDeckCards, überlagert von den noch ungespeicherten Änderungen - das, was während des Bearbeitens angezeigt wird. */
   readonly editedDeckCards = computed<DeckCard[]>(() => {
     if (!this.editMode()) return this.viewingDeckCards();
 
     const pending = this.pendingChanges();
+    const commanderChanges = this.pendingCommanderChanges();
     const result: DeckCard[] = [];
     for (const card of this.viewingDeckCards()) {
-      const change = pending.get(card.cardName.toLowerCase());
+      const key = card.cardName.toLowerCase();
+      const change = pending.get(key);
+      const isCommander = commanderChanges.get(key) ?? card.isCommander;
       if (!change) {
-        result.push(card);
+        result.push(isCommander === card.isCommander ? card : { ...card, isCommander });
       } else if (change.quantity > 0) {
-        result.push({ ...card, quantity: change.quantity });
+        result.push({ ...card, quantity: change.quantity, isCommander });
       }
     }
     const savedKeys = this.savedQuantityByKey();
@@ -490,7 +502,7 @@ export class DeckViewerService {
           imageUrl: change.imageUrl,
           typeLine: change.typeLine,
           cmc: change.cmc,
-          isCommander: false,
+          isCommander: commanderChanges.get(change.cardName.toLowerCase()) ?? false,
         });
       }
     }
@@ -501,6 +513,10 @@ export class DeckViewerService {
     const saved = this.savedQuantityByKey();
     for (const change of this.pendingChanges().values()) {
       if (change.quantity !== (saved.get(change.cardName.toLowerCase()) ?? 0)) return true;
+    }
+    const savedCommanders = this.savedCommanderByKey();
+    for (const [key, isCommander] of this.pendingCommanderChanges()) {
+      if (isCommander !== (savedCommanders.get(key) ?? false)) return true;
     }
     return false;
   });
@@ -520,10 +536,34 @@ export class DeckViewerService {
     return { added, removed };
   });
 
+  /** Karten, deren Commander-Status sich geändert hat (noch ungespeichert) - für die Anzeige vor dem Speichern. */
+  readonly pendingCommanderChangeDetails = computed(() => {
+    const saved = this.savedCommanderByKey();
+    const changed: { cardName: string; isCommander: boolean }[] = [];
+    for (const [key, isCommander] of this.pendingCommanderChanges()) {
+      if (isCommander !== (saved.get(key) ?? false)) {
+        const cardName =
+          this.editedDeckCards().find((c) => c.cardName.toLowerCase() === key)?.cardName ?? key;
+        changed.push({ cardName, isCommander });
+      }
+    }
+    return changed;
+  });
+
+  /** Markiert/entmarkiert eine Karte im Bearbeitungsmodus als Commander - nur lokal, bis saveEdits(). */
+  toggleCommanderMark(card: DeckCard): void {
+    this.pendingCommanderChanges.update((map) => {
+      const next = new Map(map);
+      next.set(card.cardName.toLowerCase(), !card.isCommander);
+      return next;
+    });
+  }
+
   toggleEditMode(): void {
     if (this.editMode()) return; // Verlassen geht nur bewusst über saveEdits()/cancelEdits()
     this.editMode.set(true);
     this.pendingChanges.set(new Map());
+    this.pendingCommanderChanges.set(new Map());
     this.addCardQuery.set('');
     this.addCardTypeFilter.set('all');
     this.addCardCreatureTypeFilter.set('');
@@ -537,6 +577,10 @@ export class DeckViewerService {
     this.edhrecLists.set(null);
     this.edhrecCardDetails.set(new Map());
     this.edhrecCategoryImagesBusy.set(new Set());
+    this.edhrecBrowseTagActive.set(false);
+    this.edhrecBrowseTag.set(null);
+    this.edhrecAvailableTags.set([]);
+    this.edhrecTagsBusy.set(false);
     this.edhrecBusy.set(false);
     this.edhrecFailed.set(false);
   }
@@ -609,7 +653,16 @@ export class DeckViewerService {
       }
     }
 
+    const savedCommanders = this.savedCommanderByKey();
+    for (const [key, isCommander] of this.pendingCommanderChanges()) {
+      if (isCommander === (savedCommanders.get(key) ?? false)) continue;
+      const cardName =
+        this.editedDeckCards().find((c) => c.cardName.toLowerCase() === key)?.cardName ?? key;
+      await this.deckService.setCardCommanderFlag(deck.id, cardName, isCommander);
+    }
+
     this.pendingChanges.set(new Map());
+    this.pendingCommanderChanges.set(new Map());
     this.editMode.set(false);
     this.addCardMode.set('search');
     await this.reloadDeckCards();
@@ -618,6 +671,7 @@ export class DeckViewerService {
 
   cancelEdits(): void {
     this.pendingChanges.set(new Map());
+    this.pendingCommanderChanges.set(new Map());
     this.editMode.set(false);
     this.addCardQuery.set('');
     this.addCardResults.set([]);
@@ -732,9 +786,23 @@ export class DeckViewerService {
   readonly edhrecCommanderName = computed(() => this.viewingDeckCards().find((c) => c.isCommander)?.cardName ?? null);
   /** Beim Deck-Anlegen gewählter EDHREC-Theme-Tag (z.B. "ramp") - kombiniert die Vorschläge mit dem Commander statt nur Commander allein. */
   readonly edhrecTagSlug = computed(() => this.viewingDeck()?.edhrecTag ?? null);
+
+  // Temporärer Tag-Wechsel nur zum Durchstöbern anderer Vorschlagslisten - ändert NICHT den
+  // dauerhaft gespeicherten Deck-Tag, nur was gerade angezeigt wird. Setzt sich beim erneuten
+  // Öffnen des Decks/Bearbeitungsmodus automatisch zurück auf den gespeicherten Tag.
+  readonly edhrecBrowseTagActive = signal(false);
+  readonly edhrecBrowseTag = signal<string | null>(null);
+  readonly edhrecAvailableTags = signal<EdhrecTag[]>([]);
+  readonly edhrecTagsBusy = signal(false);
+
+  /** Der gerade tatsächlich für die Vorschläge verwendete Tag - Browse-Override hat Vorrang vor dem gespeicherten Deck-Tag. */
+  readonly effectiveEdhrecTag = computed(() =>
+    this.edhrecBrowseTagActive() ? this.edhrecBrowseTag() : this.edhrecTagSlug()
+  );
+
   /** Grob lesbarer Name aus dem Tag-Slug, ohne extra Netzwerk-Anfrage (z.B. "group-hug" -> "Group Hug"). */
   readonly edhrecTagLabel = computed(() => {
-    const slug = this.edhrecTagSlug();
+    const slug = this.effectiveEdhrecTag();
     if (!slug) return null;
     return slug
       .split('-')
@@ -746,7 +814,36 @@ export class DeckViewerService {
     this.addCardMode.set(mode);
     if (mode === 'edhrec' && this.edhrecLists() === null && !this.edhrecBusy()) {
       this.loadEdhrecRecommendations();
+      this.loadEdhrecAvailableTags();
     }
+  }
+
+  /** Wechselt die angezeigten Vorschläge testweise auf einen anderen Tag - nur für diese Sitzung, nicht gespeichert. */
+  setEdhrecBrowseTag(slug: string | null): void {
+    this.edhrecBrowseTagActive.set(true);
+    this.edhrecBrowseTag.set(slug);
+    this.edhrecLists.set(null);
+    this.edhrecFailed.set(false);
+    this.loadEdhrecRecommendations();
+  }
+
+  /** Zurück zum dauerhaft im Deck gespeicherten Tag. */
+  resetEdhrecBrowseTag(): void {
+    if (!this.edhrecBrowseTagActive()) return;
+    this.edhrecBrowseTagActive.set(false);
+    this.edhrecBrowseTag.set(null);
+    this.edhrecLists.set(null);
+    this.edhrecFailed.set(false);
+    this.loadEdhrecRecommendations();
+  }
+
+  private async loadEdhrecAvailableTags(): Promise<void> {
+    const commander = this.edhrecCommanderName();
+    if (!commander || this.edhrecAvailableTags().length > 0) return;
+    this.edhrecTagsBusy.set(true);
+    const tags = await this.edhrec.getCommanderTags(commander);
+    this.edhrecTagsBusy.set(false);
+    this.edhrecAvailableTags.set(tags ?? []);
   }
 
   private async loadEdhrecRecommendations(): Promise<void> {
@@ -757,7 +854,7 @@ export class DeckViewerService {
     }
     this.edhrecBusy.set(true);
     this.edhrecFailed.set(false);
-    const tag = this.edhrecTagSlug();
+    const tag = this.effectiveEdhrecTag();
     let lists = await this.edhrec.getCommanderRecommendations(commander, tag);
     if (lists === null && tag) {
       // Commander+Tag-Kombo evtl. nicht verfügbar (zu seltene Kombination) - auf reine
@@ -847,6 +944,7 @@ export class DeckViewerService {
     this.effectFilterBusy.set(false);
     this.editMode.set(false);
     this.pendingChanges.set(new Map());
+    this.pendingCommanderChanges.set(new Map());
     this.flashState.set(null);
     this.addCardResults.set([]);
     this.addCardMessage.set('');
@@ -854,6 +952,10 @@ export class DeckViewerService {
     this.edhrecLists.set(null);
     this.edhrecCardDetails.set(new Map());
     this.edhrecCategoryImagesBusy.set(new Set());
+    this.edhrecBrowseTagActive.set(false);
+    this.edhrecBrowseTag.set(null);
+    this.edhrecAvailableTags.set([]);
+    this.edhrecTagsBusy.set(false);
     this.edhrecBusy.set(false);
     this.edhrecFailed.set(false);
     this.showDeckAnalysisInfo.set(false);
@@ -916,6 +1018,7 @@ export class DeckViewerService {
     this.bracketEstimateErrorDetail.set(null);
     this.editMode.set(false);
     this.pendingChanges.set(new Map());
+    this.pendingCommanderChanges.set(new Map());
     this.flashState.set(null);
     this.addCardResults.set([]);
     this.addCardMessage.set('');
@@ -923,6 +1026,10 @@ export class DeckViewerService {
     this.edhrecLists.set(null);
     this.edhrecCardDetails.set(new Map());
     this.edhrecCategoryImagesBusy.set(new Set());
+    this.edhrecBrowseTagActive.set(false);
+    this.edhrecBrowseTag.set(null);
+    this.edhrecAvailableTags.set([]);
+    this.edhrecTagsBusy.set(false);
     this.edhrecBusy.set(false);
     this.edhrecFailed.set(false);
   }
