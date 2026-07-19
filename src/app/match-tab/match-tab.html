@@ -287,7 +287,7 @@
     <p class="hint">Noch keine Matches gespeichert.</p>
   } @else {
     <button class="glass-chip" (click)="toggleHistory()">
-      {{ historyExpanded() ? '▾ Einklappen' : '▸ Verlauf anzeigen' }} ({{ mtg.history().length }})
+      {{ historyExpanded() ? '▾ Einklappen' : '▸ Verlauf anzeigen' }}
     </button>
   }
   @if (historyExpanded()) {
