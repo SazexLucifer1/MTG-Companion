@@ -321,7 +321,7 @@
 
 @media (min-width: 700px) {
   .deck-visual-grid {
-    grid-template-columns: repeat(6, 1fr);
+    grid-template-columns: repeat(5, 1fr);
   }
 }
 
@@ -596,7 +596,7 @@
 
 @media (min-width: 700px) {
   .card-pick-grid {
-    grid-template-columns: repeat(6, 1fr);
+    grid-template-columns: repeat(5, 1fr);
   }
 }
 
