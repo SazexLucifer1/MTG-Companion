@@ -414,16 +414,18 @@ export class DeckViewerService {
     return false;
   });
 
-  /** Für die Anzeige "3 hinzugefügt, 1 entfernt" o.ä. vor dem Speichern. */
-  readonly pendingChangeSummary = computed(() => {
+  /** Welche Karten in welcher Menge noch ungespeichert hinzugefügt/entfernt wurden - für die Anzeige vor dem Speichern. */
+  readonly pendingChangeDetails = computed(() => {
     const saved = this.savedQuantityByKey();
-    let added = 0;
-    let removed = 0;
+    const added: GameChangerEntry[] = [];
+    const removed: GameChangerEntry[] = [];
     for (const change of this.pendingChanges().values()) {
       const diff = change.quantity - (saved.get(change.cardName.toLowerCase()) ?? 0);
-      if (diff > 0) added += diff;
-      else if (diff < 0) removed += -diff;
+      if (diff > 0) added.push({ cardName: change.cardName, quantity: diff });
+      else if (diff < 0) removed.push({ cardName: change.cardName, quantity: -diff });
     }
+    added.sort((a, b) => a.cardName.localeCompare(b.cardName));
+    removed.sort((a, b) => a.cardName.localeCompare(b.cardName));
     return { added, removed };
   });
 
@@ -581,8 +583,12 @@ export class DeckViewerService {
   private async reloadDeckCards(): Promise<void> {
     const deck = this.viewingDeck();
     if (!deck) return;
-    const cards = await this.deckService.loadDeckCards(deck.id);
+    const [cards, log] = await Promise.all([
+      this.deckService.loadDeckCards(deck.id),
+      this.deckService.loadChangeLog(deck.id),
+    ]);
     this.viewingDeckCards.set(cards);
+    this.viewingChangeLog.set(log);
     this.loadCardDetails(cards);
     this.loadBracketEstimate(cards);
   }
