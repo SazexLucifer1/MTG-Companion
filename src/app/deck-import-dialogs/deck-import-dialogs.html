@@ -21,18 +21,6 @@
     </div>
 
     <div class="import-field">
-      <label class="hint" for="deck-format-input">Format (optional)</label>
-      <input
-        id="deck-format-input"
-        class="glass-input"
-        type="text"
-        placeholder="z.B. Commander"
-        [ngModel]="importService.deckFormat()"
-        (ngModelChange)="importService.deckFormat.set($event)"
-      />
-    </div>
-
-    <div class="import-field">
       <label class="hint" for="deck-text-input">Kartenliste</label>
       <textarea
         id="deck-text-input"
@@ -40,8 +28,33 @@
         rows="10"
         placeholder="1 Sol Ring&#10;1 Arcane Signet&#10;1 Command Tower&#10;..."
         [ngModel]="importService.deckText()"
-        (ngModelChange)="importService.deckText.set($event)"
+        (ngModelChange)="importService.onDeckTextInput($event)"
       ></textarea>
+    </div>
+
+    <div class="import-field">
+      <label class="hint" for="deck-tag-select">EDHREC-Tag (optional)</label>
+      @if (importService.commanderTagsBusy()) {
+        <p class="hint">Lade verfügbare Tags …</p>
+      } @else if (importService.availableCommanderTags().length === 0) {
+        <p class="hint">Noch kein Commander erkannt - Tags erscheinen, sobald "Commander:" mit einem Kartennamen in der Liste steht.</p>
+      } @else {
+        <select
+          id="deck-tag-select"
+          class="glass-input"
+          [ngModel]="importService.selectedCommanderTag()"
+          (ngModelChange)="importService.setSelectedCommanderTag($event)"
+        >
+          <option [ngValue]="null">Kein Tag</option>
+          @for (t of importService.availableCommanderTags(); track t.slug) {
+            <option [ngValue]="t.slug">{{ t.value }} ({{ t.count }})</option>
+          }
+        </select>
+      }
+      <p class="hint bracket-caveat">
+        Steuert später die EDHREC-Vorschläge in der Deck-Detailansicht (Commander + Tag statt nur
+        Commander).
+      </p>
     </div>
 
     @if (importService.importMessage()) {
@@ -82,18 +95,6 @@
     </div>
 
     <div class="import-field">
-      <label class="hint" for="empty-deck-format-input">Format (optional)</label>
-      <input
-        id="empty-deck-format-input"
-        class="glass-input"
-        type="text"
-        placeholder="z.B. Commander"
-        [ngModel]="importService.newDeckFormat()"
-        (ngModelChange)="importService.newDeckFormat.set($event)"
-      />
-    </div>
-
-    <div class="import-field">
       <label class="hint" for="empty-deck-commander-input">Commander</label>
       <input
         id="empty-deck-commander-input"
@@ -111,6 +112,31 @@
         </ul>
       }
     </div>
+
+    @if (importService.newDeckCommanderSelected()) {
+      <div class="import-field">
+        <label class="hint" for="empty-deck-tag-select">EDHREC-Tag (optional)</label>
+        @if (importService.commanderTagsBusy()) {
+          <p class="hint">Lade verfügbare Tags …</p>
+        } @else if (importService.availableCommanderTags().length > 0) {
+          <select
+            id="empty-deck-tag-select"
+            class="glass-input"
+            [ngModel]="importService.selectedCommanderTag()"
+            (ngModelChange)="importService.setSelectedCommanderTag($event)"
+          >
+            <option [ngValue]="null">Kein Tag</option>
+            @for (t of importService.availableCommanderTags(); track t.slug) {
+              <option [ngValue]="t.slug">{{ t.value }} ({{ t.count }})</option>
+            }
+          </select>
+        }
+        <p class="hint bracket-caveat">
+          Steuert später die EDHREC-Vorschläge in der Deck-Detailansicht (Commander + Tag statt nur
+          Commander).
+        </p>
+      </div>
+    }
 
     @if (importService.newDeckMessage()) {
       <p class="error">{{ importService.newDeckMessage() }}</p>

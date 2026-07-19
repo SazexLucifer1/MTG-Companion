@@ -2,6 +2,10 @@ import { Injectable, inject, signal } from '@angular/core';
 import { DeckService, Deck } from './deck.service';
 import { PreconService, PreconSummary } from './precon.service';
 import { ScryfallService } from './scryfall.service';
+import { EdhrecService, EdhrecTag } from './edhrec.service';
+
+/** Diese App ist reine Commander-App - das Format ist also immer dasselbe, keine Abfrage nötig. */
+const FIXED_FORMAT = 'Commander';
 
 /**
  * Hält den Zustand der Deck-Import-/Precon-Import-Dialoge global (statt lokal in DeckList), damit
@@ -14,28 +18,65 @@ export class DeckImportService {
   private readonly deckService = inject(DeckService);
   private readonly preconService = inject(PreconService);
   private readonly scryfall = inject(ScryfallService);
+  private readonly edhrec = inject(EdhrecService);
 
   private userId = '';
   private onSaved: (() => void) | null = null;
+
+  // --- EDHREC-Theme-Tag - gemeinsam für beide Deck-anlegen-Dialoge (Import + Leeres Deck), da nie
+  // beide gleichzeitig offen sind. Steuert später die EDHREC-Vorschläge im Bearbeiten-Modus. ---
+
+  readonly availableCommanderTags = signal<EdhrecTag[]>([]);
+  readonly commanderTagsBusy = signal(false);
+  readonly selectedCommanderTag = signal<string | null>(null);
+  private lastTagsCommander: string | null = null;
+
+  setSelectedCommanderTag(slug: string | null): void {
+    this.selectedCommanderTag.set(slug);
+  }
+
+  /** Lädt die verfügbaren EDHREC-Tags neu, wenn sich der (erkannte) Commander geändert hat - No-op sonst. */
+  private async loadTagsForCommander(commanderName: string | null, keepTag: string | null = null): Promise<void> {
+    if (commanderName === this.lastTagsCommander) return;
+    this.lastTagsCommander = commanderName;
+    this.selectedCommanderTag.set(keepTag);
+    this.availableCommanderTags.set([]);
+    if (!commanderName) return;
+
+    this.commanderTagsBusy.set(true);
+    const tags = await this.edhrec.getCommanderTags(commanderName);
+    this.commanderTagsBusy.set(false);
+
+    let list = tags ?? [];
+    // Gespeicherten Tag immer als Option anbieten, auch falls er in der frisch geladenen Liste
+    // fehlen sollte (z.B. EDHREC hat den Tag seither umbenannt) - sonst würde die Auswahl im
+    // <select> unsichtbar auf "nichts ausgewählt" zurückfallen, obwohl ein Wert gespeichert ist.
+    if (keepTag && !list.some((t) => t.slug === keepTag)) {
+      list = [{ slug: keepTag, value: keepTag, count: 0 }, ...list];
+    }
+    this.availableCommanderTags.set(list);
+  }
 
   // --- Deck anlegen / aktualisieren ---
 
   readonly showImportDialog = signal(false);
   readonly editingDeckId = signal<string | null>(null);
   readonly deckName = signal('');
-  readonly deckFormat = signal('');
   readonly deckText = signal('');
   readonly importBusy = signal(false);
   readonly importMessage = signal('');
+  private deckTextCommanderTimer: ReturnType<typeof setTimeout> | null = null;
 
   openNewDeckDialog(userId: string, onSaved: () => void): void {
     this.userId = userId;
     this.onSaved = onSaved;
     this.editingDeckId.set(null);
     this.deckName.set('');
-    this.deckFormat.set('');
     this.deckText.set('');
     this.importMessage.set('');
+    this.lastTagsCommander = null;
+    this.selectedCommanderTag.set(null);
+    this.availableCommanderTags.set([]);
     this.showImportDialog.set(true);
   }
 
@@ -44,15 +85,27 @@ export class DeckImportService {
     this.onSaved = onSaved;
     this.editingDeckId.set(deck.id);
     this.deckName.set(deck.name);
-    this.deckFormat.set(deck.format ?? '');
     this.importMessage.set('');
     const cards = await this.deckService.loadDeckCards(deck.id);
     this.deckText.set(cards.map((c) => `${c.quantity} ${c.cardName}`).join('\n'));
+    this.lastTagsCommander = null;
+    const commander = cards.find((c) => c.isCommander)?.cardName ?? null;
+    await this.loadTagsForCommander(commander, deck.edhrecTag);
     this.showImportDialog.set(true);
   }
 
   closeImportDialog(): void {
     this.showImportDialog.set(false);
+  }
+
+  /** Erkennt den Commander live aus der eingefügten Kartenliste (Abschnitt "Commander:"), um die passenden EDHREC-Tags anzubieten. */
+  onDeckTextInput(value: string): void {
+    this.deckText.set(value);
+    if (this.deckTextCommanderTimer) clearTimeout(this.deckTextCommanderTimer);
+    this.deckTextCommanderTimer = setTimeout(() => {
+      const commander = this.deckService.parseDecklistText(value).find((p) => p.isCommander)?.name ?? null;
+      this.loadTagsForCommander(commander);
+    }, 400);
   }
 
   async saveDeck(): Promise<void> {
@@ -65,9 +118,11 @@ export class DeckImportService {
     const ok = await this.deckService.saveDeck(
       this.userId,
       name,
-      this.deckFormat().trim() || null,
+      FIXED_FORMAT,
       this.deckText(),
-      this.editingDeckId()
+      this.editingDeckId(),
+      false,
+      this.selectedCommanderTag()
     );
 
     this.importBusy.set(false);
@@ -82,15 +137,14 @@ export class DeckImportService {
     }
   }
 
-  // --- Leeres Deck anlegen (Name + Format + Commander, dann direkt in der Detailansicht per
-  // Hand aufbauen statt eine ganze Kartenliste einzufügen) ---
+  // --- Leeres Deck anlegen (Name + Commander, dann direkt in der Detailansicht per Hand
+  // aufbauen statt eine ganze Kartenliste einzufügen) ---
 
   private onEmptyDeckCreated: ((deck: Deck) => void) | null = null;
   private emptyDeckCommanderSearchTimer: ReturnType<typeof setTimeout> | null = null;
 
   readonly showNewEmptyDeckDialog = signal(false);
   readonly newDeckName = signal('');
-  readonly newDeckFormat = signal('');
   readonly newDeckCommanderQuery = signal('');
   readonly newDeckCommanderSuggestions = signal<string[]>([]);
   readonly newDeckCommanderSelected = signal<string | null>(null);
@@ -101,11 +155,13 @@ export class DeckImportService {
     this.userId = userId;
     this.onEmptyDeckCreated = onCreated;
     this.newDeckName.set('');
-    this.newDeckFormat.set('');
     this.newDeckCommanderQuery.set('');
     this.newDeckCommanderSuggestions.set([]);
     this.newDeckCommanderSelected.set(null);
     this.newDeckMessage.set('');
+    this.lastTagsCommander = null;
+    this.selectedCommanderTag.set(null);
+    this.availableCommanderTags.set([]);
     this.showNewEmptyDeckDialog.set(true);
   }
 
@@ -126,6 +182,7 @@ export class DeckImportService {
     this.newDeckCommanderSelected.set(name);
     this.newDeckCommanderQuery.set(name);
     this.newDeckCommanderSuggestions.set([]);
+    this.loadTagsForCommander(name);
   }
 
   async createEmptyDeck(): Promise<void> {
@@ -136,13 +193,15 @@ export class DeckImportService {
     this.newDeckBusy.set(true);
     this.newDeckMessage.set('');
 
-    const format = this.newDeckFormat().trim() || null;
+    const tag = this.selectedCommanderTag();
     const deckId = await this.deckService.saveDeck(
       this.userId,
       name,
-      format,
+      FIXED_FORMAT,
       `Commander:\n1 ${commander}`,
-      null
+      null,
+      false,
+      tag
     );
 
     this.newDeckBusy.set(false);
@@ -153,9 +212,10 @@ export class DeckImportService {
         id: deckId,
         userId: this.userId,
         name,
-        format,
+        format: FIXED_FORMAT,
         updatedAt: new Date().toISOString(),
         isPrecon: false,
+        edhrecTag: tag,
       });
     } else {
       this.newDeckMessage.set('Deck konnte nicht angelegt werden.');

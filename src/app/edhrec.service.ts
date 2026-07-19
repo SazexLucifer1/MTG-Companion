@@ -13,6 +13,12 @@ export interface EdhrecCardlist {
   cards: EdhrecCardview[];
 }
 
+export interface EdhrecTag {
+  slug: string;
+  value: string;
+  count: number;
+}
+
 @Injectable({ providedIn: 'root' })
 export class EdhrecService {
   /**
@@ -32,16 +38,22 @@ export class EdhrecService {
   }
 
   /**
-   * Laedt EDHRECs Kartenempfehlungen fuer einen Commander direkt vom selben JSON, das ihre eigene
-   * Webseite nutzt (kein offizieller API-Key noetig, CORS ist offen) - inoffiziell/undokumentiert,
-   * kann sich also theoretisch ohne Vorwarnung aendern.
+   * Laedt EDHRECs Kartenempfehlungen fuer einen Commander (optional kombiniert mit einem
+   * Theme-Tag, z.B. "ramp" oder "aristocrats" - dieselben Tags, die EDHREC auf der Commander-Seite
+   * selbst als anklickbare Links zeigt) direkt vom selben JSON, das ihre eigene Webseite nutzt
+   * (kein offizieller API-Key noetig, CORS ist offen) - inoffiziell/undokumentiert, kann sich also
+   * theoretisch ohne Vorwarnung aendern.
    */
-  async getCommanderRecommendations(commanderName: string): Promise<EdhrecCardlist[] | null> {
+  async getCommanderRecommendations(
+    commanderName: string,
+    tagSlug?: string | null
+  ): Promise<EdhrecCardlist[] | null> {
     const slug = this.slugify(commanderName);
     if (!slug) return null;
 
+    const path = tagSlug ? `${slug}/${tagSlug}` : slug;
     try {
-      const res = await fetch(`https://json.edhrec.com/pages/commanders/${slug}.json`);
+      const res = await fetch(`https://json.edhrec.com/pages/commanders/${path}.json`);
       if (!res.ok) return null;
       const data = await res.json();
       const cardlists = data?.container?.json_dict?.cardlists;
@@ -56,6 +68,28 @@ export class EdhrecService {
           numDecks: c.num_decks ?? 0,
           potentialDecks: c.potential_decks ?? 0,
         })),
+      }));
+    } catch {
+      return null;
+    }
+  }
+
+  /** Liefert die auf EDHREC verfügbaren Theme-Tags für einen Commander (z.B. Ramp, Aristocrats, Stax, ...), sortiert nach Häufigkeit. */
+  async getCommanderTags(commanderName: string): Promise<EdhrecTag[] | null> {
+    const slug = this.slugify(commanderName);
+    if (!slug) return null;
+
+    try {
+      const res = await fetch(`https://json.edhrec.com/pages/commanders/${slug}.json`);
+      if (!res.ok) return null;
+      const data = await res.json();
+      const taglinks = data?.panels?.taglinks;
+      if (!Array.isArray(taglinks)) return null;
+
+      return taglinks.map((t: any) => ({
+        slug: t.slug,
+        value: t.value,
+        count: t.count ?? 0,
       }));
     } catch {
       return null;

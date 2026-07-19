@@ -11,6 +11,8 @@ export interface Deck {
   format: string | null;
   updatedAt: string;
   isPrecon: boolean;
+  /** EDHREC-Theme-Tag-Slug (z.B. "ramp", "aristocrats") - steuert die EDHREC-Vorschläge im Bearbeiten-Modus. */
+  edhrecTag: string | null;
 }
 
 export interface DeckGameStats {
@@ -57,7 +59,7 @@ export class DeckService {
   async loadDecksForUser(userId: string): Promise<Deck[]> {
     const { data, error } = await supabase
       .from('decks')
-      .select('id, user_id, name, format, updated_at, is_precon')
+      .select('id, user_id, name, format, updated_at, is_precon, edhrec_tag')
       .eq('user_id', userId)
       .order('updated_at', { ascending: false });
 
@@ -73,6 +75,7 @@ export class DeckService {
       format: row.format,
       updatedAt: row.updated_at,
       isPrecon: row.is_precon,
+      edhrecTag: row.edhrec_tag,
     }));
   }
 
@@ -171,7 +174,8 @@ export class DeckService {
     format: string | null,
     rawText: string,
     existingDeckId: string | null,
-    isPrecon = false
+    isPrecon = false,
+    edhrecTag: string | null = null
   ): Promise<string | null> {
     const parsed = this.parseDecklistText(rawText);
     if (parsed.length === 0) return null;
@@ -237,7 +241,7 @@ export class DeckService {
 
       const { error: updateError } = await supabase
         .from('decks')
-        .update({ name, format, updated_at: new Date().toISOString() })
+        .update({ name, format, edhrec_tag: edhrecTag, updated_at: new Date().toISOString() })
         .eq('id', deckId);
       if (updateError) {
         console.error('Konnte Deck nicht aktualisieren:', updateError);
@@ -246,7 +250,7 @@ export class DeckService {
     } else {
       const { data, error } = await supabase
         .from('decks')
-        .insert({ user_id: userId, name, format, is_precon: isPrecon })
+        .insert({ user_id: userId, name, format, is_precon: isPrecon, edhrec_tag: edhrecTag })
         .select('id')
         .single();
 

@@ -730,6 +730,17 @@ export class DeckViewerService {
   readonly edhrecCardDetails = signal<Map<string, ScryfallCard>>(new Map());
   /** Nur der erste/Haupt-Commander - EDHRECs Slug-Schema für Partner-/Background-Paare liess sich nicht zuverlässig ermitteln. */
   readonly edhrecCommanderName = computed(() => this.viewingDeckCards().find((c) => c.isCommander)?.cardName ?? null);
+  /** Beim Deck-Anlegen gewählter EDHREC-Theme-Tag (z.B. "ramp") - kombiniert die Vorschläge mit dem Commander statt nur Commander allein. */
+  readonly edhrecTagSlug = computed(() => this.viewingDeck()?.edhrecTag ?? null);
+  /** Grob lesbarer Name aus dem Tag-Slug, ohne extra Netzwerk-Anfrage (z.B. "group-hug" -> "Group Hug"). */
+  readonly edhrecTagLabel = computed(() => {
+    const slug = this.edhrecTagSlug();
+    if (!slug) return null;
+    return slug
+      .split('-')
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(' ');
+  });
 
   setAddCardMode(mode: 'search' | 'edhrec'): void {
     this.addCardMode.set(mode);
@@ -746,7 +757,13 @@ export class DeckViewerService {
     }
     this.edhrecBusy.set(true);
     this.edhrecFailed.set(false);
-    const lists = await this.edhrec.getCommanderRecommendations(commander);
+    const tag = this.edhrecTagSlug();
+    let lists = await this.edhrec.getCommanderRecommendations(commander, tag);
+    if (lists === null && tag) {
+      // Commander+Tag-Kombo evtl. nicht verfügbar (zu seltene Kombination) - auf reine
+      // Commander-Vorschläge zurückfallen statt gar nichts anzuzeigen.
+      lists = await this.edhrec.getCommanderRecommendations(commander);
+    }
     this.edhrecLists.set(lists);
     this.edhrecFailed.set(lists === null);
     this.edhrecBusy.set(false);

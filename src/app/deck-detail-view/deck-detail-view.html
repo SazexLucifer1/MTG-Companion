@@ -208,7 +208,10 @@
             @if (!viewer.edhrecCommanderName()) {
               <p class="hint">Kein Commander im Deck gefunden - EDHREC-Vorschläge brauchen einen Commander.</p>
             } @else if (viewer.edhrecBusy()) {
-              <p class="hint">Lade EDHREC-Vorschläge für {{ viewer.edhrecCommanderName() }} …</p>
+              <p class="hint">
+                Lade EDHREC-Vorschläge für {{ viewer.edhrecCommanderName() }}
+                @if (viewer.edhrecTagLabel(); as tag) { + {{ tag }} } …
+              </p>
             } @else if (viewer.edhrecFailed()) {
               <p class="hint">
                 EDHREC-Vorschläge aktuell nicht verfügbar (inoffizielle Schnittstelle, evtl. kein
@@ -216,8 +219,9 @@
               </p>
             } @else if (viewer.edhrecLists()) {
               <p class="hint bracket-caveat">
-                Inoffizielle EDHREC-Daten für {{ viewer.edhrecCommanderName() }}. Bereits im Deck
-                vorhandene Karten sind markiert.
+                Inoffizielle EDHREC-Daten für {{ viewer.edhrecCommanderName() }}
+                @if (viewer.edhrecTagLabel(); as tag) { + {{ tag }} }. Bereits im Deck vorhandene
+                Karten sind markiert.
               </p>
             }
           }
