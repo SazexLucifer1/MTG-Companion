@@ -764,6 +764,15 @@ export class DeckViewerService {
     return this.editedDeckCards().some((c) => c.cardName.toLowerCase() === cardName.toLowerCase());
   }
 
+  /**
+   * Bild einer Deck-Karte - fällt auf die frisch geladenen Scryfall-Zusatzdaten zurück, falls in
+   * deck_cards.image_url nichts (mehr) gespeichert ist (z.B. weil der Bild-Lookup beim ursprünglichen
+   * Anlegen fehlschlug). Heilt die Anzeige dadurch von selbst, ohne die Datenbank zu reparieren.
+   */
+  resolvedCardImage(card: DeckCard): string | null {
+    return card.imageUrl ?? this.viewingCardDetails().get(card.cardName.toLowerCase())?.imageUrl ?? null;
+  }
+
   /** Löst den EDHREC-Kartennamen zu vollen Scryfall-Daten auf (EDHREC selbst liefert nur Name+Statistik) und staged ihn wie addCard(). */
   async addEdhrecCard(cardName: string): Promise<void> {
     this.addCardBusy.set(true);

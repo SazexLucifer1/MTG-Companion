@@ -202,36 +202,6 @@
               }
             </select>
           </div>
-
-          @if (viewer.addCardMessage()) {
-            <p class="hint">{{ viewer.addCardMessage() }}</p>
-          }
-
-          @if (viewer.addCardBusy()) {
-            <p class="hint">Suche …</p>
-          } @else if (viewer.addCardResults().length > 0) {
-            <ul class="add-card-results">
-              @for (card of viewer.addCardResults(); track card.name) {
-                <li>
-                  @if (card.imageUrl) {
-                    <img class="card-thumb" [src]="card.imageUrl" [alt]="card.name" />
-                  }
-                  <span class="add-card-name">
-                    <span class="add-card-name-text">{{ card.name }}</span>
-                    <span class="hint">{{ card.typeLine }}</span>
-                  </span>
-                  <button
-                    class="icon-button"
-                    [class.flash-add]="viewer.isFlashing(card.name, 'add')"
-                    (click)="viewer.addCard(card)"
-                    aria-label="Hinzufügen"
-                  >
-                    ➕
-                  </button>
-                </li>
-              }
-            </ul>
-          }
           }
 
           @if (viewer.addCardMode() === 'edhrec') {
@@ -244,51 +214,86 @@
                 EDHREC-Vorschläge aktuell nicht verfügbar (inoffizielle Schnittstelle, evtl. kein
                 Eintrag für diesen Commander oder für Partner-/Background-Paare).
               </p>
-            } @else if (viewer.edhrecLists(); as lists) {
+            } @else if (viewer.edhrecLists()) {
               <p class="hint bracket-caveat">
                 Inoffizielle EDHREC-Daten für {{ viewer.edhrecCommanderName() }}. Bereits im Deck
                 vorhandene Karten sind markiert.
               </p>
-              @for (list of lists; track list.tag) {
-                @if (list.cards.length > 0) {
-                  <button class="glass-chip small" (click)="toggleEdhrecCategory(list.tag)">
-                    {{ isEdhrecCategoryExpanded(list.tag) ? '▾' : '▸' }} {{ list.header }} ({{ list.cards.length }})
-                  </button>
-                  @if (isEdhrecCategoryExpanded(list.tag)) {
-                    <div class="edhrec-card-grid">
-                      @for (card of list.cards; track card.name) {
-                        <div class="edhrec-card-tile">
-                          <div class="edhrec-card-image">
-                            @if (viewer.edhrecCardImage(card.name); as img) {
-                              <img [src]="img" [alt]="card.name" loading="lazy" />
-                            } @else {
-                              <div class="deck-card-placeholder">{{ card.name }}</div>
-                            }
-                            @if (viewer.isCardInDeck(card.name)) {
-                              <span class="edhrec-in-deck-badge" aria-label="Bereits im Deck">✓</span>
-                            } @else {
-                              <button
-                                class="edhrec-add-button"
-                                [class.flash-add]="viewer.isFlashing(card.name, 'add')"
-                                (click)="viewer.addEdhrecCard(card.name)"
-                                aria-label="Hinzufügen"
-                              >
-                                ➕
-                              </button>
-                            }
-                          </div>
-                          <span class="edhrec-card-stats">
-                            {{ card.numDecks }}/{{ card.potentialDecks }} · {{ card.synergy | percent: '1.0-1' }}
-                          </span>
-                        </div>
-                      }
+            }
+          }
+
+          @if (viewer.addCardMessage()) {
+            <p class="hint">{{ viewer.addCardMessage() }}</p>
+          }
+        </div>
+
+        @if (viewer.addCardMode() === 'search') {
+          @if (viewer.addCardBusy()) {
+            <p class="hint">Suche …</p>
+          } @else if (viewer.addCardResults().length > 0) {
+            <div class="card-pick-grid">
+              @for (card of viewer.addCardResults(); track card.name) {
+                <div class="card-pick-tile">
+                  <div class="card-pick-image">
+                    @if (card.imageUrl) {
+                      <img [src]="card.imageUrl" [alt]="card.name" loading="lazy" />
+                    } @else {
+                      <div class="deck-card-placeholder">{{ card.name }}</div>
+                    }
+                    <button
+                      class="card-pick-add-button"
+                      [class.flash-add]="viewer.isFlashing(card.name, 'add')"
+                      (click)="viewer.addCard(card)"
+                      aria-label="Hinzufügen"
+                    >
+                      ➕
+                    </button>
+                  </div>
+                </div>
+              }
+            </div>
+          }
+        }
+
+        @if (viewer.addCardMode() === 'edhrec' && viewer.edhrecLists(); as lists) {
+          @for (list of lists; track list.tag) {
+            @if (list.cards.length > 0) {
+              <button class="glass-chip small" (click)="toggleEdhrecCategory(list.tag)">
+                {{ isEdhrecCategoryExpanded(list.tag) ? '▾' : '▸' }} {{ list.header }} ({{ list.cards.length }})
+              </button>
+              @if (isEdhrecCategoryExpanded(list.tag)) {
+                <div class="card-pick-grid">
+                  @for (card of list.cards; track card.name) {
+                    <div class="card-pick-tile">
+                      <div class="card-pick-image">
+                        @if (viewer.edhrecCardImage(card.name); as img) {
+                          <img [src]="img" [alt]="card.name" loading="lazy" />
+                        } @else {
+                          <div class="deck-card-placeholder">{{ card.name }}</div>
+                        }
+                        @if (viewer.isCardInDeck(card.name)) {
+                          <span class="card-pick-in-deck-badge" aria-label="Bereits im Deck">✓</span>
+                        } @else {
+                          <button
+                            class="card-pick-add-button"
+                            [class.flash-add]="viewer.isFlashing(card.name, 'add')"
+                            (click)="viewer.addEdhrecCard(card.name)"
+                            aria-label="Hinzufügen"
+                          >
+                            ➕
+                          </button>
+                        }
+                      </div>
+                      <span class="card-pick-stats">
+                        {{ card.numDecks }}/{{ card.potentialDecks }} · {{ card.synergy | percent: '1.0-1' }}
+                      </span>
                     </div>
                   }
-                }
+                </div>
               }
             }
           }
-        </div>
+        }
       }
 
       @if (viewer.viewingDeckCards().length > 0) {
@@ -547,8 +552,8 @@
           <div class="deck-visual-grid">
             @for (card of section.cards; track card.cardName) {
               <div class="deck-card-tile">
-                @if (card.imageUrl) {
-                  <img [src]="card.imageUrl" [alt]="card.cardName" loading="lazy" />
+                @if (viewer.resolvedCardImage(card); as img) {
+                  <img [src]="img" [alt]="card.cardName" loading="lazy" />
                 } @else {
                   <div class="deck-card-placeholder">{{ card.cardName }}</div>
                 }
