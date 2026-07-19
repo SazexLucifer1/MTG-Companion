@@ -297,17 +297,28 @@ export class MatchTab {
   readonly historyPage = signal(0);
   readonly historyPageSize = 10;
 
+  /**
+   * Alte Excel-Import-Spiele (vor dem 17.07.2026) werden hier nur ausgeblendet, nicht gelöscht -
+   * sie zählen weiterhin ganz normal in der Statistik mit (die liest direkt aus mtg.history()),
+   * nur die Anzeige im Verlauf lässt sie weg.
+   */
+  private static readonly HISTORY_VISIBLE_FROM = new Date('2026-07-17');
+
+  readonly visibleHistory = computed(() =>
+    this.mtg.history().filter((m) => new Date(m.date) >= MatchTab.HISTORY_VISIBLE_FROM)
+  );
+
   readonly historyTotalPages = computed(() =>
-    Math.max(1, Math.ceil(this.mtg.history().length / this.historyPageSize))
+    Math.max(1, Math.ceil(this.visibleHistory().length / this.historyPageSize))
   );
 
   readonly pagedHistory = computed(() => {
     const start = this.historyPage() * this.historyPageSize;
-    return this.mtg.history().slice(start, start + this.historyPageSize);
+    return this.visibleHistory().slice(start, start + this.historyPageSize);
   });
 
   readonly historyRangeEnd = computed(() =>
-    Math.min((this.historyPage() + 1) * this.historyPageSize, this.mtg.history().length)
+    Math.min((this.historyPage() + 1) * this.historyPageSize, this.visibleHistory().length)
   );
 
   toggleHistory(): void {

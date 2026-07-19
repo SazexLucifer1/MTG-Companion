@@ -283,7 +283,7 @@
 
 <section class="glass-card">
   <h2>Verlauf</h2>
-  @if (mtg.history().length === 0) {
+  @if (visibleHistory().length === 0) {
     <p class="hint">Noch keine Matches gespeichert.</p>
   } @else {
     <button class="glass-chip" (click)="toggleHistory()">
@@ -303,7 +303,7 @@
         </button>
         <span class="hint"
           >Spiele {{ historyPage() * historyPageSize + 1 }}–{{ historyRangeEnd() }} von
-          {{ mtg.history().length }}</span
+          {{ visibleHistory().length }}</span
         >
         <button
           class="icon-button"
