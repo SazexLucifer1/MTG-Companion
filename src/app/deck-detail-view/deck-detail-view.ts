@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, effect, inject } from '@angular/core';
 import { DatePipe, DecimalPipe, PercentPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { DeckViewerService } from '../deck-viewer.service';
@@ -49,6 +49,19 @@ export class DeckDetailView {
   }
 
   private readonly expandedEdhrecCategories = new Set<string>();
+
+  constructor() {
+    // Bei erneutem Eintritt in den Bearbeitungsmodus wirft toggleEditMode() den EDHREC-Bildercache
+    // weg und lädt die Vorschläge neu - vorher aufgeklappte Kategorien blieben aber optisch
+    // aufgeklappt, ohne dass für sie je neue Bilder nachgeladen wurden (das passiert nur beim
+    // Aufklappen selbst). Einfach wieder einklappen, ein erneutes Aufklappen lädt dann frisch nach.
+    let wasEditMode = false;
+    effect(() => {
+      const editMode = this.viewer.editMode();
+      if (editMode && !wasEditMode) this.expandedEdhrecCategories.clear();
+      wasEditMode = editMode;
+    });
+  }
 
   isEdhrecCategoryExpanded(tag: string): boolean {
     return this.expandedEdhrecCategories.has(tag);

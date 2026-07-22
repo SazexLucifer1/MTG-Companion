@@ -673,13 +673,6 @@ export class DeckViewerService {
     this.addCardResults.set([]);
     this.addCardMessage.set('');
     this.addCardMode.set('search');
-    // edhrecListsLoadedFor/edhrecTagsLoadedFor NICHT zurücksetzen wäre der Bug: die
-    // Auto-Load-Effekte (edhrecListsAutoLoad/edhrecTagsAutoLoad) überspringen das Neuladen, wenn
-    // sich der Commander seit dem letzten Laden nicht geändert hat - würde man die beiden hier
-    // stehen lassen, bliebe edhrecLists dauerhaft auf null (gerade eben resettet), ohne dass der
-    // Effekt das je bemerkt, bis das Deck komplett neu geöffnet wird (open() setzt sie zurück).
-    this.edhrecListsLoadedFor = null;
-    this.edhrecTagsLoadedFor = null;
     this.edhrecLists.set(null);
     this.edhrecCardDetails.set(new Map());
     this.edhrecCategoryImagesBusy.set(new Set());
@@ -687,6 +680,9 @@ export class DeckViewerService {
     this.edhrecBrowseTag.set(null);
     this.edhrecAvailableTags.set([]);
     this.edhrecTagsBusy.set(false);
+    // Auslöser, damit die Auto-Load-Effekte oben garantiert neu laden, selbst wenn sich der
+    // Commander-Name dabei textlich nicht ändert (siehe Kommentar bei edhrecRefreshTick).
+    this.edhrecRefreshTick.update((v) => v + 1);
     this.edhrecBusy.set(false);
     this.edhrecFailed.set(false);
   }
@@ -932,23 +928,27 @@ export class DeckViewerService {
     this.addCardMode.set(mode);
   }
 
-  /** Merkt sich, für welchen Commander die Vorschlagsliste zuletzt geladen wurde, um Doppel-Anfragen beim reinen Tab-Wechsel zu vermeiden. */
-  private edhrecListsLoadedFor: string | null = null;
-  /** Merkt sich, für welchen Commander die Tag-Liste zuletzt geladen wurde (siehe edhrecTagsAutoLoad). */
-  private edhrecTagsLoadedFor: string | null = null;
+  /**
+   * Reiner Auslöser-Zähler (kein echter Zustand) - wird bei jedem Reset der EDHREC-Anzeige
+   * (open()/close()/toggleEditMode()) hochgezählt, damit die beiden Auto-Load-Effekte unten
+   * GARANTIERT neu auswerten, auch wenn sich der Commander-Name dabei textlich nicht geändert hat.
+   * Vorherige Version verglich stattdessen mit einem einfachen (nicht-reaktiven) Klassenfeld - das
+   * hat effect() nie zum Neu-Laufen gebracht, wenn NUR dieses Feld von außen zurückgesetzt wurde,
+   * ohne dass sich ein tatsächlich gelesenes Signal änderte. Ergebnis war eine dauerhaft leere
+   * EDHREC-Anzeige nach Speichern + erneutem Bearbeiten.
+   */
+  private readonly edhrecRefreshTick = signal(0);
 
   /**
    * Lädt EDHREC-Vorschläge automatisch (neu), sobald der EDHREC-Tab offen ist und sich der (ggf.
    * noch ungespeicherte) Commander ändert - deckt sowohl das erste Öffnen des Tabs als auch eine
-   * Krone-Markierung währenddessen einheitlich ab, ohne doppelte Anfragen.
+   * Krone-Markierung währenddessen einheitlich ab.
    */
   private readonly edhrecListsAutoLoad = effect(() => {
     const mode = this.addCardMode();
     const commander = this.edhrecCommanderName();
+    this.edhrecRefreshTick();
     if (mode !== 'edhrec') return;
-    const key = commander ?? '';
-    if (this.edhrecListsLoadedFor === key) return;
-    this.edhrecListsLoadedFor = key;
     this.edhrecLists.set(null);
     this.edhrecFailed.set(false);
     this.edhrecBrowseTagActive.set(false);
@@ -966,9 +966,7 @@ export class DeckViewerService {
    */
   private readonly edhrecTagsAutoLoad = effect(() => {
     const commander = this.edhrecCommanderName();
-    const key = commander ?? '';
-    if (this.edhrecTagsLoadedFor === key) return;
-    this.edhrecTagsLoadedFor = key;
+    this.edhrecRefreshTick();
     this.edhrecAvailableTags.set([]);
     if (!commander) return;
     this.loadEdhrecAvailableTags(commander);
@@ -1116,8 +1114,7 @@ export class DeckViewerService {
     this.addCardResults.set([]);
     this.addCardMessage.set('');
     this.addCardMode.set('search');
-    this.edhrecListsLoadedFor = null;
-    this.edhrecTagsLoadedFor = null;
+    this.edhrecRefreshTick.update((v) => v + 1);
     this.edhrecLists.set(null);
     this.edhrecCardDetails.set(new Map());
     this.edhrecCategoryImagesBusy.set(new Set());
@@ -1196,8 +1193,7 @@ export class DeckViewerService {
     this.addCardResults.set([]);
     this.addCardMessage.set('');
     this.addCardMode.set('search');
-    this.edhrecListsLoadedFor = null;
-    this.edhrecTagsLoadedFor = null;
+    this.edhrecRefreshTick.update((v) => v + 1);
     this.edhrecLists.set(null);
     this.edhrecCardDetails.set(new Map());
     this.edhrecCategoryImagesBusy.set(new Set());
