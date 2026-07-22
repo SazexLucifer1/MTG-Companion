@@ -51,15 +51,22 @@ export class DeckDetailView {
   private readonly expandedEdhrecCategories = new Set<string>();
 
   constructor() {
-    // Bei erneutem Eintritt in den Bearbeitungsmodus wirft toggleEditMode() den EDHREC-Bildercache
-    // weg und lädt die Vorschläge neu - vorher aufgeklappte Kategorien blieben aber optisch
-    // aufgeklappt, ohne dass für sie je neue Bilder nachgeladen wurden (das passiert nur beim
-    // Aufklappen selbst). Einfach wieder einklappen, ein erneutes Aufklappen lädt dann frisch nach.
-    let wasEditMode = false;
+    // Sobald sich die EDHREC-Vorschlagsliste ändert (Tag gewechselt, Commander gewechselt, erneutes
+    // Bearbeiten nach dem Speichern, ...), für bereits aufgeklappte Kategorien die Bilder direkt neu
+    // nachladen - sonst zeigen sie weiterhin nur die (jetzt zu den neuen Karten nicht mehr
+    // passenden) alten Bilder oder gar keine, bis man von Hand ein-/wieder ausklappt.
+    // loadEdhrecCategoryImages() lädt intern ohnehin nur Karten nach, die noch nicht im Cache sind.
     effect(() => {
-      const editMode = this.viewer.editMode();
-      if (editMode && !wasEditMode) this.expandedEdhrecCategories.clear();
-      wasEditMode = editMode;
+      const lists = this.viewer.edhrecLists();
+      if (!lists) return;
+      for (const list of lists) {
+        if (this.expandedEdhrecCategories.has(list.tag)) {
+          this.viewer.loadEdhrecCategoryImages(
+            list.tag,
+            list.cards.map((c) => c.name)
+          );
+        }
+      }
     });
   }
 
