@@ -452,7 +452,7 @@
             } @else {
               <h4 class="deck-section-title">Manakurve</h4>
               @if (viewer.averageCmc(); as avgCmc) {
-                <p class="hint">Ø Manakosten (ohne Länder): {{ avgCmc | number: '1.1-2' }}</p>
+                <p class="hint">Ø Manakosten: {{ avgCmc | number: '1.1-2' }}</p>
               }
               <div class="curve-chart">
                 @for (bucket of viewer.manaCurve(); track bucket.label) {
