@@ -673,6 +673,13 @@ export class DeckViewerService {
     this.addCardResults.set([]);
     this.addCardMessage.set('');
     this.addCardMode.set('search');
+    // edhrecListsLoadedFor/edhrecTagsLoadedFor NICHT zurücksetzen wäre der Bug: die
+    // Auto-Load-Effekte (edhrecListsAutoLoad/edhrecTagsAutoLoad) überspringen das Neuladen, wenn
+    // sich der Commander seit dem letzten Laden nicht geändert hat - würde man die beiden hier
+    // stehen lassen, bliebe edhrecLists dauerhaft auf null (gerade eben resettet), ohne dass der
+    // Effekt das je bemerkt, bis das Deck komplett neu geöffnet wird (open() setzt sie zurück).
+    this.edhrecListsLoadedFor = null;
+    this.edhrecTagsLoadedFor = null;
     this.edhrecLists.set(null);
     this.edhrecCardDetails.set(new Map());
     this.edhrecCategoryImagesBusy.set(new Set());
