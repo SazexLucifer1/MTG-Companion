@@ -1,0 +1,70 @@
+@if (pdfService.showDialog()) {
+<div class="options-menu-overlay" (click)="pdfService.close()">
+  <div class="options-menu-sheet pdf-sheet" (click)="$event.stopPropagation()">
+    <h3>🖨️ Als PDF exportieren</h3>
+    <p class="hint">
+      Karten in echter Größe (63×88mm) mit Schnittlinien, 9 pro Seite. Einzelne Karten unten
+      abwählen, um sie wegzulassen.
+    </p>
+
+    <div class="import-field">
+      <label class="hint">Bei mehreren Kopien (z.B. 7× Forest)</label>
+      <div class="chip-row">
+        <button
+          class="glass-chip small"
+          [class.active]="pdfService.copiesMode() === 'one'"
+          [disabled]="pdfService.busy()"
+          (click)="pdfService.setCopiesMode('one')"
+        >
+          Nur 1 Bild
+        </button>
+        <button
+          class="glass-chip small"
+          [class.active]="pdfService.copiesMode() === 'all'"
+          [disabled]="pdfService.busy()"
+          (click)="pdfService.setCopiesMode('all')"
+        >
+          Jede Kopie einzeln
+        </button>
+      </div>
+    </div>
+
+    <div class="chip-row">
+      <button class="glass-chip small" [disabled]="pdfService.busy()" (click)="pdfService.setAllSelected(true)">Alle auswählen</button>
+      <button class="glass-chip small" [disabled]="pdfService.busy()" (click)="pdfService.setAllSelected(false)">Alle abwählen</button>
+    </div>
+
+    <ul class="pdf-card-list">
+      @for (entry of pdfService.entries(); track entry.cardName) {
+        <li (click)="pdfService.toggleCard(entry.cardName)" [class.selected]="entry.selected">
+          <input
+            type="checkbox"
+            [checked]="entry.selected"
+            [disabled]="pdfService.busy()"
+            (click)="$event.stopPropagation()"
+            (change)="pdfService.toggleCard(entry.cardName)"
+          />
+          <span class="deck-name">{{ entry.cardName }}</span>
+          <span class="hint">{{ entry.quantity }}×</span>
+        </li>
+      }
+    </ul>
+
+    @if (pdfService.progress(); as progress) {
+      <p class="hint">Lade Kartenbilder {{ progress.done }} / {{ progress.total }} …</p>
+    }
+    @if (pdfService.errorMessage()) {
+      <p class="error">{{ pdfService.errorMessage() }}</p>
+    }
+
+    <button
+      class="glass-button primary"
+      [disabled]="pdfService.busy() || pdfService.selectedCount() === 0"
+      (click)="pdfService.generatePdf()"
+    >
+      {{ pdfService.busy() ? 'Erzeuge PDF …' : '🖨️ ' + pdfService.selectedCount() + ' Karten als PDF' }}
+    </button>
+    <button class="glass-button" [disabled]="pdfService.busy()" (click)="pdfService.close()">Abbrechen</button>
+  </div>
+</div>
+}

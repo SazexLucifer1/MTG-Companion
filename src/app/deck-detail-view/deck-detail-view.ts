@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { DeckViewerService } from '../deck-viewer.service';
 import { DeckService, DeckCard } from '../deck.service';
 import { DeckImportService } from '../deck-import.service';
+import { DeckPdfService } from '../deck-pdf.service';
 import { EdhrecCardlist } from '../edhrec.service';
 
 @Component({
@@ -16,6 +17,7 @@ export class DeckDetailView {
   readonly viewer = inject(DeckViewerService);
   private readonly deckService = inject(DeckService);
   private readonly importService = inject(DeckImportService);
+  private readonly pdfService = inject(DeckPdfService);
 
   /**
    * Öffnet den bestehenden Import-Dialog wieder (Copy-Paste einer kompletten Liste inkl.
@@ -31,6 +33,12 @@ export class DeckDetailView {
       const fresh = decks.find((d) => d.id === deck.id) ?? deck;
       await this.viewer.open(fresh);
     });
+  }
+
+  openPdfExport(): void {
+    const deck = this.viewer.viewingDeck();
+    if (!deck) return;
+    this.pdfService.open(deck.name, this.viewer.viewingDeckCards());
   }
 
   /** Summe der Kartenanzahl (nicht Anzahl unterschiedlicher Kartennamen) für den Zähler in der Abschnitts-Überschrift, z.B. "Land (12)" bei 7 Forest + 5 Island statt fälschlich nur 2 (Zeilenanzahl). */

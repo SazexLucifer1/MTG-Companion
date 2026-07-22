@@ -103,6 +103,7 @@
         <button class="glass-chip small" [class.active]="viewer.showChangeLog()" (click)="viewer.toggleChangeLog()">
           🕘 Verlauf
         </button>
+        <button class="glass-chip small" (click)="openPdfExport()">🖨️ Als PDF</button>
         @if (viewer.canEditViewingDeck()) {
           <button class="glass-chip small" (click)="reimportDecklist()">📋 Kartenliste neu einfügen</button>
         }

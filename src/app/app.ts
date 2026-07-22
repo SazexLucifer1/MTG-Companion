@@ -6,6 +6,7 @@ import { GroupTab } from './group-tab/group-tab';
 import { IngameTracker } from './ingame-tracker/ingame-tracker';
 import { DeckDetailView } from './deck-detail-view/deck-detail-view';
 import { DeckImportDialogs } from './deck-import-dialogs/deck-import-dialogs';
+import { DeckPdfDialog } from './deck-pdf-dialog/deck-pdf-dialog';
 import { Login } from './login/login';
 import { ResetPassword } from './reset-password/reset-password';
 import { GameSessionService } from './game-session.service';
@@ -22,6 +23,7 @@ import { NavigationService, AppTab } from './navigation.service';
     IngameTracker,
     DeckDetailView,
     DeckImportDialogs,
+    DeckPdfDialog,
     Login,
     ResetPassword,
   ],
