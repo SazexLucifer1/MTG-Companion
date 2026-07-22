@@ -303,6 +303,58 @@ export class DeckViewerService {
     return sections;
   });
 
+  /** Ob die Kartenliste nach Kartentyp (Standard) oder nach eigenen Tags gruppiert/sortiert wird. */
+  readonly cardSortMode = signal<'type' | 'tags'>('type');
+
+  setCardSortMode(mode: 'type' | 'tags'): void {
+    this.cardSortMode.set(mode);
+  }
+
+  /** Alle im Deck tatsächlich vergebenen eigenen Tags, alphabetisch - für die Tag-Auswahl beim Bearbeiten einer Karte. */
+  readonly availableCustomTags = computed(() => {
+    const tags = new Set<string>();
+    for (const card of this.editedDeckCards()) {
+      for (const t of card.customTags) tags.add(t);
+    }
+    return [...tags].sort((a, b) => a.localeCompare(b));
+  });
+
+  /**
+   * Karten gruppiert nach eigenem Tag statt Kartentyp - eine Karte mit mehreren Tags erscheint in
+   * mehreren Sektionen (bewusst so gewünscht, im Gegensatz zur Typ-Gruppierung wo jede Karte nur in
+   * einer Sektion landet). Karten ganz ohne Tag landen gesammelt in "Ohne Tag".
+   */
+  readonly groupedDeckCardsByTag = computed(() => {
+    const commander = this.editedDeckCards().filter((c) => c.isCommander);
+    const rest = this.editedDeckCards().filter((c) => !c.isCommander);
+
+    const groups = new Map<string, DeckCard[]>();
+    const untagged: DeckCard[] = [];
+    for (const card of rest) {
+      if (card.customTags.length === 0) {
+        untagged.push(card);
+        continue;
+      }
+      for (const tag of card.customTags) {
+        const list = groups.get(tag) ?? [];
+        list.push(card);
+        groups.set(tag, list);
+      }
+    }
+
+    const sections: { label: string; cards: DeckCard[] }[] = [];
+    if (commander.length > 0) {
+      sections.push({ label: 'Commander', cards: [...commander].sort(DeckViewerService.sortByCmc) });
+    }
+    for (const tag of [...groups.keys()].sort((a, b) => a.localeCompare(b))) {
+      sections.push({ label: tag, cards: [...groups.get(tag)!].sort(DeckViewerService.sortByCmc) });
+    }
+    if (untagged.length > 0) {
+      sections.push({ label: 'Ohne Tag', cards: untagged.sort(DeckViewerService.sortByCmc) });
+    }
+    return sections;
+  });
+
   // NEU
   readonly cardSearchQuery = signal('');
   readonly cmcFilter = signal<'all' | number>('all');
@@ -371,9 +423,11 @@ export class DeckViewerService {
 
   /** groupedDeckCards, gefiltert nach Suchtext/Manawert/Typ/Kreaturtyp/Farbe - leere Abschnitte fallen weg. */
   readonly filteredGroupedDeckCards = computed(() => {
+    const sortMode = this.cardSortMode();
     const typeFilter = this.typeFilterValue();
-    return this.groupedDeckCards()
-      .filter((section) => typeFilter === 'all' || section.label === typeFilter)
+    const source = sortMode === 'tags' ? this.groupedDeckCardsByTag() : this.groupedDeckCards();
+    return source
+      .filter((section) => sortMode === 'tags' || typeFilter === 'all' || section.label === typeFilter)
       .map((section) => ({
         label: section.label,
         cards: section.cards.filter((c) => this.cardMatchesFilters(c)),
@@ -564,6 +618,7 @@ export class DeckViewerService {
           typeLine: change.typeLine,
           cmc: change.cmc,
           isCommander: commanderChanges.get(change.cardName.toLowerCase()) ?? false,
+          customTags: [],
         });
       }
     }
@@ -707,6 +762,8 @@ export class DeckViewerService {
   closeArtworkPicker(): void {
     this.artworkPickerCard.set(null);
     this.artworkOptions.set([]);
+    this.tagEditorCard.set(null);
+    this.tagEditorNewTag.set('');
     this.artworkPickerError.set(null);
   }
 
@@ -753,12 +810,65 @@ export class DeckViewerService {
     await this.selectArtwork(url);
   }
 
+  // NEU - eigene Sortier-Tags einer Karte bearbeiten (Bearbeitungsmodus)
+  readonly tagEditorCard = signal<DeckCard | null>(null);
+  readonly tagEditorNewTag = signal('');
+  readonly tagEditorBusy = signal(false);
+
+  openTagEditor(card: DeckCard): void {
+    if (!this.canEditViewingDeck()) return;
+    this.tagEditorCard.set(card);
+    this.tagEditorNewTag.set('');
+  }
+
+  closeTagEditor(): void {
+    this.tagEditorCard.set(null);
+    this.tagEditorNewTag.set('');
+  }
+
+  setTagEditorNewTag(value: string): void {
+    this.tagEditorNewTag.set(value);
+  }
+
+  /** Fügt einen Tag zur Karte hinzu, falls sie ihn noch nicht hat, oder entfernt ihn wieder - speichert sofort. */
+  async toggleCardTag(tag: string): Promise<void> {
+    const deck = this.viewingDeck();
+    const card = this.tagEditorCard();
+    const trimmed = tag.trim();
+    if (!deck || !card || !trimmed || !this.canEditViewingDeck()) return;
+
+    const next = card.customTags.includes(trimmed)
+      ? card.customTags.filter((t) => t !== trimmed)
+      : [...card.customTags, trimmed];
+
+    this.tagEditorBusy.set(true);
+    const ok = await this.deckService.setCardTags(deck.id, card.cardName, next);
+    this.tagEditorBusy.set(false);
+    if (!ok) return;
+
+    const key = card.cardName.toLowerCase();
+    this.viewingDeckCards.update((cards) =>
+      cards.map((c) => (c.cardName.toLowerCase() === key ? { ...c, customTags: next } : c))
+    );
+    this.tagEditorCard.set({ ...card, customTags: next });
+  }
+
+  /** Legt einen komplett neuen Tag an (kommt noch bei keiner Karte im Deck vor) und weist ihn direkt der aktuellen Karte zu. */
+  async addNewTagToCard(): Promise<void> {
+    const value = this.tagEditorNewTag().trim();
+    if (!value) return;
+    await this.toggleCardTag(value);
+    this.tagEditorNewTag.set('');
+  }
+
   toggleEditMode(): void {
     if (this.editMode() || !this.canEditViewingDeck()) return; // Verlassen geht nur bewusst über saveEdits()/cancelEdits()
     this.editMode.set(true);
     this.showCommanderToggle.set(false);
     this.artworkPickerCard.set(null);
     this.artworkOptions.set([]);
+    this.tagEditorCard.set(null);
+    this.tagEditorNewTag.set('');
     this.pendingChanges.set(new Map());
     this.pendingCommanderChanges.set(new Map());
     this.commanderMarkError.set(null);
@@ -869,6 +979,8 @@ export class DeckViewerService {
     this.showCommanderToggle.set(false);
     this.artworkPickerCard.set(null);
     this.artworkOptions.set([]);
+    this.tagEditorCard.set(null);
+    this.tagEditorNewTag.set('');
     this.addCardMode.set('search');
     await this.reloadDeckCards();
     this.editSaveBusy.set(false);
@@ -882,6 +994,8 @@ export class DeckViewerService {
     this.showCommanderToggle.set(false);
     this.artworkPickerCard.set(null);
     this.artworkOptions.set([]);
+    this.tagEditorCard.set(null);
+    this.tagEditorNewTag.set('');
     this.addCardQuery.set('');
     this.addCardResults.set([]);
     this.addCardMessage.set('');
@@ -1215,6 +1329,8 @@ export class DeckViewerService {
     this.showCommanderToggle.set(false);
     this.artworkPickerCard.set(null);
     this.artworkOptions.set([]);
+    this.tagEditorCard.set(null);
+    this.tagEditorNewTag.set('');
     this.pendingChanges.set(new Map());
     this.pendingCommanderChanges.set(new Map());
     this.commanderMarkError.set(null);
@@ -1238,6 +1354,7 @@ export class DeckViewerService {
     this.bracketEstimateFailed.set(false);
     this.bracketEstimateErrorDetail.set(null);
     this.viewMode.set('visual');
+    this.cardSortMode.set('type');
 
     const [cards, log, gameStats] = await Promise.all([
       this.deckService.loadDeckCards(deck.id),
@@ -1297,6 +1414,8 @@ export class DeckViewerService {
     this.showCommanderToggle.set(false);
     this.artworkPickerCard.set(null);
     this.artworkOptions.set([]);
+    this.tagEditorCard.set(null);
+    this.tagEditorNewTag.set('');
     this.pendingChanges.set(new Map());
     this.pendingCommanderChanges.set(new Map());
     this.commanderMarkError.set(null);

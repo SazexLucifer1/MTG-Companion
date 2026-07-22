@@ -37,6 +37,8 @@ export interface DeckCard {
   typeLine: string | null;
   cmc: number;
   isCommander: boolean;
+  /** Frei vergebene eigene Sortier-Tags (z.B. "Removal", "Wincon") - eine Karte kann mehrere haben. */
+  customTags: string[];
 }
 
 export interface DeckChangeEntry {
@@ -82,7 +84,7 @@ export class DeckService {
   async loadDeckCards(deckId: string): Promise<DeckCard[]> {
     const { data, error } = await supabase
       .from('deck_cards')
-      .select('card_name, quantity, image_url, type_line, cmc, is_commander')
+      .select('card_name, quantity, image_url, type_line, cmc, is_commander, custom_tags')
       .eq('deck_id', deckId)
       .order('card_name', { ascending: true });
 
@@ -98,6 +100,7 @@ export class DeckService {
       typeLine: row.type_line,
       cmc: row.cmc ?? 0,
       isCommander: row.is_commander,
+      customTags: row.custom_tags ?? [],
     }));
   }
 
@@ -626,6 +629,21 @@ export class DeckService {
 
     if (error) {
       console.error('Konnte Kartenbild nicht ändern:', error);
+      return false;
+    }
+    return true;
+  }
+
+  /** Setzt die eigenen Sortier-Tags einer Karte komplett neu (ersetzt die bisherige Liste). */
+  async setCardTags(deckId: string, cardName: string, tags: string[]): Promise<boolean> {
+    const { error } = await supabase
+      .from('deck_cards')
+      .update({ custom_tags: tags })
+      .eq('deck_id', deckId)
+      .ilike('card_name', cardName);
+
+    if (error) {
+      console.error('Konnte Tags nicht ändern:', error);
       return false;
     }
     return true;

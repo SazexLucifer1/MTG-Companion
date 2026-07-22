@@ -565,6 +565,14 @@
           </div>
         }
       }
+      <div class="chip-row">
+        <button class="glass-chip small" [class.active]="viewer.cardSortMode() === 'type'" (click)="viewer.setCardSortMode('type')">
+          Nach Typ
+        </button>
+        <button class="glass-chip small" [class.active]="viewer.cardSortMode() === 'tags'" (click)="viewer.setCardSortMode('tags')">
+          🏷️ Nach eigenen Tags
+        </button>
+      </div>
       <input
         class="glass-input"
         type="text"
@@ -583,16 +591,18 @@
             <option [ngValue]="n">{{ n === 7 ? '7+' : n }}</option>
           }
         </select>
-        <select
-          class="glass-input small"
-          [ngModel]="viewer.typeFilterValue()"
-          (ngModelChange)="viewer.typeFilterValue.set($event)"
-        >
-          <option [ngValue]="'all'">Typ: alle</option>
-          @for (label of viewer.availableTypeSections(); track label) {
-            <option [ngValue]="label">{{ label }}</option>
-          }
-        </select>
+        @if (viewer.cardSortMode() === 'type') {
+          <select
+            class="glass-input small"
+            [ngModel]="viewer.typeFilterValue()"
+            (ngModelChange)="viewer.typeFilterValue.set($event)"
+          >
+            <option [ngValue]="'all'">Typ: alle</option>
+            @for (label of viewer.availableTypeSections(); track label) {
+              <option [ngValue]="label">{{ label }}</option>
+            }
+          </select>
+        }
         @if (viewer.availableCreatureTypes().length > 0) {
           <select
             class="glass-input small"
@@ -695,6 +705,9 @@
                   <button class="deck-card-artwork-toggle" (click)="viewer.openArtworkPicker(card)" aria-label="Anderes Artwork wählen">
                     🎨
                   </button>
+                  <button class="deck-card-tag-toggle" (click)="viewer.openTagEditor(card)" aria-label="Eigene Tags bearbeiten">
+                    🏷️
+                  </button>
                 }
               </div>
             }
@@ -736,6 +749,9 @@
                 @if (viewer.editMode()) {
                   <button class="icon-button" (click)="viewer.openArtworkPicker(card)" aria-label="Anderes Artwork wählen">
                     🎨
+                  </button>
+                  <button class="icon-button" (click)="viewer.openTagEditor(card)" aria-label="Eigene Tags bearbeiten">
+                    🏷️
                   </button>
                 }
               </li>
@@ -795,6 +811,65 @@
 
       <button class="glass-button" [disabled]="viewer.artworkPickerBusy()" (click)="viewer.closeArtworkPicker()">
         Abbrechen
+      </button>
+    </div>
+  </div>
+}
+
+@if (viewer.tagEditorCard(); as tagCard) {
+  <!-- Bewusst außerhalb von .deck-detail-fullscreen - gleicher Grund wie beim Artwork-Dialog oben. -->
+  <div class="options-menu-overlay" (click)="viewer.closeTagEditor()">
+    <div class="options-menu-sheet tag-editor-sheet" (click)="$event.stopPropagation()">
+      <h3>🏷️ Eigene Tags</h3>
+      <p class="hint">{{ tagCard.cardName }}</p>
+
+      @if (tagCard.customTags.length > 0) {
+        <div class="tag-chip-row">
+          @for (tag of tagCard.customTags; track tag) {
+            <button class="glass-chip small active" [disabled]="viewer.tagEditorBusy()" (click)="viewer.toggleCardTag(tag)">
+              {{ tag }} ✕
+            </button>
+          }
+        </div>
+      }
+
+      @if (viewer.availableCustomTags().length > 0) {
+        <p class="hint">Im Deck bereits vorhandene Tags:</p>
+        <div class="tag-chip-row">
+          @for (tag of viewer.availableCustomTags(); track tag) {
+            @if (!tagCard.customTags.includes(tag)) {
+              <button class="glass-chip small" [disabled]="viewer.tagEditorBusy()" (click)="viewer.toggleCardTag(tag)">
+                + {{ tag }}
+              </button>
+            }
+          }
+        </div>
+      }
+
+      <div class="import-field">
+        <label class="hint" for="new-tag-input">Neuen Tag anlegen</label>
+        <div class="chip-row">
+          <input
+            id="new-tag-input"
+            class="glass-input"
+            type="text"
+            placeholder="z.B. Removal, Wincon …"
+            [ngModel]="viewer.tagEditorNewTag()"
+            (ngModelChange)="viewer.setTagEditorNewTag($event)"
+            (keyup.enter)="viewer.addNewTagToCard()"
+          />
+          <button
+            class="glass-button small"
+            [disabled]="viewer.tagEditorBusy() || !viewer.tagEditorNewTag().trim()"
+            (click)="viewer.addNewTagToCard()"
+          >
+            + Anlegen
+          </button>
+        </div>
+      </div>
+
+      <button class="glass-button" [disabled]="viewer.tagEditorBusy()" (click)="viewer.closeTagEditor()">
+        Fertig
       </button>
     </div>
   </div>
