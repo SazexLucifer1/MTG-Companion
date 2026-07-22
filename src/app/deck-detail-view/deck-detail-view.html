@@ -158,6 +158,13 @@
             <button class="glass-button small" [disabled]="viewer.editSaveBusy()" (click)="viewer.cancelEdits()">
               ✕ Abbrechen
             </button>
+            <button
+              class="glass-chip small"
+              [class.active]="viewer.showCommanderToggle()"
+              (click)="viewer.showCommanderToggle.set(!viewer.showCommanderToggle())"
+            >
+              👑 Commander markieren
+            </button>
           </div>
         </div>
 
@@ -644,7 +651,7 @@
                 } @else {
                   <div class="deck-card-placeholder">{{ card.cardName }}</div>
                 }
-                @if (viewer.editMode()) {
+                @if (viewer.editMode() && viewer.showCommanderToggle() && (card.isCommander || viewer.isCommanderEligible(card))) {
                   <button
                     class="deck-card-commander-toggle"
                     [class.active]="card.isCommander"
@@ -684,7 +691,7 @@
               <li>
                 <span class="deck-card-qty-text">{{ card.quantity }}×</span>
                 <span>{{ card.cardName }}</span>
-                @if (viewer.editMode()) {
+                @if (viewer.editMode() && viewer.showCommanderToggle() && (card.isCommander || viewer.isCommanderEligible(card))) {
                   <button
                     class="icon-button"
                     [class.active]="card.isCommander"

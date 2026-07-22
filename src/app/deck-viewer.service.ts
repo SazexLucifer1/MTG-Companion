@@ -416,6 +416,8 @@ export class DeckViewerService {
 
   // NEU - Bearbeitungsmodus: Karten hinzufügen/entfernen
   readonly editMode = signal(false);
+  /** Blendet die Kronen-Buttons auf den Kartenkacheln ein/aus - standardmäßig aus, da sie sonst auf jeder einzelnen Karte stören, obwohl man sie nur selten braucht. */
+  readonly showCommanderToggle = signal(false);
   readonly addCardQuery = signal('');
   readonly addCardTypeFilter = signal<'all' | string>('all');
   readonly addCardCreatureTypeFilter = signal('');
@@ -603,6 +605,19 @@ export class DeckViewerService {
   readonly commanderMarkError = signal<string | null>(null);
 
   /**
+   * Grobe Prüfung, ob eine Karte überhaupt als Commander infrage kommt - blendet die Krone auf
+   * offensichtlich ungeeigneten Karten (Zaubersprüche, normale Kreaturen, Länder, ...) aus, statt
+   * sie auf jeder einzelnen Karte anzuzeigen. Legendäre Kreaturen sind der Regelfall, manche
+   * Planeswalker/Sagas haben zusätzlich explizit "can be your commander" im Kartentext stehen.
+   */
+  isCommanderEligible(card: DeckCard): boolean {
+    const typeLine = card.typeLine ?? '';
+    if (typeLine.includes('Legendary') && typeLine.includes('Creature')) return true;
+    const oracleText = this.viewingCardDetails().get(card.cardName.toLowerCase())?.oracleText ?? '';
+    return oracleText.includes('can be your commander');
+  }
+
+  /**
    * Prüft, ob zwei Karten zusammen als Commander-Paar erlaubt wären: Partner (inkl. "Partner
    * with" und "Friends forever" - Scryfall führt beide unter dem Keyword "Partner"), "Choose a
    * Background" + eine Background-Karte, oder Doctor Who "Doctor's companion" + ein Time Lord
@@ -660,6 +675,7 @@ export class DeckViewerService {
   toggleEditMode(): void {
     if (this.editMode() || !this.canEditViewingDeck()) return; // Verlassen geht nur bewusst über saveEdits()/cancelEdits()
     this.editMode.set(true);
+    this.showCommanderToggle.set(false);
     this.pendingChanges.set(new Map());
     this.pendingCommanderChanges.set(new Map());
     this.commanderMarkError.set(null);
@@ -767,6 +783,7 @@ export class DeckViewerService {
     this.pendingCommanderChanges.set(new Map());
     this.commanderMarkError.set(null);
     this.editMode.set(false);
+    this.showCommanderToggle.set(false);
     this.addCardMode.set('search');
     await this.reloadDeckCards();
     this.editSaveBusy.set(false);
@@ -777,6 +794,7 @@ export class DeckViewerService {
     this.pendingCommanderChanges.set(new Map());
     this.commanderMarkError.set(null);
     this.editMode.set(false);
+    this.showCommanderToggle.set(false);
     this.addCardQuery.set('');
     this.addCardResults.set([]);
     this.addCardMessage.set('');
@@ -1107,6 +1125,7 @@ export class DeckViewerService {
     this.resetCardFilters();
     this.effectFilterBusy.set(false);
     this.editMode.set(false);
+    this.showCommanderToggle.set(false);
     this.pendingChanges.set(new Map());
     this.pendingCommanderChanges.set(new Map());
     this.commanderMarkError.set(null);
@@ -1186,6 +1205,7 @@ export class DeckViewerService {
     this.bracketEstimateFailed.set(false);
     this.bracketEstimateErrorDetail.set(null);
     this.editMode.set(false);
+    this.showCommanderToggle.set(false);
     this.pendingChanges.set(new Map());
     this.pendingCommanderChanges.set(new Map());
     this.commanderMarkError.set(null);
