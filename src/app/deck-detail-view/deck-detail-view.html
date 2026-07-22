@@ -683,6 +683,11 @@
                 } @else if (card.quantity > 1) {
                   <span class="deck-card-qty">{{ card.quantity }}×</span>
                 }
+                @if (viewer.editMode()) {
+                  <button class="deck-card-artwork-toggle" (click)="viewer.openArtworkPicker(card)" aria-label="Anderes Artwork wählen">
+                    🎨
+                  </button>
+                }
               </div>
             }
           </div>
@@ -720,6 +725,11 @@
                     </button>
                   </div>
                 }
+                @if (viewer.editMode()) {
+                  <button class="icon-button" (click)="viewer.openArtworkPicker(card)" aria-label="Anderes Artwork wählen">
+                    🎨
+                  </button>
+                }
               </li>
             }
           </ul>
@@ -728,5 +738,39 @@
 
     }
   </div>
+
+  @if (viewer.artworkPickerCard(); as pickCard) {
+    <div class="options-menu-overlay" (click)="viewer.closeArtworkPicker()">
+      <div class="options-menu-sheet artwork-picker-sheet" (click)="$event.stopPropagation()">
+        <h3>🎨 Artwork wählen</h3>
+        <p class="hint">{{ pickCard.cardName }}</p>
+
+        @if (viewer.artworkPickerBusy() && viewer.artworkOptions().length === 0) {
+          <p class="hint">Lade Editionen …</p>
+        }
+        @if (viewer.artworkPickerError()) {
+          <p class="hint">{{ viewer.artworkPickerError() }}</p>
+        }
+        @if (viewer.artworkOptions().length > 0) {
+          <div class="artwork-picker-grid">
+            @for (option of viewer.artworkOptions(); track option.id) {
+              <button
+                class="artwork-picker-tile"
+                [disabled]="viewer.artworkPickerBusy()"
+                (click)="viewer.selectArtwork(option.imageUrl!)"
+              >
+                <img [src]="option.imageUrl" [alt]="option.setName" loading="lazy" />
+                <span class="hint">{{ option.setName }}</span>
+              </button>
+            }
+          </div>
+        }
+
+        <button class="glass-button" [disabled]="viewer.artworkPickerBusy()" (click)="viewer.closeArtworkPicker()">
+          Abbrechen
+        </button>
+      </div>
+    </div>
+  }
 </div>
 }

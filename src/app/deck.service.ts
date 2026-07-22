@@ -616,6 +616,21 @@ export class DeckService {
     return true;
   }
 
+  /** Ersetzt nur das Bild einer Karte (anderes Artwork/Edition) - Name/Menge/Commander-Status bleiben unverändert. */
+  async updateCardImage(deckId: string, cardName: string, imageUrl: string): Promise<boolean> {
+    const { error } = await supabase
+      .from('deck_cards')
+      .update({ image_url: imageUrl })
+      .eq('deck_id', deckId)
+      .ilike('card_name', cardName);
+
+    if (error) {
+      console.error('Konnte Kartenbild nicht ändern:', error);
+      return false;
+    }
+    return true;
+  }
+
   /**
    * Gesamt-Statistik für ein Deck über ALLE Gruppen hinweg (nicht nur die aktuell aktive) und
    * unabhängig davon, wer es jeweils gespielt hat (eigener Pilot oder ausgeliehen) - im

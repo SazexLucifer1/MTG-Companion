@@ -514,6 +514,30 @@
   }
 }
 
+.deck-card-artwork-toggle {
+  position: absolute;
+  bottom: 4px;
+  left: 4px;
+  width: 26px;
+  height: 26px;
+  min-width: 0;
+  padding: 0;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0, 0, 0, 0.6);
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0.6;
+  transition: opacity 0.15s ease;
+
+  &:active {
+    opacity: 1;
+  }
+}
+
 .edit-mode-bar {
   margin: 4px 0 12px;
   padding: 10px 12px;
@@ -672,4 +696,52 @@
   font-size: 0.72rem;
   opacity: 0.75;
   text-align: center;
+}
+
+// NEU
+.artwork-picker-sheet {
+  width: min(94vw, 480px);
+  max-width: 480px;
+  max-height: 88dvh;
+  overflow-y: auto;
+}
+
+.artwork-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin: 10px 0;
+}
+
+.artwork-picker-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 0;
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  cursor: pointer;
+  overflow: hidden;
+  text-align: center;
+
+  img {
+    width: 100%;
+    aspect-ratio: 63 / 88;
+    object-fit: cover;
+    display: block;
+  }
+
+  .hint {
+    padding: 2px 4px 6px;
+  }
+
+  &:active {
+    background: rgba(255, 255, 255, 0.14);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
 }

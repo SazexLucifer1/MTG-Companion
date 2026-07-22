@@ -15,6 +15,14 @@ export interface ScryfallCard {
   keywords?: string[];
 }
 
+export interface ScryfallPrinting {
+  id: string;
+  setName: string;
+  setCode: string;
+  releasedAt: string | null;
+  imageUrl: string | null;
+}
+
 export interface ScryfallSet {
   id: string;
   code: string;
@@ -348,6 +356,25 @@ export class ScryfallService {
       }
     }
     return matched;
+  }
+
+  // NEU
+  /** Alle Editionen/Artworks einer Karte (exakter Name), neueste zuerst - für die Artwork-Auswahl im Bearbeiten-Modus. */
+  async getPrintings(cardName: string): Promise<ScryfallPrinting[]> {
+    const safeName = cardName.replace(/"/g, '');
+    const q = encodeURIComponent(`!"${safeName}" lang:en -is:digital`);
+    const res = await this.fetchWithRetry(`${API}/cards/search?q=${q}&unique=prints&order=released&dir=desc`);
+    if (!res?.ok) return [];
+    const data = await res.json();
+    return ((data.data as any[]) ?? [])
+      .map((c) => ({
+        id: c.id as string,
+        setName: c.set_name as string,
+        setCode: c.set as string,
+        releasedAt: (c.released_at as string | undefined) ?? null,
+        imageUrl: c.image_uris?.normal ?? c.card_faces?.[0]?.image_uris?.normal ?? null,
+      }))
+      .filter((p): p is ScryfallPrinting => !!p.imageUrl);
   }
 
   private toCard(data: any): ScryfallCard {

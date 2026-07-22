@@ -1,6 +1,6 @@
 import { Injectable, computed, effect, inject, signal } from '@angular/core';
 import { DeckService, Deck, DeckCard, DeckChangeEntry, DeckGameStats } from './deck.service';
-import { ScryfallService, ScryfallCard } from './scryfall.service';
+import { ScryfallService, ScryfallCard, ScryfallPrinting } from './scryfall.service';
 import {
   CommanderSpellbookService,
   BracketEstimate,
@@ -675,10 +675,60 @@ export class DeckViewerService {
     this.pendingCommanderChanges.update((map) => new Map(map).set(card.cardName.toLowerCase(), true));
   }
 
+  // NEU - Artwork/Edition einer Karte wechseln (Bearbeitungsmodus)
+  readonly artworkPickerCard = signal<DeckCard | null>(null);
+  readonly artworkOptions = signal<ScryfallPrinting[]>([]);
+  readonly artworkPickerBusy = signal(false);
+  readonly artworkPickerError = signal<string | null>(null);
+
+  async openArtworkPicker(card: DeckCard): Promise<void> {
+    if (!this.canEditViewingDeck()) return;
+    this.artworkPickerCard.set(card);
+    this.artworkOptions.set([]);
+    this.artworkPickerError.set(null);
+    this.artworkPickerBusy.set(true);
+    const printings = await this.scryfall.getPrintings(card.cardName);
+    this.artworkPickerBusy.set(false);
+    if (printings.length === 0) {
+      this.artworkPickerError.set('Keine weiteren Editionen gefunden.');
+    }
+    this.artworkOptions.set(printings);
+  }
+
+  closeArtworkPicker(): void {
+    this.artworkPickerCard.set(null);
+    this.artworkOptions.set([]);
+    this.artworkPickerError.set(null);
+  }
+
+  /** Schreibt das gewählte Artwork direkt in die DB (unabhängig vom Bearbeitungsmodus-Speichern-Button, wie Name/Tag im Kopfbereich). */
+  async selectArtwork(imageUrl: string): Promise<void> {
+    const deck = this.viewingDeck();
+    const card = this.artworkPickerCard();
+    if (!deck || !card || !this.canEditViewingDeck()) return;
+
+    this.artworkPickerBusy.set(true);
+    const ok = await this.deckService.updateCardImage(deck.id, card.cardName, imageUrl);
+    this.artworkPickerBusy.set(false);
+
+    if (!ok) {
+      this.artworkPickerError.set('Bild konnte nicht gespeichert werden.');
+      return;
+    }
+
+    const key = card.cardName.toLowerCase();
+    this.viewingDeckCards.update((cards) =>
+      cards.map((c) => (c.cardName.toLowerCase() === key ? { ...c, imageUrl } : c))
+    );
+    this.closeArtworkPicker();
+  }
+
   toggleEditMode(): void {
     if (this.editMode() || !this.canEditViewingDeck()) return; // Verlassen geht nur bewusst über saveEdits()/cancelEdits()
     this.editMode.set(true);
     this.showCommanderToggle.set(false);
+    this.artworkPickerCard.set(null);
+    this.artworkOptions.set([]);
     this.pendingChanges.set(new Map());
     this.pendingCommanderChanges.set(new Map());
     this.commanderMarkError.set(null);
@@ -787,6 +837,8 @@ export class DeckViewerService {
     this.commanderMarkError.set(null);
     this.editMode.set(false);
     this.showCommanderToggle.set(false);
+    this.artworkPickerCard.set(null);
+    this.artworkOptions.set([]);
     this.addCardMode.set('search');
     await this.reloadDeckCards();
     this.editSaveBusy.set(false);
@@ -798,6 +850,8 @@ export class DeckViewerService {
     this.commanderMarkError.set(null);
     this.editMode.set(false);
     this.showCommanderToggle.set(false);
+    this.artworkPickerCard.set(null);
+    this.artworkOptions.set([]);
     this.addCardQuery.set('');
     this.addCardResults.set([]);
     this.addCardMessage.set('');
@@ -1129,6 +1183,8 @@ export class DeckViewerService {
     this.effectFilterBusy.set(false);
     this.editMode.set(false);
     this.showCommanderToggle.set(false);
+    this.artworkPickerCard.set(null);
+    this.artworkOptions.set([]);
     this.pendingChanges.set(new Map());
     this.pendingCommanderChanges.set(new Map());
     this.commanderMarkError.set(null);
@@ -1209,6 +1265,8 @@ export class DeckViewerService {
     this.bracketEstimateErrorDetail.set(null);
     this.editMode.set(false);
     this.showCommanderToggle.set(false);
+    this.artworkPickerCard.set(null);
+    this.artworkOptions.set([]);
     this.pendingChanges.set(new Map());
     this.pendingCommanderChanges.set(new Map());
     this.commanderMarkError.set(null);
