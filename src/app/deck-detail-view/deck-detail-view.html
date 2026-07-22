@@ -405,6 +405,11 @@
           <div class="deck-analysis-info">
             <p class="hint"><strong>Manakurve:</strong> Anzahl Karten (ohne Länder) je Manawert.</p>
             <p class="hint">
+              <strong>Ø Manakosten:</strong> Durchschnittliche Manakosten aller Nicht-Land-Karten -
+              Länder zählen bewusst nicht mit, sonst würde ihre 0 den Schnitt künstlich nach unten
+              verfälschen.
+            </p>
+            <p class="hint">
               <strong>Pip-Verteilung:</strong> Wie oft jede Farbe (Weiß/Blau/Schwarz/Rot/Grün) in
               den Manakosten aller Nicht-Land-Karten vorkommt. Hybrid- und
               Phyrexianisch-Manasymbole zählen für ihre Farbe(n) mit.
@@ -446,6 +451,9 @@
               <p class="hint">Lade Analyse …</p>
             } @else {
               <h4 class="deck-section-title">Manakurve</h4>
+              @if (viewer.averageCmc(); as avgCmc) {
+                <p class="hint">Ø Manakosten (ohne Länder): {{ avgCmc | number: '1.1-2' }}</p>
+              }
               <div class="curve-chart">
                 @for (bucket of viewer.manaCurve(); track bucket.label) {
                   <div class="curve-bar-col">

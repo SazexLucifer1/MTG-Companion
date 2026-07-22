@@ -132,6 +132,15 @@ export class DeckViewerService {
     return [...buckets, sevenPlus];
   });
 
+  /** Durchschnittliche Manakosten ohne Länder (die würden mit ihren 0 Manakosten den Schnitt künstlich nach unten verfälschen). */
+  readonly averageCmc = computed<number | null>(() => {
+    const cards = this.nonLandCards();
+    const totalQty = cards.reduce((sum, c) => sum + c.quantity, 0);
+    if (totalQty === 0) return null;
+    const totalCmc = cards.reduce((sum, c) => sum + c.cmc * c.quantity, 0);
+    return totalCmc / totalQty;
+  });
+
   private static readonly PIP_COLORS: { color: PipCount['color']; label: string }[] = [
     { color: 'W', label: 'Weiß' },
     { color: 'U', label: 'Blau' },
