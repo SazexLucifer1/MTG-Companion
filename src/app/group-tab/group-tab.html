@@ -1,15 +1,15 @@
 <section class="glass-card">
-  <h2>Meine Gruppen</h2>
+  <h2>{{ i18n.t('group.myGroups') }}</h2>
 
   <div class="chip-row">
-    <button class="glass-button small" (click)="openCreateGroupDialog()">➕ Neue Gruppe erstellen</button>
-    <button class="glass-button small" (click)="openJoinGroupDialog()">🔑 Gruppe beitreten</button>
+    <button class="glass-button small" (click)="openCreateGroupDialog()">{{ i18n.t('group.createNewGroup') }}</button>
+    <button class="glass-button small" (click)="openJoinGroupDialog()">{{ i18n.t('group.joinGroup') }}</button>
   </div>
 
   @if (groupService.loading()) {
-    <p class="hint">Lade Gruppen …</p>
+    <p class="hint">{{ i18n.t('group.loadingGroups') }}</p>
   } @else if (groupService.myGroups().length === 0) {
-    <p class="hint">Du bist noch in keiner Gruppe.</p>
+    <p class="hint">{{ i18n.t('group.noGroupsYet') }}</p>
   } @else {
     <ul class="group-list">
       @for (group of groupService.myGroups(); track group.id) {
@@ -24,33 +24,33 @@
                 (keyup.enter)="confirmRenameGroup()"
                 autofocus
               />
-              <button class="icon-button confirm" (click)="confirmRenameGroup()" aria-label="Umbenennen bestätigen">✓</button>
-              <button class="icon-button" (click)="cancelRenameGroup()" aria-label="Abbrechen">✕</button>
+              <button class="icon-button confirm" (click)="confirmRenameGroup()" [attr.aria-label]="i18n.t('group.renameConfirmAria')">✓</button>
+              <button class="icon-button" (click)="cancelRenameGroup()" [attr.aria-label]="i18n.t('group.cancelAria')">✕</button>
             </div>
           } @else {
             <div class="group-card-header">
               <span class="group-name">{{ group.name }}</span>
               <span class="role-badge" [class.owner]="group.role === 'owner'">
-                {{ group.role === 'owner' ? '👑 Admin' : '🧑 Mitglied' }}
+                {{ group.role === 'owner' ? i18n.t('group.roleAdmin') : i18n.t('group.roleMember') }}
               </span>
             </div>
             <div class="group-card-actions">
               @if (groupService.groupId() === group.id) {
-                <span class="glass-chip small active">✓ Aktiv</span>
+                <span class="glass-chip small active">{{ i18n.t('group.active') }}</span>
               } @else {
-                <button class="glass-button small" (click)="selectGroup(group.id)">Aktiv setzen</button>
+                <button class="glass-button small" (click)="selectGroup(group.id)">{{ i18n.t('group.setActive') }}</button>
               }
               @if (group.role === 'owner') {
-                <button class="glass-button small" (click)="openInvite(group.id)">➕ Einladen</button>
+                <button class="glass-button small" (click)="openInvite(group.id)">{{ i18n.t('group.invite') }}</button>
               }
-              <button class="glass-button small" (click)="openMembers(group.id)">👥 Mitglieder</button>
+              <button class="glass-button small" (click)="openMembers(group.id)">{{ i18n.t('group.members') }}</button>
               @if (group.role === 'owner') {
-                <button class="glass-button small" (click)="openVisibilityDialog(group.id)">👁️ Sichtbarkeit</button>
-                <button class="glass-button small" (click)="openQualificationDialog(group.id)">🏁 Qualifikation</button>
-                <button class="icon-button" (click)="startRenameGroup(group.id, group.name)" aria-label="Gruppe umbenennen">✏️</button>
-                <button class="icon-button" (click)="openDeleteGroupConfirm(group.id, group.name)" aria-label="Gruppe löschen">🗑</button>
+                <button class="glass-button small" (click)="openVisibilityDialog(group.id)">{{ i18n.t('group.visibility') }}</button>
+                <button class="glass-button small" (click)="openQualificationDialog(group.id)">{{ i18n.t('group.qualification') }}</button>
+                <button class="icon-button" (click)="startRenameGroup(group.id, group.name)" [attr.aria-label]="i18n.t('group.renameGroupAria')">✏️</button>
+                <button class="icon-button" (click)="openDeleteGroupConfirm(group.id, group.name)" [attr.aria-label]="i18n.t('group.deleteGroupAria')">🗑</button>
               } @else {
-                <button class="icon-button" (click)="openLeaveGroupConfirm(group.id, group.name)" aria-label="Gruppe verlassen">🚪</button>
+                <button class="icon-button" (click)="openLeaveGroupConfirm(group.id, group.name)" [attr.aria-label]="i18n.t('group.leaveGroupAria')">🚪</button>
               }
             </div>
           }
@@ -63,11 +63,11 @@
 @if (showCreateGroupDialog()) {
 <div class="options-menu-overlay" (click)="closeCreateGroupDialog()">
   <div class="options-menu-sheet" (click)="$event.stopPropagation()">
-    <h3>Neue Gruppe erstellen</h3>
+    <h3>{{ i18n.t('group.createGroupTitle') }}</h3>
     <input
       class="glass-input"
       type="text"
-      placeholder="Gruppenname …"
+      [placeholder]="i18n.t('group.groupNamePlaceholder')"
       [ngModel]="newGroupName()"
       (ngModelChange)="newGroupName.set($event)"
       (keyup.enter)="createGroup()"
@@ -78,9 +78,9 @@
       <p class="error">{{ message() }}</p>
     }
     <button class="glass-button primary" (click)="createGroup()" [disabled]="creating() || !newGroupName().trim()">
-      {{ creating() ? 'Erstelle …' : 'Erstellen' }}
+      {{ creating() ? i18n.t('group.creating') : i18n.t('group.create') }}
     </button>
-    <button class="glass-button" (click)="closeCreateGroupDialog()">Abbrechen</button>
+    <button class="glass-button" (click)="closeCreateGroupDialog()">{{ i18n.t('group.cancel') }}</button>
   </div>
 </div>
 }
@@ -88,12 +88,12 @@
 @if (showJoinGroupDialog()) {
 <div class="options-menu-overlay" (click)="closeJoinGroupDialog()">
   <div class="options-menu-sheet" (click)="$event.stopPropagation()">
-    <h3>Einer Gruppe beitreten</h3>
-    <p class="hint">Hast du einen Einladungscode bekommen? Hier eingeben:</p>
+    <h3>{{ i18n.t('group.joinGroupTitle') }}</h3>
+    <p class="hint">{{ i18n.t('group.joinGroupHint') }}</p>
     <input
       class="glass-input"
       type="text"
-      placeholder="Code eingeben …"
+      [placeholder]="i18n.t('group.codePlaceholder')"
       [ngModel]="joinCode()"
       (ngModelChange)="joinCode.set($event)"
       (keyup.enter)="submitJoinCode()"
@@ -104,9 +104,9 @@
       <p class="error">{{ joinMessage() }}</p>
     }
     <button class="glass-button primary" (click)="submitJoinCode()" [disabled]="joinBusy() || !joinCode().trim()">
-      {{ joinBusy() ? 'Trete bei …' : 'Beitreten' }}
+      {{ joinBusy() ? i18n.t('group.joining') : i18n.t('group.join') }}
     </button>
-    <button class="glass-button" (click)="closeJoinGroupDialog()">Abbrechen</button>
+    <button class="glass-button" (click)="closeJoinGroupDialog()">{{ i18n.t('group.cancel') }}</button>
   </div>
 </div>
 }
@@ -114,22 +114,21 @@
 @if (deletingGroupId()) {
 <div class="options-menu-overlay" (click)="closeDeleteGroupConfirm()">
   <div class="options-menu-sheet" (click)="$event.stopPropagation()">
-    <h3>„{{ deletingGroupName() }}" wirklich löschen?</h3>
+    <h3>{{ i18n.t('group.deleteGroupTitle', { name: deletingGroupName() }) }}</h3>
     <p class="hint">
-      Löscht unwiderruflich die komplette Gruppe: alle Mitgliedschaften, Einladungen, Spieler,
-      Matches und Cubes. Das kann nicht rückgängig gemacht werden!
+      {{ i18n.t('group.deleteGroupHint') }}
     </p>
     <input
       class="glass-input"
       type="text"
-      placeholder="LÖSCHEN"
+      [placeholder]="i18n.t('stats.deleteConfirmWord')"
       [value]="deleteConfirmText()"
       (input)="updateDeleteConfirmText($any($event.target).value)"
     />
     <button class="glass-button danger" [disabled]="!canConfirmDeleteGroup()" (click)="confirmDeleteGroup()">
-      Endgültig löschen
+      {{ i18n.t('group.deleteForever') }}
     </button>
-    <button class="glass-button" (click)="closeDeleteGroupConfirm()">Abbrechen</button>
+    <button class="glass-button" (click)="closeDeleteGroupConfirm()">{{ i18n.t('group.cancel') }}</button>
   </div>
 </div>
 }
@@ -137,18 +136,17 @@
 @if (leavingGroupId()) {
 <div class="options-menu-overlay" (click)="closeLeaveGroupConfirm()">
   <div class="options-menu-sheet" (click)="$event.stopPropagation()">
-    <h3>„{{ leavingGroupName() }}" wirklich verlassen?</h3>
+    <h3>{{ i18n.t('group.leaveGroupTitle', { name: leavingGroupName() }) }}</h3>
     <p class="hint">
-      Deine bisherigen Spiele bleiben für die Gruppe erhalten, du selbst verlierst aber den
-      Zugriff. Ein erneuter Beitritt per Einladungscode ist jederzeit möglich.
+      {{ i18n.t('group.leaveGroupHint') }}
     </p>
     @if (leaveGroupError()) {
       <p class="error">{{ leaveGroupError() }}</p>
     }
     <button class="glass-button danger" [disabled]="leaveGroupBusy()" (click)="confirmLeaveGroup()">
-      {{ leaveGroupBusy() ? 'Verlasse …' : 'Gruppe verlassen' }}
+      {{ leaveGroupBusy() ? i18n.t('group.leaving') : i18n.t('group.leaveGroup') }}
     </button>
-    <button class="glass-button" (click)="closeLeaveGroupConfirm()">Abbrechen</button>
+    <button class="glass-button" (click)="closeLeaveGroupConfirm()">{{ i18n.t('group.cancel') }}</button>
   </div>
 </div>
 }
@@ -156,16 +154,16 @@
 @if (invitingForGroupId()) {
   <div class="options-menu-overlay" (click)="closeInvite()">
     <div class="options-menu-sheet" (click)="$event.stopPropagation()">
-      <h3>Einladungscode</h3>
+      <h3>{{ i18n.t('group.inviteCodeTitle') }}</h3>
       @if (inviteBusy()) {
-        <p class="hint">Code wird erstellt …</p>
+        <p class="hint">{{ i18n.t('group.creatingCode') }}</p>
       } @else if (generatedCode()) {
-        <p class="hint">Teile diesen Code mit der Person, die du einladen willst:</p>
+        <p class="hint">{{ i18n.t('group.shareCodeHint') }}</p>
         <p class="invite-code">{{ generatedCode() }}</p>
       } @else {
-        <p class="hint">Code konnte nicht erstellt werden.</p>
+        <p class="hint">{{ i18n.t('group.codeCreateFailed') }}</p>
       }
-      <button class="glass-button" (click)="closeInvite()">Schließen</button>
+      <button class="glass-button" (click)="closeInvite()">{{ i18n.t('group.close') }}</button>
     </div>
   </div>
 }
@@ -173,23 +171,23 @@
 @if (viewingMembersForGroupId()) {
   <div class="options-menu-overlay" (click)="closeMembers()">
     <div class="options-menu-sheet choice-sheet" (click)="$event.stopPropagation()">
-      <h3>Mitglieder</h3>
+      <h3>{{ i18n.t('group.membersTitle') }}</h3>
       @if (membersBusy()) {
-        <p class="hint">Lade Mitglieder …</p>
+        <p class="hint">{{ i18n.t('group.loadingMembers') }}</p>
       } @else if (members().length === 0) {
-        <p class="hint">Keine Mitglieder gefunden.</p>
+        <p class="hint">{{ i18n.t('group.noMembersFound') }}</p>
       } @else {
         <ul class="player-list choice-candidate-list">
           @for (m of members(); track m.userId) {
             <li class="clickable" (click)="openProfileView(m.userId)">
               <app-player-avatar [url]="m.avatarUrl" />
               <span class="player-name">{{ m.displayName }}</span>
-              <span class="hint">{{ m.role === 'owner' ? '👑 Admin' : 'Mitglied' }}</span>
+              <span class="hint">{{ m.role === 'owner' ? i18n.t('group.roleAdmin') : i18n.t('group.member') }}</span>
             </li>
           }
         </ul>
       }
-      <button class="glass-button" (click)="closeMembers()">Schließen</button>
+      <button class="glass-button" (click)="closeMembers()">{{ i18n.t('group.close') }}</button>
     </div>
   </div>
 }
@@ -197,10 +195,9 @@
 @if (showPlayerChoiceDialog()) {
 <div class="options-menu-overlay" (click)="dismissPlayerChoiceDialog()">
   <div class="options-menu-sheet choice-sheet" (click)="$event.stopPropagation()">
-    <h3>Bist du schon dabei?</h3>
+    <h3>{{ i18n.t('group.playerChoiceTitle') }}</h3>
     <p class="hint">
-      In dieser Gruppe gibt es bereits Spieler ohne verknüpften Account (z.B. aus einem alten
-      Import). Bist du einer davon? Dann übernimmst du dessen bisherige Spiele/Stats.
+      {{ i18n.t('group.playerChoiceHint') }}
     </p>
     <ul class="player-list choice-candidate-list">
       @for (candidate of playerChoiceCandidates(); track candidate.id) {
@@ -208,7 +205,7 @@
           <span class="player-name">
             {{ candidate.displayName }}
             @if (candidate.id === playerChoiceSuggestedId()) {
-              <span class="hint">(passt zu deinem Namen)</span>
+              <span class="hint">{{ i18n.t('group.matchesYourName') }}</span>
             }
           </span>
           <button
@@ -216,24 +213,24 @@
             [disabled]="playerChoiceBusy()"
             (click)="chooseExistingPlayer(candidate.id)"
           >
-            Das bin ich
+            {{ i18n.t('group.thatsMe') }}
           </button>
         </li>
       }
     </ul>
 
-    <p class="hint">Keiner davon? Dann leg dich als neuen Spieler an:</p>
+    <p class="hint">{{ i18n.t('group.noneOfThese') }}</p>
     <div class="add-row">
       <input
         class="glass-input"
         type="text"
-        placeholder="Dein Spielername …"
+        [placeholder]="i18n.t('group.yourPlayerNamePlaceholder')"
         [ngModel]="playerChoiceNewName()"
         (ngModelChange)="playerChoiceNewName.set($event)"
       />
     </div>
     <button class="glass-button primary" [disabled]="playerChoiceBusy()" (click)="chooseNewPlayer()">
-      {{ playerChoiceBusy() ? 'Speichere …' : '➕ Ich bin neu' }}
+      {{ playerChoiceBusy() ? i18n.t('group.saving') : i18n.t('group.imNew') }}
     </button>
   </div>
 </div>
@@ -241,13 +238,13 @@
 
 <section class="glass-card">
   <div class="section-header-row">
-    <h2>Spieler</h2>
+    <h2>{{ i18n.t('group.players') }}</h2>
     @if (groupService.isOwner()) {
       <div class="chip-row">
         @if (mtg.allPlayers().length > 1) {
-          <button class="icon-button" (click)="openMergeDialog()" aria-label="Spieler zusammenführen" title="Spieler zusammenführen">🔀</button>
+          <button class="icon-button" (click)="openMergeDialog()" [attr.aria-label]="i18n.t('group.mergePlayersAria')" [title]="i18n.t('group.mergePlayersAria')">🔀</button>
         }
-        <button class="icon-button" (click)="openRepairInfoDialog()" aria-label="Commander-Namen der Gruppe reparieren" title="Commander-Namen der Gruppe reparieren">🔧</button>
+        <button class="icon-button" (click)="openRepairInfoDialog()" [attr.aria-label]="i18n.t('group.repairCommanderNamesAria')" [title]="i18n.t('group.repairCommanderNamesAria')">🔧</button>
       </div>
     }
   </div>
@@ -256,13 +253,13 @@
     <input
       class="glass-input"
       type="text"
-      placeholder="Neuer Spielername …"
+      [placeholder]="i18n.t('group.newPlayerNamePlaceholder')"
       [ngModel]="newPlayerName()"
       (ngModelChange)="newPlayerName.set($event)"
       (keyup.enter)="addPlayer()"
     />
     <button class="glass-button primary" (click)="addPlayer()" [disabled]="!newPlayerName().trim()">
-      Hinzufügen
+      {{ i18n.t('group.add') }}
     </button>
   </div>
 
@@ -271,7 +268,7 @@
   }
 
   @if (mtg.allPlayers().length === 0) {
-    <p class="hint">Noch keine Spieler angelegt.</p>
+    <p class="hint">{{ i18n.t('group.noPlayersYet') }}</p>
   } @else {
     <ul class="player-list">
       @for (player of mtg.allPlayers(); track player) {
@@ -285,33 +282,32 @@
               (keyup.enter)="confirmEditPlayer()"
               autofocus
             />
-            <button class="icon-button confirm" (click)="confirmEditPlayer()" aria-label="Umbenennen bestätigen">✓</button>
-            <button class="icon-button" (click)="cancelEditPlayer()" aria-label="Abbrechen">✕</button>
+            <button class="icon-button confirm" (click)="confirmEditPlayer()" [attr.aria-label]="i18n.t('group.renameConfirmAria')">✓</button>
+            <button class="icon-button" (click)="cancelEditPlayer()" [attr.aria-label]="i18n.t('group.cancelAria')">✕</button>
           } @else {
             <app-player-avatar [url]="mtg.playerAvatars()[player] ?? null" />
             <span class="player-name">{{ player }}</span>
-            <span class="player-games">{{ gamesPerPlayer().get(player) ?? 0 }} Spiele</span>
+            <span class="player-games">{{ i18n.t('group.gamesCount', { count: gamesPerPlayer().get(player) ?? 0 }) }}</span>
             @if (isPlayerLinked(player)) {
-              <button class="icon-button" (click)="openProfileView(mtg.playerUserIds()[player]!)" aria-label="Profil ansehen" title="Profil ansehen">👁️</button>
+              <button class="icon-button" (click)="openProfileView(mtg.playerUserIds()[player]!)" [attr.aria-label]="i18n.t('group.viewProfileAria')" [title]="i18n.t('group.viewProfileAria')">👁️</button>
             } @else if (groupService.isOwner()) {
-              <button class="icon-button" (click)="openLinkDialog(player)" aria-label="Mit Mitglied verknüpfen">🔗</button>
+              <button class="icon-button" (click)="openLinkDialog(player)" [attr.aria-label]="i18n.t('group.linkWithMemberAria')">🔗</button>
             }
-            <button class="icon-button" (click)="startEditPlayer(player)" aria-label="Spieler umbenennen">✏️</button>
-            <button class="icon-button" (click)="deletePlayer(player)" aria-label="Spieler löschen">🗑</button>
+            <button class="icon-button" (click)="startEditPlayer(player)" [attr.aria-label]="i18n.t('group.renamePlayerAria')">✏️</button>
+            <button class="icon-button" (click)="deletePlayer(player)" [attr.aria-label]="i18n.t('group.deletePlayerAria')">🗑</button>
           }
         </li>
       }
     </ul>
     @if (!groupService.isOwner()) {
       <p class="hint">
-        Spieler ohne 🔗 sind noch keinem Account zugeordnet – das kann der Admin nachholen, sobald
-        die Person der Gruppe beigetreten ist.
+        {{ i18n.t('group.unlinkedPlayersHint') }}
       </p>
     }
   }
   @if (groupService.isOwner()) {
     @if (repairGroupProgress(); as progress) {
-      <p class="hint">{{ progress.done }} / {{ progress.total }} geprüft …</p>
+      <p class="hint">{{ i18n.t('group.repairProgress', { done: progress.done, total: progress.total }) }}</p>
     }
     @if (repairGroupMessage()) {
       <p class="hint">{{ repairGroupMessage() }}</p>
@@ -322,23 +318,20 @@
 @if (showRepairInfoDialog()) {
 <div class="options-menu-overlay" (click)="closeRepairInfoDialog()">
   <div class="options-menu-sheet" (click)="$event.stopPropagation()">
-    <h3>🔧 Commander-Namen reparieren</h3>
+    <h3>{{ i18n.t('group.repairDialogTitle') }}</h3>
     <p class="hint">
-      Prüft alle in der Gruppe verwendeten Commander-Namen über Scryfall und vereinheitlicht sie
-      auf den offiziellen englischen Namen. Praktisch z.B. wenn derselbe Commander mal deutsch,
-      mal englisch gespeichert wurde und dadurch fälschlich als zwei verschiedene Commander in der
-      Statistik auftaucht. Kann je nach Anzahl unterschiedlicher Commander einen Moment dauern.
+      {{ i18n.t('group.repairDialogHint') }}
     </p>
     @if (repairGroupProgress(); as progress) {
-      <p class="hint">{{ progress.done }} / {{ progress.total }} geprüft …</p>
+      <p class="hint">{{ i18n.t('group.repairProgress', { done: progress.done, total: progress.total }) }}</p>
     }
     @if (repairGroupMessage()) {
       <p class="hint">{{ repairGroupMessage() }}</p>
     }
     <button class="glass-button primary" [disabled]="repairGroupBusy()" (click)="repairGroupCommanderNames()">
-      {{ repairGroupBusy() ? 'Prüfe …' : 'Jetzt prüfen' }}
+      {{ repairGroupBusy() ? i18n.t('group.checking') : i18n.t('group.checkNow') }}
     </button>
-    <button class="glass-button" (click)="closeRepairInfoDialog()">Schließen</button>
+    <button class="glass-button" (click)="closeRepairInfoDialog()">{{ i18n.t('group.close') }}</button>
   </div>
 </div>
 }
@@ -346,11 +339,9 @@
 @if (showMergeDialog()) {
 <div class="options-menu-overlay" (click)="closeMergeDialog()">
   <div class="options-menu-sheet choice-sheet" (click)="$event.stopPropagation()">
-    <h3>Spieler zusammenführen</h3>
+    <h3>{{ i18n.t('group.mergeTitle') }}</h3>
     <p class="hint">
-      Wähle Spieler-Einträge, die eigentlich dieselbe Person sind (z.B. ein alter Excel-Import-Name
-      und der später beigetretene Account). Danach einen davon als Hauptspieler festlegen – alle
-      Spiele der anderen wandern zu ihm, die Duplikate werden gelöscht.
+      {{ i18n.t('group.mergeHint') }}
     </p>
     <ul class="player-list choice-candidate-list">
       @for (player of mtg.allPlayers(); track player) {
@@ -369,7 +360,7 @@
                 [checked]="mergeTargetName() === player"
                 (change)="setMergeTarget(player)"
               />
-              Hauptspieler
+              {{ i18n.t('group.mainPlayer') }}
             </label>
           }
         </li>
@@ -383,9 +374,9 @@
       [disabled]="!canConfirmMerge() || mergeBusy()"
       (click)="confirmMerge()"
     >
-      {{ mergeBusy() ? 'Führe zusammen …' : 'Zusammenführen' }}
+      {{ mergeBusy() ? i18n.t('group.merging') : i18n.t('group.merge') }}
     </button>
-    <button class="glass-button" (click)="closeMergeDialog()">Abbrechen</button>
+    <button class="glass-button" (click)="closeMergeDialog()">{{ i18n.t('group.cancel') }}</button>
   </div>
 </div>
 }
@@ -393,28 +384,27 @@
 @if (linkingPlayerName()) {
 <div class="options-menu-overlay" (click)="closeLinkDialog()">
   <div class="options-menu-sheet choice-sheet" (click)="$event.stopPropagation()">
-    <h3>„{{ linkingPlayerName() }}" verknüpfen</h3>
+    <h3>{{ i18n.t('group.linkPlayerTitle', { name: linkingPlayerName() ?? '' }) }}</h3>
     <p class="hint">
-      Wähle den Account, dem dieser Spieler (und seine bisherigen Stats) gehört. Nur beigetretene
-      Mitglieder, die noch keinem Spieler zugeordnet sind, werden angezeigt.
+      {{ i18n.t('group.linkPlayerHint') }}
     </p>
     @if (linkBusy()) {
-      <p class="hint">Lade Mitglieder …</p>
+      <p class="hint">{{ i18n.t('group.loadingMembers') }}</p>
     } @else if (linkCandidates().length === 0) {
       <p class="hint">
-        Keine unverknüpften Mitglieder gefunden. Erst muss die Person der Gruppe beitreten.
+        {{ i18n.t('group.noUnlinkedMembers') }}
       </p>
     } @else {
       <ul class="player-list choice-candidate-list">
         @for (m of linkCandidates(); track m.userId) {
           <li>
             <span class="player-name">{{ m.displayName }}</span>
-            <button class="glass-button small" (click)="linkPlayer(m.userId)">Verknüpfen</button>
+            <button class="glass-button small" (click)="linkPlayer(m.userId)">{{ i18n.t('group.link') }}</button>
           </li>
         }
       </ul>
     }
-    <button class="glass-button" (click)="closeLinkDialog()">Abbrechen</button>
+    <button class="glass-button" (click)="closeLinkDialog()">{{ i18n.t('group.cancel') }}</button>
   </div>
 </div>
 }
@@ -422,13 +412,9 @@
 @if (showVisibilityDialog()) {
 <div class="options-menu-overlay" (click)="closeVisibilityDialog()">
   <div class="options-menu-sheet choice-sheet" (click)="$event.stopPropagation()">
-    <h3>Sichtbarkeit verwalten</h3>
+    <h3>{{ i18n.t('group.visibilityTitle') }}</h3>
     <p class="hint">
-      Lege pro Account und Modus fest, ob dieser Account im Stats-Tab überhaupt etwas sehen darf
-      – unabhängig davon, wessen Stats das sind. Standardmäßig darf jeder Account alles sehen.
-      Das gilt auch für dein eigenes Konto: du kannst dir selbst einzelne Modi sperren, z.B. um
-      dich vor dem Jahresendstand nicht zu spoilern. Spieler ohne verknüpften Account sind hier
-      nicht aufgeführt, da sie die App nicht selbst nutzen.
+      {{ i18n.t('group.visibilityHint') }}
     </p>
     <ul class="visibility-list choice-candidate-list">
       @for (player of linkedPlayersForVisibility(); track player) {
@@ -436,10 +422,10 @@
         <span class="player-name">{{ player }}</span>
         <div class="chip-row">
           <button class="glass-chip small" (click)="setAllModesVisible(player, true)">
-            Alles erlauben
+            {{ i18n.t('group.allowAll') }}
           </button>
           <button class="glass-chip small" (click)="setAllModesVisible(player, false)">
-            Alles sperren
+            {{ i18n.t('group.blockAll') }}
           </button>
         </div>
         <div class="chip-row">
@@ -457,7 +443,7 @@
       </li>
       }
     </ul>
-    <button class="glass-button" (click)="closeVisibilityDialog()">Schließen</button>
+    <button class="glass-button" (click)="closeVisibilityDialog()">{{ i18n.t('group.close') }}</button>
   </div>
 </div>
 }
@@ -465,16 +451,14 @@
 @if (showQualificationDialog()) {
 <div class="options-menu-overlay" (click)="closeQualificationDialog()">
   <div class="options-menu-sheet choice-sheet qualification-sheet" (click)="$event.stopPropagation()">
-    <h3>Qualifikationsschwellen verwalten</h3>
+    <h3>{{ i18n.t('group.qualificationTitle') }}</h3>
     <p class="hint">
-      Lege pro Modus fest, ab wie vielen Spielen jemand in den Ranglisten (Spieler, Decks UND
-      Commander gemeinsam) auftaucht. 0 = keine Mindestspielzahl, jede*r erscheint sofort.
-      "Alle Modi" gilt für die Aggregat-Ansicht, wenn mehrere Modi gleichzeitig ausgewählt sind.
+      {{ i18n.t('group.qualificationHint') }}
     </p>
     <ul class="visibility-list choice-candidate-list">
       @for (mode of qualificationDialogModes; track mode) {
       <li class="qualification-row">
-        <span class="player-name">{{ mode === 'Alle' ? 'Alle Modi' : mode }}</span>
+        <span class="player-name">{{ mode === 'Alle' ? i18n.t('group.allModes') : mode }}</span>
         <div class="qualification-input-row">
           <input
             type="number"
@@ -484,12 +468,12 @@
             [value]="qualificationValue(mode)"
             (change)="updateQualificationValue(mode, $any($event.target).value)"
           />
-          <span class="hint">Spiele</span>
+          <span class="hint">{{ i18n.t('group.gamesLabel') }}</span>
         </div>
       </li>
       }
     </ul>
-    <button class="glass-button" (click)="closeQualificationDialog()">Schließen</button>
+    <button class="glass-button" (click)="closeQualificationDialog()">{{ i18n.t('group.close') }}</button>
   </div>
 </div>
 }

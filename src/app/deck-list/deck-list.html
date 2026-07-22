@@ -1,8 +1,8 @@
 @if (!readonlyMode()) {
   <div class="chip-row">
-    <button class="glass-button small" (click)="openNewDeckDialog()">➕ Deck importieren</button>
-    <button class="glass-button small" (click)="openPreconDialog()">📦 Precon importieren</button>
-    <button class="glass-button small" (click)="openNewEmptyDeckDialog()">🆕 Neues Deck</button>
+    <button class="glass-button small" (click)="openNewDeckDialog()">{{ i18n.t('deck.importDeck') }}</button>
+    <button class="glass-button small" (click)="openPreconDialog()">{{ i18n.t('deck.importPrecon') }}</button>
+    <button class="glass-button small" (click)="openNewEmptyDeckDialog()">{{ i18n.t('deck.newDeck') }}</button>
   </div>
 }
 
@@ -10,29 +10,29 @@
   <input
     class="glass-input"
     type="text"
-    placeholder="Deck suchen …"
+    [placeholder]="i18n.t('deck.searchPlaceholder')"
     [ngModel]="searchQuery()"
     (ngModelChange)="setSearchQuery($event)"
   />
   <div class="chip-row sort-toggle">
-    <button class="glass-chip small" [class.active]="sortMode() === 'alpha'" (click)="setSortMode('alpha')">A-Z</button>
-    <button class="glass-chip small" [class.active]="sortMode() === 'winRate'" (click)="setSortMode('winRate')">Winrate</button>
-    <button class="glass-chip small" [class.active]="sortMode() === 'games'" (click)="setSortMode('games')">Meistgespielt</button>
+    <button class="glass-chip small" [class.active]="sortMode() === 'alpha'" (click)="setSortMode('alpha')">{{ i18n.t('deck.sortAlpha') }}</button>
+    <button class="glass-chip small" [class.active]="sortMode() === 'winRate'" (click)="setSortMode('winRate')">{{ i18n.t('sort.winRate') }}</button>
+    <button class="glass-chip small" [class.active]="sortMode() === 'games'" (click)="setSortMode('games')">{{ i18n.t('profile.sortMostPlayed') }}</button>
   </div>
 }
 
 @if (loading()) {
-  <p class="hint">Lade Decks …</p>
+  <p class="hint">{{ i18n.t('deck.loadingDecks') }}</p>
 } @else if (decks().length === 0) {
   <p class="hint">
     @if (readonlyMode()) {
-      Noch keine Decks hinterlegt.
+      {{ i18n.t('deck.noDecksStoredReadonly') }}
     } @else {
-      Noch keine Decks importiert.
+      {{ i18n.t('deck.noDecksImported') }}
     }
   </p>
 } @else if (filteredSortedDecks().length === 0) {
-  <p class="hint">Kein Deck gefunden.</p>
+  <p class="hint">{{ i18n.t('deck.noDeckFound') }}</p>
 } @else {
   <ul class="deck-list">
     @for (deck of pagedDecks(); track deck.id) {
@@ -46,27 +46,27 @@
         </div>
         <div class="deck-info">
           <span class="deck-name-text">
-            @if (deck.isPrecon) {<span title="Precon">📦</span>}
-            @if (deck.isPrivate) {<span title="Privat - nur für dich sichtbar">🔒</span>}
+            @if (deck.isPrecon) {<span [title]="i18n.t('deck.preconBadge')">📦</span>}
+            @if (deck.isPrivate) {<span [title]="i18n.t('deck.privateBadge')">🔒</span>}
             {{ deck.name }}
           </span>
           @if (deck.games > 0) {
-            <span class="hint">{{ deck.wins }} / {{ deck.games }} Siege · {{ deck.winRate | number: '1.0-0' }}%</span>
+            <span class="hint">{{ deck.wins }} / {{ deck.games }} {{ i18n.t('stats.wins') }} · {{ deck.winRate | number: '1.0-0' }}%</span>
           } @else {
-            <span class="hint">Noch nicht gespielt</span>
+            <span class="hint">{{ i18n.t('deck.notPlayedYet') }}</span>
           }
           <div class="deck-actions">
-            <button class="glass-button small" (click)="openDeckDetail(deck)">👁️ Ansehen</button>
+            <button class="glass-button small" (click)="openDeckDetail(deck)">{{ i18n.t('deck.view') }}</button>
             @if (!readonlyMode()) {
               <button
                 class="icon-button"
                 (click)="toggleDeckPrivate(deck)"
-                [attr.aria-label]="deck.isPrivate ? 'Wieder sichtbar machen' : 'Privat stellen'"
-                [title]="deck.isPrivate ? 'Wieder sichtbar machen' : 'Privat stellen - andere sehen dieses Deck dann nicht mehr auf deinem Profil'"
+                [attr.aria-label]="deck.isPrivate ? i18n.t('deck.makeVisibleAgain') : i18n.t('deck.makePrivate')"
+                [title]="deck.isPrivate ? i18n.t('deck.makeVisibleAgain') : i18n.t('deck.makePrivateHint')"
               >
                 {{ deck.isPrivate ? '🔒' : '🔓' }}
               </button>
-              <button class="icon-button" (click)="deleteDeck(deck)" aria-label="Deck löschen">🗑</button>
+              <button class="icon-button" (click)="deleteDeck(deck)" [attr.aria-label]="i18n.t('deck.deleteAria')">🗑</button>
             }
           </div>
         </div>
@@ -76,9 +76,9 @@
 
   @if (totalPages() > 1) {
     <div class="chip-row pager">
-      <button class="icon-button" (click)="prevPage()" [disabled]="page() === 0" aria-label="Vorherige Seite">◀</button>
-      <span class="hint">{{ page() * 10 + 1 }}–{{ pageRangeEnd() }} von {{ filteredSortedDecks().length }}</span>
-      <button class="icon-button" (click)="nextPage()" [disabled]="page() >= totalPages() - 1" aria-label="Nächste Seite">▶</button>
+      <button class="icon-button" (click)="prevPage()" [disabled]="page() === 0" [attr.aria-label]="i18n.t('stats.previousPage')">◀</button>
+      <span class="hint">{{ page() * 10 + 1 }}–{{ pageRangeEnd() }} {{ i18n.t('stats.of') }} {{ filteredSortedDecks().length }}</span>
+      <button class="icon-button" (click)="nextPage()" [disabled]="page() >= totalPages() - 1" [attr.aria-label]="i18n.t('stats.nextPage')">▶</button>
     </div>
   }
 }

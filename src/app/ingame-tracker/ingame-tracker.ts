@@ -5,6 +5,7 @@ import { GameSessionService, IngameUnit } from '../game-session.service';
 import { MtgService } from '../mtg.service';
 import { BackgroundService } from '../background.service';
 import { TEAM_OPTIONS } from '../models';
+import { I18nService } from '../i18n.service';
 
 @Component({
   selector: 'app-ingame-tracker',
@@ -16,6 +17,7 @@ export class IngameTracker implements AfterViewInit, OnDestroy {
   readonly session = inject(GameSessionService);
   readonly mtg = inject(MtgService);
   readonly backgrounds = inject(BackgroundService);
+  readonly i18n = inject(I18nService);
   readonly teamOptions = TEAM_OPTIONS;
 
   readonly backgroundPickerFor = signal<string | null>(null);
@@ -55,7 +57,7 @@ export class IngameTracker implements AfterViewInit, OnDestroy {
 
   async deleteOwnBackground(event: Event, id: string): Promise<void> {
     event.stopPropagation();
-    if (confirm('Diesen eigenen Hintergrund löschen?')) {
+    if (confirm(this.i18n.t('ingame.msg.confirmDeleteBackground'))) {
       await this.backgrounds.deleteBackground(id);
     }
   }
@@ -339,9 +341,7 @@ export class IngameTracker implements AfterViewInit, OnDestroy {
   }
 
   discardGame(): void {
-    const confirmed = confirm(
-      'Spiel wirklich ohne Speichern schließen? Lebenspunkte, Commander-Schaden und Gift-Marken gehen dabei verloren.',
-    );
+    const confirmed = confirm(this.i18n.t('ingame.msg.confirmDiscardGame'));
     if (!confirmed) return;
 
     this.stopAllHolds();

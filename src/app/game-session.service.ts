@@ -2,6 +2,7 @@
 import { Injectable, WritableSignal, computed, effect, inject, signal } from '@angular/core';
 import { GameMode, MatchPlayer, TEAM_OPTIONS, TeamName } from './models';
 import { MtgService } from './mtg.service';
+import { I18nService } from './i18n.service';
 
 export interface SelectedDraftSet {
   id: string;
@@ -40,6 +41,7 @@ export interface IngameUnit {
 @Injectable({ providedIn: 'root' })
 export class GameSessionService {
   private readonly mtg = inject(MtgService);
+  private readonly i18n = inject(I18nService);
 
   readonly OTHERS = '__OTHERS__';
   readonly DRAW = '__DRAW__';
@@ -73,23 +75,7 @@ export class GameSessionService {
 
   readonly deadPlayers = signal<Record<string, boolean>>({});
 
-  private readonly deathMessages = [
-    '💀 Ins Gras gebissen',
-    '⚰️ Der Tod hat gewonnen',
-    '👻 Schon im Jenseits',
-    '🪦 Hier ruht... nicht mehr viel',
-    '☠️ Game Over, Champ',
-    '🕯️ Das Licht ist aus',
-    '💥 Komplett weggewischt',
-    '🍃 Staub zu Staub, Karte zu Friedhof',
-    '🦴 Nur noch Knochen übrig',
-    '🌑 In der Grube gelandet',
-    '⚔️ Ehrenvoll gefallen (oder auch nicht)',
-    '🧟 Untot... aber nicht im guten Sinne',
-    '🎲 Würfel gefallen, Leben auch',
-    '🪄 Zauber verpufft, Spieler auch',
-    '🔥 Verbrannt bis auf die Grundkarten',
-  ];
+  private readonly deathMessageKeys = Array.from({ length: 15 }, (_, i) => `game.death.${i + 1}`);
 
   /** Zufällig gezogener Todes-Spruch pro Panel, bleibt bis zur Wiederbelebung stabil. */
   readonly deadMessageMap = signal<Record<string, string>>({});
@@ -105,14 +91,14 @@ export class GameSessionService {
 
     if (!wasDead) {
       // Wird gerade als tot markiert -> neuen zufälligen Spruch ziehen.
-      const msg = this.deathMessages[Math.floor(Math.random() * this.deathMessages.length)];
-      this.deadMessageMap.update((all) => ({ ...all, [key]: msg }));
+      const msgKey = this.deathMessageKeys[Math.floor(Math.random() * this.deathMessageKeys.length)];
+      this.deadMessageMap.update((all) => ({ ...all, [key]: this.i18n.t(msgKey) }));
     }
   }
 
   /** Aktueller Todes-Spruch fürs Panel, Fallback falls (noch) keiner gezogen wurde. */
   deadMessage(key: string): string {
-    return this.deadMessageMap()[key] ?? '☠ TOT';
+    return this.deadMessageMap()[key] ?? this.i18n.t('game.deadFallback');
   }
 
   /**

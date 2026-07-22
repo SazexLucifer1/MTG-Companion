@@ -12,6 +12,7 @@ import { ResetPassword } from './reset-password/reset-password';
 import { GameSessionService } from './game-session.service';
 import { AuthService } from './auth.service';
 import { NavigationService, AppTab } from './navigation.service';
+import { I18nService } from './i18n.service';
 
 @Component({
   selector: 'app-root',
@@ -34,11 +35,12 @@ export class App {
   readonly auth = inject(AuthService);
   readonly session = inject(GameSessionService);
   readonly navigation = inject(NavigationService);
+  readonly i18n = inject(I18nService);
 
-  readonly tabs: { id: AppTab; label: string; icon: string }[] = [
-    { id: 'match', label: 'Match', icon: '⚔️' },
-    { id: 'stats', label: 'Statistik', icon: '📊' },
-    { id: 'group', label: 'Gruppe', icon: '🎉' },
-    { id: 'profile', label: 'Profil', icon: '👤' },
+  readonly tabs: { id: AppTab; labelKey: string; icon: string }[] = [
+    { id: 'match', labelKey: 'nav.match', icon: '⚔️' },
+    { id: 'stats', labelKey: 'nav.stats', icon: '📊' },
+    { id: 'group', labelKey: 'nav.group', icon: '🎉' },
+    { id: 'profile', labelKey: 'nav.profile', icon: '👤' },
   ];
 }

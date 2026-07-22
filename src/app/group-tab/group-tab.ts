@@ -6,6 +6,7 @@ import { ProfileService } from '../profile.service';
 import { DeckService } from '../deck.service';
 import { NavigationService } from '../navigation.service';
 import { PlayerAvatar } from '../player-avatar/player-avatar';
+import { I18nService } from '../i18n.service';
 import { GAME_MODES, GameMode } from '../models';
 
 @Component({
@@ -20,6 +21,7 @@ export class GroupTab {
   private readonly profileService = inject(ProfileService);
   private readonly deckService = inject(DeckService);
   private readonly navigation = inject(NavigationService);
+  readonly i18n = inject(I18nService);
 
   // --- Gruppen erstellen/wechseln ---
 
@@ -53,7 +55,7 @@ export class GroupTab {
       this.newGroupName.set('');
       this.showCreateGroupDialog.set(false);
     } else {
-      this.message.set('Gruppe konnte nicht erstellt werden.');
+      this.message.set(this.i18n.t('group.msg.createFailed'));
     }
   }
 
@@ -93,7 +95,7 @@ export class GroupTab {
     if (ok) {
       this.closeLeaveGroupConfirm();
     } else {
-      this.leaveGroupError.set('Verlassen fehlgeschlagen.');
+      this.leaveGroupError.set(this.i18n.t('group.msg.leaveFailed'));
     }
   }
 
@@ -140,7 +142,9 @@ export class GroupTab {
     this.deleteConfirmText.set(value);
   }
 
-  readonly canConfirmDeleteGroup = computed(() => this.deleteConfirmText().trim() === 'LÖSCHEN');
+  readonly canConfirmDeleteGroup = computed(
+    () => this.deleteConfirmText().trim().toUpperCase() === this.i18n.t('stats.deleteConfirmWord')
+  );
 
   async confirmDeleteGroup(): Promise<void> {
     if (!this.canConfirmDeleteGroup()) return;
@@ -264,7 +268,10 @@ export class GroupTab {
     if (!groupId || this.playerChoiceBusy()) return;
 
     this.playerChoiceBusy.set(true);
-    const name = this.playerChoiceNewName().trim() || this.profileService.profile()?.displayName || 'Spieler';
+    const name =
+      this.playerChoiceNewName().trim() ||
+      this.profileService.profile()?.displayName ||
+      this.i18n.t('group.defaultPlayerName');
     const ok = await this.groupService.finalizePlayerChoice(groupId, { createNewWithName: name });
     this.playerChoiceBusy.set(false);
     if (ok) this.finishPlayerChoiceDialog();
@@ -297,7 +304,7 @@ export class GroupTab {
     const name = this.newPlayerName().trim();
     if (!name) return;
     if (!(await this.mtg.addPlayer(name))) {
-      this.playerErrorMessage.set(`„${name}“ existiert bereits.`);
+      this.playerErrorMessage.set(this.i18n.t('group.msg.nameExists', { name }));
       return;
     }
     this.newPlayerName.set('');
@@ -314,7 +321,7 @@ export class GroupTab {
     if (!oldName) return;
     const newName = this.editName().trim();
     if (newName && newName !== oldName && !(await this.mtg.renamePlayer(oldName, newName))) {
-      this.playerErrorMessage.set(`„${newName}“ existiert bereits.`);
+      this.playerErrorMessage.set(this.i18n.t('group.msg.nameExists', { name: newName }));
       return;
     }
     this.editingPlayer.set(null);
@@ -328,8 +335,8 @@ export class GroupTab {
     const games = this.gamesPerPlayer().get(name) ?? 0;
     const warning =
       games > 0
-        ? `„${name}“ wirklich löschen? Die ${games} gespeicherten Matches bleiben erhalten.`
-        : `„${name}“ wirklich löschen?`;
+        ? this.i18n.t('group.msg.confirmDeletePlayerWithGames', { name, games })
+        : this.i18n.t('group.msg.confirmDeletePlayer', { name });
     if (confirm(warning)) {
       await this.mtg.deletePlayer(name);
     }
@@ -395,7 +402,7 @@ export class GroupTab {
     if (ok) {
       this.closeMergeDialog();
     } else {
-      this.mergeMessage.set('Zusammenführen fehlgeschlagen.');
+      this.mergeMessage.set(this.i18n.t('group.msg.mergeFailed'));
     }
   }
 
@@ -433,8 +440,8 @@ export class GroupTab {
     this.repairGroupProgress.set(null);
     this.repairGroupMessage.set(
       result.checked === 0
-        ? 'Nichts zu prüfen – noch keine Commander in der Gruppen-Historie.'
-        : `${result.checked} Commander-Namen geprüft, ${result.fixed} vereinheitlicht.`
+        ? this.i18n.t('group.msg.repairNothingToCheck')
+        : this.i18n.t('group.msg.repairDone', { checked: result.checked, fixed: result.fixed })
     );
   }
 

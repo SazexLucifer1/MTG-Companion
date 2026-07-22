@@ -3,6 +3,7 @@ import { DeckService, Deck } from './deck.service';
 import { PreconService, PreconSummary } from './precon.service';
 import { ScryfallService } from './scryfall.service';
 import { EdhrecService, EdhrecTag } from './edhrec.service';
+import { I18nService } from './i18n.service';
 
 /** Diese App ist reine Commander-App - das Format ist also immer dasselbe, keine Abfrage nötig. */
 const FIXED_FORMAT = 'Commander';
@@ -19,6 +20,7 @@ export class DeckImportService {
   private readonly preconService = inject(PreconService);
   private readonly scryfall = inject(ScryfallService);
   private readonly edhrec = inject(EdhrecService);
+  readonly i18n = inject(I18nService);
 
   private userId = '';
   private onSaved: (() => void) | null = null;
@@ -131,9 +133,7 @@ export class DeckImportService {
       this.showImportDialog.set(false);
       this.onSaved?.();
     } else {
-      this.importMessage.set(
-        'Deck konnte nicht gespeichert werden. Ein Kartenname pro Zeile, z.B. "1 Sol Ring".'
-      );
+      this.importMessage.set(this.i18n.t('importDialog.msg.saveFailed'));
     }
   }
 
@@ -219,7 +219,7 @@ export class DeckImportService {
         isPrivate: false,
       });
     } else {
-      this.newDeckMessage.set('Deck konnte nicht angelegt werden.');
+      this.newDeckMessage.set(this.i18n.t('importDialog.msg.createFailed'));
     }
   }
 
@@ -306,8 +306,12 @@ export class DeckImportService {
 
     this.preconMessage.set(
       failed === 0
-        ? `${selected.length} Precon(s) importiert.`
-        : `${selected.length - failed} von ${selected.length} importiert, ${failed} fehlgeschlagen.`
+        ? this.i18n.t('importDialog.msg.allImported', { count: selected.length })
+        : this.i18n.t('importDialog.msg.partialImported', {
+            success: selected.length - failed,
+            total: selected.length,
+            failed,
+          })
     );
     this.selectedPreconFileNames.set(new Set());
   }

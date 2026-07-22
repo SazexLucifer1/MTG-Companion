@@ -10,6 +10,7 @@ import { DeckService, CommanderGameStats, Deck } from '../deck.service';
 import { AuthService } from '../auth.service';
 import { BackgroundService } from '../background.service';
 import { ScryfallService } from '../scryfall.service';
+import { I18nService } from '../i18n.service';
 
 @Component({
   selector: 'app-profile-tab',
@@ -25,6 +26,7 @@ export class ProfileTab {
   private readonly auth = inject(AuthService);
   readonly backgrounds = inject(BackgroundService);
   private readonly scryfall = inject(ScryfallService);
+  readonly i18n = inject(I18nService);
 
   readonly deckListRef = viewChild<DeckList>('deckListRef');
 
@@ -307,10 +309,10 @@ export class ProfileTab {
     const success = await this.profileService.updateDisplayName(this.editedName());
     if (success) {
       this.isEditing.set(false);
-      this.saveMessage.set('Name gespeichert!');
+      this.saveMessage.set(this.i18n.t('profile.msg.nameSaved'));
       setTimeout(() => this.saveMessage.set(''), 2000);
     } else {
-      this.saveMessage.set('Name konnte nicht gespeichert werden.');
+      this.saveMessage.set(this.i18n.t('profile.msg.nameSaveFailed'));
     }
   }
 
@@ -326,7 +328,7 @@ export class ProfileTab {
     if (!file) return;
 
     if (!file.type.startsWith('image/')) {
-      this.avatarError.set('Bitte ein Bild auswählen.');
+      this.avatarError.set(this.i18n.t('profile.msg.pleaseSelectImage'));
       return;
     }
 
@@ -336,7 +338,7 @@ export class ProfileTab {
     this.avatarUploading.set(false);
 
     if (!success) {
-      this.avatarError.set('Profilbild konnte nicht hochgeladen werden.');
+      this.avatarError.set(this.i18n.t('profile.msg.avatarUploadFailed'));
     }
   }
 
@@ -397,8 +399,12 @@ export class ProfileTab {
     this.repairProgress.set(null);
     this.repairMessage.set(
       result.checked === 0
-        ? 'Nichts zu prüfen – alle Commander sind bereits verknüpft oder es gibt keine offenen Matches.'
-        : `${result.checked} Commander-Namen geprüft, ${result.fixed} korrigiert, ${result.linked} mit einem Deck verknüpft.`
+        ? this.i18n.t('profile.msg.repairNothingToCheck')
+        : this.i18n.t('profile.msg.repairDone', {
+            checked: result.checked,
+            fixed: result.fixed,
+            linked: result.linked,
+          })
     );
     await this.refreshUnassignedAndDecks();
   }
@@ -448,12 +454,12 @@ export class ProfileTab {
     this.linkBusy.set(false);
 
     if (ok) {
-      this.linkMessage.set('Verlinkt!');
+      this.linkMessage.set(this.i18n.t('profile.msg.linked'));
       this.linkCommanderChoice.set('');
       this.linkDeckChoice.set('');
       await this.refreshUnassignedAndDecks();
     } else {
-      this.linkMessage.set('Verlinken fehlgeschlagen.');
+      this.linkMessage.set(this.i18n.t('profile.msg.linkFailed'));
     }
   }
 
@@ -470,11 +476,11 @@ export class ProfileTab {
     this.unlinkBusy.set(false);
 
     if (ok) {
-      this.unlinkMessage.set('Verknüpfung gelöst!');
+      this.unlinkMessage.set(this.i18n.t('profile.msg.unlinked'));
       this.unlinkDeckChoice.set('');
       await this.refreshUnassignedAndDecks();
     } else {
-      this.unlinkMessage.set('Lösen fehlgeschlagen.');
+      this.unlinkMessage.set(this.i18n.t('profile.msg.unlinkFailed'));
     }
   }
 
@@ -499,7 +505,7 @@ export class ProfileTab {
   }
 
   async deleteBackground(id: string): Promise<void> {
-    if (confirm('Diesen Hintergrund löschen?')) {
+    if (confirm(this.i18n.t('profile.msg.confirmDeleteBackground'))) {
       await this.backgrounds.deleteBackground(id);
     }
   }
@@ -538,7 +544,7 @@ export class ProfileTab {
     if (!backgroundId) return;
 
     const ok = await this.backgrounds.shareBackground(backgroundId, userId);
-    this.shareMessage.set(ok ? 'Geteilt!' : 'Teilen fehlgeschlagen.');
+    this.shareMessage.set(ok ? this.i18n.t('profile.msg.shared') : this.i18n.t('profile.msg.shareFailed'));
     if (ok) setTimeout(() => this.shareMessage.set(''), 2000);
   }
 
@@ -550,7 +556,7 @@ export class ProfileTab {
   readonly deleteAccountError = signal('');
 
   readonly canConfirmDeleteAccount = computed(
-    () => this.deleteAccountConfirmText().trim() === 'LÖSCHEN'
+    () => this.deleteAccountConfirmText().trim().toUpperCase() === this.i18n.t('stats.deleteConfirmWord')
   );
 
   openDeleteAccountConfirm(): void {
@@ -576,7 +582,7 @@ export class ProfileTab {
     this.deleteAccountBusy.set(false);
 
     if (!result.success) {
-      this.deleteAccountError.set(result.error ?? 'Unbekannter Fehler beim Löschen.');
+      this.deleteAccountError.set(result.error ?? this.i18n.t('stats.msg.unknownDeleteError'));
       return;
     }
     // Erfolgreich: auth.currentUser() wird durch das signOut() in deleteAccount() null,

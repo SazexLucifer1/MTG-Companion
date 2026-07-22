@@ -4,7 +4,17 @@
 } @else if (auth.currentUser()) {
   <header class="app-header">
     <h1>MTG Companion</h1>
-    <button class="logout-btn" (click)="auth.signOut()">Logout</button>
+    <div class="header-actions">
+      <button
+        class="lang-toggle"
+        (click)="i18n.toggleLang()"
+        [attr.aria-label]="i18n.t('header.switchLanguage')"
+        [title]="i18n.t('header.switchLanguage')"
+      >
+        {{ i18n.lang() === 'de' ? 'DE' : 'EN' }}
+      </button>
+      <button class="logout-btn" (click)="auth.signOut()">{{ i18n.t('header.logout') }}</button>
+    </div>
   </header>
 
 <main class="content">
@@ -28,7 +38,7 @@
   @for (tab of tabs; track tab.id) {
   <button class="tab-item" [class.active]="navigation.activeTab() === tab.id" (click)="navigation.goToTab(tab.id)">
     <span class="tab-icon">{{ tab.icon }}</span>
-    <span class="tab-label">{{ tab.label }}</span>
+    <span class="tab-label">{{ i18n.t(tab.labelKey) }}</span>
   </button>
   } @if (session.phase() === 'ingame') {
   <button
@@ -37,7 +47,7 @@
     (click)="session.reopenGame()"
   >
     <span class="tab-icon">🎮</span>
-    <span class="tab-label">Spiel</span>
+    <span class="tab-label">{{ i18n.t('nav.game') }}</span>
   </button>
   }
 </nav>

@@ -1,8 +1,8 @@
 @if (profileService.viewingUserId()) {
   <section class="glass-card">
     @if (profileService.viewingBusy()) {
-      <p class="hint">Lade Profil …</p>
-      <button class="glass-button small" (click)="profileService.stopViewingProfile()">← Zurück zu meinem Profil</button>
+      <p class="hint">{{ i18n.t('profile.loadingProfile') }}</p>
+      <button class="glass-button small" (click)="profileService.stopViewingProfile()">{{ i18n.t('profile.backToMyProfile') }}</button>
     } @else if (profileService.viewingProfile(); as viewed) {
       <div class="viewing-profile-header-row">
         <div class="avatar-row">
@@ -16,44 +16,43 @@
           </div>
           <span class="profile-name">{{ viewed.displayName }}</span>
         </div>
-        <button class="glass-button small" (click)="profileService.stopViewingProfile()">← Zurück zu meinem Profil</button>
+        <button class="glass-button small" (click)="profileService.stopViewingProfile()">{{ i18n.t('profile.backToMyProfile') }}</button>
       </div>
     } @else {
-      <p class="hint">Profil konnte nicht geladen werden.</p>
-      <button class="glass-button small" (click)="profileService.stopViewingProfile()">← Zurück zu meinem Profil</button>
+      <p class="hint">{{ i18n.t('profile.couldNotLoad') }}</p>
+      <button class="glass-button small" (click)="profileService.stopViewingProfile()">{{ i18n.t('profile.backToMyProfile') }}</button>
     }
   </section>
 
   @if (profileService.viewingUserId(); as userId) {
     <section class="glass-card">
-      <h2>Decks</h2>
+      <h2>{{ i18n.t('profile.decks') }}</h2>
       <app-deck-list [userId]="userId" [readonlyMode]="true" />
     </section>
   }
 
   @if (viewingUnassignedCommanderStats().length > 0) {
     <section class="glass-card">
-      <h2>Commander-Statistik</h2>
+      <h2>{{ i18n.t('profile.commanderStats') }}</h2>
       <p class="hint">
-        Partien mit einem Commander, der keinem der oben gelisteten Decks zugeordnet ist (z.B. alte
-        Importe oder geliehene Decks).
+        {{ i18n.t('profile.commanderStatsHint') }}
       </p>
 
       <input
         class="glass-input"
         type="text"
-        placeholder="Commander suchen …"
+        [placeholder]="i18n.t('profile.searchCommanderPlaceholder')"
         [ngModel]="viewingCommanderSearchQuery()"
         (ngModelChange)="setViewingCommanderSearchQuery($event)"
       />
       <div class="chip-row sort-toggle">
-        <button class="glass-chip small" [class.active]="viewingCommanderSortMode() === 'alpha'" (click)="setViewingCommanderSortMode('alpha')">A-Z</button>
-        <button class="glass-chip small" [class.active]="viewingCommanderSortMode() === 'winRate'" (click)="setViewingCommanderSortMode('winRate')">Winrate</button>
-        <button class="glass-chip small" [class.active]="viewingCommanderSortMode() === 'games'" (click)="setViewingCommanderSortMode('games')">Meistgespielt</button>
+        <button class="glass-chip small" [class.active]="viewingCommanderSortMode() === 'alpha'" (click)="setViewingCommanderSortMode('alpha')">{{ i18n.t('profile.sortAlpha') }}</button>
+        <button class="glass-chip small" [class.active]="viewingCommanderSortMode() === 'winRate'" (click)="setViewingCommanderSortMode('winRate')">{{ i18n.t('sort.winRate') }}</button>
+        <button class="glass-chip small" [class.active]="viewingCommanderSortMode() === 'games'" (click)="setViewingCommanderSortMode('games')">{{ i18n.t('profile.sortMostPlayed') }}</button>
       </div>
 
       @if (filteredSortedViewingCommanderStats().length === 0) {
-        <p class="hint">Kein Commander gefunden.</p>
+        <p class="hint">{{ i18n.t('profile.noCommanderFound') }}</p>
       } @else {
         <ul class="player-list">
           @for (c of pagedViewingCommanderStats(); track c.commander) {
@@ -64,16 +63,16 @@
                 }
                 <span class="card-name-text">{{ c.commander }}</span>
               </span>
-              <span class="hint">{{ c.wins }} / {{ c.games }} Siege · {{ c.winRate | number: '1.0-0' }}%</span>
+              <span class="hint">{{ c.wins }} / {{ c.games }} {{ i18n.t('stats.wins') }} · {{ c.winRate | number: '1.0-0' }}%</span>
             </li>
           }
         </ul>
 
         @if (viewingCommanderTotalPages() > 1) {
           <div class="chip-row pager">
-            <button class="icon-button" (click)="prevViewingCommanderPage()" [disabled]="viewingCommanderPage() === 0" aria-label="Vorherige Seite">◀</button>
-            <span class="hint">{{ viewingCommanderPage() * 10 + 1 }}–{{ viewingCommanderPageRangeEnd() }} von {{ filteredSortedViewingCommanderStats().length }}</span>
-            <button class="icon-button" (click)="nextViewingCommanderPage()" [disabled]="viewingCommanderPage() >= viewingCommanderTotalPages() - 1" aria-label="Nächste Seite">▶</button>
+            <button class="icon-button" (click)="prevViewingCommanderPage()" [disabled]="viewingCommanderPage() === 0" [attr.aria-label]="i18n.t('stats.previousPage')">◀</button>
+            <span class="hint">{{ viewingCommanderPage() * 10 + 1 }}–{{ viewingCommanderPageRangeEnd() }} {{ i18n.t('stats.of') }} {{ filteredSortedViewingCommanderStats().length }}</span>
+            <button class="icon-button" (click)="nextViewingCommanderPage()" [disabled]="viewingCommanderPage() >= viewingCommanderTotalPages() - 1" [attr.aria-label]="i18n.t('stats.nextPage')">▶</button>
           </div>
         }
       }
@@ -84,17 +83,17 @@
 <section class="glass-card">
     <div class="profile-main-row">
       <div class="profile-left">
-        <h2>Mein Profil</h2>
+        <h2>{{ i18n.t('profile.myProfile') }}</h2>
         @if (profileService.loading()) {
-          <p class="hint">Lade Profil …</p>
+          <p class="hint">{{ i18n.t('profile.loadingProfile') }}</p>
         } @else if (!profileService.profile()) {
-          <p class="hint">Profil konnte nicht geladen werden.</p>
+          <p class="hint">{{ i18n.t('profile.couldNotLoad') }}</p>
         } @else {
           <div class="avatar-row">
             <label
               class="avatar-circle"
-              aria-label="Profilbild ändern"
-              title="Profilbild ändern"
+              [attr.aria-label]="i18n.t('profile.changeAvatarAria')"
+              [title]="i18n.t('profile.changeAvatarAria')"
               [style.background-image]="
                 profileService.profile()?.avatarUrl
                   ? 'url(' + profileService.profile()?.avatarUrl + ')'
@@ -121,14 +120,14 @@
           @if (!isEditing()) {
             <div class="profile-name-row">
               <span class="profile-name">{{ profileService.profile()?.displayName }}</span>
-              <button class="icon-button" (click)="startEdit()" aria-label="Namen bearbeiten">✏️</button>
+              <button class="icon-button" (click)="startEdit()" [attr.aria-label]="i18n.t('profile.editNameAria')">✏️</button>
             </div>
           } @else {
             <div class="add-row">
               <input
                 class="glass-input"
                 type="text"
-                placeholder="Dein Anzeigename …"
+                [placeholder]="i18n.t('profile.displayNamePlaceholder')"
                 [ngModel]="editedName()"
                 (ngModelChange)="editedName.set($event)"
                 (keyup.enter)="saveName()"
@@ -146,9 +145,9 @@
           }
         }
 
-        <h3>Meine Gruppen</h3>
+        <h3>{{ i18n.t('profile.myGroups') }}</h3>
         @if (groupService.myGroups().length === 0) {
-          <p class="hint">Du bist noch in keiner Gruppe.</p>
+          <p class="hint">{{ i18n.t('group.noGroupsYet') }}</p>
         } @else {
           <ul class="player-list compact-list narrow-list">
             @for (group of groupService.myGroups(); track group.id) {
@@ -164,7 +163,7 @@
       </div>
 
       <div class="favorite-commanders-col">
-        <h3>Meine Lieblingscommander</h3>
+        <h3>{{ i18n.t('profile.myFavoriteCommanders') }}</h3>
         <div class="favorite-commanders-row">
           @for (name of profileService.profile()?.favoriteCommanders ?? []; track name) {
             <button class="favorite-commander-card" (click)="openFavoriteCommanderDialog()" [attr.aria-label]="name">
@@ -176,17 +175,17 @@
             </button>
           }
           @if ((profileService.profile()?.favoriteCommanders ?? []).length < 3) {
-            <button class="favorite-commander-card empty" (click)="openFavoriteCommanderDialog()" aria-label="Lieblings-Commander hinzufügen">
-              <span class="favorite-commander-placeholder">⭐<br />hinzufügen</span>
+            <button class="favorite-commander-card empty" (click)="openFavoriteCommanderDialog()" [attr.aria-label]="i18n.t('profile.addFavoriteCommanderAria')">
+              <span class="favorite-commander-placeholder">⭐<br />{{ i18n.t('profile.addLabel') }}</span>
             </button>
           }
         </div>
       </div>
 
       <div class="header-icon-col">
-        <button class="icon-button large" (click)="openBackgroundsDialog()" aria-label="Meine Hintergrundbilder" title="Meine Hintergrundbilder">🖼️</button>
-        <button class="icon-button large" (click)="openShareDialog()" aria-label="App teilen" title="App teilen">📤</button>
-        <button class="icon-button large" (click)="openGeminiSettings()" aria-label="Gemini-API-Key" title="Gemini-API-Key">🔑</button>
+        <button class="icon-button large" (click)="openBackgroundsDialog()" [attr.aria-label]="i18n.t('profile.myBackgroundsAria')" [title]="i18n.t('profile.myBackgroundsAria')">🖼️</button>
+        <button class="icon-button large" (click)="openShareDialog()" [attr.aria-label]="i18n.t('profile.shareAppAria')" [title]="i18n.t('profile.shareAppAria')">📤</button>
+        <button class="icon-button large" (click)="openGeminiSettings()" [attr.aria-label]="i18n.t('profile.geminiKeyAria')" [title]="i18n.t('profile.geminiKeyAria')">🔑</button>
       </div>
     </div>
   </section>
@@ -194,15 +193,15 @@
   @if (showFavoriteCommanderDialog()) {
   <div class="options-menu-overlay" (click)="closeFavoriteCommanderDialog()">
     <div class="options-menu-sheet" (click)="$event.stopPropagation()">
-      <h3>⭐ Meine Lieblingscommander</h3>
-      <p class="hint">Bis zu 3 Stück.</p>
+      <h3>{{ i18n.t('profile.favCommanderTitle') }}</h3>
+      <p class="hint">{{ i18n.t('profile.favCommanderHint') }}</p>
 
       @if ((profileService.profile()?.favoriteCommanders ?? []).length > 0) {
         <ul class="player-list compact-list">
           @for (name of profileService.profile()?.favoriteCommanders ?? []; track name) {
             <li>
               <span class="player-name">{{ name }}</span>
-              <button class="icon-button" [disabled]="favoriteCommanderBusy()" (click)="removeFavoriteCommander(name)" aria-label="Entfernen">🗑</button>
+              <button class="icon-button" [disabled]="favoriteCommanderBusy()" (click)="removeFavoriteCommander(name)" [attr.aria-label]="i18n.t('profile.removeAria')">🗑</button>
             </li>
           }
         </ul>
@@ -212,7 +211,7 @@
         <input
           class="glass-input"
           type="text"
-          placeholder="Kartenname suchen …"
+          [placeholder]="i18n.t('profile.searchCardPlaceholder')"
           [ngModel]="favoriteCommanderQuery()"
           (ngModelChange)="onFavoriteCommanderSearchInput($event)"
           autofocus
@@ -227,7 +226,7 @@
           </ul>
         }
       }
-      <button class="glass-button" (click)="closeFavoriteCommanderDialog()">Schließen</button>
+      <button class="glass-button" (click)="closeFavoriteCommanderDialog()">{{ i18n.t('profile.close') }}</button>
     </div>
   </div>
   }
@@ -235,10 +234,10 @@
   @if (profileService.profile(); as profile) {
   <section class="glass-card">
     <div class="section-header-row">
-      <h2>Meine Decks</h2>
+      <h2>{{ i18n.t('profile.myDecks') }}</h2>
       <div class="chip-row">
-        <button class="icon-button" (click)="openRepairInfoDialog()" aria-label="Commander automatisch überprüfen und mit Decks verlinken" title="Commander automatisch überprüfen und mit Decks verlinken">🔧</button>
-        <button class="icon-button" (click)="openManualLinkDialog()" aria-label="Manuell verlinken/entlinken" title="Manuell verlinken/entlinken">🔗</button>
+        <button class="icon-button" (click)="openRepairInfoDialog()" [attr.aria-label]="i18n.t('profile.autoRepairAria')" [title]="i18n.t('profile.autoRepairAria')">🔧</button>
+        <button class="icon-button" (click)="openManualLinkDialog()" [attr.aria-label]="i18n.t('profile.manualLinkAria')" [title]="i18n.t('profile.manualLinkAria')">🔗</button>
       </div>
     </div>
     <app-deck-list #deckListRef [userId]="profile.id" />
@@ -247,21 +246,20 @@
   @if (showRepairInfoDialog()) {
   <div class="options-menu-overlay" (click)="closeRepairInfoDialog()">
     <div class="options-menu-sheet" (click)="$event.stopPropagation()">
-      <h3>🔧 Commander überprüfen &amp; verlinken</h3>
+      <h3>{{ i18n.t('profile.repairTitle') }}</h3>
       <p class="hint">
-        Prüft alle noch offenen Commander-Namen (z.B. aus alten Excel-Importen) neu über Scryfall
-        und verknüpft sie automatisch mit passenden eigenen Decks, wo möglich.
+        {{ i18n.t('profile.repairHint') }}
       </p>
       @if (repairProgress(); as progress) {
-        <p class="hint">{{ progress.done }} / {{ progress.total }} geprüft …</p>
+        <p class="hint">{{ i18n.t('group.repairProgress', { done: progress.done, total: progress.total }) }}</p>
       }
       @if (repairMessage()) {
         <p class="hint">{{ repairMessage() }}</p>
       }
       <button class="glass-button primary" [disabled]="repairBusy()" (click)="repairCommanderNames()">
-        {{ repairBusy() ? 'Prüfe …' : 'Jetzt prüfen' }}
+        {{ repairBusy() ? i18n.t('profile.checking') : i18n.t('profile.checkNow') }}
       </button>
-      <button class="glass-button" (click)="closeRepairInfoDialog()">Schließen</button>
+      <button class="glass-button" (click)="closeRepairInfoDialog()">{{ i18n.t('profile.close') }}</button>
     </div>
   </div>
   }
@@ -269,24 +267,23 @@
   @if (showManualLinkDialog()) {
   <div class="options-menu-overlay" (click)="closeManualLinkDialog()">
     <div class="options-menu-sheet manual-link-sheet" (click)="$event.stopPropagation()">
-      <h3>🔗 Manuell verlinken</h3>
+      <h3>{{ i18n.t('profile.manualLinkTitle') }}</h3>
 
-      <h4>Commander mit Deck verlinken</h4>
+      <h4>{{ i18n.t('profile.linkCommanderSectionTitle') }}</h4>
       <p class="hint">
-        Wähle einen noch nicht zugeordneten Commander und das passende Deck, falls die
-        automatische Erkennung nichts gefunden hat.
+        {{ i18n.t('profile.linkCommanderHint') }}
       </p>
       @if (unassignedCommanderStats().length === 0) {
-        <p class="hint">Aktuell kein Commander ohne Deck vorhanden.</p>
+        <p class="hint">{{ i18n.t('profile.noUnassignedCommander') }}</p>
       } @else {
         <select
           class="glass-input"
           [ngModel]="linkCommanderChoice()"
           (ngModelChange)="linkCommanderChoice.set($event)"
         >
-          <option value="">-- Commander wählen --</option>
+          <option value="">{{ i18n.t('profile.chooseCommanderPlaceholder') }}</option>
           @for (c of unassignedCommanderStats(); track c.commander) {
-            <option [value]="c.commander">{{ c.commander }} ({{ c.games }} Spiele)</option>
+            <option [value]="c.commander">{{ c.commander }} {{ i18n.t('profile.gamesCountParen', { count: c.games }) }}</option>
           }
         </select>
         <select
@@ -294,7 +291,7 @@
           [ngModel]="linkDeckChoice()"
           (ngModelChange)="linkDeckChoice.set($event)"
         >
-          <option value="">-- Deck wählen --</option>
+          <option value="">{{ i18n.t('profile.chooseDeckPlaceholder') }}</option>
           @for (d of myDecksForLinking(); track d.id) {
             <option [value]="d.id">{{ d.name }}</option>
           }
@@ -307,21 +304,20 @@
           [disabled]="!linkCommanderChoice() || !linkDeckChoice() || linkBusy()"
           (click)="confirmManualLink()"
         >
-          {{ linkBusy() ? 'Verlinke …' : 'Verlinken' }}
+          {{ linkBusy() ? i18n.t('profile.linking') : i18n.t('group.link') }}
         </button>
       }
 
-      <h4>Deck-Verknüpfung lösen</h4>
+      <h4>{{ i18n.t('profile.unlinkSectionTitle') }}</h4>
       <p class="hint">
-        Falls ein Deck fälschlich verlinkt wurde: hier die Verknüpfung aller seiner Spiele wieder
-        aufheben – sie wandern zurück zu "Commander ohne Deck".
+        {{ i18n.t('profile.unlinkHint') }}
       </p>
       <select
         class="glass-input"
         [ngModel]="unlinkDeckChoice()"
         (ngModelChange)="unlinkDeckChoice.set($event)"
       >
-        <option value="">-- Deck wählen --</option>
+        <option value="">{{ i18n.t('profile.chooseDeckPlaceholder') }}</option>
         @for (d of myDecksForLinking(); track d.id) {
           <option [value]="d.id">{{ d.name }}</option>
         }
@@ -334,36 +330,36 @@
         [disabled]="!unlinkDeckChoice() || unlinkBusy()"
         (click)="confirmManualUnlink()"
       >
-        {{ unlinkBusy() ? 'Löse …' : 'Verknüpfung lösen' }}
+        {{ unlinkBusy() ? i18n.t('profile.unlinking') : i18n.t('profile.unlink') }}
       </button>
 
-      <button class="glass-button" (click)="closeManualLinkDialog()">Schließen</button>
+      <button class="glass-button" (click)="closeManualLinkDialog()">{{ i18n.t('profile.close') }}</button>
     </div>
   </div>
   }
 
   @if (unassignedCommanderStats().length > 0) {
     <section class="glass-card">
-      <h2>Commander ohne Deck</h2>
+      <h2>{{ i18n.t('profile.commanderWithoutDeck') }}</h2>
       <p class="hint">
-        Spiele, bei denen noch kein eigenes Deck zum passenden Commander existiert.
+        {{ i18n.t('profile.commanderWithoutDeckHint') }}
       </p>
 
       <input
         class="glass-input"
         type="text"
-        placeholder="Commander suchen …"
+        [placeholder]="i18n.t('profile.searchCommanderPlaceholder')"
         [ngModel]="commanderSearchQuery()"
         (ngModelChange)="setCommanderSearchQuery($event)"
       />
       <div class="chip-row sort-toggle">
-        <button class="glass-chip small" [class.active]="commanderSortMode() === 'alpha'" (click)="setCommanderSortMode('alpha')">A-Z</button>
-        <button class="glass-chip small" [class.active]="commanderSortMode() === 'winRate'" (click)="setCommanderSortMode('winRate')">Winrate</button>
-        <button class="glass-chip small" [class.active]="commanderSortMode() === 'games'" (click)="setCommanderSortMode('games')">Meistgespielt</button>
+        <button class="glass-chip small" [class.active]="commanderSortMode() === 'alpha'" (click)="setCommanderSortMode('alpha')">{{ i18n.t('profile.sortAlpha') }}</button>
+        <button class="glass-chip small" [class.active]="commanderSortMode() === 'winRate'" (click)="setCommanderSortMode('winRate')">{{ i18n.t('sort.winRate') }}</button>
+        <button class="glass-chip small" [class.active]="commanderSortMode() === 'games'" (click)="setCommanderSortMode('games')">{{ i18n.t('profile.sortMostPlayed') }}</button>
       </div>
 
       @if (filteredSortedCommanderStats().length === 0) {
-        <p class="hint">Kein Commander gefunden.</p>
+        <p class="hint">{{ i18n.t('profile.noCommanderFound') }}</p>
       } @else {
         <ul class="player-list">
           @for (c of pagedCommanderStats(); track c.commander) {
@@ -374,16 +370,16 @@
                 }
                 <span class="card-name-text">{{ c.commander }}</span>
               </span>
-              <span class="hint">{{ c.wins }} / {{ c.games }} Siege · {{ c.winRate | number: '1.0-0' }}%</span>
+              <span class="hint">{{ c.wins }} / {{ c.games }} {{ i18n.t('stats.wins') }} · {{ c.winRate | number: '1.0-0' }}%</span>
             </li>
           }
         </ul>
 
         @if (commanderTotalPages() > 1) {
           <div class="chip-row pager">
-            <button class="icon-button" (click)="prevCommanderPage()" [disabled]="commanderPage() === 0" aria-label="Vorherige Seite">◀</button>
-            <span class="hint">{{ commanderPage() * 10 + 1 }}–{{ commanderPageRangeEnd() }} von {{ filteredSortedCommanderStats().length }}</span>
-            <button class="icon-button" (click)="nextCommanderPage()" [disabled]="commanderPage() >= commanderTotalPages() - 1" aria-label="Nächste Seite">▶</button>
+            <button class="icon-button" (click)="prevCommanderPage()" [disabled]="commanderPage() === 0" [attr.aria-label]="i18n.t('stats.previousPage')">◀</button>
+            <span class="hint">{{ commanderPage() * 10 + 1 }}–{{ commanderPageRangeEnd() }} {{ i18n.t('stats.of') }} {{ filteredSortedCommanderStats().length }}</span>
+            <button class="icon-button" (click)="nextCommanderPage()" [disabled]="commanderPage() >= commanderTotalPages() - 1" [attr.aria-label]="i18n.t('stats.nextPage')">▶</button>
           </div>
         }
       }
@@ -393,17 +389,16 @@
   @if (showBackgroundsDialog()) {
   <div class="options-menu-overlay" (click)="closeBackgroundsDialog()">
     <div class="options-menu-sheet backgrounds-sheet" (click)="$event.stopPropagation()">
-      <h3>Meine Hintergrundbilder</h3>
+      <h3>{{ i18n.t('profile.backgroundsTitle') }}</h3>
       <p class="hint">
-        Eigene Hintergründe für den Life-Tracker – nur du kannst sie auswählen, außer du gibst sie
-        gezielt für andere Accounts frei.
+        {{ i18n.t('profile.backgroundsHint') }}
       </p>
 
       <label class="glass-button small avatar-upload-label">
         @if (backgrounds.uploading()) {
-          <span class="spinner"></span> Lädt hoch …
+          <span class="spinner"></span> {{ i18n.t('profile.uploading') }}
         } @else {
-          🖼️ Hintergrund hochladen
+          {{ i18n.t('profile.uploadBackground') }}
         }
         <input
           type="file"
@@ -417,18 +412,18 @@
       }
 
       @if (backgrounds.myBackgrounds().length === 0) {
-        <p class="hint">Noch keine eigenen Hintergründe hochgeladen.</p>
+        <p class="hint">{{ i18n.t('profile.noBackgroundsYet') }}</p>
       } @else {
         <div class="bg-thumb-grid">
           @for (bg of backgrounds.myBackgrounds(); track bg.id) {
             <div class="bg-thumb" [style.background-image]="'url(' + bg.url + ')'">
-              <button class="bg-thumb-delete" (click)="deleteBackground(bg.id)" aria-label="Löschen">🗑</button>
-              <button class="bg-thumb-share" (click)="openBackgroundShareDialog(bg.id)" aria-label="Teilen">🔗</button>
+              <button class="bg-thumb-delete" (click)="deleteBackground(bg.id)" [attr.aria-label]="i18n.t('profile.deleteAria')">🗑</button>
+              <button class="bg-thumb-share" (click)="openBackgroundShareDialog(bg.id)" [attr.aria-label]="i18n.t('profile.shareAria')">🔗</button>
             </div>
           }
         </div>
       }
-      <button class="glass-button" (click)="closeBackgroundsDialog()">Schließen</button>
+      <button class="glass-button" (click)="closeBackgroundsDialog()">{{ i18n.t('profile.close') }}</button>
     </div>
   </div>
   }
@@ -436,18 +431,18 @@
   @if (sharingBackgroundId()) {
   <div class="options-menu-overlay" (click)="closeBackgroundShareDialog()">
     <div class="options-menu-sheet" (click)="$event.stopPropagation()">
-      <h3>Hintergrund teilen</h3>
+      <h3>{{ i18n.t('profile.shareBackgroundTitle') }}</h3>
       @if (shareBusy()) {
-        <p class="hint">Lade Mitspieler …</p>
+        <p class="hint">{{ i18n.t('profile.loadingTeammates') }}</p>
       } @else if (shareCandidates().length === 0) {
-        <p class="hint">Keine anderen Spieler aus deinen Gruppen gefunden.</p>
+        <p class="hint">{{ i18n.t('profile.noOtherPlayersFound') }}</p>
       } @else {
         <ul class="player-list">
           @for (candidate of shareCandidates(); track candidate.userId) {
             <li>
               <span class="player-name">{{ candidate.displayName }}</span>
               <button class="glass-button small" (click)="shareBackgroundWith(candidate.userId)">
-                Teilen
+                {{ i18n.t('profile.share') }}
               </button>
             </li>
           }
@@ -456,7 +451,7 @@
       @if (shareMessage()) {
         <p class="success">{{ shareMessage() }}</p>
       }
-      <button class="glass-button" (click)="closeBackgroundShareDialog()">Schließen</button>
+      <button class="glass-button" (click)="closeBackgroundShareDialog()">{{ i18n.t('profile.close') }}</button>
     </div>
   </div>
   }
@@ -466,18 +461,18 @@
   @if (showShareDialog()) {
   <div class="options-menu-overlay" (click)="closeShareDialog()">
     <div class="options-menu-sheet" (click)="$event.stopPropagation()">
-      <h3>App teilen</h3>
-      <p class="hint">Lade Freunde ein, die App zu öffnen – per Link oder QR-Code:</p>
+      <h3>{{ i18n.t('profile.shareAppTitle') }}</h3>
+      <p class="hint">{{ i18n.t('profile.shareAppHint') }}</p>
       @if (qrDataUrl()) {
         <img class="qr-code" [src]="qrDataUrl()" alt="QR-Code zur App" />
       }
       <div class="add-row">
         <input class="glass-input" type="text" [value]="shareUrl" readonly />
         <button class="glass-button primary" (click)="copyShareLink()">
-          {{ linkCopied() ? '✓ Kopiert' : 'Kopieren' }}
+          {{ linkCopied() ? i18n.t('profile.copied') : i18n.t('profile.copy') }}
         </button>
       </div>
-      <button class="glass-button" (click)="closeShareDialog()">Schließen</button>
+      <button class="glass-button" (click)="closeShareDialog()">{{ i18n.t('profile.close') }}</button>
     </div>
   </div>
   }
@@ -485,53 +480,52 @@
   @if (showGeminiSettings()) {
   <div class="options-menu-overlay" (click)="closeGeminiSettings()">
     <div class="options-menu-sheet" (click)="$event.stopPropagation()">
-      <h3>Gemini-API-Key</h3>
+      <h3>{{ i18n.t('profile.geminiKeyTitle') }}</h3>
       <p class="hint">
-        Wird für die Foto-Erkennung der Commander benötigt. Kostenlos erhältlich im
-        <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio</a>.
-        Der Key wird nur lokal auf diesem Gerät gespeichert.
+        {{ i18n.t('profile.geminiKeyHintPrefix') }}
+        <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">{{ i18n.t('profile.googleAiStudio') }}</a>.
+        {{ i18n.t('profile.geminiKeyHintSuffix') }}
       </p>
       <div class="add-row">
         <input
           class="glass-input"
           type="password"
-          placeholder="API-Key einfügen …"
+          [placeholder]="i18n.t('profile.apiKeyPlaceholder')"
           [ngModel]="keyInput()"
           (ngModelChange)="keyInput.set($event)"
         />
-        <button class="glass-button primary" (click)="saveKey()">Speichern</button>
+        <button class="glass-button primary" (click)="saveKey()">{{ i18n.t('profile.save') }}</button>
       </div>
       @if (keySaved()) {
-        <p class="success">Key gespeichert!</p>
+        <p class="success">{{ i18n.t('profile.keySaved') }}</p>
       }
-      <button class="glass-button" (click)="closeGeminiSettings()">Schließen</button>
+      <button class="glass-button" (click)="closeGeminiSettings()">{{ i18n.t('profile.close') }}</button>
     </div>
   </div>
   }
 
   <section class="glass-card danger-zone">
-    <h2>⚠️ Danger Zone</h2>
+    <h2>{{ i18n.t('stats.dangerZone') }}</h2>
     <p class="hint">
-      Löscht deinen Account unwiderruflich – Profil, Decks, Gruppenmitgliedschaften und eigene
-      Hintergrundbilder gehen dabei verloren. Das kann nicht rückgängig gemacht werden!
+      {{ i18n.t('profile.dangerZoneHint') }}
     </p>
     <button class="glass-button danger" (click)="openDeleteAccountConfirm()">
-      🗑 Account löschen
+      {{ i18n.t('profile.deleteAccount') }}
     </button>
   </section>
 
   @if (showDeleteAccountConfirm()) {
   <div class="options-menu-overlay" (click)="closeDeleteAccountConfirm()">
     <div class="options-menu-sheet" (click)="$event.stopPropagation()">
-      <h3>Account wirklich löschen?</h3>
+      <h3>{{ i18n.t('profile.deleteAccountTitle') }}</h3>
       <p class="hint">
-        Tippe <strong>LÖSCHEN</strong> ein, um zu bestätigen. Dein Account und alle deine Daten
-        sind danach unwiderruflich weg.
+        {{ i18n.t('profile.deleteAccountHintPrefix') }} <strong>{{ i18n.t('stats.deleteConfirmWord') }}</strong>
+        {{ i18n.t('profile.deleteAccountHintSuffix') }}
       </p>
       <input
         class="glass-input"
         type="text"
-        placeholder="LÖSCHEN"
+        [placeholder]="i18n.t('stats.deleteConfirmWord')"
         [ngModel]="deleteAccountConfirmText()"
         (ngModelChange)="deleteAccountConfirmText.set($event)"
       />
@@ -543,9 +537,9 @@
         [disabled]="!canConfirmDeleteAccount() || deleteAccountBusy()"
         (click)="confirmDeleteAccount()"
       >
-        {{ deleteAccountBusy() ? 'Lösche …' : 'Endgültig löschen' }}
+        {{ deleteAccountBusy() ? i18n.t('stats.deleting') : i18n.t('stats.deleteForever') }}
       </button>
-      <button class="glass-button" (click)="closeDeleteAccountConfirm()">Abbrechen</button>
+      <button class="glass-button" (click)="closeDeleteAccountConfirm()">{{ i18n.t('group.cancel') }}</button>
     </div>
   </div>
   }

@@ -25,8 +25,7 @@
             (click)="selectForReorder(p.key)"
           >
             <span class="reorder-hint">
-              {{ reorderFirstKey() === p.key ? 'Ausgewählt – Ziel antippen' : 'Antippen zum
-              Tauschen' }}
+              {{ reorderFirstKey() === p.key ? i18n.t('ingame.selectedTapTarget') : i18n.t('ingame.tapToSwap') }}
             </span>
           </div>
           }
@@ -38,8 +37,8 @@
             <button
               class="panel-icon-button"
               (click)="openBackgroundPicker(p.key)"
-              aria-label="Hintergrund ändern"
-              title="Hintergrund ändern"
+              [attr.aria-label]="i18n.t('ingame.changeBackground')"
+              [title]="i18n.t('ingame.changeBackground')"
             >
               🖌️
             </button>
@@ -47,8 +46,8 @@
               class="panel-icon-button death"
               [class.active]="session.isDead(p.key)"
               (click)="session.toggleDead(p.key)"
-              aria-label="Als tot markieren"
-              title="Tot/Lebendig"
+              [attr.aria-label]="i18n.t('ingame.markAsDead')"
+              [title]="i18n.t('ingame.deadAliveTitle')"
             >
               ☠️
             </button>
@@ -78,10 +77,10 @@
           @if (session.commanderDamageFocus(); as focusKey) { @if (focusKey === p.key) {
           <div class="focus-self-buttons">
             <button class="glass-button" (click)="session.exitCommanderDamageFocus()">
-              🔙 Zurück zu Leben
+              {{ i18n.t('ingame.backToLife') }}
             </button>
             <button class="glass-button" (click)="session.goToPoisonFromFocus(p.key)">
-              ☠️ Zu Gift wechseln
+              {{ i18n.t('ingame.switchToPoison') }}
             </button>
           </div>
           } @else {
@@ -96,7 +95,7 @@
                   (pointerup)="stopCommanderDamageHold(focusKey, source.key, -1)"
                   (pointerleave)="stopCommanderDamageHold(focusKey, source.key, -1)"
                   (pointercancel)="stopCommanderDamageHold(focusKey, source.key, -1)"
-                  aria-label="Commander-Schaden abziehen"
+                  [attr.aria-label]="i18n.t('ingame.subtractCommanderDamage')"
                 ></button>
                 <span class="tap-hint minus">−</span>
                 <span class="source-value"
@@ -112,7 +111,7 @@
                   (pointerup)="stopCommanderDamageHold(focusKey, source.key, 1)"
                   (pointerleave)="stopCommanderDamageHold(focusKey, source.key, 1)"
                   (pointercancel)="stopCommanderDamageHold(focusKey, source.key, 1)"
-                  aria-label="Commander-Schaden addieren"
+                  [attr.aria-label]="i18n.t('ingame.addCommanderDamage')"
                 ></button>
               </div>
             </div>
@@ -126,7 +125,7 @@
               (pointerup)="stopLifeHold(p.key, -1)"
               (pointerleave)="stopLifeHold(p.key, -1)"
               (pointercancel)="stopLifeHold(p.key, -1)"
-              aria-label="Leben abziehen"
+              [attr.aria-label]="i18n.t('ingame.subtractLife')"
             ></button>
             <span class="tap-hint minus">−</span>
             <span class="life-value">{{ session.lifeTotals()[p.key] }}</span>
@@ -140,7 +139,7 @@
               (pointerup)="stopLifeHold(p.key, 1)"
               (pointerleave)="stopLifeHold(p.key, 1)"
               (pointercancel)="stopLifeHold(p.key, 1)"
-              aria-label="Leben addieren"
+              [attr.aria-label]="i18n.t('ingame.addLife')"
             ></button>
           </div>
           } @else {
@@ -151,7 +150,7 @@
               (pointerup)="stopPoisonHold(p.key, -1)"
               (pointerleave)="stopPoisonHold(p.key, -1)"
               (pointercancel)="stopPoisonHold(p.key, -1)"
-              aria-label="Gift-Marke abziehen"
+              [attr.aria-label]="i18n.t('ingame.subtractPoison')"
             ></button>
             <span class="tap-hint minus">−</span>
             <span class="life-value poison">☠ {{ session.poisonValue(p.key) }}</span>
@@ -165,21 +164,21 @@
               (pointerup)="stopPoisonHold(p.key, 1)"
               (pointerleave)="stopPoisonHold(p.key, 1)"
               (pointercancel)="stopPoisonHold(p.key, 1)"
-              aria-label="Gift-Marke addieren"
+              [attr.aria-label]="i18n.t('ingame.addPoison')"
             ></button>
           </div>
           }
 
           <div class="mode-toggle-row">
             <button class="mode-toggle-button" (click)="session.startCommanderDamageFocus(p.key)">
-              ⚔️ Commander DMG
+              {{ i18n.t('ingame.commanderDmg') }}
             </button>
             <button
               class="mode-toggle-button"
               [class.active]="session.isPoisonView(p.key)"
               (click)="session.togglePoisonView(p.key)"
             >
-              ☠️ Gift
+              {{ i18n.t('ingame.poison') }}
             </button>
           </div>
           }
@@ -193,7 +192,7 @@
     class="center-menu-button"
     [style.top]="'calc(' + session.centerButtonTopPercent() + '% + (env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)) / 2)'"
     (click)="reorderMode() ? closeReorderMode() : openOptionsMenu()"
-    [attr.aria-label]="reorderMode() ? 'Neuanordnen beenden' : 'Spiel-Menü öffnen'"
+    [attr.aria-label]="reorderMode() ? i18n.t('ingame.endReorder') : i18n.t('ingame.openMenu')"
   >
     {{ reorderMode() ? '✅' : '⋮' }}
   </button>
@@ -201,11 +200,11 @@
   @if (showOptionsMenu()) {
   <div class="options-menu-overlay" (click)="closeOptionsMenu()">
     <div class="options-menu-sheet" (click)="$event.stopPropagation()">
-      <button class="glass-button" (click)="chooseMinimize()">▾ Minimieren</button>
-      <button class="glass-button" (click)="openReorderMode()">🔀 Spieler neu anordnen</button>
-      <button class="glass-button" (click)="startPlayerRoulette()">🎲 Startspieler auslosen</button>
-      <button class="glass-button primary" (click)="chooseEndGame()">🏁 Spiel beenden</button>
-      <button class="glass-button" (click)="closeOptionsMenu()">Abbrechen</button>
+      <button class="glass-button" (click)="chooseMinimize()">{{ i18n.t('ingame.minimize') }}</button>
+      <button class="glass-button" (click)="openReorderMode()">{{ i18n.t('ingame.reorderPlayers') }}</button>
+      <button class="glass-button" (click)="startPlayerRoulette()">{{ i18n.t('ingame.drawStartingPlayer') }}</button>
+      <button class="glass-button primary" (click)="chooseEndGame()">{{ i18n.t('ingame.endGame') }}</button>
+      <button class="glass-button" (click)="closeOptionsMenu()">{{ i18n.t('group.cancel') }}</button>
     </div>
   </div>
   }
@@ -213,7 +212,7 @@
   @if (showRouletteOverlay()) {
   <div class="roulette-overlay">
     <div class="roulette-sheet">
-      <h3>🎲 Startspieler wird ausgelost …</h3>
+      <h3>{{ i18n.t('ingame.drawingStartingPlayer') }}</h3>
       <div class="roulette-list">
         @for (unit of session.ingameUnits(); track unit.key) {
         <div class="roulette-item" [class.active]="rouletteHighlightKey() === unit.key">
@@ -222,8 +221,8 @@
         }
       </div>
       @if (rouletteResultUnit(); as result) {
-      <div class="roulette-result">🏆 {{ result.label }} beginnt!</div>
-      <button class="glass-button primary" (click)="closeRouletteOverlay()">Fertig</button>
+      <div class="roulette-result">{{ i18n.t('ingame.starts', { name: result.label }) }}</div>
+      <button class="glass-button primary" (click)="closeRouletteOverlay()">{{ i18n.t('deckView.done') }}</button>
       }
     </div>
   </div>
@@ -231,24 +230,24 @@
   <div class="options-menu-overlay" (click)="closePinMenu()">
     <div class="options-menu-sheet" (click)="$event.stopPropagation()">
       <button class="glass-button primary" (click)="pinToBottom(pinKey)">
-        ⬇️ Unten quer anheften
+        {{ i18n.t('ingame.pinBottom') }}
       </button>
       <button class="glass-button" (click)="resetPinnedBottom()">
-        ↩️ Automatisch (zurücksetzen)
+        {{ i18n.t('ingame.resetPin') }}
       </button>
-      <button class="glass-button" (click)="closePinMenu()">Abbrechen</button>
+      <button class="glass-button" (click)="closePinMenu()">{{ i18n.t('group.cancel') }}</button>
     </div>
     <!-- NEU -->
     @if (reorderMode()) {
     <div class="reorder-hint-banner">
-      Tippe zwei Spieler an, um sie zu tauschen – ✅ in der Mitte zum Beenden
+      {{ i18n.t('ingame.reorderHintBanner') }}
     </div>
     }
   </div>
   } @if (session.showWinnerPanel()) {
   <div class="winner-overlay">
     <div class="winner-card glass-card">
-      <h2>Wer hat gewonnen?</h2>
+      <h2>{{ i18n.t('ingame.whoWon') }}</h2>
 
       @if (session.mode() === 'Archenemy') {
       <div class="chip-row">
@@ -257,14 +256,14 @@
           [class.active]="session.winner() === (session.selectedPlayers().find(p => p.isArchenemy)?.name)"
           (click)="session.winner.set(session.selectedPlayers().find(p => p.isArchenemy)?.name ?? null)"
         >
-          🏆 Archenemy
+          {{ i18n.t('ingame.archenemy') }}
         </button>
         <button
           class="glass-chip winner"
           [class.active]="session.winner() === session.OTHERS"
           (click)="session.winner.set(session.OTHERS)"
         >
-          🏆 Alle anderen
+          {{ i18n.t('ingame.allOthers') }}
         </button>
       </div>
       } @else if (session.isTwoHeadedGiantMode()) {
@@ -299,29 +298,29 @@
               [class.active]="session.winner() === session.DRAW"
               (click)="session.winner.set(session.DRAW)"
             >
-              🤝 Unentschieden
+              {{ i18n.t('ingame.draw') }}
             </button>
           </div>
 
           <button class="glass-button primary" [disabled]="!session.canSave() || session.saving()" (click)="finishGame()">
-            {{ session.saving() ? 'Speichere …' : 'Match speichern & beenden' }}
+            {{ session.saving() ? i18n.t('deckView.savingInfo') : i18n.t('ingame.saveAndFinish') }}
           </button>
       <button class="glass-button" (click)="session.showWinnerPanel.set(false)">
-        Zurück zum Life Tracker
+        {{ i18n.t('ingame.backToLifeTracker') }}
       </button>
-      <button class="glass-button danger" (click)="discardGame()">Ohne Speichern schließen</button>
+      <button class="glass-button danger" (click)="discardGame()">{{ i18n.t('ingame.closeWithoutSaving') }}</button>
     </div>
   </div>
   } @if (backgroundPickerFor(); as pickerKey) {
   <div class="background-picker-overlay" (click)="closeBackgroundPicker()">
     <div class="background-picker-sheet" (click)="$event.stopPropagation()">
-      <h3>Hintergrund für {{ pickerKey }}</h3>
+      <h3>{{ i18n.t('ingame.backgroundFor', { name: pickerKey }) }}</h3>
 
       <label class="glass-button small bg-upload-label">
         @if (backgrounds.uploading()) {
-          <span class="spinner"></span> Lädt hoch …
+          <span class="spinner"></span> {{ i18n.t('profile.uploading') }}
         } @else {
-          📤 Eigenes Bild hochladen
+          {{ i18n.t('ingame.uploadOwnImage') }}
         }
         <input
           type="file"
@@ -340,7 +339,7 @@
           [class.active]="!mtg.playerBackgrounds()[pickerKey]"
           (click)="selectBackground(pickerKey, null)"
         >
-          Kein<br />Hintergrund
+          {{ i18n.t('ingame.noBackgroundLine1') }}<br />{{ i18n.t('ingame.noBackgroundLine2') }}
         </button>
         @for (custom of backgrounds.myBackgrounds(); track custom.id) {
         <button
@@ -352,7 +351,7 @@
           @if (!brokenBackgrounds().has(custom.url)) {
           <img [src]="custom.url" loading="lazy" alt="" (error)="markBackgroundBroken(custom.url)" />
           } @else {
-          <span class="bg-thumb-error">⚠️<br />Datei fehlt</span>
+          <span class="bg-thumb-error">⚠️<br />{{ i18n.t('ingame.fileMissing') }}</span>
           }
           <span class="bg-thumb-delete" (click)="deleteOwnBackground($event, custom.id)">🗑</span>
         </button>
@@ -367,9 +366,9 @@
           @if (!brokenBackgrounds().has(shared.url)) {
           <img [src]="shared.url" loading="lazy" alt="" (error)="markBackgroundBroken(shared.url)" />
           } @else {
-          <span class="bg-thumb-error">⚠️<br />Datei fehlt</span>
+          <span class="bg-thumb-error">⚠️<br />{{ i18n.t('ingame.fileMissing') }}</span>
           }
-          <span class="bg-thumb-shared" title="Mit dir geteilt">🔗</span>
+          <span class="bg-thumb-shared" [title]="i18n.t('ingame.sharedWithYouTitle')">🔗</span>
         </button>
         }
         @for (bg of backgrounds.list(); track bg) {
@@ -382,15 +381,15 @@
           @if (!brokenBackgrounds().has(bg)) {
           <img [src]="bg" loading="lazy" alt="" (error)="markBackgroundBroken(bg)" />
           } @else {
-          <span class="bg-thumb-error">⚠️<br />Datei fehlt<br /><small>{{ bg }}</small></span>
+          <span class="bg-thumb-error">⚠️<br />{{ i18n.t('ingame.fileMissing') }}<br /><small>{{ bg }}</small></span>
           }
         </button>
         }
       </div>
       @if (backgrounds.list().length === 0 && backgrounds.myBackgrounds().length === 0 && backgrounds.sharedWithMe().length === 0) {
-      <p class="hint">Noch keine Hintergründe vorhanden – lade oben eins hoch.</p>
+      <p class="hint">{{ i18n.t('ingame.noBackgroundsYet') }}</p>
       }
-      <button class="glass-button" (click)="closeBackgroundPicker()">Fertig</button>
+      <button class="glass-button" (click)="closeBackgroundPicker()">{{ i18n.t('deckView.done') }}</button>
     </div>
   </div>
   }

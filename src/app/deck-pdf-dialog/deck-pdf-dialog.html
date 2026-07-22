@@ -1,14 +1,13 @@
 @if (pdfService.showDialog()) {
 <div class="options-menu-overlay" (click)="pdfService.close()">
   <div class="options-menu-sheet pdf-sheet" (click)="$event.stopPropagation()">
-    <h3>🖨️ Als PDF exportieren</h3>
+    <h3>{{ pdfService.i18n.t('pdfDialog.title') }}</h3>
     <p class="hint">
-      Karten in echter Größe (63×88mm) mit Schnittlinien, 9 pro Seite. Einzelne Karten unten
-      abwählen, um sie wegzulassen.
+      {{ pdfService.i18n.t('pdfDialog.hint') }}
     </p>
 
     <div class="import-field">
-      <label class="hint">Bei mehreren Kopien (z.B. 7× Forest)</label>
+      <label class="hint">{{ pdfService.i18n.t('pdfDialog.copiesLabel') }}</label>
       <div class="chip-row">
         <button
           class="glass-chip small"
@@ -16,7 +15,7 @@
           [disabled]="pdfService.busy()"
           (click)="pdfService.setCopiesMode('one')"
         >
-          Nur 1 Bild
+          {{ pdfService.i18n.t('pdfDialog.oneImageOnly') }}
         </button>
         <button
           class="glass-chip small"
@@ -24,14 +23,14 @@
           [disabled]="pdfService.busy()"
           (click)="pdfService.setCopiesMode('all')"
         >
-          Jede Kopie einzeln
+          {{ pdfService.i18n.t('pdfDialog.everyCopySeparately') }}
         </button>
       </div>
     </div>
 
     <div class="chip-row">
-      <button class="glass-chip small" [disabled]="pdfService.busy()" (click)="pdfService.setAllSelected(true)">Alle auswählen</button>
-      <button class="glass-chip small" [disabled]="pdfService.busy()" (click)="pdfService.setAllSelected(false)">Alle abwählen</button>
+      <button class="glass-chip small" [disabled]="pdfService.busy()" (click)="pdfService.setAllSelected(true)">{{ pdfService.i18n.t('pdfDialog.selectAll') }}</button>
+      <button class="glass-chip small" [disabled]="pdfService.busy()" (click)="pdfService.setAllSelected(false)">{{ pdfService.i18n.t('pdfDialog.deselectAll') }}</button>
     </div>
 
     <ul class="pdf-card-list">
@@ -51,7 +50,7 @@
     </ul>
 
     @if (pdfService.progress(); as progress) {
-      <p class="hint">Lade Kartenbilder {{ progress.done }} / {{ progress.total }} …</p>
+      <p class="hint">{{ pdfService.i18n.t('pdfDialog.loadingImages', { done: progress.done, total: progress.total }) }}</p>
     }
     @if (pdfService.errorMessage()) {
       <p class="error">{{ pdfService.errorMessage() }}</p>
@@ -62,9 +61,9 @@
       [disabled]="pdfService.busy() || pdfService.selectedCount() === 0"
       (click)="pdfService.generatePdf()"
     >
-      {{ pdfService.busy() ? 'Erzeuge PDF …' : '🖨️ ' + pdfService.selectedCount() + ' Karten als PDF' }}
+      {{ pdfService.busy() ? pdfService.i18n.t('pdfDialog.generating') : pdfService.i18n.t('pdfDialog.generateCount', { count: pdfService.selectedCount() }) }}
     </button>
-    <button class="glass-button" [disabled]="pdfService.busy()" (click)="pdfService.close()">Abbrechen</button>
+    <button class="glass-button" [disabled]="pdfService.busy()" (click)="pdfService.close()">{{ pdfService.i18n.t('group.cancel') }}</button>
   </div>
 </div>
 }

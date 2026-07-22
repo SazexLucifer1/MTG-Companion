@@ -1,37 +1,37 @@
 @if (viewer.viewingDeck(); as deck) {
 <div class="deck-detail-fullscreen">
   <div class="deck-detail-header">
-    <button class="glass-button small deck-detail-back" (click)="viewer.close()">← Zurück</button>
+    <button class="glass-button small deck-detail-back" (click)="viewer.close()">{{ viewer.i18n.t('deckView.back') }}</button>
     <span class="deck-detail-header-name">{{ deck.name }}</span>
   </div>
 
   <div class="deck-detail-body">
     @if (viewer.detailBusy()) {
-      <p class="hint">Lade Deck …</p>
+      <p class="hint">{{ viewer.i18n.t('deckView.loadingDeck') }}</p>
     } @else {
       @if (viewer.canEditViewingDeck()) {
         <div class="deck-info-edit">
           <input
             class="glass-input deck-name-input"
             type="text"
-            aria-label="Deckname"
+            [attr.aria-label]="viewer.i18n.t('deckView.deckNameAria')"
             [ngModel]="viewer.deckNameDraft()"
             (ngModelChange)="viewer.deckNameDraft.set($event)"
           />
           @if (viewer.edhrecTagsBusy()) {
-            <p class="hint">Lade EDHREC-Tags …</p>
+            <p class="hint">{{ viewer.i18n.t('deckView.loadingEdhrecTags') }}</p>
           } @else if (viewer.edhrecAvailableTags().length === 0) {
             <p class="hint">
-              {{ viewer.edhrecCommanderName() ? 'Keine EDHREC-Tags für diesen Commander gefunden.' : 'Noch kein Commander markiert - Tags erscheinen danach hier.' }}
+              {{ viewer.edhrecCommanderName() ? viewer.i18n.t('deckView.noEdhrecTagsForCommander') : viewer.i18n.t('deckView.noCommanderMarkedYet') }}
             </p>
           } @else {
             <select
               class="glass-input"
-              aria-label="EDHREC-Tag"
+              [attr.aria-label]="viewer.i18n.t('deckView.edhrecTagAria')"
               [ngModel]="viewer.deckTagDraft()"
               (ngModelChange)="viewer.deckTagDraft.set($event)"
             >
-              <option [ngValue]="null">Kein Tag</option>
+              <option [ngValue]="null">{{ viewer.i18n.t('deckView.noTag') }}</option>
               @for (t of viewer.edhrecAvailableTags(); track t.slug) {
                 <option [ngValue]="t.slug">{{ t.value }} ({{ t.count }})</option>
               }
@@ -44,10 +44,10 @@
                 [disabled]="viewer.deckInfoSaving() || !viewer.deckNameDraft().trim()"
                 (click)="viewer.saveDeckInfo()"
               >
-                {{ viewer.deckInfoSaving() ? 'Speichere …' : '💾 Speichern' }}
+                {{ viewer.deckInfoSaving() ? viewer.i18n.t('deckView.savingInfo') : viewer.i18n.t('deckView.save') }}
               </button>
               <button class="glass-button small" [disabled]="viewer.deckInfoSaving()" (click)="viewer.resetDeckInfoDraft()">
-                Verwerfen
+                {{ viewer.i18n.t('deckView.discard') }}
               </button>
             </div>
           }
@@ -55,9 +55,9 @@
       }
 
       @if (deck.format) {
-        <p class="hint">{{ deck.format }} · {{ viewer.viewingTotalCards() }} Karten</p>
+        <p class="hint">{{ deck.format }} · {{ viewer.i18n.t('deckView.cardsCount', { count: viewer.viewingTotalCards() }) }}</p>
       } @else {
-        <p class="hint">{{ viewer.viewingTotalCards() }} Karten</p>
+        <p class="hint">{{ viewer.i18n.t('deckView.cardsCount', { count: viewer.viewingTotalCards() }) }}</p>
       }
 
       @if (viewer.viewingDeckGameStats(); as gameStats) {
@@ -65,24 +65,23 @@
           <div class="stat-tiles">
             <div class="stat-tile">
               <span class="stat-value">{{ gameStats.games }}</span>
-              <span class="stat-label">Gespielt</span>
+              <span class="stat-label">{{ viewer.i18n.t('deckView.played') }}</span>
             </div>
             <div class="stat-tile">
               <span class="stat-value">{{ gameStats.wins }}</span>
-              <span class="stat-label">Siege</span>
+              <span class="stat-label">{{ viewer.i18n.t('stats.wins') }}</span>
             </div>
             <div class="stat-tile">
               <span class="stat-value">{{ gameStats.winRate | number: '1.0-0' }}%</span>
-              <span class="stat-label">Winrate</span>
+              <span class="stat-label">{{ viewer.i18n.t('stats.winRate') }}</span>
             </div>
           </div>
-          <button class="icon-button deck-stats-info-toggle" (click)="viewer.toggleDeckStatsInfo()" aria-label="Was zählt diese Statistik?">
+          <button class="icon-button deck-stats-info-toggle" (click)="viewer.toggleDeckStatsInfo()" [attr.aria-label]="viewer.i18n.t('deckView.statsInfoAria')">
             ⓘ
           </button>
           @if (viewer.showDeckStatsInfo()) {
             <p class="hint">
-              Zählt alle Spiele mit diesem Deck über alle Gruppen hinweg – unabhängig davon, wer es
-              gespielt hat. Wurde es mal verliehen, fließen auch diese Spiele mit ein.
+              {{ viewer.i18n.t('deckView.statsInfoHint') }}
             </p>
           }
         </div>
@@ -90,29 +89,29 @@
 
       <div class="chip-row">
         <button class="glass-chip small" [class.active]="viewer.viewMode() === 'visual'" (click)="viewer.viewMode.set('visual')">
-          🖼️ Bilder
+          {{ viewer.i18n.t('deckView.images') }}
         </button>
         <button class="glass-chip small" [class.active]="viewer.viewMode() === 'text'" (click)="viewer.viewMode.set('text')">
-          📋 Text
+          {{ viewer.i18n.t('deckView.text') }}
         </button>
         @if (viewer.canEditViewingDeck()) {
           <button class="glass-chip small" [class.active]="viewer.editMode()" [disabled]="viewer.editMode()" (click)="viewer.toggleEditMode()">
-            ✏️ Bearbeiten
+            {{ viewer.i18n.t('deckView.edit') }}
           </button>
         }
         <button class="glass-chip small" [class.active]="viewer.showChangeLog()" (click)="viewer.toggleChangeLog()">
-          🕘 Verlauf
+          {{ viewer.i18n.t('deckView.history') }}
         </button>
-        <button class="glass-chip small" (click)="openPdfExport()">🖨️ Als PDF</button>
+        <button class="glass-chip small" (click)="openPdfExport()">{{ viewer.i18n.t('deckView.asPdf') }}</button>
         @if (viewer.canEditViewingDeck()) {
-          <button class="glass-chip small" (click)="reimportDecklist()">📋 Kartenliste neu einfügen</button>
+          <button class="glass-chip small" (click)="reimportDecklist()">{{ viewer.i18n.t('deckView.reimportList') }}</button>
         }
       </div>
 
       @if (viewer.showChangeLog()) {
         <div class="change-log-panel">
           @if (viewer.viewingChangeLog().length === 0) {
-            <p class="hint">Noch keine Änderungen an diesem Deck.</p>
+            <p class="hint">{{ viewer.i18n.t('deckView.noChangesLogYet') }}</p>
           } @else {
             <ul class="deck-change-log">
               @for (entry of viewer.viewingChangeLog(); track entry.changedAt + entry.cardName + entry.changeType) {
@@ -133,9 +132,9 @@
             <p class="error">👑 {{ viewer.commanderMarkError() }}</p>
           }
           @if (!viewer.hasPendingChanges()) {
-            <p class="hint">Noch keine Änderungen.</p>
+            <p class="hint">{{ viewer.i18n.t('deckView.noChanges') }}</p>
           } @else {
-            <p class="hint">Ungespeicherte Änderungen:</p>
+            <p class="hint">{{ viewer.i18n.t('deckView.unsavedChanges') }}</p>
             <ul class="pending-change-list">
               @for (c of viewer.pendingChangeDetails().added; track c.cardName) {
                 <li class="added">➕ {{ c.quantity }}× {{ c.cardName }}</li>
@@ -144,7 +143,7 @@
                 <li class="removed">➖ {{ c.quantity }}× {{ c.cardName }}</li>
               }
               @for (c of viewer.pendingCommanderChangeDetails(); track c.cardName) {
-                <li class="added">👑 {{ c.cardName }} {{ c.isCommander ? 'wird Commander' : 'ist nicht mehr Commander' }}</li>
+                <li class="added">👑 {{ c.cardName }} {{ c.isCommander ? viewer.i18n.t('deckView.becomesCommander') : viewer.i18n.t('deckView.noLongerCommander') }}</li>
               }
             </ul>
           }
@@ -154,47 +153,47 @@
               [disabled]="!viewer.hasPendingChanges() || viewer.editSaveBusy()"
               (click)="viewer.saveEdits()"
             >
-              {{ viewer.editSaveBusy() ? 'Speichert …' : '💾 Speichern' }}
+              {{ viewer.editSaveBusy() ? viewer.i18n.t('deckView.savingEdits') : viewer.i18n.t('deckView.save') }}
             </button>
             <button class="glass-button small" [disabled]="viewer.editSaveBusy()" (click)="viewer.cancelEdits()">
-              ✕ Abbrechen
+              {{ viewer.i18n.t('deckView.cancelX') }}
             </button>
             <button
               class="glass-chip small"
               [class.active]="viewer.showCommanderToggle()"
               (click)="viewer.showCommanderToggle.set(!viewer.showCommanderToggle())"
             >
-              👑 Commander markieren
+              {{ viewer.i18n.t('deckView.markCommander') }}
             </button>
           </div>
         </div>
 
         <div class="add-card-panel">
-          <h4 class="deck-section-title">➕ Karte hinzufügen</h4>
+          <h4 class="deck-section-title">{{ viewer.i18n.t('deckView.addCardTitle') }}</h4>
           <div class="chip-row">
             <button class="glass-chip small" [class.active]="viewer.addCardMode() === 'search'" (click)="viewer.setAddCardMode('search')">
-              🔍 Suche
+              {{ viewer.i18n.t('deckView.search') }}
             </button>
             <button class="glass-chip small" [class.active]="viewer.addCardMode() === 'edhrec'" (click)="viewer.setAddCardMode('edhrec')">
-              ✨ EDHREC
+              {{ viewer.i18n.t('deckView.edhrec') }}
             </button>
           </div>
 
           @if (viewer.addCardMode() === 'search') {
           @if (!viewer.deckColorIdentitySubset()) {
-            <p class="hint">Suche über alle Commander-legalen Karten (Farbidentität noch nicht bekannt).</p>
+            <p class="hint">{{ viewer.i18n.t('deckView.searchAllCommanderLegal') }}</p>
           } @else if (viewer.deckColorIdentitySubset()!.length > 0) {
             <p class="hint">
-              Nur Karten innerhalb der Farbidentität deines Commanders ({{ viewer.deckColorIdentitySubset()!.join('/') }}).
+              {{ viewer.i18n.t('deckView.onlyWithinColorIdentity', { colors: viewer.deckColorIdentitySubset()!.join('/') }) }}
             </p>
           } @else {
-            <p class="hint">Nur farblose Karten (Commander ohne Farbidentität).</p>
+            <p class="hint">{{ viewer.i18n.t('deckView.onlyColorless') }}</p>
           }
 
           <input
             class="glass-input"
             type="text"
-            placeholder="Kartenname …"
+            [placeholder]="viewer.i18n.t('deckView.cardNamePlaceholder')"
             [ngModel]="viewer.addCardQuery()"
             (ngModelChange)="viewer.onAddCardSearchInput($event)"
           />
@@ -204,20 +203,20 @@
               [ngModel]="viewer.addCardTypeFilter()"
               (ngModelChange)="viewer.setAddCardTypeFilter($event)"
             >
-              <option [ngValue]="'all'">Typ: alle</option>
-              <option [ngValue]="'Kreatur'">Kreatur</option>
-              <option [ngValue]="'Planeswalker'">Planeswalker</option>
-              <option [ngValue]="'Battle'">Battle</option>
-              <option [ngValue]="'Spontanzauber'">Spontanzauber</option>
-              <option [ngValue]="'Hexerei'">Hexerei</option>
-              <option [ngValue]="'Artefakt'">Artefakt</option>
-              <option [ngValue]="'Verzauberung'">Verzauberung</option>
-              <option [ngValue]="'Land'">Land</option>
+              <option [ngValue]="'all'">{{ viewer.i18n.t('deckView.typeAll') }}</option>
+              <option [ngValue]="'Kreatur'">{{ viewer.translateLabel('Kreatur') }}</option>
+              <option [ngValue]="'Planeswalker'">{{ viewer.translateLabel('Planeswalker') }}</option>
+              <option [ngValue]="'Battle'">{{ viewer.translateLabel('Battle') }}</option>
+              <option [ngValue]="'Spontanzauber'">{{ viewer.translateLabel('Spontanzauber') }}</option>
+              <option [ngValue]="'Hexerei'">{{ viewer.translateLabel('Hexerei') }}</option>
+              <option [ngValue]="'Artefakt'">{{ viewer.translateLabel('Artefakt') }}</option>
+              <option [ngValue]="'Verzauberung'">{{ viewer.translateLabel('Verzauberung') }}</option>
+              <option [ngValue]="'Land'">{{ viewer.translateLabel('Land') }}</option>
             </select>
             <input
               class="glass-input small"
               type="text"
-              placeholder="Kreaturtyp (z.B. Goblin)"
+              [placeholder]="viewer.i18n.t('deckView.creatureTypePlaceholder')"
               [ngModel]="viewer.addCardCreatureTypeFilter()"
               (ngModelChange)="viewer.onAddCardCreatureTypeInput($event)"
             />
@@ -226,7 +225,7 @@
               [ngModel]="viewer.addCardCmcFilter()"
               (ngModelChange)="viewer.setAddCardCmcFilter($event)"
             >
-              <option [ngValue]="'all'">Manawert: alle</option>
+              <option [ngValue]="'all'">{{ viewer.i18n.t('deckView.cmcAll') }}</option>
               @for (n of [0, 1, 2, 3, 4, 5, 6, 7]; track n) {
                 <option [ngValue]="n">{{ n === 7 ? '7+' : n }}</option>
               }
@@ -236,22 +235,22 @@
               [ngModel]="viewer.addCardColorFilter()"
               (ngModelChange)="viewer.setAddCardColorFilter($event)"
             >
-              <option [ngValue]="'all'">Farbe: alle</option>
-              <option [ngValue]="'W'">Weiß</option>
-              <option [ngValue]="'U'">Blau</option>
-              <option [ngValue]="'B'">Schwarz</option>
-              <option [ngValue]="'R'">Rot</option>
-              <option [ngValue]="'G'">Grün</option>
-              <option [ngValue]="'C'">Farblos</option>
+              <option [ngValue]="'all'">{{ viewer.i18n.t('deckView.colorAll') }}</option>
+              <option [ngValue]="'W'">{{ viewer.i18n.t('pip.W') }}</option>
+              <option [ngValue]="'U'">{{ viewer.i18n.t('pip.U') }}</option>
+              <option [ngValue]="'B'">{{ viewer.i18n.t('pip.B') }}</option>
+              <option [ngValue]="'R'">{{ viewer.i18n.t('pip.R') }}</option>
+              <option [ngValue]="'G'">{{ viewer.i18n.t('pip.G') }}</option>
+              <option [ngValue]="'C'">{{ viewer.i18n.t('deckView.colorless') }}</option>
             </select>
             <select
               class="glass-input small"
               [ngModel]="viewer.addCardEffectFilter()"
               (ngModelChange)="viewer.setAddCardEffectFilter($event)"
             >
-              <option [ngValue]="'all'">Effekt: alle</option>
+              <option [ngValue]="'all'">{{ viewer.i18n.t('deckView.effectAll') }}</option>
               @for (f of viewer.effectFilters; track f.value) {
-                <option [ngValue]="f.value">{{ f.label }}</option>
+                <option [ngValue]="f.value">{{ viewer.effectFilterLabel(f.value) }}</option>
               }
             </select>
             <select
@@ -259,9 +258,9 @@
               [ngModel]="viewer.addCardKeywordFilter()"
               (ngModelChange)="viewer.setAddCardKeywordFilter($event)"
             >
-              <option [ngValue]="'all'">Fähigkeit: alle</option>
+              <option [ngValue]="'all'">{{ viewer.i18n.t('deckView.abilityAll') }}</option>
               @for (k of viewer.keywordFilters; track k.value) {
-                <option [ngValue]="k.value">{{ k.label }}</option>
+                <option [ngValue]="k.value">{{ viewer.keywordFilterLabel(k.value) }}</option>
               }
             </select>
           </div>
@@ -269,26 +268,26 @@
 
           @if (viewer.addCardMode() === 'edhrec') {
             @if (!viewer.edhrecCommanderName()) {
-              <p class="hint">Kein Commander im Deck gefunden - EDHREC-Vorschläge brauchen einen Commander.</p>
+              <p class="hint">{{ viewer.i18n.t('deckView.noCommanderForEdhrec') }}</p>
             } @else {
               @if (viewer.edhrecAvailableTags().length > 0) {
                 <div class="import-field">
-                  <label class="hint" for="edhrec-browse-tag-select">Vorschläge testweise für anderen Tag anzeigen</label>
+                  <label class="hint" for="edhrec-browse-tag-select">{{ viewer.i18n.t('deckView.browseOtherTag') }}</label>
                   <select
                     id="edhrec-browse-tag-select"
                     class="glass-input small"
                     [ngModel]="viewer.effectiveEdhrecTag()"
                     (ngModelChange)="viewer.setEdhrecBrowseTag($event)"
                   >
-                    <option [ngValue]="null">Kein Tag</option>
+                    <option [ngValue]="null">{{ viewer.i18n.t('deckView.noTag') }}</option>
                     @for (t of viewer.edhrecAvailableTags(); track t.slug) {
                       <option [ngValue]="t.slug">{{ t.value }} ({{ t.count }})</option>
                     }
                   </select>
                   @if (viewer.edhrecBrowseTagActive() && viewer.edhrecBrowseTag() !== viewer.edhrecTagSlug()) {
                     <p class="hint bracket-caveat">
-                      Nur zum Durchstöbern - der im Deck gespeicherte Tag ändert sich dadurch nicht.
-                      <button class="glass-chip small" (click)="viewer.resetEdhrecBrowseTag()">Zurücksetzen</button>
+                      {{ viewer.i18n.t('deckView.browseOnlyHint') }}
+                      <button class="glass-chip small" (click)="viewer.resetEdhrecBrowseTag()">{{ viewer.i18n.t('deckView.resetBrowse') }}</button>
                     </p>
                   }
                 </div>
@@ -296,19 +295,17 @@
 
               @if (viewer.edhrecBusy()) {
                 <p class="hint">
-                  Lade EDHREC-Vorschläge für {{ viewer.edhrecCommanderName() }}
+                  {{ viewer.i18n.t('deckView.loadingEdhrecSuggestionsFor', { commander: viewer.edhrecCommanderName() ?? '' }) }}
                   @if (viewer.edhrecTagLabel(); as tag) { + {{ tag }} } …
                 </p>
               } @else if (viewer.edhrecFailed()) {
                 <p class="hint">
-                  EDHREC-Vorschläge aktuell nicht verfügbar (inoffizielle Schnittstelle, evtl. kein
-                  Eintrag für diesen Commander oder für Partner-/Background-Paare).
+                  {{ viewer.i18n.t('deckView.edhrecUnavailable') }}
                 </p>
               } @else if (viewer.edhrecLists()) {
                 <p class="hint bracket-caveat">
-                  Inoffizielle EDHREC-Daten für {{ viewer.edhrecCommanderName() }}
-                  @if (viewer.edhrecTagLabel(); as tag) { + {{ tag }} }. Bereits im Deck vorhandene
-                  Karten sind markiert.
+                  {{ viewer.i18n.t('deckView.unofficialEdhrecDataFor', { commander: viewer.edhrecCommanderName() ?? '' }) }}
+                  @if (viewer.edhrecTagLabel(); as tag) { + {{ tag }} }. {{ viewer.i18n.t('deckView.alreadyInDeckSuffix') }}
                 </p>
               }
             }
@@ -321,7 +318,7 @@
 
         @if (viewer.addCardMode() === 'search') {
           @if (viewer.addCardBusy()) {
-            <p class="hint">Suche …</p>
+            <p class="hint">{{ viewer.i18n.t('deckView.searching') }}</p>
           } @else if (viewer.addCardResults().length > 0) {
             <div class="card-pick-grid">
               @for (card of viewer.addCardResults(); track card.name) {
@@ -336,7 +333,7 @@
                       class="card-pick-add-button"
                       [class.flash-add]="viewer.isFlashing(card.name, 'add')"
                       (click)="viewer.addCard(card)"
-                      aria-label="Hinzufügen"
+                      [attr.aria-label]="viewer.i18n.t('deckView.addAria')"
                     >
                       ➕
                     </button>
@@ -355,7 +352,7 @@
               </button>
               @if (isEdhrecCategoryExpanded(list.tag)) {
                 @if (viewer.isEdhrecCategoryImagesBusy(list.tag)) {
-                  <p class="hint">Lade Bilder …</p>
+                  <p class="hint">{{ viewer.i18n.t('deckView.loadingImages') }}</p>
                 }
                 <div class="card-pick-grid">
                   @for (card of list.cards; track card.name) {
@@ -367,13 +364,13 @@
                           <div class="deck-card-placeholder">{{ card.name }}</div>
                         }
                         @if (viewer.isCardInDeck(card.name)) {
-                          <span class="card-pick-in-deck-badge" aria-label="Bereits im Deck">✓</span>
+                          <span class="card-pick-in-deck-badge" [attr.aria-label]="viewer.i18n.t('deckView.alreadyInDeckAria')">✓</span>
                         } @else {
                           <button
                             class="card-pick-add-button"
                             [class.flash-add]="viewer.isFlashing(card.name, 'add')"
                             (click)="viewer.addEdhrecCard(card.name)"
-                            aria-label="Hinzufügen"
+                            [attr.aria-label]="viewer.i18n.t('deckView.addAria')"
                           >
                             ➕
                           </button>
@@ -394,53 +391,42 @@
       @if (viewer.viewingDeckCards().length > 0) {
         <div class="deck-analysis-header-row">
           <button class="glass-chip small" (click)="viewer.toggleDeckAnalysis()">
-            {{ viewer.showDeckAnalysis() ? '▾' : '▸' }} 📊 Deck-Analyse
+            {{ viewer.showDeckAnalysis() ? '▾' : '▸' }} {{ viewer.i18n.t('deckView.deckAnalysis') }}
           </button>
-          <button class="icon-button" (click)="viewer.toggleDeckAnalysisInfo()" aria-label="Was bedeuten diese Werte?">
+          <button class="icon-button" (click)="viewer.toggleDeckAnalysisInfo()" [attr.aria-label]="viewer.i18n.t('deckView.analysisInfoAria')">
             ⓘ
           </button>
         </div>
 
         @if (viewer.showDeckAnalysisInfo()) {
           <div class="deck-analysis-info">
-            <p class="hint"><strong>Manakurve:</strong> Anzahl Karten (ohne Länder) je Manawert.</p>
+            <p class="hint"><strong>{{ viewer.i18n.t('deckView.manaCurveInfoLabel') }}</strong> {{ viewer.i18n.t('deckView.manaCurveInfoText') }}</p>
             <p class="hint">
-              <strong>Ø Manakosten:</strong> Durchschnittliche Manakosten aller Nicht-Land-Karten -
-              Länder zählen bewusst nicht mit, sonst würde ihre 0 den Schnitt künstlich nach unten
-              verfälschen.
+              <strong>{{ viewer.i18n.t('deckView.avgCmcInfoLabel') }}</strong> {{ viewer.i18n.t('deckView.avgCmcInfoText') }}
             </p>
             <p class="hint">
-              <strong>Pip-Verteilung:</strong> Wie oft jede Farbe (Weiß/Blau/Schwarz/Rot/Grün) in
-              den Manakosten aller Nicht-Land-Karten vorkommt. Hybrid- und
-              Phyrexianisch-Manasymbole zählen für ihre Farbe(n) mit.
+              <strong>{{ viewer.i18n.t('deckView.pipInfoLabel') }}</strong> {{ viewer.i18n.t('deckView.pipInfoText') }}
             </p>
             <p class="hint">
-              <strong>Game Changer &amp; Bracket-Richtwert:</strong> Karten von der offiziellen
-              Wizards-Game-Changer-Liste. Richtwert nach den offiziellen Grenzwerten: 0 → Bracket
-              1–3 möglich, 1–3 → mindestens Bracket 3, 4+ → Bracket 4–5.
+              <strong>{{ viewer.i18n.t('deckView.gameChangerInfoLabel') }}</strong> {{ viewer.i18n.t('deckView.gameChangerInfoText') }}
             </p>
             <p class="hint">
-              <strong>Tutoren:</strong> Per Texterkennung im Kartentext geschätzt ("… durchsucht
-              deine Bibliothek …"). Reine Land-Tutoren zählen laut offiziellem Kriterium nicht mit
-              - keine exakte Erkennung.
+              <strong>{{ viewer.i18n.t('deckView.tutorsInfoLabel') }}</strong> {{ viewer.i18n.t('deckView.tutorsInfoText') }}
             </p>
             <p class="hint">
-              <strong>Mass Land Denial, Extra-Turns &amp; Combos:</strong> Kommen von Commander
-              Spellbook (externe Community-Datenbank für Karteninteraktionen), unabhängig von der
-              Game-Changer-Zahl oben - können deshalb zu einer leicht anderen Einschätzung führen.
+              <strong>{{ viewer.i18n.t('deckView.mldInfoLabel') }}</strong> {{ viewer.i18n.t('deckView.mldInfoText') }}
             </p>
             <p class="hint">
-              <strong>Commander-Spellbook-Einschätzung:</strong> deren eigene, siebenstufige Skala
-              (nicht identisch mit der offiziellen 1-5er-Skala von Wizards):
+              <strong>{{ viewer.i18n.t('deckView.spellbookInfoLabel') }}</strong> {{ viewer.i18n.t('deckView.spellbookInfoText') }}
             </p>
             <ul class="game-changer-list">
-              <li>Exhibition – sehr casual, janky</li>
-              <li>Core – Precon-Niveau</li>
-              <li>Oddball – ungewöhnlich, schwer einzuordnen</li>
-              <li>Spicy – gehoben</li>
-              <li>Powerful – stark</li>
-              <li>Ruthless – sehr kompetitiv, cEDH-nah</li>
-              <li>Banned – enthält für Brackets gesperrte Karten</li>
+              <li>{{ viewer.i18n.t('deckView.bracket.exhibition') }}</li>
+              <li>{{ viewer.i18n.t('deckView.bracket.core') }}</li>
+              <li>{{ viewer.i18n.t('deckView.bracket.oddball') }}</li>
+              <li>{{ viewer.i18n.t('deckView.bracket.spicy') }}</li>
+              <li>{{ viewer.i18n.t('deckView.bracket.powerful') }}</li>
+              <li>{{ viewer.i18n.t('deckView.bracket.ruthless') }}</li>
+              <li>{{ viewer.i18n.t('deckView.bracket.banned') }}</li>
             </ul>
           </div>
         }
@@ -448,11 +434,11 @@
         @if (viewer.showDeckAnalysis()) {
           <div class="deck-analysis">
             @if (viewer.analysisBusy()) {
-              <p class="hint">Lade Analyse …</p>
+              <p class="hint">{{ viewer.i18n.t('deckView.loadingAnalysis') }}</p>
             } @else {
-              <h4 class="deck-section-title">Manakurve</h4>
+              <h4 class="deck-section-title">{{ viewer.i18n.t('deckView.manaCurveTitle') }}</h4>
               @if (viewer.averageCmc(); as avgCmc) {
-                <p class="hint">Ø Manakosten: {{ avgCmc | number: '1.1-2' }}</p>
+                <p class="hint">{{ viewer.i18n.t('deckView.avgCmc', { value: (avgCmc | number: '1.1-2') ?? '' }) }}</p>
               }
               <div class="curve-chart">
                 @for (bucket of viewer.manaCurve(); track bucket.label) {
@@ -469,7 +455,7 @@
                 }
               </div>
 
-              <h4 class="deck-section-title">Pip-Verteilung</h4>
+              <h4 class="deck-section-title">{{ viewer.i18n.t('deckView.pipDistTitle') }}</h4>
               @if (viewer.pipDistribution().length > 0) {
                 <div class="pip-chart">
                   @for (pip of viewer.pipDistribution(); track pip.color) {
@@ -487,10 +473,9 @@
                 </div>
               }
 
-              <h4 class="deck-section-title">Game Changer &amp; Bracket-Richtwert</h4>
+              <h4 class="deck-section-title">{{ viewer.i18n.t('deckView.gameChangerTitle') }}</h4>
               <p class="hint">
-                {{ viewer.gameChangerCount() }} von {{ viewer.viewingTotalCards() }} Karten auf der
-                offiziellen Game-Changer-Liste · {{ viewer.estimatedBracketHint() }}
+                {{ viewer.i18n.t('deckView.gameChangerSummary', { count: viewer.gameChangerCount(), total: viewer.viewingTotalCards(), hint: viewer.estimatedBracketHint() }) }}
               </p>
               @if (viewer.gameChangerCards().length > 0) {
                 <ul class="game-changer-list">
@@ -503,9 +488,9 @@
                 </ul>
               }
 
-              <h4 class="deck-section-title">Tutoren</h4>
+              <h4 class="deck-section-title">{{ viewer.i18n.t('deckView.tutorsTitle') }}</h4>
               @if (viewer.tutorCards().length === 0) {
-                <p class="hint">Keine gefunden.</p>
+                <p class="hint">{{ viewer.i18n.t('deckView.noneFound') }}</p>
               } @else {
                 <ul class="game-changer-list">
                   @for (t of viewer.tutorCards(); track t.cardName) {
@@ -517,17 +502,17 @@
                 </ul>
               }
 
-              <h4 class="deck-section-title">Mass Land Denial, Extra-Turns &amp; Combos</h4>
+              <h4 class="deck-section-title">{{ viewer.i18n.t('deckView.mldTitle') }}</h4>
               @if (viewer.bracketEstimateBusy()) {
-                <p class="hint">Lade Auswertung von Commander Spellbook …</p>
+                <p class="hint">{{ viewer.i18n.t('deckView.loadingSpellbookEval') }}</p>
               } @else if (viewer.bracketEstimateFailed()) {
-                <p class="hint">Auswertung aktuell nicht verfügbar (Commander Spellbook nicht erreichbar).</p>
+                <p class="hint">{{ viewer.i18n.t('deckView.spellbookUnavailable') }}</p>
                 @if (viewer.bracketEstimateErrorDetail(); as detail) {
-                  <p class="hint bracket-caveat">Technische Meldung: {{ detail }}</p>
+                  <p class="hint bracket-caveat">{{ viewer.i18n.t('deckView.technicalMessage', { detail }) }}</p>
                 }
               } @else if (viewer.bracketEstimate()) {
                 @if (viewer.massLandDenialCards().length > 0) {
-                  <p class="hint"><strong>Mass Land Denial:</strong></p>
+                  <p class="hint"><strong>{{ viewer.i18n.t('deckView.massLandDenialLabel') }}</strong></p>
                   <ul class="game-changer-list">
                     @for (c of viewer.massLandDenialCards(); track c.cardName) {
                       <li>{{ c.cardName }}</li>
@@ -535,7 +520,7 @@
                   </ul>
                 }
                 @if (viewer.extraTurnCards().length > 0) {
-                  <p class="hint"><strong>Extra-Turns:</strong></p>
+                  <p class="hint"><strong>{{ viewer.i18n.t('deckView.extraTurnsLabel') }}</strong></p>
                   <ul class="game-changer-list">
                     @for (c of viewer.extraTurnCards(); track c.cardName) {
                       <li>{{ c.cardName }}</li>
@@ -543,7 +528,7 @@
                   </ul>
                 }
                 @if (viewer.twoCardCombos().length > 0) {
-                  <p class="hint"><strong>Zwei-Karten-Combos:</strong></p>
+                  <p class="hint"><strong>{{ viewer.i18n.t('deckView.twoCardComboLabel') }}</strong></p>
                   <ul class="game-changer-list">
                     @for (combo of viewer.twoCardCombos(); track combo.cardNames.join('+')) {
                       <li>{{ combo.cardNames.join(' + ') }} → {{ combo.produces.join(', ') }}</li>
@@ -555,10 +540,10 @@
                   viewer.extraTurnCards().length === 0 &&
                   viewer.twoCardCombos().length === 0
                 ) {
-                  <p class="hint">Nichts davon gefunden.</p>
+                  <p class="hint">{{ viewer.i18n.t('deckView.noneOfThisFound') }}</p>
                 }
                 @if (viewer.spellbookBracketLabel(); as label) {
-                  <p class="hint">Commander-Spellbook-Einschätzung: <strong>{{ label }}</strong></p>
+                  <p class="hint">{{ viewer.i18n.t('deckView.spellbookEstimateLabel') }} <strong>{{ label }}</strong></p>
                 }
               }
             }
@@ -567,16 +552,16 @@
       }
       <div class="chip-row">
         <button class="glass-chip small" [class.active]="viewer.cardSortMode() === 'type'" (click)="viewer.setCardSortMode('type')">
-          Nach Typ
+          {{ viewer.i18n.t('deckView.byType') }}
         </button>
         <button class="glass-chip small" [class.active]="viewer.cardSortMode() === 'tags'" (click)="viewer.setCardSortMode('tags')">
-          🏷️ Nach eigenen Tags
+          {{ viewer.i18n.t('deckView.byOwnTags') }}
         </button>
       </div>
       <input
         class="glass-input"
         type="text"
-        placeholder="Karte suchen …"
+        [placeholder]="viewer.i18n.t('deckView.searchCardPlaceholder')"
         [ngModel]="viewer.cardSearchQuery()"
         (ngModelChange)="viewer.cardSearchQuery.set($event)"
       />
@@ -586,7 +571,7 @@
           [ngModel]="viewer.cmcFilter()"
           (ngModelChange)="viewer.cmcFilter.set($event)"
         >
-          <option [ngValue]="'all'">Manawert: alle</option>
+          <option [ngValue]="'all'">{{ viewer.i18n.t('deckView.cmcAll') }}</option>
           @for (n of [0, 1, 2, 3, 4, 5, 6, 7]; track n) {
             <option [ngValue]="n">{{ n === 7 ? '7+' : n }}</option>
           }
@@ -597,9 +582,9 @@
             [ngModel]="viewer.typeFilterValue()"
             (ngModelChange)="viewer.typeFilterValue.set($event)"
           >
-            <option [ngValue]="'all'">Typ: alle</option>
+            <option [ngValue]="'all'">{{ viewer.i18n.t('deckView.typeAll') }}</option>
             @for (label of viewer.availableTypeSections(); track label) {
-              <option [ngValue]="label">{{ label }}</option>
+              <option [ngValue]="label">{{ viewer.translateLabel(label) }}</option>
             }
           </select>
         }
@@ -609,7 +594,7 @@
             [ngModel]="viewer.creatureTypeFilter()"
             (ngModelChange)="viewer.creatureTypeFilter.set($event)"
           >
-            <option [ngValue]="'all'">Kreaturtyp: alle</option>
+            <option [ngValue]="'all'">{{ viewer.i18n.t('deckView.creatureTypeAll') }}</option>
             @for (t of viewer.availableCreatureTypes(); track t) {
               <option [ngValue]="t">{{ t }}</option>
             }
@@ -620,22 +605,22 @@
           [ngModel]="viewer.colorFilter()"
           (ngModelChange)="viewer.colorFilter.set($event)"
         >
-          <option [ngValue]="'all'">Farbe: alle</option>
-          <option [ngValue]="'W'">Weiß</option>
-          <option [ngValue]="'U'">Blau</option>
-          <option [ngValue]="'B'">Schwarz</option>
-          <option [ngValue]="'R'">Rot</option>
-          <option [ngValue]="'G'">Grün</option>
-          <option [ngValue]="'C'">Farblos</option>
+          <option [ngValue]="'all'">{{ viewer.i18n.t('deckView.colorAll') }}</option>
+          <option [ngValue]="'W'">{{ viewer.i18n.t('pip.W') }}</option>
+          <option [ngValue]="'U'">{{ viewer.i18n.t('pip.U') }}</option>
+          <option [ngValue]="'B'">{{ viewer.i18n.t('pip.B') }}</option>
+          <option [ngValue]="'R'">{{ viewer.i18n.t('pip.R') }}</option>
+          <option [ngValue]="'G'">{{ viewer.i18n.t('pip.G') }}</option>
+          <option [ngValue]="'C'">{{ viewer.i18n.t('deckView.colorless') }}</option>
         </select>
         <select
           class="glass-input small"
           [ngModel]="viewer.keywordFilter()"
           (ngModelChange)="viewer.keywordFilter.set($event)"
         >
-          <option [ngValue]="'all'">Fähigkeit: alle</option>
+          <option [ngValue]="'all'">{{ viewer.i18n.t('deckView.abilityAll') }}</option>
           @for (k of viewer.keywordFilters; track k.value) {
-            <option [ngValue]="k.value">{{ k.label }}</option>
+            <option [ngValue]="k.value">{{ viewer.keywordFilterLabel(k.value) }}</option>
           }
         </select>
         <select
@@ -643,24 +628,24 @@
           [ngModel]="viewer.effectFilter()"
           (ngModelChange)="viewer.setEffectFilter($event)"
         >
-          <option [ngValue]="'all'">Effekt: alle</option>
+          <option [ngValue]="'all'">{{ viewer.i18n.t('deckView.effectAll') }}</option>
           @for (f of viewer.effectFilters; track f.value) {
-            <option [ngValue]="f.value">{{ f.label }}</option>
+            <option [ngValue]="f.value">{{ viewer.effectFilterLabel(f.value) }}</option>
           }
         </select>
         @if (viewer.hasActiveCardFilters()) {
-          <button class="glass-chip small" (click)="viewer.resetCardFilters()">✕ Filter zurücksetzen</button>
+          <button class="glass-chip small" (click)="viewer.resetCardFilters()">{{ viewer.i18n.t('deckView.resetFilters') }}</button>
         }
       </div>
 
       @if (viewer.effectFilterBusy()) {
-        <p class="hint">Prüfe Effekt-Kategorie …</p>
+        <p class="hint">{{ viewer.i18n.t('deckView.checkingEffectCategory') }}</p>
       } @else if (viewer.hasActiveCardFilters() && viewer.filteredGroupedDeckCards().length === 0) {
-        <p class="hint">Keine Karten gefunden.</p>
+        <p class="hint">{{ viewer.i18n.t('deckView.noCardsFound') }}</p>
       }
 
       @for (section of viewer.filteredGroupedDeckCards(); track section.label) {
-        <h4 class="deck-section-title">{{ section.label }} ({{ sectionCardCount(section.cards) }})</h4>
+        <h4 class="deck-section-title">{{ viewer.translateLabel(section.label) }} ({{ sectionCardCount(section.cards) }})</h4>
         @if (viewer.viewMode() === 'visual') {
           <div class="deck-visual-grid">
             @for (card of section.cards; track card.cardName) {
@@ -675,7 +660,7 @@
                     class="deck-card-commander-toggle"
                     [class.active]="card.isCommander"
                     (click)="viewer.toggleCommanderMark(card)"
-                    [attr.aria-label]="card.isCommander ? 'Als Commander entfernen' : 'Als Commander markieren'"
+                    [attr.aria-label]="card.isCommander ? viewer.i18n.t('deckView.removeAsCommander') : viewer.i18n.t('deckView.markAsCommander')"
                   >
                     👑
                   </button>
@@ -685,7 +670,7 @@
                     <button
                       [class.flash-remove]="viewer.isFlashing(card.cardName, 'remove')"
                       (click)="viewer.decrementCard(card)"
-                      aria-label="Eine weniger"
+                      [attr.aria-label]="viewer.i18n.t('deckView.oneLess')"
                     >
                       −
                     </button>
@@ -693,7 +678,7 @@
                     <button
                       [class.flash-add]="viewer.isFlashing(card.cardName, 'add')"
                       (click)="viewer.incrementCard(card)"
-                      aria-label="Eine mehr"
+                      [attr.aria-label]="viewer.i18n.t('deckView.oneMore')"
                     >
                       +
                     </button>
@@ -702,10 +687,10 @@
                   <span class="deck-card-qty">{{ card.quantity }}×</span>
                 }
                 @if (viewer.editMode()) {
-                  <button class="deck-card-artwork-toggle" (click)="viewer.openArtworkPicker(card)" aria-label="Anderes Artwork wählen">
+                  <button class="deck-card-artwork-toggle" (click)="viewer.openArtworkPicker(card)" [attr.aria-label]="viewer.i18n.t('deckView.chooseOtherArtwork')">
                     🎨
                   </button>
-                  <button class="deck-card-tag-toggle" (click)="viewer.openTagEditor(card)" aria-label="Eigene Tags bearbeiten">
+                  <button class="deck-card-tag-toggle" (click)="viewer.openTagEditor(card)" [attr.aria-label]="viewer.i18n.t('deckView.editOwnTags')">
                     🏷️
                   </button>
                 }
@@ -723,7 +708,7 @@
                     class="icon-button"
                     [class.active]="card.isCommander"
                     (click)="viewer.toggleCommanderMark(card)"
-                    [attr.aria-label]="card.isCommander ? 'Als Commander entfernen' : 'Als Commander markieren'"
+                    [attr.aria-label]="card.isCommander ? viewer.i18n.t('deckView.removeAsCommander') : viewer.i18n.t('deckView.markAsCommander')"
                   >
                     👑
                   </button>
@@ -733,24 +718,24 @@
                     <button
                       [class.flash-remove]="viewer.isFlashing(card.cardName, 'remove')"
                       (click)="viewer.decrementCard(card)"
-                      aria-label="Eine weniger"
+                      [attr.aria-label]="viewer.i18n.t('deckView.oneLess')"
                     >
                       −
                     </button>
                     <button
                       [class.flash-add]="viewer.isFlashing(card.cardName, 'add')"
                       (click)="viewer.incrementCard(card)"
-                      aria-label="Eine mehr"
+                      [attr.aria-label]="viewer.i18n.t('deckView.oneMore')"
                     >
                       +
                     </button>
                   </div>
                 }
                 @if (viewer.editMode()) {
-                  <button class="icon-button" (click)="viewer.openArtworkPicker(card)" aria-label="Anderes Artwork wählen">
+                  <button class="icon-button" (click)="viewer.openArtworkPicker(card)" [attr.aria-label]="viewer.i18n.t('deckView.chooseOtherArtwork')">
                     🎨
                   </button>
-                  <button class="icon-button" (click)="viewer.openTagEditor(card)" aria-label="Eigene Tags bearbeiten">
+                  <button class="icon-button" (click)="viewer.openTagEditor(card)" [attr.aria-label]="viewer.i18n.t('deckView.editOwnTags')">
                     🏷️
                   </button>
                 }
@@ -775,17 +760,17 @@
   -->
   <div class="options-menu-overlay" (click)="viewer.closeArtworkPicker()">
     <div class="options-menu-sheet artwork-picker-sheet" (click)="$event.stopPropagation()">
-      <h3>🎨 Artwork wählen</h3>
+      <h3>{{ viewer.i18n.t('deckView.chooseArtworkTitle') }}</h3>
       <p class="hint">{{ pickCard.cardName }}</p>
 
       @if (viewer.artworkPickerBusy() && viewer.artworkOptions().length === 0) {
-        <p class="hint">Lade Editionen …</p>
+        <p class="hint">{{ viewer.i18n.t('deckView.loadingEditions') }}</p>
       }
       @if (viewer.artworkPickerError()) {
         <p class="hint">{{ viewer.artworkPickerError() }}</p>
       }
       <label class="glass-button small artwork-upload-label">
-        {{ viewer.artworkPickerBusy() ? 'Lädt …' : '📤 Eigenes Bild hochladen' }}
+        {{ viewer.artworkPickerBusy() ? viewer.i18n.t('deckView.uploading') : viewer.i18n.t('deckView.uploadOwnImage') }}
         <input
           type="file"
           accept="image/*"
@@ -810,7 +795,7 @@
       }
 
       <button class="glass-button" [disabled]="viewer.artworkPickerBusy()" (click)="viewer.closeArtworkPicker()">
-        Abbrechen
+        {{ viewer.i18n.t('group.cancel') }}
       </button>
     </div>
   </div>
@@ -820,7 +805,7 @@
   <!-- Bewusst außerhalb von .deck-detail-fullscreen - gleicher Grund wie beim Artwork-Dialog oben. -->
   <div class="options-menu-overlay" (click)="viewer.closeTagEditor()">
     <div class="options-menu-sheet tag-editor-sheet" (click)="$event.stopPropagation()">
-      <h3>🏷️ Eigene Tags</h3>
+      <h3>{{ viewer.i18n.t('deckView.ownTagsTitle') }}</h3>
       <p class="hint">{{ tagCard.cardName }}</p>
 
       @if (tagCard.customTags.length > 0) {
@@ -834,7 +819,7 @@
       }
 
       @if (viewer.availableCustomTags().length > 0) {
-        <p class="hint">Im Deck bereits vorhandene Tags:</p>
+        <p class="hint">{{ viewer.i18n.t('deckView.existingTagsHint') }}</p>
         <div class="tag-chip-row">
           @for (tag of viewer.availableCustomTags(); track tag) {
             @if (!tagCard.customTags.includes(tag)) {
@@ -847,13 +832,13 @@
       }
 
       <div class="import-field">
-        <label class="hint" for="new-tag-input">Neuen Tag anlegen</label>
+        <label class="hint" for="new-tag-input">{{ viewer.i18n.t('deckView.createNewTag') }}</label>
         <div class="chip-row">
           <input
             id="new-tag-input"
             class="glass-input"
             type="text"
-            placeholder="z.B. Removal, Wincon …"
+            [placeholder]="viewer.i18n.t('deckView.newTagPlaceholder')"
             [ngModel]="viewer.tagEditorNewTag()"
             (ngModelChange)="viewer.setTagEditorNewTag($event)"
             (keyup.enter)="viewer.addNewTagToCard()"
@@ -863,13 +848,13 @@
             [disabled]="viewer.tagEditorBusy() || !viewer.tagEditorNewTag().trim()"
             (click)="viewer.addNewTagToCard()"
           >
-            + Anlegen
+            {{ viewer.i18n.t('deckView.create') }}
           </button>
         </div>
       </div>
 
       <button class="glass-button" [disabled]="viewer.tagEditorBusy()" (click)="viewer.closeTagEditor()">
-        Fertig
+        {{ viewer.i18n.t('deckView.done') }}
       </button>
     </div>
   </div>

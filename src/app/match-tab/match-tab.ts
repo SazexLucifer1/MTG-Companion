@@ -9,6 +9,7 @@ import { GameSessionService } from '../game-session.service';
 import { GroupService } from '../group.service';
 import { PlayerAvatar } from '../player-avatar/player-avatar';
 import { DeckService } from '../deck.service';
+import { I18nService } from '../i18n.service';
 import { GAME_MODES, TEAM_OPTIONS, Match } from '../models';
 
 @Component({
@@ -24,6 +25,7 @@ export class MatchTab {
   private readonly scryfall = inject(ScryfallService);
   private readonly gemini = inject(GeminiService);
   private readonly deckService = inject(DeckService);
+  readonly i18n = inject(I18nService);
 
   readonly modes = GAME_MODES;
   readonly teamOptions = TEAM_OPTIONS;
@@ -173,7 +175,7 @@ export class MatchTab {
       decks.map((d) => ({ deckId: d.id, deckName: d.name, isPrecon: d.isPrecon }))
     );
     if (decks.length === 0) {
-      this.deckPickerMessage.set('Noch keine Decks importiert (im Profil-Tab möglich).');
+      this.deckPickerMessage.set(this.i18n.t('match.msg.noOwnDecksImported'));
     }
     this.deckPickerBusy.set(false);
   }
@@ -199,7 +201,7 @@ export class MatchTab {
 
     this.deckPickerOptions.set(options);
     if (options.length === 0) {
-      this.deckPickerMessage.set('Keine Decks von den anderen mitspielenden Personen gefunden.');
+      this.deckPickerMessage.set(this.i18n.t('match.msg.noOtherDecksFound'));
     }
     this.deckPickerBusy.set(false);
   }
@@ -218,9 +220,7 @@ export class MatchTab {
     const commanders = cards.filter((c) => c.isCommander);
 
     if (commanders.length === 0) {
-      this.deckPickerMessage.set(
-        'Dieses Deck hat keine als Commander markierte Karte (Export ohne "Commander"-Abschnitt?).'
-      );
+      this.deckPickerMessage.set(this.i18n.t('match.msg.noCommanderInDeck'));
       return;
     }
 
@@ -252,11 +252,11 @@ export class MatchTab {
     try {
       const cards = await this.gemini.recognizeCommanders(file);
       if (cards.length === 0) {
-        this.errorMessage.set('Keine Commander-Karten auf dem Foto erkannt.');
+        this.errorMessage.set(this.i18n.t('match.msg.noCommandersRecognized'));
       }
       this.recognizedCards.set(cards);
     } catch (err) {
-      this.errorMessage.set(err instanceof Error ? err.message : 'Foto-Erkennung fehlgeschlagen.');
+      this.errorMessage.set(err instanceof Error ? err.message : this.i18n.t('match.msg.photoRecognitionFailed'));
     } finally {
       this.recognizing.set(false);
     }
@@ -276,15 +276,15 @@ export class MatchTab {
       this.session.selectedCubeId.set(created.id);
       this.newCubeName.set('');
       this.newCubeIsCommander.set(false);
-      this.successMessage.set('Cube hinzugefügt.');
+      this.successMessage.set(this.i18n.t('match.msg.cubeAdded'));
       setTimeout(() => this.successMessage.set(''), 2000);
     } else {
-      this.errorMessage.set('Cube konnte nicht hinzugefügt werden (Name existiert?).');
+      this.errorMessage.set(this.i18n.t('match.msg.cubeAddFailed'));
       setTimeout(() => this.errorMessage.set(''), 2500);
     }
   }
   async deleteCube(id: string, name: string): Promise<void> {
-    if (confirm(`Cube „${name}" wirklich löschen? Bereits gespeicherte Matches bleiben erhalten, verlieren aber den Cube-Bezug.`)) {
+    if (confirm(this.i18n.t('match.msg.confirmDeleteCube', { name }))) {
       if (this.session.selectedCubeId() === id) {
         this.session.selectedCubeId.set(null);
       }
@@ -334,7 +334,7 @@ export class MatchTab {
   }
 
   async deleteMatch(id: string): Promise<void> {
-    if (confirm('Dieses Match wirklich löschen?')) {
+    if (confirm(this.i18n.t('match.msg.confirmDeleteMatch'))) {
       await this.mtg.deleteMatch(id);
     }
   }
@@ -363,14 +363,17 @@ export class MatchTab {
     } else if (match.mode === 'Archenemy') {
       const archenemy = match.players.find((p) => p.isArchenemy);
       if (archenemy) {
-        options.push({ value: archenemy.name, label: `👹 ${archenemy.name} (Archenemy)` });
+        options.push({
+          value: archenemy.name,
+          label: `👹 ${archenemy.name}${this.i18n.t('match.archenemySuffix')}`,
+        });
       }
-      options.push({ value: this.ARCHENEMY_OTHERS, label: 'Die anderen Spieler' });
+      options.push({ value: this.ARCHENEMY_OTHERS, label: this.i18n.t('match.theOthers') });
     } else {
       options.push(...match.players.map((p) => ({ value: p.name, label: p.name })));
     }
 
-    options.push({ value: this.DRAW, label: '🤝 Unentschieden' });
+    options.push({ value: this.DRAW, label: this.i18n.t('match.draw') });
     return options;
   }
 }

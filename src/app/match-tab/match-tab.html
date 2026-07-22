@@ -1,8 +1,8 @@
 <!-- NEU (komplette Datei) -->
 <section class="glass-card">
-  <h2>Neues Match</h2>
+  <h2>{{ i18n.t('match.newMatch') }}</h2>
 
-  <h3>Spielmodus</h3>
+  <h3>{{ i18n.t('match.gameMode') }}</h3>
   <div class="chip-row">
     @for (m of modes; track m) {
       <button class="glass-chip" [class.active]="session.mode() === m" (click)="session.mode.set(m)">
@@ -11,9 +11,9 @@
     }
   </div>
 
-  <h3>Wer spielt mit?</h3>
+  <h3>{{ i18n.t('match.whoPlays') }}</h3>
   @if (mtg.allPlayers().length === 0) {
-    <p class="hint">Noch keine Spieler angelegt. Füge sie im Tab „Gruppe“ hinzu.</p>
+    <p class="hint">{{ i18n.t('match.noPlayersYet') }}</p>
   } @else {
     <div class="chip-row">
       @for (player of mtg.allPlayers(); track player) {
@@ -26,14 +26,14 @@
   }
 
   @if (session.requiresCommanderSelection() && session.selectedPlayers().length > 0) {
-    <h3>Commander</h3>
+    <h3>{{ i18n.t('match.commander') }}</h3>
 
     <div class="photo-row">
       <label class="glass-button photo-button" [class.disabled]="recognizing() || !hasGeminiKey()">
         @if (recognizing()) {
-          <span class="spinner"></span> Analysiere Foto …
+          <span class="spinner"></span> {{ i18n.t('match.analyzingPhoto') }}
         } @else {
-          📸 Commander per Foto erkennen
+          {{ i18n.t('match.recognizePhoto') }}
         }
         <input
           type="file"
@@ -44,7 +44,7 @@
         />
       </label>
       @if (!hasGeminiKey()) {
-        <p class="hint">Für die Foto-Erkennung zuerst einen Gemini-API-Key im Tab „Profil“ hinterlegen.</p>
+        <p class="hint">{{ i18n.t('match.geminiKeyHint') }}</p>
       }
     </div>
 
@@ -54,7 +54,7 @@
 
     @if (recognizedCards().length > 0) {
       <div class="recognized">
-        <p class="hint">Erkannte Karten – antippen und einem Spieler zuweisen:</p>
+        <p class="hint">{{ i18n.t('match.recognizedHint') }}</p>
         @for (card of recognizedCards(); track card) {
           <div class="recognized-card">
             <span class="card-name">{{ card }}</span>
@@ -80,18 +80,18 @@
               @if (p.deckId) {<span title="Aus importiertem Deck">📚</span>}
               {{ p.commander }}
             </span>
-            <button class="icon-button" (click)="clearCommander(p.name)" aria-label="Commander entfernen">✕</button>
+            <button class="icon-button" (click)="clearCommander(p.name)" [attr.aria-label]="i18n.t('match.removeCommander')">✕</button>
           } @else if (searchTarget()?.player === p.name && searchTarget()?.slot === 'commander') {
             <div class="search-box">
               <input
                 class="glass-input"
                 type="text"
-                placeholder="Kartenname suchen …"
+                [placeholder]="i18n.t('match.searchCardPlaceholder')"
                 [ngModel]="searchQuery()"
                 (ngModelChange)="onSearchInput($event)"
                 autofocus
               />
-              <button class="icon-button" (click)="closeSearch()" aria-label="Suche schließen">✕</button>
+              <button class="icon-button" (click)="closeSearch()" [attr.aria-label]="i18n.t('match.closeSearch')">✕</button>
               @if (suggestions().length > 0) {
                 <ul class="suggestions">
                   @for (s of suggestions(); track s) {
@@ -102,29 +102,29 @@
             </div>
           } @else {
             <div class="chip-row">
-              <button class="glass-chip small" (click)="openSearch(p.name)">🔍 Commander suchen</button>
+              <button class="glass-chip small" (click)="openSearch(p.name)">{{ i18n.t('match.searchCommander') }}</button>
               @if (mtg.playerUserIds()[p.name]) {
-                <button class="glass-chip small" (click)="openOwnDeckPicker(p.name)">📚 Deck wählen</button>
+                <button class="glass-chip small" (click)="openOwnDeckPicker(p.name)">{{ i18n.t('match.chooseDeck') }}</button>
               }
-              <button class="glass-chip small" (click)="openBorrowDeckPicker(p.name)">🤝 Deck leihen</button>
+              <button class="glass-chip small" (click)="openBorrowDeckPicker(p.name)">{{ i18n.t('match.borrowDeck') }}</button>
             </div>
           }
 
           @if (p.commander) {
             @if (p.partnerCommander) {
               <span class="commander-name partner">+ {{ p.partnerCommander }}</span>
-              <button class="icon-button" (click)="clearPartnerCommander(p.name)" aria-label="Partner/Background entfernen">✕</button>
+              <button class="icon-button" (click)="clearPartnerCommander(p.name)" [attr.aria-label]="i18n.t('match.removePartner')">✕</button>
             } @else if (searchTarget()?.player === p.name && searchTarget()?.slot === 'partner') {
               <div class="search-box">
                 <input
                   class="glass-input"
                   type="text"
-                  placeholder="Partner/Background suchen …"
+                  [placeholder]="i18n.t('match.searchPartnerPlaceholder')"
                   [ngModel]="searchQuery()"
                   (ngModelChange)="onSearchInput($event)"
                   autofocus
                 />
-                <button class="icon-button" (click)="closeSearch()" aria-label="Suche schließen">✕</button>
+                <button class="icon-button" (click)="closeSearch()" [attr.aria-label]="i18n.t('match.closeSearch')">✕</button>
                 @if (suggestions().length > 0) {
                   <ul class="suggestions">
                     @for (s of suggestions(); track s) {
@@ -137,8 +137,8 @@
               <button
                 class="icon-button add-partner-button"
                 (click)="openSearch(p.name, 'partner')"
-                aria-label="Partner oder Background hinzufügen"
-                title="Partner/Background hinzufügen"
+                [attr.aria-label]="i18n.t('match.addPartnerTitle')"
+                [title]="i18n.t('match.addPartnerTitle')"
               >
                 ＋
               </button>
@@ -152,11 +152,11 @@
   @if (deckPickerTarget()) {
     <div class="options-menu-overlay" (click)="closeDeckPicker()">
       <div class="options-menu-sheet" (click)="$event.stopPropagation()">
-        <h3>Deck für {{ deckPickerTarget() }}</h3>
+        <h3>{{ i18n.t('match.deckFor', { name: deckPickerTarget() ?? '' }) }}</h3>
         @if (deckPickerBusy()) {
-          <p class="hint">Lade Decks …</p>
+          <p class="hint">{{ i18n.t('match.loadingDecks') }}</p>
         } @else if (deckPickerOptions().length === 0) {
-          <p class="hint">{{ deckPickerMessage() || 'Keine Decks gefunden.' }}</p>
+          <p class="hint">{{ deckPickerMessage() || i18n.t('match.noDecksFound') }}</p>
         } @else {
           @if (deckPickerMessage()) {
             <p class="error">{{ deckPickerMessage() }}</p>
@@ -169,26 +169,26 @@
                   {{ option.deckName }}
                 </span>
                 @if (option.ownerName) {
-                  <span class="hint">von {{ option.ownerName }}</span>
+                  <span class="hint">{{ i18n.t('match.from', { name: option.ownerName }) }}</span>
                 }
-                <button class="glass-button small" (click)="selectDeck(option.deckId)">Wählen</button>
+                <button class="glass-button small" (click)="selectDeck(option.deckId)">{{ i18n.t('match.choose') }}</button>
               </li>
             }
           </ul>
         }
-        <button class="glass-button" (click)="closeDeckPicker()">Abbrechen</button>
+        <button class="glass-button" (click)="closeDeckPicker()">{{ i18n.t('match.cancel') }}</button>
       </div>
     </div>
   }
 
   @if (session.isTwoHeadedGiantMode() && session.selectedPlayers().length > 0) {
-    <h3>Teams zuordnen</h3>
+    <h3>{{ i18n.t('match.assignTeams') }}</h3>
     <div class="team-selector-list">
       @for (p of session.selectedPlayers(); track p.name) {
         <label class="team-selector-item">
           <span>{{ p.name }}</span>
           <select class="glass-input" [ngModel]="p.team ?? ''" (ngModelChange)="setPlayerTeam(p.name, $event)">
-            <option value="">Team wählen</option>
+            <option value="">{{ i18n.t('match.chooseTeamPlaceholder') }}</option>
             @for (team of teamOptions; track team) {
               <option [value]="team">{{ team }}</option>
             }
@@ -199,7 +199,7 @@
   }
 
   @if (session.mode() === 'Archenemy' && session.selectedPlayers().length > 0) {
-    <h3>Archenemy markieren</h3>
+    <h3>{{ i18n.t('match.markArchenemy') }}</h3>
     <div class="chip-row">
       @for (p of session.selectedPlayers(); track p.name) {
         <button class="glass-chip" [class.active]="p.isArchenemy" (click)="toggleArchenemy(p.name)">
@@ -207,17 +207,17 @@
         </button>
       }
     </div>
-    <p class="hint">Wähle genau einen Archenemy aus (4 vs 1).</p>
+    <p class="hint">{{ i18n.t('match.archenemyHint') }}</p>
   }
 
   @if (session.mode() === 'Cube') {
-    <h3>Cube auswählen</h3>
+    <h3>{{ i18n.t('match.chooseCube') }}</h3>
     @if (mtg.cubes().length === 0) {
-      <p class="hint">Noch keine Cubes vorhanden. Lege einen neuen Cube an.</p>
+      <p class="hint">{{ i18n.t('match.noCubesYet') }}</p>
     } @else {
       <div>
         <select class="glass-input" [ngModel]="session.selectedCubeId()" (ngModelChange)="session.selectedCubeId.set($event)">
-          <option value="">Cube wählen</option>
+          <option value="">{{ i18n.t('match.chooseCubePlaceholder') }}</option>
           @for (c of mtg.cubes(); track c.id) {
             <option [value]="c.id">{{ c.name }}</option>
           }
@@ -229,29 +229,29 @@
           <li>
             <span class="player-name">{{ c.name }}</span>
             @if (c.isCommander) {
-              <span class="hint">Commander</span>
+              <span class="hint">{{ i18n.t('match.commander') }}</span>
             }
-            <button class="icon-button" (click)="deleteCube(c.id, c.name)" aria-label="Cube löschen">🗑</button>
+            <button class="icon-button" (click)="deleteCube(c.id, c.name)" [attr.aria-label]="i18n.t('match.deleteCube')">🗑</button>
           </li>
         }
       </ul>
     }
 
-    <h4>Neuen Cube hinzufügen</h4>
+    <h4>{{ i18n.t('match.addNewCube') }}</h4>
     <div class="cube-form">
-      <input class="glass-input" type="text" placeholder="Cube-Name" [ngModel]="newCubeName()" (ngModelChange)="newCubeName.set($event)" />
+      <input class="glass-input" type="text" [placeholder]="i18n.t('match.cubeNamePlaceholder')" [ngModel]="newCubeName()" (ngModelChange)="newCubeName.set($event)" />
       <label class="checkbox-inline">
-        <input type="checkbox" [ngModel]="newCubeIsCommander()" (ngModelChange)="newCubeIsCommander.set($event)" /> Commander Cube
+        <input type="checkbox" [ngModel]="newCubeIsCommander()" (ngModelChange)="newCubeIsCommander.set($event)" /> {{ i18n.t('match.commanderCube') }}
       </label>
-      <button class="glass-button" (click)="addNewCube()">Cube hinzufügen</button>
+      <button class="glass-button" (click)="addNewCube()">{{ i18n.t('match.addCube') }}</button>
     </div>
   }
 
   @if (session.mode() === 'Draft') {
-    <h3>Draft-Set wählen</h3>
+    <h3>{{ i18n.t('match.chooseDraftSet') }}</h3>
     <div class="draft-search">
-      <input class="glass-input" type="text" placeholder="Set suchen (Name oder Code) …" [ngModel]="draftSearchQuery()" (ngModelChange)="onDraftSearchInput($event)" />
-      <input class="glass-input small" type="number" placeholder="Jahr" [ngModel]="draftYear()" (ngModelChange)="filterDraftsByYear($event)" />
+      <input class="glass-input" type="text" [placeholder]="i18n.t('match.searchSetPlaceholder')" [ngModel]="draftSearchQuery()" (ngModelChange)="onDraftSearchInput($event)" />
+      <input class="glass-input small" type="number" [placeholder]="i18n.t('match.yearPlaceholder')" [ngModel]="draftYear()" (ngModelChange)="filterDraftsByYear($event)" />
     </div>
     @if (draftSuggestions().length > 0) {
       <ul class="suggestions">
@@ -265,16 +265,16 @@
       </ul>
     }
     @if (session.selectedDraftSet()) {
-      <p>Ausgewähltes Set: <strong>{{ session.selectedDraftSet()?.name }}</strong>@if (session.selectedDraftSet()?.releasedAt) { – {{ session.selectedDraftSet()?.releasedAt }} }</p>
-      <button class="glass-button small" (click)="selectDraftSet(null)">Auswahl entfernen</button>
+      <p>{{ i18n.t('match.selectedSet') }} <strong>{{ session.selectedDraftSet()?.name }}</strong>@if (session.selectedDraftSet()?.releasedAt) { – {{ session.selectedDraftSet()?.releasedAt }} }</p>
+      <button class="glass-button small" (click)="selectDraftSet(null)">{{ i18n.t('match.removeSelection') }}</button>
     }
   }
 
   <button class="glass-button primary save-button" [disabled]="!session.canStartGame()" (click)="session.startGame()">
-    ▶ Spiel starten
+    {{ i18n.t('match.startGame') }}
   </button>
   @if (session.selectedPlayers().length === 1) {
-    <p class="hint">Mindestens zwei Spieler auswählen.</p>
+    <p class="hint">{{ i18n.t('match.needTwoPlayers') }}</p>
   }
   @if (successMessage()) {
     <p class="success">{{ successMessage() }}</p>
@@ -282,12 +282,12 @@
 </section>
 
 <section class="glass-card">
-  <h2>Verlauf</h2>
+  <h2>{{ i18n.t('match.history') }}</h2>
   @if (visibleHistory().length === 0) {
-    <p class="hint">Noch keine Matches gespeichert.</p>
+    <p class="hint">{{ i18n.t('match.noMatchesSaved') }}</p>
   } @else {
     <button class="glass-chip" (click)="toggleHistory()">
-      {{ historyExpanded() ? '▾ Einklappen' : '▸ Verlauf anzeigen' }}
+      {{ historyExpanded() ? i18n.t('match.collapse') : i18n.t('match.showHistory') }}
     </button>
   }
   @if (historyExpanded()) {
@@ -297,19 +297,22 @@
           class="icon-button"
           (click)="prevHistoryPage()"
           [disabled]="historyPage() === 0"
-          aria-label="Neuere Spiele"
+          [attr.aria-label]="i18n.t('match.newerGames')"
         >
           ◀
         </button>
-        <span class="hint"
-          >Spiele {{ historyPage() * historyPageSize + 1 }}–{{ historyRangeEnd() }} von
-          {{ visibleHistory().length }}</span
-        >
+        <span class="hint">{{
+          i18n.t('match.gamesRange', {
+            start: historyPage() * historyPageSize + 1,
+            end: historyRangeEnd(),
+            total: visibleHistory().length
+          })
+        }}</span>
         <button
           class="icon-button"
           (click)="nextHistoryPage()"
           [disabled]="historyPage() >= historyTotalPages() - 1"
-          aria-label="Ältere Spiele"
+          [attr.aria-label]="i18n.t('match.olderGames')"
         >
           ▶
         </button>
@@ -325,9 +328,9 @@
           <span class="history-mode">{{ match.mode }}</span>
         }
         <span class="history-date">{{ match.date | date: 'dd.MM.yyyy, HH:mm' }}</span>
-        <button class="icon-button" (click)="startEditWinner(match.id)" aria-label="Gewinner ändern">✏️</button>
+        <button class="icon-button" (click)="startEditWinner(match.id)" [attr.aria-label]="i18n.t('match.changeWinner')">✏️</button>
         @if (groupService.isOwner()) {
-          <button class="icon-button" (click)="deleteMatch(match.id)" aria-label="Match löschen">🗑</button>
+          <button class="icon-button" (click)="deleteMatch(match.id)" [attr.aria-label]="i18n.t('match.deleteMatch')">🗑</button>
         }
       </div>
       <div class="history-players">
@@ -352,7 +355,7 @@
 
     @if (editingMatchId() === match.id) {
       <div class="winner-edit">
-        <p class="hint">Wer hat wirklich gewonnen?</p>
+        <p class="hint">{{ i18n.t('match.whoWon') }}</p>
         <div class="chip-row">
           @for (opt of winnerOptions(match); track opt.value) {
             <button
@@ -364,7 +367,7 @@
             </button>
           }
         </div>
-        <button class="glass-button small" (click)="editingMatchId.set(null)">Abbrechen</button>
+        <button class="glass-button small" (click)="editingMatchId.set(null)">{{ i18n.t('match.cancel') }}</button>
       </div>
     }
   </li>

@@ -1,5 +1,6 @@
 import { Component, inject, signal } from '@angular/core';
 import { AuthService } from '../auth.service';
+import { I18nService } from '../i18n.service';
 
 @Component({
   selector: 'app-reset-password',
@@ -9,6 +10,7 @@ import { AuthService } from '../auth.service';
 })
 export class ResetPassword {
   private readonly auth = inject(AuthService);
+  readonly i18n = inject(I18nService);
 
   readonly password = signal('');
   readonly confirmPassword = signal('');
@@ -19,11 +21,11 @@ export class ResetPassword {
     this.errorMessage.set(null);
 
     if (this.password().length < 6) {
-      this.errorMessage.set('Das Passwort muss mindestens 6 Zeichen lang sein.');
+      this.errorMessage.set(this.i18n.t('resetPassword.msg.tooShort'));
       return;
     }
     if (this.password() !== this.confirmPassword()) {
-      this.errorMessage.set('Die Passwörter stimmen nicht überein.');
+      this.errorMessage.set(this.i18n.t('resetPassword.msg.mismatch'));
       return;
     }
 
@@ -31,7 +33,7 @@ export class ResetPassword {
     try {
       await this.auth.updatePassword(this.password());
     } catch (err: any) {
-      this.errorMessage.set(err?.message ?? 'Etwas ist schiefgelaufen.');
+      this.errorMessage.set(err?.message ?? this.i18n.t('login.msg.genericError'));
     } finally {
       this.busy.set(false);
     }

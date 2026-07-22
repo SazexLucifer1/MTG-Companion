@@ -1,27 +1,25 @@
 @if (importService.showImportDialog()) {
 <div class="options-menu-overlay" (click)="importService.closeImportDialog()">
   <div class="options-menu-sheet import-sheet" (click)="$event.stopPropagation()">
-    <h3>{{ importService.editingDeckId() ? 'Deck aktualisieren' : 'Deck importieren' }}</h3>
+    <h3>{{ importService.editingDeckId() ? importService.i18n.t('importDialog.updateDeckTitle') : importService.i18n.t('importDialog.importDeckTitle') }}</h3>
     <p class="hint">
-      Kopiere deine Decklist von deckstats.net, Moxfield, Archidekt o.ä. hierhin – ein Kartenname
-      pro Zeile, z.B. "1 Sol Ring" oder "1x Sol Ring". Beim erneuten Speichern wird automatisch
-      erkannt, was sich seit dem letzten Import geändert hat.
+      {{ importService.i18n.t('importDialog.importHint') }}
     </p>
 
     <div class="import-field">
-      <label class="hint" for="deck-name-input">Deckname</label>
+      <label class="hint" for="deck-name-input">{{ importService.i18n.t('importDialog.deckNameLabel') }}</label>
       <input
         id="deck-name-input"
         class="glass-input"
         type="text"
-        placeholder="z.B. Atraxa Superfriends"
+        [placeholder]="importService.i18n.t('importDialog.deckNamePlaceholder')"
         [ngModel]="importService.deckName()"
         (ngModelChange)="importService.deckName.set($event)"
       />
     </div>
 
     <div class="import-field">
-      <label class="hint" for="deck-text-input">Kartenliste</label>
+      <label class="hint" for="deck-text-input">{{ importService.i18n.t('importDialog.cardListLabel') }}</label>
       <textarea
         id="deck-text-input"
         class="glass-input deck-textarea"
@@ -33,11 +31,11 @@
     </div>
 
     <div class="import-field">
-      <label class="hint" for="deck-tag-select">EDHREC-Tag (optional)</label>
+      <label class="hint" for="deck-tag-select">{{ importService.i18n.t('importDialog.edhrecTagLabel') }}</label>
       @if (importService.commanderTagsBusy()) {
-        <p class="hint">Lade verfügbare Tags …</p>
+        <p class="hint">{{ importService.i18n.t('importDialog.loadingTags') }}</p>
       } @else if (importService.availableCommanderTags().length === 0) {
-        <p class="hint">Noch kein Commander erkannt - Tags erscheinen, sobald "Commander:" mit einem Kartennamen in der Liste steht.</p>
+        <p class="hint">{{ importService.i18n.t('importDialog.noCommanderDetectedYet') }}</p>
       } @else {
         <select
           id="deck-tag-select"
@@ -45,15 +43,14 @@
           [ngModel]="importService.selectedCommanderTag()"
           (ngModelChange)="importService.setSelectedCommanderTag($event)"
         >
-          <option [ngValue]="null">Kein Tag</option>
+          <option [ngValue]="null">{{ importService.i18n.t('deckView.noTag') }}</option>
           @for (t of importService.availableCommanderTags(); track t.slug) {
             <option [ngValue]="t.slug">{{ t.value }} ({{ t.count }})</option>
           }
         </select>
       }
       <p class="hint bracket-caveat">
-        Steuert später die EDHREC-Vorschläge in der Deck-Detailansicht (Commander + Tag statt nur
-        Commander).
+        {{ importService.i18n.t('importDialog.tagControlsHint') }}
       </p>
     </div>
 
@@ -66,9 +63,9 @@
       [disabled]="importService.importBusy() || !importService.deckName().trim() || !importService.deckText().trim()"
       (click)="importService.saveDeck()"
     >
-      {{ importService.importBusy() ? 'Speichere …' : 'Speichern' }}
+      {{ importService.importBusy() ? importService.i18n.t('deckView.savingInfo') : importService.i18n.t('importDialog.save') }}
     </button>
-    <button class="glass-button" (click)="importService.closeImportDialog()">Abbrechen</button>
+    <button class="glass-button" (click)="importService.closeImportDialog()">{{ importService.i18n.t('group.cancel') }}</button>
   </div>
 </div>
 }
@@ -76,31 +73,30 @@
 @if (importService.showNewEmptyDeckDialog()) {
 <div class="options-menu-overlay" (click)="importService.closeNewEmptyDeckDialog()">
   <div class="options-menu-sheet import-sheet" (click)="$event.stopPropagation()">
-    <h3>🆕 Leeres Deck anlegen</h3>
+    <h3>{{ importService.i18n.t('importDialog.newEmptyDeckTitle') }}</h3>
     <p class="hint">
-      Legt ein Deck ohne Kartenliste an - danach kannst du es in der Detailansicht über
-      "✏️ Bearbeiten" Karte für Karte selbst aufbauen.
+      {{ importService.i18n.t('importDialog.newEmptyDeckHint') }}
     </p>
 
     <div class="import-field">
-      <label class="hint" for="empty-deck-name-input">Deckname</label>
+      <label class="hint" for="empty-deck-name-input">{{ importService.i18n.t('importDialog.deckNameLabel') }}</label>
       <input
         id="empty-deck-name-input"
         class="glass-input"
         type="text"
-        placeholder="z.B. Atraxa Superfriends"
+        [placeholder]="importService.i18n.t('importDialog.deckNamePlaceholder')"
         [ngModel]="importService.newDeckName()"
         (ngModelChange)="importService.newDeckName.set($event)"
       />
     </div>
 
     <div class="import-field">
-      <label class="hint" for="empty-deck-commander-input">Commander</label>
+      <label class="hint" for="empty-deck-commander-input">{{ importService.i18n.t('importDialog.commanderLabel') }}</label>
       <input
         id="empty-deck-commander-input"
         class="glass-input"
         type="text"
-        placeholder="Kartenname suchen …"
+        [placeholder]="importService.i18n.t('profile.searchCardPlaceholder')"
         [ngModel]="importService.newDeckCommanderQuery()"
         (ngModelChange)="importService.onNewDeckCommanderInput($event)"
       />
@@ -115,9 +111,9 @@
 
     @if (importService.newDeckCommanderSelected()) {
       <div class="import-field">
-        <label class="hint" for="empty-deck-tag-select">EDHREC-Tag (optional)</label>
+        <label class="hint" for="empty-deck-tag-select">{{ importService.i18n.t('importDialog.edhrecTagLabel') }}</label>
         @if (importService.commanderTagsBusy()) {
-          <p class="hint">Lade verfügbare Tags …</p>
+          <p class="hint">{{ importService.i18n.t('importDialog.loadingTags') }}</p>
         } @else if (importService.availableCommanderTags().length > 0) {
           <select
             id="empty-deck-tag-select"
@@ -125,15 +121,14 @@
             [ngModel]="importService.selectedCommanderTag()"
             (ngModelChange)="importService.setSelectedCommanderTag($event)"
           >
-            <option [ngValue]="null">Kein Tag</option>
+            <option [ngValue]="null">{{ importService.i18n.t('deckView.noTag') }}</option>
             @for (t of importService.availableCommanderTags(); track t.slug) {
               <option [ngValue]="t.slug">{{ t.value }} ({{ t.count }})</option>
             }
           </select>
         }
         <p class="hint bracket-caveat">
-          Steuert später die EDHREC-Vorschläge in der Deck-Detailansicht (Commander + Tag statt nur
-          Commander).
+          {{ importService.i18n.t('importDialog.tagControlsHint') }}
         </p>
       </div>
     }
@@ -147,9 +142,9 @@
       [disabled]="importService.newDeckBusy() || !importService.newDeckName().trim() || !importService.newDeckCommanderSelected()"
       (click)="importService.createEmptyDeck()"
     >
-      {{ importService.newDeckBusy() ? 'Lege an …' : 'Anlegen' }}
+      {{ importService.newDeckBusy() ? importService.i18n.t('importDialog.creating') : importService.i18n.t('importDialog.create') }}
     </button>
-    <button class="glass-button" (click)="importService.closeNewEmptyDeckDialog()">Abbrechen</button>
+    <button class="glass-button" (click)="importService.closeNewEmptyDeckDialog()">{{ importService.i18n.t('group.cancel') }}</button>
   </div>
 </div>
 }
@@ -157,14 +152,13 @@
 @if (importService.showPreconDialog()) {
 <div class="options-menu-overlay" (click)="importService.closePreconDialog()">
   <div class="options-menu-sheet precon-sheet" (click)="$event.stopPropagation()">
-    <h3>📦 Precon importieren</h3>
+    <h3>{{ importService.i18n.t('importDialog.importPreconTitle') }}</h3>
     <p class="hint">
-      Wähle ein Jahr, dann erscheinen alle in diesem Jahr erschienenen Commander-Precons. Mehrere
-      auswählen und auf einmal importieren.
+      {{ importService.i18n.t('importDialog.preconHint') }}
     </p>
 
     <div class="import-field">
-      <label class="hint" for="precon-year-input">Jahr</label>
+      <label class="hint" for="precon-year-input">{{ importService.i18n.t('importDialog.yearLabel') }}</label>
       <div class="precon-year-row">
         <input
           id="precon-year-input"
@@ -180,18 +174,18 @@
           [disabled]="importService.preconSearchBusy() || importService.preconImportBusy()"
           (click)="importService.searchPreconsForYear()"
         >
-          Suchen
+          {{ importService.i18n.t('importDialog.search2') }}
         </button>
       </div>
     </div>
 
     @if (importService.preconSearchBusy()) {
-      <p class="hint">Lade Precons …</p>
+      <p class="hint">{{ importService.i18n.t('importDialog.loadingPrecons') }}</p>
     } @else if (importService.preconOptions().length === 0) {
-      <p class="hint">Keine Commander-Precons für {{ importService.preconYear() }} gefunden.</p>
+      <p class="hint">{{ importService.i18n.t('importDialog.noPreconsForYear', { year: importService.preconYear() }) }}</p>
     } @else {
       <button class="glass-chip small" (click)="importService.toggleAllPrecons()" [disabled]="importService.preconImportBusy()">
-        {{ importService.selectedPreconFileNames().size === importService.preconOptions().length ? 'Alle abwählen' : 'Alle auswählen' }}
+        {{ importService.selectedPreconFileNames().size === importService.preconOptions().length ? importService.i18n.t('importDialog.deselectAll') : importService.i18n.t('importDialog.selectAll') }}
       </button>
       <ul class="precon-list">
         @for (precon of importService.preconOptions(); track precon.fileName) {
@@ -210,7 +204,7 @@
       </ul>
 
       @if (importService.preconImportProgress(); as progress) {
-        <p class="hint">Importiere {{ progress.done }} / {{ progress.total }} …</p>
+        <p class="hint">{{ importService.i18n.t('importDialog.importingProgress', { done: progress.done, total: progress.total }) }}</p>
       }
       @if (importService.preconMessage()) {
         <p class="hint">{{ importService.preconMessage() }}</p>
@@ -221,10 +215,10 @@
         [disabled]="importService.preconImportBusy() || importService.selectedPreconFileNames().size === 0"
         (click)="importService.importSelectedPrecons()"
       >
-        {{ importService.preconImportBusy() ? 'Importiere …' : importService.selectedPreconFileNames().size + ' importieren' }}
+        {{ importService.preconImportBusy() ? importService.i18n.t('importDialog.importing') : importService.i18n.t('importDialog.importCount', { count: importService.selectedPreconFileNames().size }) }}
       </button>
     }
-    <button class="glass-button" (click)="importService.closePreconDialog()">Schließen</button>
+    <button class="glass-button" (click)="importService.closePreconDialog()">{{ importService.i18n.t('group.close') }}</button>
   </div>
 </div>
 }

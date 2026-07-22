@@ -1,10 +1,19 @@
 <div class="login-screen">
 <div class="login-card">
+  <button
+    type="button"
+    class="lang-toggle"
+    (click)="i18n.toggleLang()"
+    [attr.aria-label]="i18n.t('header.switchLanguage')"
+    [title]="i18n.t('header.switchLanguage')"
+  >
+    {{ i18n.lang() === 'de' ? 'DE' : 'EN' }}
+  </button>
   <h1>MTG Companion</h1>
-  <p class="subtitle">{{ mode() === 'signin' ? 'Melde dich an' : 'Erstelle einen Account' }}</p>
+  <p class="subtitle">{{ mode() === 'signin' ? i18n.t('login.signInSubtitle') : i18n.t('login.signUpSubtitle') }}</p>
 
   <label>
-    E-Mail
+    {{ i18n.t('login.email') }}
     <input
       type="email"
       [value]="email()"
@@ -13,7 +22,7 @@
   </label>
 
   <label>
-    Passwort
+    {{ i18n.t('login.password') }}
     <input
       type="password"
       [value]="password()"
@@ -28,16 +37,16 @@
     <p class="success">{{ infoMessage() }}</p>
   }
 
-  <button type="button" [disabled]="loading()" (click)="submit()">
-    {{ loading() ? 'Bitte warten...' : (mode() === 'signin' ? 'Anmelden' : 'Account erstellen') }}
+  <button type="button" class="submit-button" [disabled]="loading()" (click)="submit()">
+    {{ loading() ? i18n.t('login.pleaseWait') : (mode() === 'signin' ? i18n.t('login.signIn') : i18n.t('login.createAccount')) }}
   </button>
 
   @if (mode() === 'signin') {
-    <button type="button" class="switch-mode" (click)="openForgot()">Passwort vergessen?</button>
+    <button type="button" class="switch-mode" (click)="openForgot()">{{ i18n.t('login.forgotPassword') }}</button>
   }
 
   <button type="button" class="switch-mode" (click)="toggleMode()">
-    {{ mode() === 'signin' ? 'Noch keinen Account? Registrieren' : 'Schon einen Account? Anmelden' }}
+    {{ mode() === 'signin' ? i18n.t('login.noAccountYet') : i18n.t('login.alreadyHaveAccount') }}
   </button>
 </div>
 </div>
@@ -45,12 +54,12 @@
 @if (showForgot()) {
 <div class="options-menu-overlay" (click)="closeForgot()">
   <div class="options-menu-sheet" (click)="$event.stopPropagation()">
-    <h3>Passwort vergessen</h3>
-    <p class="hint">Gib deine E-Mail-Adresse ein, wir schicken dir einen Link zum Zurücksetzen.</p>
+    <h3>{{ i18n.t('login.forgotTitle') }}</h3>
+    <p class="hint">{{ i18n.t('login.forgotHint') }}</p>
     <input
       class="glass-input"
       type="email"
-      placeholder="E-Mail-Adresse"
+      [placeholder]="i18n.t('login.emailPlaceholder')"
       [value]="forgotEmail()"
       (input)="forgotEmail.set($any($event.target).value)"
     />
@@ -58,9 +67,9 @@
       <p class="hint">{{ forgotMessage() }}</p>
     }
     <button class="glass-button primary" [disabled]="forgotBusy()" (click)="submitForgot()">
-      {{ forgotBusy() ? 'Sende …' : 'Link schicken' }}
+      {{ forgotBusy() ? i18n.t('login.sending') : i18n.t('login.sendLink') }}
     </button>
-    <button class="glass-button" (click)="closeForgot()">Schließen</button>
+    <button class="glass-button" (click)="closeForgot()">{{ i18n.t('group.close') }}</button>
   </div>
 </div>
 }

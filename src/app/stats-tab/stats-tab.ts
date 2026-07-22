@@ -13,6 +13,7 @@ import {
   IMPORT_ARCHENEMY_LOSS_PLACEHOLDER,
 } from '../excel-import.service';
 import { CommanderStats, DeckStats, GAME_MODES, GameMode, Match, PlayerStats } from '../models';
+import { I18nService } from '../i18n.service';
 
 export type RankSortMode = 'wins' | 'winRate' | 'games';
 
@@ -50,6 +51,7 @@ export class StatsTab {
   private readonly excelImport = inject(ExcelImportService);
   private readonly scryfall = inject(ScryfallService);
   private readonly deckService = inject(DeckService);
+  readonly i18n = inject(I18nService);
 
   // --- Kartenbilder (Commander/Erfolgreichste Commander & Decks) ---
 
@@ -835,7 +837,7 @@ export class StatsTab {
         })
       );
     } catch {
-      this.importMessage.set('Datei konnte nicht gelesen werden. Ist es eine gültige .xlsx-Datei?');
+      this.importMessage.set(this.i18n.t('stats.msg.fileReadError'));
     } finally {
       this.importBusy.set(false);
     }
@@ -867,7 +869,7 @@ export class StatsTab {
       .filter((r) => r.player.length > 0);
 
     if (mapping.length === 0) {
-      this.importMessage.set('Keine Zuordnung ausgewählt – nichts importiert.');
+      this.importMessage.set(this.i18n.t('stats.msg.noMappingSelected'));
       return;
     }
 
@@ -876,7 +878,7 @@ export class StatsTab {
     const selectedCube = this.mtg.cubes().find((c) => c.id === this.importCubeId());
 
     this.importBusy.set(true);
-    this.importMessage.set('Erkenne Commander aus den Deck-Kommentaren …');
+    this.importMessage.set(this.i18n.t('stats.msg.recognizingCommanders'));
     this.importPreview.set([]);
 
     const matches = await this.excelImport.buildMatches(
@@ -885,20 +887,21 @@ export class StatsTab {
       selectedCube
         ? { id: selectedCube.id, name: selectedCube.name, isCommander: selectedCube.isCommander }
         : undefined,
-      (done, total) => this.importMessage.set(`Erkenne Commander … ${done} / ${total}`)
+      (done, total) =>
+        this.importMessage.set(this.i18n.t('stats.msg.recognizingProgress', { done, total }))
     );
 
-    this.importMessage.set(
-      `Importiere ${matches.length} Spiele … das kann etwas dauern, bitte warten.`
-    );
+    this.importMessage.set(this.i18n.t('stats.msg.importingGames', { count: matches.length }));
 
     await this.mtg.importMatches(matches);
 
     this.importBusy.set(false);
     this.importMessage.set(
-      `${matches.length} Spiele aus ${
-        mapping.length
-      } Deck-Tab(s) importiert (Jahr ${this.importYear()}).`
+      this.i18n.t('stats.msg.importDone', {
+        games: matches.length,
+        sheets: mapping.length,
+        year: this.importYear(),
+      })
     );
   }
 
@@ -928,7 +931,9 @@ export class StatsTab {
     this.resetConfirmText.set(value);
   }
 
-  readonly canConfirmReset = computed(() => this.resetConfirmText().trim() === 'LÖSCHEN');
+  readonly canConfirmReset = computed(
+    () => this.resetConfirmText().trim().toUpperCase() === this.i18n.t('stats.deleteConfirmWord')
+  );
   readonly resetError = signal('');
   readonly resetBusy = signal(false);
 
@@ -943,7 +948,7 @@ export class StatsTab {
     this.resetBusy.set(false);
 
     if (!result.success) {
-      this.resetError.set(result.error ?? 'Unbekannter Fehler beim Löschen.');
+      this.resetError.set(result.error ?? this.i18n.t('stats.msg.unknownDeleteError'));
       return;
     }
 

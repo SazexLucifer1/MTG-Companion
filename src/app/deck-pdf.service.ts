@@ -1,5 +1,6 @@
-import { Injectable, computed, signal } from '@angular/core';
+import { Injectable, computed, inject, signal } from '@angular/core';
 import { DeckCard } from './deck.service';
+import { I18nService } from './i18n.service';
 
 export interface PdfCardEntry {
   cardName: string;
@@ -25,6 +26,8 @@ const MARGIN_Y_MM = (PAGE_HEIGHT_MM - ROWS * CARD_HEIGHT_MM) / 2;
  */
 @Injectable({ providedIn: 'root' })
 export class DeckPdfService {
+  readonly i18n = inject(I18nService);
+
   readonly showDialog = signal(false);
   readonly deckName = signal('');
   readonly entries = signal<PdfCardEntry[]>([]);
@@ -97,7 +100,7 @@ export class DeckPdfService {
   async generatePdf(): Promise<void> {
     const selected = this.entries().filter((e) => e.selected && e.imageUrl);
     if (selected.length === 0) {
-      this.errorMessage.set('Keine Karten mit Bild ausgewählt.');
+      this.errorMessage.set(this.i18n.t('pdfDialog.msg.noCardsSelected'));
       return;
     }
 
@@ -150,7 +153,7 @@ export class DeckPdfService {
     this.progress.set(null);
 
     if (slot === 0) {
-      this.errorMessage.set('Keine Kartenbilder konnten geladen werden.');
+      this.errorMessage.set(this.i18n.t('pdfDialog.msg.noImagesLoaded'));
       return;
     }
 

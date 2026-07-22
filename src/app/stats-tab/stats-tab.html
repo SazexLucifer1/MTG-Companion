@@ -1,15 +1,13 @@
 @if (showImportDialog()) {
 <div class="options-menu-overlay" (click)="closeImportDialog()">
   <div class="options-menu-sheet" (click)="$event.stopPropagation()">
-    <h3>Alte Stats importieren</h3>
+    <h3>{{ i18n.t('stats.importDialogTitle') }}</h3>
     <p class="hint">
-      Importiert Commander-Statistiken aus einer Excel-Datei (ein Tab pro Spieler mit Deck-Name
-      und Gespielt/Gewonnen je Modus). Die erzeugten Spiele bekommen das Datum 31.12. des unten
-      gewählten Jahres.
+      {{ i18n.t('stats.importDialogHint') }}
     </p>
 
     <div class="import-field">
-      <label class="hint" for="import-year-select">Jahr für die importierten Spiele</label>
+      <label class="hint" for="import-year-select">{{ i18n.t('stats.importYearLabel') }}</label>
       <select
         id="import-year-select"
         class="glass-input"
@@ -25,7 +23,7 @@
 
     @if (mtg.cubes().length > 0) {
     <div class="import-field">
-      <label class="hint" for="import-cube-select">Alle importierten Cube-Spiele zuordnen zu</label>
+      <label class="hint" for="import-cube-select">{{ i18n.t('stats.importCubeLabel') }}</label>
       <select
         id="import-cube-select"
         class="glass-input"
@@ -33,7 +31,7 @@
         [disabled]="importBusy()"
         (change)="setImportCubeId($event)"
       >
-        <option value="">Kein Cube (allgemein, ohne Zuordnung)</option>
+        <option value="">{{ i18n.t('stats.importCubeNone') }}</option>
         @for (cube of mtg.cubes(); track cube.id) {
         <option [value]="cube.id">{{ cube.name }}</option>
         }
@@ -43,7 +41,7 @@
 
     <div class="import-field">
       <label class="glass-button import-file-label">
-        📥 Excel-Datei wählen
+        {{ i18n.t('stats.importChooseFile') }}
         <input
           type="file"
           accept=".xlsx"
@@ -54,14 +52,13 @@
     </div>
 
     @if (importBusy()) {
-    <p class="hint"><span class="spinner"></span> Datei wird gelesen …</p>
+    <p class="hint"><span class="spinner"></span> {{ i18n.t('stats.importReading') }}</p>
     } @if (importMessage()) {
     <p class="hint">{{ importMessage() }}</p>
     } @if (importPreview().length > 0) {
-    <h3>Zuordnung prüfen</h3>
+    <h3>{{ i18n.t('stats.importCheckMapping') }}</h3>
     <p class="hint">
-      "-- Überspringen --" für Tabs, die du nicht importieren willst (z.B. veraltete Duplikate).
-      Bei "Neuer Spieler" bitte den Namen exakt eintragen.
+      {{ i18n.t('stats.importMappingHint') }}
     </p>
     <ul class="import-mapping-list">
       @for (row of importPreview(); track row.sheetName) {
@@ -72,17 +69,17 @@
           [value]="row.selection"
           (change)="updateImportSelection(row.sheetName, $any($event.target).value)"
         >
-          <option value="">-- Überspringen --</option>
+          <option value="">{{ i18n.t('stats.importSkip') }}</option>
           @for (player of mtg.allPlayers(); track player) {
           <option [value]="player">{{ player }}</option>
           }
-          <option value="__NEW__">➕ Neuer Spieler</option>
+          <option value="__NEW__">{{ i18n.t('stats.importNewPlayer') }}</option>
         </select>
         @if (row.selection === '__NEW__') {
         <input
           class="glass-input"
           type="text"
-          placeholder="Name des neuen Spielers"
+          [placeholder]="i18n.t('stats.importNewPlayerNamePlaceholder')"
           [value]="row.newName"
           (input)="updateImportNewName(row.sheetName, $any($event.target).value)"
         />
@@ -92,46 +89,46 @@
     </ul>
     <div class="chip-row">
       <button class="glass-button primary" [disabled]="importBusy()" (click)="confirmImport()">
-        {{ importBusy() ? 'Importiere …' : 'Importieren' }}
+        {{ importBusy() ? i18n.t('stats.importing') : i18n.t('stats.import') }}
       </button>
-      <button class="glass-button" (click)="cancelImport()">Abbrechen</button>
+      <button class="glass-button" (click)="cancelImport()">{{ i18n.t('stats.cancel') }}</button>
     </div>
     }
 
-    <button class="glass-button" (click)="closeImportDialog()">Schließen</button>
+    <button class="glass-button" (click)="closeImportDialog()">{{ i18n.t('stats.close') }}</button>
   </div>
 </div>
 }
 
 @if (mtg.history().length === 0) {
 <section class="glass-card">
-  <h2>Statistiken</h2>
-  <p class="hint">Noch keine Matches gespeichert. Trage im Tab „Match“ dein erstes Ergebnis ein!</p>
+  <h2>{{ i18n.t('stats.title') }}</h2>
+  <p class="hint">{{ i18n.t('stats.noMatchesYet') }}</p>
 </section>
 } @else {
 <section class="glass-card">
   <div class="section-header-row">
-    <h2>Zeitraum &amp; Modus</h2>
+    <h2>{{ i18n.t('stats.periodAndMode') }}</h2>
     @if (groupService.isOwner()) {
     <button
       class="icon-button"
       (click)="openImportDialog()"
-      aria-label="Alte Stats importieren"
-      title="Alte Stats importieren"
+      [attr.aria-label]="i18n.t('stats.importOpenAria')"
+      [title]="i18n.t('stats.importOpenAria')"
     >
       📥
     </button>
     }
   </div>
   <select class="glass-input" [value]="selectedYear()" (change)="setSelectedYear($event)">
-    <option value="Alle">Alle Zeiten</option>
+    <option value="Alle">{{ i18n.t('stats.allTime') }}</option>
     @for (year of availableYears(); track year) {
     <option [value]="year">{{ year }}</option>
     }
   </select>
   <div class="chip-row mode-chip-row">
     <button class="glass-chip" [class.active]="isAllModesSelected()" (click)="selectAllModes()">
-      Alle Modi
+      {{ i18n.t('stats.allModes') }}
     </button>
     @for (m of gameModes; track m) {
     <button
@@ -152,20 +149,20 @@
 <section class="glass-card">
   <p class="hint">
     🔒 {{ blockedModes().join(', ') }}
-    {{ blockedModes().length === 1 ? 'ist für dich gesperrt' : 'sind für dich gesperrt' }} und
-    daher nicht auswählbar. Wende dich an den Admin der Gruppe, falls du Zugriff haben möchtest.
+    {{ blockedModes().length === 1 ? i18n.t('stats.lockedModesSingular') : i18n.t('stats.lockedModesPlural') }}
+    {{ i18n.t('stats.lockedModesSuffix') }}
   </p>
 </section>
 }
 
 @if (selectedModes().size === 0) {
 <section class="glass-card">
-  <p class="hint">Wähle mindestens einen Modus aus, um Stats zu sehen.</p>
+  <p class="hint">{{ i18n.t('stats.chooseModeHint') }}</p>
 </section>
 } @else {
 
 <section class="glass-card">
-  <h2>Spieler-Details</h2>
+  <h2>{{ i18n.t('stats.playerDetails') }}</h2>
   <div class="chip-row">
     @for (player of mtg.allPlayers(); track player) {
     <button
@@ -180,39 +177,39 @@
   </div>
 
   @if (selectedPlayer() && isSingleMode() !== null) {
-  <p class="hint">Zeigt Stats von {{ selectedPlayer() }} nur im Modus „{{ isSingleMode() }}“.</p>
+  <p class="hint">{{ i18n.t('stats.statsForModeOnly', { player: selectedPlayer() ?? '', mode: isSingleMode() ?? '' }) }}</p>
   } @if (!selectedPlayer()) {
-  <p class="hint">Wähle einen Spieler aus, um seine Stats zu sehen.</p>
+  <p class="hint">{{ i18n.t('stats.choosePlayerHint') }}</p>
   } @else if (playerTotalGames() === 0) { @if (isSingleMode() === null) {
-  <p class="hint">{{ selectedPlayer() }} hat noch keine Matches gespielt.</p>
+  <p class="hint">{{ i18n.t('stats.noMatchesForPlayer', { player: selectedPlayer() ?? '' }) }}</p>
   } @else {
   <p class="hint">
-    {{ selectedPlayer() }} hat im Modus „{{ isSingleMode() }}“ noch keine Matches gespielt.
+    {{ i18n.t('stats.noMatchesForPlayerInMode', { player: selectedPlayer() ?? '', mode: isSingleMode() ?? '' }) }}
   </p>
   } } @else {
   <div class="stat-tiles">
     <div class="stat-tile">
       <span class="stat-value">{{ playerTotalGames() }}</span>
-      <span class="stat-label">Spiele</span>
+      <span class="stat-label">{{ i18n.t('stats.games') }}</span>
     </div>
     <div class="stat-tile">
       <span class="stat-value">{{ playerTotalWins() }}</span>
-      <span class="stat-label">Siege</span>
+      <span class="stat-label">{{ i18n.t('stats.wins') }}</span>
     </div>
     <div class="stat-tile">
       <span class="stat-value">{{ playerWinRate() | number: '1.0-0' }}%</span>
-      <span class="stat-label">Winrate</span>
+      <span class="stat-label">{{ i18n.t('stats.winRate') }}</span>
     </div>
   </div>
 
   @if (isSingleMode() === null) {
-  <h3>Nach Spielmodus</h3>
+  <h3>{{ i18n.t('stats.byGameMode') }}</h3>
   <ul class="ranking">
     @for (m of playerModeStats(); track m.mode) {
     <li>
       <span class="rank">🎲</span>
       <span class="name">{{ m.mode }}</span>
-      <span class="detail">{{ m.wins }} / {{ m.games }} Siege</span>
+      <span class="detail">{{ m.wins }} / {{ m.games }} {{ i18n.t('stats.wins') }}</span>
       <span class="rate">{{ m.winRate | number: '1.0-0' }}%</span>
       <div class="bar">
         <div class="bar-fill" [style.width.%]="m.winRate"></div>
@@ -222,13 +219,13 @@
   </ul>
   } @if (playerDeckStats().length > 0) {
   <button class="glass-chip" (click)="togglePlayerDecks()">
-    {{ showPlayerDecks() ? '▾' : '▸' }} Decks ({{ playerDeckStats().length }})
+    {{ showPlayerDecks() ? '▾' : '▸' }} {{ i18n.t('stats.decks') }} ({{ playerDeckStats().length }})
   </button>
   @if (showPlayerDecks()) {
   <div class="chip-row sort-toggle">
-    <button class="glass-chip small" [class.active]="playerDeckSortMode() === 'winRate'" (click)="playerDeckSortMode.set('winRate')">Winrate</button>
-    <button class="glass-chip small" [class.active]="playerDeckSortMode() === 'wins'" (click)="playerDeckSortMode.set('wins')">Siege</button>
-    <button class="glass-chip small" [class.active]="playerDeckSortMode() === 'games'" (click)="playerDeckSortMode.set('games')">Spiele</button>
+    <button class="glass-chip small" [class.active]="playerDeckSortMode() === 'winRate'" (click)="playerDeckSortMode.set('winRate')">{{ i18n.t('sort.winRate') }}</button>
+    <button class="glass-chip small" [class.active]="playerDeckSortMode() === 'wins'" (click)="playerDeckSortMode.set('wins')">{{ i18n.t('sort.wins') }}</button>
+    <button class="glass-chip small" [class.active]="playerDeckSortMode() === 'games'" (click)="playerDeckSortMode.set('games')">{{ i18n.t('sort.games') }}</button>
   </div>
   <ul class="ranking">
     @for (d of playerDeckStats(); track d.deckId; let i = $index) {
@@ -246,13 +243,13 @@
         <span class="card-name-text">
           @if (d.isPrecon) {<span title="Precon">📦</span>}
           {{ d.deckName }}
-          @if (d.borrowed) {<span class="borrowed-badge">🤝 von {{ d.ownerName }}</span>}
+          @if (d.borrowed) {<span class="borrowed-badge">🤝 {{ i18n.t('stats.from', { name: d.ownerName ?? '' }) }}</span>}
         </span>
         @if (isSingleMode() === null) {
           <span class="chevron">{{ selectedDeckDetail() === d.deckId ? '▾' : '▸' }}</span>
         }
       </span>
-      <span class="detail">{{ d.wins }} / {{ d.games }} Siege</span>
+      <span class="detail">{{ d.wins }} / {{ d.games }} {{ i18n.t('stats.wins') }}</span>
       <span class="rate">{{ d.winRate | number: '1.0-0' }}%</span>
       <div class="bar">
         <div class="bar-fill" [style.width.%]="d.winRate"></div>
@@ -263,7 +260,7 @@
         @for (m of deckDetailStats(); track m.mode) {
         <div class="commander-detail-row">
           <span class="mode-name">{{ m.mode }}</span>
-          <span class="mode-detail">{{ m.wins }} / {{ m.games }} Siege</span>
+          <span class="mode-detail">{{ m.wins }} / {{ m.games }} {{ i18n.t('stats.wins') }}</span>
           <span class="mode-rate">{{ m.winRate | number: '1.0-0' }}%</span>
         </div>
         }
@@ -275,13 +272,13 @@
   }
   } @if (playerCommanderStats().length > 0) {
   <button class="glass-chip" (click)="togglePlayerCommanders()">
-    {{ showPlayerCommanders() ? '▾' : '▸' }} Gespielte Commander ({{ playerCommanderStats().length }})
+    {{ showPlayerCommanders() ? '▾' : '▸' }} {{ i18n.t('stats.playedCommanders') }} ({{ playerCommanderStats().length }})
   </button>
   @if (showPlayerCommanders()) {
   <div class="chip-row sort-toggle">
-    <button class="glass-chip small" [class.active]="playerCommanderSortMode() === 'winRate'" (click)="playerCommanderSortMode.set('winRate')">Winrate</button>
-    <button class="glass-chip small" [class.active]="playerCommanderSortMode() === 'wins'" (click)="playerCommanderSortMode.set('wins')">Siege</button>
-    <button class="glass-chip small" [class.active]="playerCommanderSortMode() === 'games'" (click)="playerCommanderSortMode.set('games')">Spiele</button>
+    <button class="glass-chip small" [class.active]="playerCommanderSortMode() === 'winRate'" (click)="playerCommanderSortMode.set('winRate')">{{ i18n.t('sort.winRate') }}</button>
+    <button class="glass-chip small" [class.active]="playerCommanderSortMode() === 'wins'" (click)="playerCommanderSortMode.set('wins')">{{ i18n.t('sort.wins') }}</button>
+    <button class="glass-chip small" [class.active]="playerCommanderSortMode() === 'games'" (click)="playerCommanderSortMode.set('games')">{{ i18n.t('sort.games') }}</button>
   </div>
   <ul class="ranking">
     @for (c of playerCommanderStats(); track c.commander; let i = $index) {
@@ -301,7 +298,7 @@
           <span class="chevron">{{ selectedCommanderDetail() === c.commander ? '▾' : '▸' }}</span>
         }
       </span>
-      <span class="detail">{{ c.wins }} / {{ c.games }} Siege</span>
+      <span class="detail">{{ c.wins }} / {{ c.games }} {{ i18n.t('stats.wins') }}</span>
       <span class="rate">{{ c.winRate | number: '1.0-0' }}%</span>
       <div class="bar">
         <div class="bar-fill" [style.width.%]="c.winRate"></div>
@@ -312,7 +309,7 @@
         @for (m of commanderDetailStats(); track m.mode) {
         <div class="commander-detail-row">
           <span class="mode-name">{{ m.mode }}</span>
-          <span class="mode-detail">{{ m.wins }} / {{ m.games }} Siege</span>
+          <span class="mode-detail">{{ m.wins }} / {{ m.games }} {{ i18n.t('stats.wins') }}</span>
           <span class="mode-rate">{{ m.winRate | number: '1.0-0' }}%</span>
         </div>
         }
@@ -327,37 +324,37 @@
 
 @if (totalGames() === 0) { @if (!selectedPlayer()) {
 <section class="glass-card">
-  <p class="hint">Für diesen Modus wurden noch keine Matches gespeichert.</p>
+  <p class="hint">{{ i18n.t('stats.noMatchesInMode') }}</p>
 </section>
 } } @else { @if (!selectedPlayer()) {
 <section class="glass-card">
-  <h2>Übersicht</h2>
+  <h2>{{ i18n.t('stats.overview') }}</h2>
   <div class="stat-tiles">
     <div class="stat-tile">
       <span class="stat-value">{{ totalGames() }}</span>
-      <span class="stat-label">Spiele gesamt</span>
+      <span class="stat-label">{{ i18n.t('stats.totalGames') }}</span>
     </div>
     <div class="stat-tile">
       <span class="stat-value">{{ playerStats().length }}</span>
-      <span class="stat-label">Aktive Spieler</span>
+      <span class="stat-label">{{ i18n.t('stats.activePlayers') }}</span>
     </div>
     <div class="stat-tile">
       <span class="stat-value">{{ distinctCommanderCount() }}</span>
-      <span class="stat-label">Commander</span>
+      <span class="stat-label">{{ i18n.t('stats.commanders') }}</span>
     </div>
   </div>
 </section>
 
 <!-- NEU -->
 <section class="glass-card">
-  <h2>Rangliste</h2>
+  <h2>{{ i18n.t('stats.ranking') }}</h2>
   <div class="chip-row sort-toggle">
-    <button class="glass-chip small" [class.active]="playerSortMode() === 'winRate'" (click)="playerSortMode.set('winRate')">Winrate</button>
-    <button class="glass-chip small" [class.active]="playerSortMode() === 'wins'" (click)="playerSortMode.set('wins')">Siege</button>
-    <button class="glass-chip small" [class.active]="playerSortMode() === 'games'" (click)="playerSortMode.set('games')">Spiele</button>
+    <button class="glass-chip small" [class.active]="playerSortMode() === 'winRate'" (click)="playerSortMode.set('winRate')">{{ i18n.t('sort.winRate') }}</button>
+    <button class="glass-chip small" [class.active]="playerSortMode() === 'wins'" (click)="playerSortMode.set('wins')">{{ i18n.t('sort.wins') }}</button>
+    <button class="glass-chip small" [class.active]="playerSortMode() === 'games'" (click)="playerSortMode.set('games')">{{ i18n.t('sort.games') }}</button>
   </div>
   @if (rankedPlayerStats().length === 0) {
-  <p class="hint">Noch niemand hat genug Spiele für die Rangliste – siehe Qualifikation unten.</p>
+  <p class="hint">{{ i18n.t('stats.notEnoughGamesForRanking') }}</p>
   }
   <ul class="ranking">
     @for (p of pagedPlayerStats(); track p.name; let i = $index) {
@@ -367,7 +364,7 @@
         <app-player-avatar [url]="mtg.playerAvatars()[p.name] ?? null" />
         {{ p.name }}
       </span>
-      <span class="detail">{{ p.wins }} / {{ p.games }} Siege</span>
+      <span class="detail">{{ p.wins }} / {{ p.games }} {{ i18n.t('stats.wins') }}</span>
       <span class="rate">{{ p.winRate | number: '1.0-0' }}%</span>
       <div class="bar">
         <div class="bar-fill" [style.width.%]="p.winRate"></div>
@@ -377,19 +374,18 @@
   </ul>
   @if (playerTotalPages() > 1) {
   <div class="chip-row pager">
-    <button class="icon-button" (click)="prevPlayerPage()" [disabled]="playerEffectivePage() === 0" aria-label="Vorherige Seite">◀</button>
-    <span class="hint">{{ playerEffectivePage() * 10 + 1 }}–{{ playerPageRangeEnd() }} von {{ rankedPlayerStats().length }}</span>
-    <button class="icon-button" (click)="nextPlayerPage()" [disabled]="playerEffectivePage() >= playerTotalPages() - 1" aria-label="Nächste Seite">▶</button>
+    <button class="icon-button" (click)="prevPlayerPage()" [disabled]="playerEffectivePage() === 0" [attr.aria-label]="i18n.t('stats.previousPage')">◀</button>
+    <span class="hint">{{ playerEffectivePage() * 10 + 1 }}–{{ playerPageRangeEnd() }} {{ i18n.t('stats.of') }} {{ rankedPlayerStats().length }}</span>
+    <button class="icon-button" (click)="nextPlayerPage()" [disabled]="playerEffectivePage() >= playerTotalPages() - 1" [attr.aria-label]="i18n.t('stats.nextPage')">▶</button>
   </div>
   }
 </section>
 
 @if (playersInQualification().length > 0) {
 <section class="glass-card">
-  <h2>Spiele bis zur Qualifikation</h2>
+  <h2>{{ i18n.t('stats.gamesUntilQualification') }}</h2>
   <p class="hint">
-    Ab {{ qualificationThreshold() }} Spielen (in diesem Zeitraum/Modus) erscheinen Spieler in der
-    Rangliste.
+    {{ i18n.t('stats.qualificationHint', { threshold: qualificationThreshold() }) }}
   </p>
   <ul class="qualification">
     @for (p of pagedPlayersInQualification(); track p.name) {
@@ -398,33 +394,32 @@
         <app-player-avatar [url]="mtg.playerAvatars()[p.name] ?? null" />
         {{ p.name }}
       </span>
-      <span class="detail">{{ p.games }} / {{ qualificationThreshold() }} Spiele</span>
-      <span class="needed">noch {{ p.gamesNeeded }}</span>
+      <span class="detail">{{ p.games }} / {{ qualificationThreshold() }} {{ i18n.t('stats.games') }}</span>
+      <span class="needed">{{ i18n.t('stats.stillNeeded', { count: p.gamesNeeded }) }}</span>
     </li>
     }
   </ul>
   @if (playerQualTotalPages() > 1) {
   <div class="chip-row pager">
-    <button class="icon-button" (click)="prevPlayerQualPage()" [disabled]="playerQualEffectivePage() === 0" aria-label="Vorherige Seite">◀</button>
-    <span class="hint">{{ playerQualEffectivePage() * 10 + 1 }}–{{ playerQualPageRangeEnd() }} von {{ playersInQualification().length }}</span>
-    <button class="icon-button" (click)="nextPlayerQualPage()" [disabled]="playerQualEffectivePage() >= playerQualTotalPages() - 1" aria-label="Nächste Seite">▶</button>
+    <button class="icon-button" (click)="prevPlayerQualPage()" [disabled]="playerQualEffectivePage() === 0" [attr.aria-label]="i18n.t('stats.previousPage')">◀</button>
+    <span class="hint">{{ playerQualEffectivePage() * 10 + 1 }}–{{ playerQualPageRangeEnd() }} {{ i18n.t('stats.of') }} {{ playersInQualification().length }}</span>
+    <button class="icon-button" (click)="nextPlayerQualPage()" [disabled]="playerQualEffectivePage() >= playerQualTotalPages() - 1" [attr.aria-label]="i18n.t('stats.nextPage')">▶</button>
   </div>
   }
 </section>
 } @if (combinedDeckCommanderStats().length > 0) {
 <section class="glass-card">
-  <h2>Decks &amp; Commander</h2>
+  <h2>{{ i18n.t('stats.decksAndCommanders') }}</h2>
   <p class="hint">
-    Eigenständige (Nicht-Precon-)Decks bleiben einzeln, Precons und noch nicht verlinkte
-    Commander sind pro Commander zusammengefasst.
+    {{ i18n.t('stats.decksAndCommandersHint') }}
   </p>
   <div class="chip-row sort-toggle">
-    <button class="glass-chip small" [class.active]="deckSortMode() === 'winRate'" (click)="deckSortMode.set('winRate')">Winrate</button>
-    <button class="glass-chip small" [class.active]="deckSortMode() === 'wins'" (click)="deckSortMode.set('wins')">Siege</button>
-    <button class="glass-chip small" [class.active]="deckSortMode() === 'games'" (click)="deckSortMode.set('games')">Spiele</button>
+    <button class="glass-chip small" [class.active]="deckSortMode() === 'winRate'" (click)="deckSortMode.set('winRate')">{{ i18n.t('sort.winRate') }}</button>
+    <button class="glass-chip small" [class.active]="deckSortMode() === 'wins'" (click)="deckSortMode.set('wins')">{{ i18n.t('sort.wins') }}</button>
+    <button class="glass-chip small" [class.active]="deckSortMode() === 'games'" (click)="deckSortMode.set('games')">{{ i18n.t('sort.games') }}</button>
   </div>
   @if (rankedCombinedStats().length === 0) {
-  <p class="hint">Noch nichts hat genug Spiele für die Rangliste – siehe Qualifikation unten.</p>
+  <p class="hint">{{ i18n.t('stats.notEnoughGamesForRankingDecks') }}</p>
   }
   <ul class="ranking">
     @for (e of pagedCombinedStats(); track e.key; let i = $index) {
@@ -437,7 +432,7 @@
         <span class="card-name-text">{{ e.name }}</span>
       </span>
       <span class="detail">
-        {{ e.wins }} / {{ e.games }} Siege · gespielt von
+        {{ e.wins }} / {{ e.games }} {{ i18n.t('stats.wins') }} · {{ i18n.t('stats.playedBy') }}
         @for (pilot of e.playedBy; track pilot.name; let last = $last) {
           <span [class.borrowed-pilot]="pilot.borrowed">{{ pilot.name }}@if (pilot.borrowed) { 🤝 }</span
           >@if (!last) {, }
@@ -452,15 +447,14 @@
   </ul>
   @if (combinedTotalPages() > 1) {
   <div class="chip-row pager">
-    <button class="icon-button" (click)="prevCombinedPage()" [disabled]="combinedEffectivePage() === 0" aria-label="Vorherige Seite">◀</button>
-    <span class="hint">{{ combinedEffectivePage() * 10 + 1 }}–{{ combinedPageRangeEnd() }} von {{ rankedCombinedStats().length }}</span>
-    <button class="icon-button" (click)="nextCombinedPage()" [disabled]="combinedEffectivePage() >= combinedTotalPages() - 1" aria-label="Nächste Seite">▶</button>
+    <button class="icon-button" (click)="prevCombinedPage()" [disabled]="combinedEffectivePage() === 0" [attr.aria-label]="i18n.t('stats.previousPage')">◀</button>
+    <span class="hint">{{ combinedEffectivePage() * 10 + 1 }}–{{ combinedPageRangeEnd() }} {{ i18n.t('stats.of') }} {{ rankedCombinedStats().length }}</span>
+    <button class="icon-button" (click)="nextCombinedPage()" [disabled]="combinedEffectivePage() >= combinedTotalPages() - 1" [attr.aria-label]="i18n.t('stats.nextPage')">▶</button>
   </div>
   }
   @if (combinedInQualification().length > 0) {
   <button class="glass-chip" (click)="toggleDeckQualification()">
-    {{ showDeckQualification() ? '▾' : '▸' }} Spiele bis zur Qualifikation ({{
-    combinedInQualification().length }})
+    {{ showDeckQualification() ? i18n.t('stats.qualificationToggleExpanded', { count: combinedInQualification().length }) : i18n.t('stats.qualificationToggle', { count: combinedInQualification().length }) }}
   </button>
   } @if (showDeckQualification()) {
   <ul class="qualification">
@@ -472,16 +466,16 @@
         }
         <span class="card-name-text">{{ e.name }}</span>
       </span>
-      <span class="detail">{{ e.games }} / {{ deckQualificationThreshold() }} Spiele</span>
-      <span class="needed">noch {{ e.gamesNeeded }}</span>
+      <span class="detail">{{ e.games }} / {{ deckQualificationThreshold() }} {{ i18n.t('stats.games') }}</span>
+      <span class="needed">{{ i18n.t('stats.stillNeeded', { count: e.gamesNeeded }) }}</span>
     </li>
     }
   </ul>
   @if (combinedQualTotalPages() > 1) {
   <div class="chip-row pager">
-    <button class="icon-button" (click)="prevCombinedQualPage()" [disabled]="combinedQualEffectivePage() === 0" aria-label="Vorherige Seite">◀</button>
-    <span class="hint">{{ combinedQualEffectivePage() * 10 + 1 }}–{{ combinedQualPageRangeEnd() }} von {{ combinedInQualification().length }}</span>
-    <button class="icon-button" (click)="nextCombinedQualPage()" [disabled]="combinedQualEffectivePage() >= combinedQualTotalPages() - 1" aria-label="Nächste Seite">▶</button>
+    <button class="icon-button" (click)="prevCombinedQualPage()" [disabled]="combinedQualEffectivePage() === 0" [attr.aria-label]="i18n.t('stats.previousPage')">◀</button>
+    <span class="hint">{{ combinedQualEffectivePage() * 10 + 1 }}–{{ combinedQualPageRangeEnd() }} {{ i18n.t('stats.of') }} {{ combinedInQualification().length }}</span>
+    <button class="icon-button" (click)="nextCombinedQualPage()" [disabled]="combinedQualEffectivePage() >= combinedQualTotalPages() - 1" [attr.aria-label]="i18n.t('stats.nextPage')">▶</button>
   </div>
   }
   }
@@ -492,13 +486,12 @@
 
 @if (groupService.isOwner()) {
 <section class="glass-card danger-zone">
-  <h2>⚠️ Danger Zone</h2>
+  <h2>{{ i18n.t('stats.dangerZone') }}</h2>
   <p class="hint">
-    Löscht unwiderruflich den kompletten Spielverlauf, alle Spieler und deren Hintergrundbilder.
-    Cubes und der Gemini-API-Key bleiben erhalten. Das kann nicht rückgängig gemacht werden!
+    {{ i18n.t('stats.dangerZoneHint') }}
   </p>
   <button class="glass-button danger" (click)="openResetConfirm()">
-    🗑️ Alle Statistiken zurücksetzen
+    {{ i18n.t('stats.resetAll') }}
   </button>
 </section>
 }
@@ -506,29 +499,29 @@
 @if (showResetConfirm()) {
 <div class="options-menu-overlay" (click)="closeResetConfirm()">
   <div class="options-menu-sheet" (click)="$event.stopPropagation()">
-    <h3>Wirklich alles löschen?</h3>
+    <h3>{{ i18n.t('stats.reallyDeleteAll') }}</h3>
     <p class="hint">
-      Tippe <strong>LÖSCHEN</strong> ein, um zu bestätigen. Verlauf, Statistiken und Spielerliste
-      sind danach unwiderruflich weg.
+      {{ i18n.t('stats.deleteConfirmHintPrefix') }} <strong>{{ i18n.t('stats.deleteConfirmWord') }}</strong>
+      {{ i18n.t('stats.deleteConfirmHintSuffix') }}
     </p>
     <input
       class="glass-input"
       type="text"
-      placeholder="LÖSCHEN"
+      [placeholder]="i18n.t('stats.deleteConfirmWord')"
       [value]="resetConfirmText()"
       (input)="updateResetConfirmText($any($event.target).value)"
     />
     @if (resetError()) {
-      <p class="error">Fehler: {{ resetError() }}</p>
+      <p class="error">{{ i18n.t('stats.error', { message: resetError() }) }}</p>
     }
     <button
       class="glass-button danger"
       [disabled]="!canConfirmReset() || resetBusy()"
       (click)="confirmReset()"
     >
-      {{ resetBusy() ? 'Lösche …' : 'Endgültig löschen' }}
+      {{ resetBusy() ? i18n.t('stats.deleting') : i18n.t('stats.deleteForever') }}
     </button>
-    <button class="glass-button" (click)="closeResetConfirm()">Abbrechen</button>
+    <button class="glass-button" (click)="closeResetConfirm()">{{ i18n.t('stats.cancel') }}</button>
   </div>
 </div>
 }

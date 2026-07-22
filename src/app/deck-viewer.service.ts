@@ -9,6 +9,7 @@ import {
 } from './commander-spellbook.service';
 import { EdhrecService, EdhrecCardlist, EdhrecTag } from './edhrec.service';
 import { AuthService } from './auth.service';
+import { I18nService } from './i18n.service';
 
 export interface ManaCurveBucket {
   label: string;
@@ -49,6 +50,7 @@ export class DeckViewerService {
   private readonly commanderSpellbook = inject(CommanderSpellbookService);
   private readonly edhrec = inject(EdhrecService);
   private readonly auth = inject(AuthService);
+  readonly i18n = inject(I18nService);
 
   readonly viewingDeck = signal<Deck | null>(null);
 
@@ -141,13 +143,7 @@ export class DeckViewerService {
     return totalCmc / totalQty;
   });
 
-  private static readonly PIP_COLORS: { color: PipCount['color']; label: string }[] = [
-    { color: 'W', label: 'Weiß' },
-    { color: 'U', label: 'Blau' },
-    { color: 'B', label: 'Schwarz' },
-    { color: 'R', label: 'Rot' },
-    { color: 'G', label: 'Grün' },
-  ];
+  private static readonly PIP_COLORS: PipCount['color'][] = ['W', 'U', 'B', 'R', 'G'];
 
   readonly pipDistribution = computed<PipCount[]>(() => {
     const details = this.viewingCardDetails();
@@ -163,9 +159,9 @@ export class DeckViewerService {
         }
       }
     }
-    return DeckViewerService.PIP_COLORS.map(({ color, label }) => ({
+    return DeckViewerService.PIP_COLORS.map((color) => ({
       color,
-      label,
+      label: this.i18n.t(`pip.${color}`),
       count: counts[color],
     }));
   });
@@ -190,9 +186,9 @@ export class DeckViewerService {
    */
   readonly estimatedBracketHint = computed(() => {
     const count = this.gameChangerCount();
-    if (count === 0) return 'Bracket 1–3 möglich';
-    if (count <= 3) return 'mindestens Bracket 3';
-    return 'Bracket 4–5';
+    if (count === 0) return this.i18n.t('deckViewer.bracketHint13');
+    if (count <= 3) return this.i18n.t('deckViewer.bracketHintMin3');
+    return this.i18n.t('deckViewer.bracketHint45');
   });
 
   // NEU
@@ -268,6 +264,31 @@ export class DeckViewerService {
   private categoryFor(card: DeckCard): string {
     const type = card.typeLine ?? '';
     return DeckViewerService.TYPE_ORDER.find((c) => c.test(type))?.label ?? 'Sonstiges';
+  }
+
+  /**
+   * Übersetzt einen internen Sektions-/Typ-Label-Schlüssel (z.B. "Kreatur", "Sonstiges", "Ohne
+   * Tag") für die Anzeige - die Labels selbst bleiben intern immer deutsch, da sie zugleich als
+   * Gruppierungs-/Filter-Schlüssel dienen (categoryFor, typeFilterValue, TYPE_TO_SCRYFALL). Nur
+   * diese Anzeige-Übersetzung ist sprachabhängig.
+   */
+  private static readonly LABEL_KEYS: Record<string, string> = {
+    Planeswalker: 'deckViewer.type.Planeswalker',
+    Battle: 'deckViewer.type.Battle',
+    Kreatur: 'deckViewer.type.Kreatur',
+    Spontanzauber: 'deckViewer.type.Spontanzauber',
+    Hexerei: 'deckViewer.type.Hexerei',
+    Artefakt: 'deckViewer.type.Artefakt',
+    Verzauberung: 'deckViewer.type.Verzauberung',
+    Land: 'deckViewer.type.Land',
+    Commander: 'deckViewer.type.Commander',
+    Sonstiges: 'deckViewer.type.Sonstiges',
+    'Ohne Tag': 'deckViewer.type.OhneTag',
+  };
+
+  translateLabel(label: string): string {
+    const key = DeckViewerService.LABEL_KEYS[label];
+    return key ? this.i18n.t(key) : label;
   }
 
   private static sortByCmc(a: DeckCard, b: DeckCard): number {
@@ -519,6 +540,14 @@ export class DeckViewerService {
     { value: 'mld', label: 'Mass Land Denial', query: 'otag:mass-land-denial' },
   ];
 
+  effectFilterLabel(value: string): string {
+    return this.i18n.t(`effectFilter.${value}`);
+  }
+
+  keywordFilterLabel(value: string): string {
+    return this.i18n.t(`keywordFilter.${value}`);
+  }
+
   /** Fähigkeits-Keywords (feste Eigenschaft der Karte, nicht Tagger-Tags, sondern echte Scryfall-Keyword-Abfragen). */
   readonly keywordFilters: { value: string; label: string }[] = [
     { value: 'lifelink', label: 'Lifelink' },
@@ -723,14 +752,17 @@ export class DeckViewerService {
 
     const currentCommanders = this.editedDeckCards().filter((c) => c.isCommander);
     if (currentCommanders.length >= 2) {
-      this.commanderMarkError.set('Es können maximal 2 Commander gleichzeitig markiert sein.');
+      this.commanderMarkError.set(this.i18n.t('deckViewer.msg.maxTwoCommanders'));
       return;
     }
     if (currentCommanders.length === 1) {
       const existing = currentCommanders[0];
       if (!this.canBeSecondCommander(existing, card)) {
         this.commanderMarkError.set(
-          `${existing.cardName} ist bereits Commander. ${card.cardName} kann nur zusätzlich markiert werden, wenn eine der beiden Karten Partner, Background oder Doctor's companion hat - sonst zuerst ${existing.cardName} entmarkieren.`
+          this.i18n.t('deckViewer.msg.secondCommanderInvalid', {
+            existing: existing.cardName,
+            card: card.cardName,
+          })
         );
         return;
       }
@@ -754,7 +786,7 @@ export class DeckViewerService {
     const printings = await this.scryfall.getPrintings(card.cardName);
     this.artworkPickerBusy.set(false);
     if (printings.length === 0) {
-      this.artworkPickerError.set('Keine weiteren Editionen gefunden.');
+      this.artworkPickerError.set(this.i18n.t('deckViewer.msg.noMoreEditionsFound'));
     }
     this.artworkOptions.set(printings);
   }
@@ -778,7 +810,7 @@ export class DeckViewerService {
     this.artworkPickerBusy.set(false);
 
     if (!ok) {
-      this.artworkPickerError.set('Bild konnte nicht gespeichert werden.');
+      this.artworkPickerError.set(this.i18n.t('deckViewer.msg.imageSaveFailed'));
       return;
     }
 
@@ -789,7 +821,7 @@ export class DeckViewerService {
     // Kurze Rückmeldung, da das Artwork sofort gespeichert wird (unabhängig vom
     // Speichern-Button für Karten hinzufügen/entfernen) - ohne die dachte man leicht, es sei noch
     // nicht gespeichert.
-    this.addCardMessage.set(`Artwork für "${card.cardName}" gespeichert.`);
+    this.addCardMessage.set(this.i18n.t('deckViewer.msg.artworkSaved', { name: card.cardName }));
     this.closeArtworkPicker();
   }
 
@@ -804,7 +836,7 @@ export class DeckViewerService {
     this.artworkPickerBusy.set(false);
 
     if (!url) {
-      this.artworkPickerError.set('Hochladen fehlgeschlagen (nur Bilder bis 10 MB).');
+      this.artworkPickerError.set(this.i18n.t('deckViewer.msg.uploadFailed'));
       return;
     }
     await this.selectArtwork(url);
@@ -1111,7 +1143,7 @@ export class DeckViewerService {
     // Commander-Markieren auch für gerade erst (noch ungespeichert) hinzugefügte Karten
     // funktioniert, ohne auf den nächsten vollen Reload zu warten.
     this.viewingCardDetails.update((map) => new Map(map).set(key, card));
-    this.addCardMessage.set(`"${card.name}" hinzugefügt (noch nicht gespeichert).`);
+    this.addCardMessage.set(this.i18n.t('deckViewer.msg.cardAdded', { name: card.name }));
     this.triggerFlash(card.name, 'add');
   }
 
@@ -1308,7 +1340,7 @@ export class DeckViewerService {
     const found = await this.scryfall.findCard(cardName);
     this.addCardBusy.set(false);
     if (!found) {
-      this.addCardMessage.set(`"${cardName}" nicht bei Scryfall gefunden.`);
+      this.addCardMessage.set(this.i18n.t('deckViewer.msg.notFoundOnScryfall', { name: cardName }));
       return;
     }
     this.addCard(found);

@@ -7,6 +7,7 @@ export interface Profile {
   displayName: string;
   avatarUrl: string | null;
   favoriteCommanders: string[];
+  language: 'de' | 'en';
 }
 
 @Injectable({ providedIn: 'root' })
@@ -54,7 +55,7 @@ export class ProfileService {
     this.loading.set(true);
     const { data, error } = await supabase
       .from('profiles')
-      .select('id, display_name, avatar_url, favorite_commanders')
+      .select('id, display_name, avatar_url, favorite_commanders, language')
       .eq('id', userId)
       .single();
 
@@ -67,9 +68,29 @@ export class ProfileService {
         displayName: data.display_name,
         avatarUrl: data.avatar_url,
         favoriteCommanders: data.favorite_commanders ?? [],
+        language: data.language === 'en' ? 'en' : 'de',
       });
     }
     this.loading.set(false);
+  }
+
+  /** Speichert die bevorzugte Sprache am Account, damit sie geräteübergreifend gilt. */
+  async updateLanguage(language: 'de' | 'en'): Promise<boolean> {
+    const current = this.profile();
+    if (!current) return false;
+
+    const { error } = await supabase
+      .from('profiles')
+      .update({ language })
+      .eq('id', current.id);
+
+    if (error) {
+      console.error('Konnte Sprache nicht speichern:', error);
+      return false;
+    }
+
+    this.profile.update((p) => (p ? { ...p, language } : p));
+    return true;
   }
 
   /** Maximal 3 Lieblings-Commander. */

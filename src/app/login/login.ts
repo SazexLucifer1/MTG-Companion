@@ -1,5 +1,6 @@
 import { Component, inject, signal } from '@angular/core';
 import { AuthService } from '../auth.service';
+import { I18nService } from '../i18n.service';
 
 @Component({
   selector: 'app-login',
@@ -9,6 +10,7 @@ import { AuthService } from '../auth.service';
 })
 export class Login {
   private readonly auth = inject(AuthService);
+  readonly i18n = inject(I18nService);
 
   readonly mode = signal<'signin' | 'signup'>('signin');
   readonly email = signal('');
@@ -31,9 +33,7 @@ export class Login {
       if (this.mode() === 'signup') {
         const { needsConfirmation } = await this.auth.signUp(this.email(), this.password());
         if (needsConfirmation) {
-          this.infoMessage.set(
-            'Fast geschafft! Wir haben dir eine Bestätigungs-E-Mail geschickt. Bitte bestätige deine Adresse über den Link darin, bevor du dich anmeldest.'
-          );
+          this.infoMessage.set(this.i18n.t('login.msg.signupConfirmation'));
           this.mode.set('signin');
           this.password.set('');
         }
@@ -41,7 +41,7 @@ export class Login {
         await this.auth.signIn(this.email(), this.password());
       }
     } catch (err: any) {
-      this.errorMessage.set(err?.message ?? 'Etwas ist schiefgelaufen.');
+      this.errorMessage.set(err?.message ?? this.i18n.t('login.msg.genericError'));
     } finally {
       this.loading.set(false);
     }
@@ -69,11 +69,9 @@ export class Login {
     this.forgotMessage.set(null);
     try {
       await this.auth.resetPasswordForEmail(this.forgotEmail());
-      this.forgotMessage.set(
-        'Falls ein Account mit dieser E-Mail existiert, haben wir dir einen Link zum Zurücksetzen des Passworts geschickt.'
-      );
+      this.forgotMessage.set(this.i18n.t('login.msg.forgotSent'));
     } catch (err: any) {
-      this.forgotMessage.set(err?.message ?? 'Etwas ist schiefgelaufen.');
+      this.forgotMessage.set(err?.message ?? this.i18n.t('login.msg.genericError'));
     } finally {
       this.forgotBusy.set(false);
     }
