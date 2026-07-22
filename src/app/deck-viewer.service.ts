@@ -911,6 +911,17 @@ export class DeckViewerService {
     });
   }
 
+  /**
+   * Nur die Vorderseite eines Doppelkarten-Namens ("Barkchannel Pathway // Tidechannel Pathway" ->
+   * "barkchannel pathway") - EDHREC listet MDFCs/Transform-Karten nur mit dem Namen einer Seite,
+   * während Scryfalls aufgelöster Kartenname immer den vollen "A // B"-Kombi-Namen führt. Ohne
+   * diese Normalisierung erkennt weder das Klick-Feedback noch "schon im Deck" eine gerade erst
+   * hinzugefügte Doppelkarte wieder (siehe isFlashing/isCardInDeck).
+   */
+  private static frontFaceKey(name: string): string {
+    return name.split(' // ')[0].trim().toLowerCase();
+  }
+
   /** Kurzes grünes/rotes Aufleuchten des zuletzt geklickten +/--Buttons als Klick-Feedback. */
   readonly flashState = signal<{ key: string; type: 'add' | 'remove' } | null>(null);
   private flashTimer: ReturnType<typeof setTimeout> | null = null;
@@ -923,7 +934,8 @@ export class DeckViewerService {
 
   isFlashing(cardName: string, type: 'add' | 'remove'): boolean {
     const state = this.flashState();
-    return state?.key === cardName.toLowerCase() && state.type === type;
+    if (!state || state.type !== type) return false;
+    return DeckViewerService.frontFaceKey(state.key) === DeckViewerService.frontFaceKey(cardName);
   }
 
   /** card.quantity ist hier bereits der aktuell angezeigte (ggf. schon angepasste) Stand aus editedDeckCards(). */
@@ -1277,7 +1289,8 @@ export class DeckViewerService {
   }
 
   isCardInDeck(cardName: string): boolean {
-    return this.editedDeckCards().some((c) => c.cardName.toLowerCase() === cardName.toLowerCase());
+    const target = DeckViewerService.frontFaceKey(cardName);
+    return this.editedDeckCards().some((c) => DeckViewerService.frontFaceKey(c.cardName) === target);
   }
 
   /**
