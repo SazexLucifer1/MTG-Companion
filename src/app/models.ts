@@ -77,4 +77,6 @@ export interface DeckStats {
   pilots: { name: string; borrowed: boolean }[];
   /** Zuletzt in einem Match erfasster Commander dieses Decks, falls vorhanden. */
   commander?: string;
+  /** Im Deck selbst hinterlegtes Commander-Bild (deck_cards.image_url), falls vorhanden - hat Vorrang vor der generischen Scryfall-Suche nach dem Namen. */
+  commanderImageUrl?: string | null;
 }

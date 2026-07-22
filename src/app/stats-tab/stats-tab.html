@@ -406,7 +406,7 @@
     <li>
       <span class="rank">{{ medal(combinedEffectivePage() * 10 + i) }}</span>
       <span class="name card-name-cell">
-        @if (commanderImage(e.cardName); as img) {
+        @if (commanderImage(e.cardName, e.cardImageUrl); as img) {
         <img class="card-thumb" [src]="img" [alt]="e.cardName" />
         }
         <span class="card-name-text">{{ e.name }}</span>
@@ -442,7 +442,7 @@
     @for (e of pagedCombinedInQualification(); track e.key) {
     <li>
       <span class="name card-name-cell">
-        @if (commanderImage(e.cardName); as img) {
+        @if (commanderImage(e.cardName, e.cardImageUrl); as img) {
         <img class="card-thumb" [src]="img" [alt]="e.cardName" />
         }
         <span class="card-name-text">{{ e.name }}</span>

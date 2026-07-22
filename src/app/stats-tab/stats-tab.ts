@@ -6,6 +6,7 @@ import { MtgService } from '../mtg.service';
 import { GroupService } from '../group.service';
 import { PlayerAvatar } from '../player-avatar/player-avatar';
 import { ScryfallService } from '../scryfall.service';
+import { DeckService } from '../deck.service';
 import {
   ExcelImportService,
   IMPORT_LOSS_PLACEHOLDER,
@@ -22,6 +23,8 @@ interface CombinedRankEntry {
   key: string;
   name: string;
   cardName?: string;
+  /** Nur bei Deck-Einträgen gesetzt (deck_cards.image_url) - hat Vorrang vor der Namenssuche in commanderImage(). */
+  cardImageUrl?: string | null;
   games: number;
   wins: number;
   winRate: number;
@@ -46,13 +49,31 @@ export class StatsTab {
   readonly groupService = inject(GroupService);
   private readonly excelImport = inject(ExcelImportService);
   private readonly scryfall = inject(ScryfallService);
+  private readonly deckService = inject(DeckService);
 
   // --- Kartenbilder (Commander/Erfolgreichste Commander & Decks) ---
 
   /** Kartenname (lowercase) -> Bild-URL oder null (nicht gefunden). Nur für aktuell sichtbare Einträge geladen. */
   private readonly cardImages = signal<Record<string, string | null>>({});
+  /**
+   * Deck-ID -> im Deck selbst hinterlegter Commander + Bild (deck_cards.is_commander/image_url) -
+   * hat Vorrang vor dem in Partien hinterlegten Namen (siehe deckStats()), da der markierte
+   * Commander die aktuelle Wahrheit ist und sich seit alten Matches geändert haben kann, und weil
+   * der in Matches erfasste Name manchmal fehlt (z.B. Deck nie über den Match-Tab zugewiesen).
+   */
+  private readonly storedDeckCommanders = signal<Map<string, { name: string; imageUrl: string | null }>>(new Map());
 
   constructor() {
+    effect(() => {
+      const deckIds = [
+        ...new Set(
+          this.filteredMatches().flatMap((m) => m.players.map((p) => p.deckId).filter((id): id is string => !!id))
+        ),
+      ];
+      if (deckIds.length === 0) return;
+      this.deckService.getStoredCommanders(deckIds).then((map) => this.storedDeckCommanders.set(map));
+    });
+
     effect(() => {
       const names = new Set<string>();
       for (const e of this.pagedCombinedStats()) {
@@ -80,8 +101,9 @@ export class StatsTab {
     });
   }
 
-  /** Kartenbild-URL für einen Commander-Namen, falls schon geladen (siehe cardImages). */
-  commanderImage(name: string | undefined): string | null {
+  /** Kartenbild-URL für einen Commander-Namen - ein im Deck selbst hinterlegtes Bild (storedImageUrl) hat Vorrang vor der generischen Namenssuche. */
+  commanderImage(name: string | undefined, storedImageUrl?: string | null): string | null {
+    if (storedImageUrl) return storedImageUrl;
     if (!name) return null;
     return this.cardImages()[name.toLowerCase()] ?? null;
   }
@@ -391,9 +413,11 @@ export class StatsTab {
         stats.set(p.deckId, entry);
       }
     }
+    const stored = this.storedDeckCommanders();
     return [...stats.entries()]
       .map(([deckId, s]) => {
         const ownerName = this.deckOwnerName(s.ownerId);
+        const storedCommander = stored.get(deckId);
         return {
           deckId,
           deckName: s.deckName,
@@ -405,7 +429,8 @@ export class StatsTab {
             name,
             borrowed: ownerName !== null && name !== ownerName,
           })),
-          commander: s.commander,
+          commander: storedCommander?.name ?? s.commander,
+          commanderImageUrl: storedCommander?.imageUrl ?? null,
         };
       })
       .sort((a, b) => b.wins - a.wins || b.winRate - a.winRate);
@@ -431,6 +456,7 @@ export class StatsTab {
       key: `d:${d.deckId}`,
       name: d.deckName,
       cardName: d.commander,
+      cardImageUrl: d.commanderImageUrl,
       games: d.games,
       wins: d.wins,
       winRate: d.winRate,
