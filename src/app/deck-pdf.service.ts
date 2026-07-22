@@ -74,7 +74,13 @@ export class DeckPdfService {
 
   private async fetchImageAsDataUrl(url: string): Promise<string | null> {
     try {
-      const res = await fetch(`/api/proxy-image?url=${encodeURIComponent(url)}`);
+      // Der Proxy lässt aus Sicherheitsgründen nur cards.scryfall.io durch (siehe
+      // functions/api/proxy-image.ts) - eigene, selbst hochgeladene Artworks liegen im
+      // "deck-art"-Supabase-Bucket und müssen DIREKT geladen werden, sonst kommt vom Proxy ein 403
+      // und die Karte fehlt einfach im PDF, ohne dass irgendwo ein Fehler auftaucht.
+      const isScryfallImage = new URL(url, window.location.href).hostname === 'cards.scryfall.io';
+      const fetchUrl = isScryfallImage ? `/api/proxy-image?url=${encodeURIComponent(url)}` : url;
+      const res = await fetch(fetchUrl);
       if (!res.ok) return null;
       const blob = await res.blob();
       return await new Promise<string>((resolve, reject) => {
