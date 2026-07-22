@@ -85,6 +85,9 @@ export class StatsTab {
       for (const c of this.playerCommanderStats()) {
         names.add(c.commander);
       }
+      for (const d of this.playerDeckStats()) {
+        if (d.commander) names.add(d.commander);
+      }
       const cache = this.cardImages();
       const missing = [...names].filter((n) => !(n.toLowerCase() in cache));
       if (missing.length === 0) return;
@@ -647,7 +650,7 @@ export class StatsTab {
 
     const stats = new Map<
       string,
-      { deckName: string; isPrecon: boolean; ownerId?: string; games: number; wins: number }
+      { deckName: string; isPrecon: boolean; ownerId?: string; games: number; wins: number; commander?: string }
     >();
     for (const match of this.selectedPlayerMatches()) {
       const entry0 = match.players.find((p) => p.name === player);
@@ -660,13 +663,16 @@ export class StatsTab {
         wins: 0,
       };
       entry.games++;
+      if (entry0.commander) entry.commander = entry0.commander;
       if (this.isPlayerWinner(match, player)) entry.wins++;
       stats.set(entry0.deckId, entry);
     }
 
+    const stored = this.storedDeckCommanders();
     return [...stats.entries()]
       .map(([deckId, s]) => {
         const ownerName = this.deckOwnerName(s.ownerId);
+        const storedCommander = stored.get(deckId);
         return {
           deckId,
           deckName: s.deckName,
@@ -676,6 +682,8 @@ export class StatsTab {
           winRate: s.games > 0 ? (s.wins / s.games) * 100 : 0,
           borrowed: ownerName !== null && ownerName !== player,
           ownerName,
+          commander: storedCommander?.name ?? s.commander,
+          commanderImageUrl: storedCommander?.imageUrl ?? null,
         };
       })
       .sort(this.compareBySortMode(this.playerDeckSortMode()));

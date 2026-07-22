@@ -234,10 +234,15 @@
     @for (d of playerDeckStats(); track d.deckId; let i = $index) {
     <li>
       <span class="rank">{{ medal(i) }}</span>
-      <span class="name">
-        @if (d.isPrecon) {<span title="Precon">📦</span>}
-        {{ d.deckName }}
-        @if (d.borrowed) {<span class="borrowed-badge">🤝 von {{ d.ownerName }}</span>}
+      <span class="name card-name-cell">
+        @if (commanderImage(d.commander, d.commanderImageUrl); as img) {
+          <img class="card-thumb" [src]="img" [alt]="d.commander" />
+        }
+        <span class="card-name-text">
+          @if (d.isPrecon) {<span title="Precon">📦</span>}
+          {{ d.deckName }}
+          @if (d.borrowed) {<span class="borrowed-badge">🤝 von {{ d.ownerName }}</span>}
+        </span>
       </span>
       <span class="detail">{{ d.wins }} / {{ d.games }} Siege</span>
       <span class="rate">{{ d.winRate | number: '1.0-0' }}%</span>
