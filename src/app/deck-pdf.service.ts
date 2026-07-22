@@ -1,5 +1,4 @@
 import { Injectable, computed, signal } from '@angular/core';
-import { jsPDF } from 'jspdf';
 import { DeckCard } from './deck.service';
 
 export interface PdfCardEntry {
@@ -98,6 +97,12 @@ export class DeckPdfService {
 
     this.busy.set(true);
     this.errorMessage.set('');
+
+    // jsPDF erst hier per dynamischem Import nachladen statt fest im Hauptbundle - die Bibliothek
+    // ist recht groß und wurde sonst von JEDEM Nutzer beim App-Start mitgeladen, obwohl kaum jemand
+    // regelmäßig ein PDF exportiert (hat außerdem den Angular-Bundle-Budget-Grenzwert gesprengt und
+    // den Produktions-Build fehlschlagen lassen).
+    const { jsPDF } = await import('jspdf');
 
     // Jedes Bild nur einmal laden, auch wenn "jede Kopie einzeln" mehrfach dieselbe Karte braucht.
     const uniqueUrls = [...new Set(selected.map((e) => e.imageUrl!))];
