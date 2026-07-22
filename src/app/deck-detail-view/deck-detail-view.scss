@@ -434,8 +434,11 @@
 // NEU
 .deck-card-stepper {
   position: absolute;
-  top: 4px;
-  right: 4px;
+  // Unten mittig auf dem Kartenbild, direkt über der Krone/Artwork/Tag-Icon-Reihe (die sitzt bei
+  // bottom:4px mit 26px Höhe, also bis 30px von unten - 4px Abstand macht 34px).
+  bottom: 34px;
+  left: 50%;
+  transform: translateX(-50%);
   display: flex;
   align-items: center;
   gap: 4px;
