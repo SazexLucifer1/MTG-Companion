@@ -47,6 +47,7 @@
         <div class="deck-info">
           <span class="deck-name-text">
             @if (deck.isPrecon) {<span title="Precon">📦</span>}
+            @if (deck.isPrivate) {<span title="Privat - nur für dich sichtbar">🔒</span>}
             {{ deck.name }}
           </span>
           @if (deck.games > 0) {
@@ -57,6 +58,14 @@
           <div class="deck-actions">
             <button class="glass-button small" (click)="openDeckDetail(deck)">👁️ Ansehen</button>
             @if (!readonlyMode()) {
+              <button
+                class="icon-button"
+                (click)="toggleDeckPrivate(deck)"
+                [attr.aria-label]="deck.isPrivate ? 'Wieder sichtbar machen' : 'Privat stellen'"
+                [title]="deck.isPrivate ? 'Wieder sichtbar machen' : 'Privat stellen - andere sehen dieses Deck dann nicht mehr auf deinem Profil'"
+              >
+                {{ deck.isPrivate ? '🔒' : '🔓' }}
+              </button>
               <button class="icon-button" (click)="deleteDeck(deck)" aria-label="Deck löschen">🗑</button>
             }
           </div>

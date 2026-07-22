@@ -13,6 +13,8 @@ export interface Deck {
   isPrecon: boolean;
   /** EDHREC-Theme-Tag-Slug (z.B. "ramp", "aristocrats") - steuert die EDHREC-Vorschläge im Bearbeiten-Modus. */
   edhrecTag: string | null;
+  /** Privat gestellte Decks tauchen nicht auf, wenn andere User dieses Profil ansehen - Standard ist sichtbar (opt-in privat, nicht opt-in sichtbar). */
+  isPrivate: boolean;
 }
 
 export interface DeckGameStats {
@@ -61,7 +63,7 @@ export class DeckService {
   async loadDecksForUser(userId: string): Promise<Deck[]> {
     const { data, error } = await supabase
       .from('decks')
-      .select('id, user_id, name, format, updated_at, is_precon, edhrec_tag')
+      .select('id, user_id, name, format, updated_at, is_precon, edhrec_tag, is_private')
       .eq('user_id', userId)
       .order('updated_at', { ascending: false });
 
@@ -78,6 +80,7 @@ export class DeckService {
       updatedAt: row.updated_at,
       isPrecon: row.is_precon,
       edhrecTag: row.edhrec_tag,
+      isPrivate: row.is_private ?? false,
     }));
   }
 
@@ -599,6 +602,17 @@ export class DeckService {
 
     if (error) {
       console.error('Konnte Deckname/Tag nicht ändern:', error);
+      return false;
+    }
+    return true;
+  }
+
+  /** Stellt ein Deck privat/sichtbar - private Decks tauchen nicht mehr auf, wenn andere User dieses Profil ansehen. */
+  async setDeckPrivate(deckId: string, isPrivate: boolean): Promise<boolean> {
+    const { error } = await supabase.from('decks').update({ is_private: isPrivate }).eq('id', deckId);
+
+    if (error) {
+      console.error('Konnte Sichtbarkeit nicht ändern:', error);
       return false;
     }
     return true;

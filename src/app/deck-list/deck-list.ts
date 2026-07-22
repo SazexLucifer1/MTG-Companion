@@ -119,7 +119,9 @@ export class DeckList {
 
   readonly filteredSortedDecks = computed<DeckWithStats[]>(() => {
     const query = this.searchQuery().trim().toLowerCase();
-    let list = this.decksWithStats();
+    // Bei fremden Profilen (readonlyMode) private Decks komplett ausblenden - im eigenen Profil
+    // sieht man natürlich weiterhin alle eigenen, auch die privat gestellten.
+    let list = this.readonlyMode() ? this.decksWithStats().filter((d) => !d.isPrivate) : this.decksWithStats();
     if (query) {
       list = list.filter((d) => d.name.toLowerCase().includes(query));
     }
@@ -198,6 +200,11 @@ export class DeckList {
     await this.deckService.deleteDeck(deck.id);
     if (this.viewer.viewingDeck()?.id === deck.id) this.viewer.close();
     await this.refreshDecks();
+  }
+
+  async toggleDeckPrivate(deck: Deck): Promise<void> {
+    const ok = await this.deckService.setDeckPrivate(deck.id, !deck.isPrivate);
+    if (ok) await this.refreshDecks();
   }
 
   openDeckDetail(deck: Deck): void {

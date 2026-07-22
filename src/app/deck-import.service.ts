@@ -216,6 +216,7 @@ export class DeckImportService {
         updatedAt: new Date().toISOString(),
         isPrecon: false,
         edhrecTag: tag,
+        isPrivate: false,
       });
     } else {
       this.newDeckMessage.set('Deck konnte nicht angelegt werden.');
