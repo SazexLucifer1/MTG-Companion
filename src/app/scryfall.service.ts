@@ -330,7 +330,9 @@ export class ScryfallService {
     const res = await this.fetchWithRetry(`${API}/cards/search?q=${q}&unique=cards&order=name`);
     if (!res?.ok) return [];
     const data = await res.json();
-    return ((data.data as any[]) ?? []).slice(0, 30).map((c) => this.toCard(c));
+    // Scryfall liefert pro Seite ohnehin maximal 175 Treffer - keine zusätzliche Begrenzung nötig,
+    // die Aufteilung in Seiten für die Anzeige übernimmt deck-viewer.service.ts (pagedAddCardResults).
+    return ((data.data as any[]) ?? []).map((c) => this.toCard(c));
   }
 
   // NEU

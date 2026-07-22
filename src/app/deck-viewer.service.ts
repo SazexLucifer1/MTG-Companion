@@ -529,6 +529,35 @@ export class DeckViewerService {
   private addCardSearchTimer: ReturnType<typeof setTimeout> | null = null;
 
   /**
+   * Suchergebnisse können deutlich mehr als eine Bildschirmseite füllen (Scryfall liefert bis zu
+   * 175 Treffer) - werden hier seitenweise angezeigt, statt wie vorher hart bei 30 abgeschnitten
+   * zu werden (dann waren weitere Treffer schlicht unsichtbar, ohne Möglichkeit weiterzublättern).
+   */
+  private static readonly ADD_CARD_PAGE_SIZE = 30;
+  readonly addCardResultsPage = signal(0);
+
+  readonly addCardResultsTotalPages = computed(() =>
+    Math.max(1, Math.ceil(this.addCardResults().length / DeckViewerService.ADD_CARD_PAGE_SIZE))
+  );
+
+  readonly addCardResultsEffectivePage = computed(() =>
+    Math.min(this.addCardResultsPage(), this.addCardResultsTotalPages() - 1)
+  );
+
+  readonly pagedAddCardResults = computed(() => {
+    const start = this.addCardResultsEffectivePage() * DeckViewerService.ADD_CARD_PAGE_SIZE;
+    return this.addCardResults().slice(start, start + DeckViewerService.ADD_CARD_PAGE_SIZE);
+  });
+
+  prevAddCardResultsPage(): void {
+    this.addCardResultsPage.update((p) => Math.max(0, p - 1));
+  }
+
+  nextAddCardResultsPage(): void {
+    this.addCardResultsPage.update((p) => Math.min(this.addCardResultsTotalPages() - 1, p + 1));
+  }
+
+  /**
    * Funktions-Kategorien (was eine Karte TUT) über Scryfalls community-gepflegte Oracle-Tags
    * (otag:) - viel zuverlässiger als eine eigene Texterkennung. Bewusst getrennt von den
    * Fähigkeits-Keywords unten (keywordFilters): Lifelink z.B. ist eine feste Eigenschaft der
@@ -926,6 +955,7 @@ export class DeckViewerService {
     this.addCardEffectFilter.set('all');
     this.addCardKeywordFilter.set('all');
     this.addCardResults.set([]);
+    this.addCardResultsPage.set(0);
     this.addCardMessage.set('');
     this.addCardMode.set('search');
     this.edhrecLists.set(null);
@@ -1056,6 +1086,7 @@ export class DeckViewerService {
     this.tagEditorNewTag.set('');
     this.addCardQuery.set('');
     this.addCardResults.set([]);
+    this.addCardResultsPage.set(0);
     this.addCardMessage.set('');
     this.addCardMode.set('search');
   }
@@ -1115,6 +1146,7 @@ export class DeckViewerService {
       keyword === 'all'
     ) {
       this.addCardResults.set([]);
+      this.addCardResultsPage.set(0);
       return;
     }
 
@@ -1130,6 +1162,7 @@ export class DeckViewerService {
         colorIdentitySubset: this.deckColorIdentitySubset(),
       });
       this.addCardResults.set(results);
+      this.addCardResultsPage.set(0);
       this.addCardBusy.set(false);
     }, 300);
   }
@@ -1395,6 +1428,7 @@ export class DeckViewerService {
     this.commanderMarkError.set(null);
     this.flashState.set(null);
     this.addCardResults.set([]);
+    this.addCardResultsPage.set(0);
     this.addCardMessage.set('');
     this.addCardMode.set('search');
     this.edhrecRefreshTick.update((v) => v + 1);
@@ -1480,6 +1514,7 @@ export class DeckViewerService {
     this.commanderMarkError.set(null);
     this.flashState.set(null);
     this.addCardResults.set([]);
+    this.addCardResultsPage.set(0);
     this.addCardMessage.set('');
     this.addCardMode.set('search');
     this.edhrecRefreshTick.update((v) => v + 1);

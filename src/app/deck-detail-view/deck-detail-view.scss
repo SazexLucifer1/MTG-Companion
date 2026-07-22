@@ -71,6 +71,12 @@
   }
 }
 
+.pager {
+  align-items: center;
+  justify-content: center;
+  margin-top: 10px;
+}
+
 .deck-detail-body {
   width: min(100%, 1100px);
   margin: 0 auto;

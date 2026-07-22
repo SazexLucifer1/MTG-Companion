@@ -330,7 +330,7 @@
             <p class="hint">{{ viewer.i18n.t('deckView.searching') }}</p>
           } @else if (viewer.addCardResults().length > 0) {
             <div class="card-pick-grid">
-              @for (card of viewer.addCardResults(); track card.name) {
+              @for (card of viewer.pagedAddCardResults(); track card.name) {
                 <div class="card-pick-tile">
                   <div class="card-pick-image">
                     @if (card.imageUrl) {
@@ -350,6 +350,29 @@
                 </div>
               }
             </div>
+            @if (viewer.addCardResultsTotalPages() > 1) {
+              <div class="chip-row pager">
+                <button
+                  class="icon-button"
+                  (click)="viewer.prevAddCardResultsPage()"
+                  [disabled]="viewer.addCardResultsEffectivePage() === 0"
+                  [attr.aria-label]="viewer.i18n.t('deckView.previousPage')"
+                >◀</button>
+                <span class="hint">
+                  {{ viewer.i18n.t('deckView.searchResultsPage', {
+                    page: viewer.addCardResultsEffectivePage() + 1,
+                    total: viewer.addCardResultsTotalPages(),
+                    count: viewer.addCardResults().length
+                  }) }}
+                </span>
+                <button
+                  class="icon-button"
+                  (click)="viewer.nextAddCardResultsPage()"
+                  [disabled]="viewer.addCardResultsEffectivePage() >= viewer.addCardResultsTotalPages() - 1"
+                  [attr.aria-label]="viewer.i18n.t('deckView.nextPage')"
+                >▶</button>
+              </div>
+            }
           }
         }
 
