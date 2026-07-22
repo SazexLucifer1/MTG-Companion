@@ -720,6 +720,10 @@ export class DeckViewerService {
     this.viewingDeckCards.update((cards) =>
       cards.map((c) => (c.cardName.toLowerCase() === key ? { ...c, imageUrl } : c))
     );
+    // Kurze Rückmeldung, da das Artwork sofort gespeichert wird (unabhängig vom
+    // Speichern-Button für Karten hinzufügen/entfernen) - ohne die dachte man leicht, es sei noch
+    // nicht gespeichert.
+    this.addCardMessage.set(`Artwork für "${card.cardName}" gespeichert.`);
     this.closeArtworkPicker();
   }
 
