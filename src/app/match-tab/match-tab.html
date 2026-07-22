@@ -3,7 +3,7 @@
   <h2>{{ i18n.t('match.newMatch') }}</h2>
 
   <h3>{{ i18n.t('match.gameMode') }}</h3>
-  <div class="chip-row">
+  <div class="chip-row" data-tutorial="match-mode">
     @for (m of modes; track m) {
       <button class="glass-chip" [class.active]="session.mode() === m" (click)="session.mode.set(m)">
         {{ m }}
@@ -11,7 +11,7 @@
     }
   </div>
 
-  <h3>{{ i18n.t('match.whoPlays') }}</h3>
+  <h3 data-tutorial="match-players-heading">{{ i18n.t('match.whoPlays') }}</h3>
   @if (mtg.allPlayers().length === 0) {
     <p class="hint">{{ i18n.t('match.noPlayersYet') }}</p>
   } @else {
@@ -270,7 +270,7 @@
     }
   }
 
-  <button class="glass-button primary save-button" [disabled]="!session.canStartGame()" (click)="session.startGame()">
+  <button class="glass-button primary save-button" data-tutorial="match-start" [disabled]="!session.canStartGame()" (click)="session.startGame()">
     {{ i18n.t('match.startGame') }}
   </button>
   @if (session.selectedPlayers().length === 1) {
@@ -281,7 +281,7 @@
   }
 </section>
 
-<section class="glass-card">
+<section class="glass-card" data-tutorial="match-history">
   <h2>{{ i18n.t('match.history') }}</h2>
   @if (visibleHistory().length === 0) {
     <p class="hint">{{ i18n.t('match.noMatchesSaved') }}</p>

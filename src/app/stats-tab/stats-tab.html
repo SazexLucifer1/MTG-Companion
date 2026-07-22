@@ -106,7 +106,7 @@
   <p class="hint">{{ i18n.t('stats.noMatchesYet') }}</p>
 </section>
 } @else {
-<section class="glass-card">
+<section class="glass-card" data-tutorial="stats-filters">
   <div class="section-header-row">
     <h2>{{ i18n.t('stats.periodAndMode') }}</h2>
     @if (groupService.isOwner()) {
@@ -161,7 +161,7 @@
 </section>
 } @else {
 
-<section class="glass-card">
+<section class="glass-card" data-tutorial="stats-player-details">
   <h2>{{ i18n.t('stats.playerDetails') }}</h2>
   <div class="chip-row">
     @for (player of mtg.allPlayers(); track player) {
@@ -327,7 +327,7 @@
   <p class="hint">{{ i18n.t('stats.noMatchesInMode') }}</p>
 </section>
 } } @else { @if (!selectedPlayer()) {
-<section class="glass-card">
+<section class="glass-card" data-tutorial="stats-overview">
   <h2>{{ i18n.t('stats.overview') }}</h2>
   <div class="stat-tiles">
     <div class="stat-tile">
@@ -346,7 +346,7 @@
 </section>
 
 <!-- NEU -->
-<section class="glass-card">
+<section class="glass-card" data-tutorial="stats-ranking">
   <h2>{{ i18n.t('stats.ranking') }}</h2>
   <div class="chip-row sort-toggle">
     <button class="glass-chip small" [class.active]="playerSortMode() === 'winRate'" (click)="playerSortMode.set('winRate')">{{ i18n.t('sort.winRate') }}</button>
@@ -408,7 +408,7 @@
   }
 </section>
 } @if (combinedDeckCommanderStats().length > 0) {
-<section class="glass-card">
+<section class="glass-card" data-tutorial="stats-decks-commanders">
   <h2>{{ i18n.t('stats.decksAndCommanders') }}</h2>
   <p class="hint">
     {{ i18n.t('stats.decksAndCommandersHint') }}

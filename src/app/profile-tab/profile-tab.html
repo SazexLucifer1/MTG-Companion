@@ -82,7 +82,7 @@
 
 <section class="glass-card">
     <div class="profile-main-row">
-      <div class="profile-left">
+      <div class="profile-left" data-tutorial="profile-header">
         <h2>{{ i18n.t('profile.myProfile') }}</h2>
         @if (profileService.loading()) {
           <p class="hint">{{ i18n.t('profile.loadingProfile') }}</p>
@@ -162,7 +162,7 @@
         }
       </div>
 
-      <div class="favorite-commanders-col">
+      <div class="favorite-commanders-col" data-tutorial="profile-favorites">
         <h3>{{ i18n.t('profile.myFavoriteCommanders') }}</h3>
         <div class="favorite-commanders-row">
           @for (name of profileService.profile()?.favoriteCommanders ?? []; track name) {
@@ -182,10 +182,11 @@
         </div>
       </div>
 
-      <div class="header-icon-col">
+      <div class="header-icon-col" data-tutorial="profile-icons">
         <button class="icon-button large" (click)="openBackgroundsDialog()" [attr.aria-label]="i18n.t('profile.myBackgroundsAria')" [title]="i18n.t('profile.myBackgroundsAria')">🖼️</button>
         <button class="icon-button large" (click)="openShareDialog()" [attr.aria-label]="i18n.t('profile.shareAppAria')" [title]="i18n.t('profile.shareAppAria')">📤</button>
         <button class="icon-button large" (click)="openGeminiSettings()" [attr.aria-label]="i18n.t('profile.geminiKeyAria')" [title]="i18n.t('profile.geminiKeyAria')">🔑</button>
+        <button class="icon-button large" (click)="tutorial.openPicker()" [attr.aria-label]="i18n.t('profile.replayTutorialAria')" [title]="i18n.t('profile.replayTutorialAria')">❓</button>
       </div>
     </div>
   </section>

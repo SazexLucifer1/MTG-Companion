@@ -7,6 +7,7 @@ import { IngameTracker } from './ingame-tracker/ingame-tracker';
 import { DeckDetailView } from './deck-detail-view/deck-detail-view';
 import { DeckImportDialogs } from './deck-import-dialogs/deck-import-dialogs';
 import { DeckPdfDialog } from './deck-pdf-dialog/deck-pdf-dialog';
+import { TutorialOverlay } from './tutorial-overlay/tutorial-overlay';
 import { Login } from './login/login';
 import { ResetPassword } from './reset-password/reset-password';
 import { GameSessionService } from './game-session.service';
@@ -27,6 +28,7 @@ import { I18nService } from './i18n.service';
     DeckPdfDialog,
     Login,
     ResetPassword,
+    TutorialOverlay,
   ],
   templateUrl: './app.html',
   styleUrl: './app.scss',

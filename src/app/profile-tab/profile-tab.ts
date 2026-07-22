@@ -11,6 +11,7 @@ import { AuthService } from '../auth.service';
 import { BackgroundService } from '../background.service';
 import { ScryfallService } from '../scryfall.service';
 import { I18nService } from '../i18n.service';
+import { TutorialService } from '../tutorial.service';
 
 @Component({
   selector: 'app-profile-tab',
@@ -27,6 +28,7 @@ export class ProfileTab {
   readonly backgrounds = inject(BackgroundService);
   private readonly scryfall = inject(ScryfallService);
   readonly i18n = inject(I18nService);
+  readonly tutorial = inject(TutorialService);
 
   readonly deckListRef = viewChild<DeckList>('deckListRef');
 

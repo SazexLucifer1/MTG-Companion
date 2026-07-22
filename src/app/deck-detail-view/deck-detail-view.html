@@ -1,6 +1,6 @@
 @if (viewer.viewingDeck(); as deck) {
 <div class="deck-detail-fullscreen">
-  <div class="deck-detail-header">
+  <div class="deck-detail-header" data-tutorial="deck-detail-header">
     <button class="glass-button small deck-detail-back" (click)="viewer.close()">{{ viewer.i18n.t('deckView.back') }}</button>
     <span class="deck-detail-header-name">{{ deck.name }}</span>
   </div>
@@ -87,7 +87,7 @@
         </div>
       }
 
-      <div class="chip-row">
+      <div class="chip-row" data-tutorial="deck-view-toggles">
         <button class="glass-chip small" [class.active]="viewer.viewMode() === 'visual'" (click)="viewer.viewMode.set('visual')">
           {{ viewer.i18n.t('deckView.images') }}
         </button>
@@ -147,7 +147,7 @@
               }
             </ul>
           }
-          <div class="chip-row">
+          <div class="chip-row" data-tutorial="deck-edit-topbar">
             <button
               class="glass-button primary small"
               [disabled]="!viewer.hasPendingChanges() || viewer.editSaveBusy()"
@@ -170,7 +170,7 @@
 
         <div class="add-card-panel">
           <h4 class="deck-section-title">{{ viewer.i18n.t('deckView.addCardTitle') }}</h4>
-          <div class="chip-row">
+          <div class="chip-row" data-tutorial="deck-add-card-mode">
             <button class="glass-chip small" [class.active]="viewer.addCardMode() === 'search'" (click)="viewer.setAddCardMode('search')">
               {{ viewer.i18n.t('deckView.search') }}
             </button>
@@ -197,7 +197,7 @@
             [ngModel]="viewer.addCardQuery()"
             (ngModelChange)="viewer.onAddCardSearchInput($event)"
           />
-          <div class="chip-row card-filter-row">
+          <div class="chip-row card-filter-row" data-tutorial="deck-add-card-filters">
             <select
               class="glass-input small"
               [ngModel]="viewer.addCardTypeFilter()"
@@ -389,7 +389,7 @@
       }
 
       @if (viewer.viewingDeckCards().length > 0) {
-        <div class="deck-analysis-header-row">
+        <div class="deck-analysis-header-row" data-tutorial="deck-analysis-toggle">
           <button class="glass-chip small" (click)="viewer.toggleDeckAnalysis()">
             {{ viewer.showDeckAnalysis() ? '▾' : '▸' }} {{ viewer.i18n.t('deckView.deckAnalysis') }}
           </button>
@@ -550,7 +550,7 @@
           </div>
         }
       }
-      <div class="chip-row">
+      <div class="chip-row" data-tutorial="deck-sort-toggle">
         <button class="glass-chip small" [class.active]="viewer.cardSortMode() === 'type'" (click)="viewer.setCardSortMode('type')">
           {{ viewer.i18n.t('deckView.byType') }}
         </button>
@@ -561,6 +561,7 @@
       <input
         class="glass-input"
         type="text"
+        data-tutorial="deck-search-filter"
         [placeholder]="viewer.i18n.t('deckView.searchCardPlaceholder')"
         [ngModel]="viewer.cardSearchQuery()"
         (ngModelChange)="viewer.cardSearchQuery.set($event)"
@@ -649,7 +650,7 @@
         @if (viewer.viewMode() === 'visual') {
           <div class="deck-visual-grid">
             @for (card of section.cards; track card.cardName) {
-              <div class="deck-card-tile">
+              <div class="deck-card-tile" data-tutorial="deck-card-edit-controls">
                 @if (viewer.resolvedCardImage(card); as img) {
                   <img [src]="img" [alt]="card.cardName" loading="lazy" />
                 } @else {

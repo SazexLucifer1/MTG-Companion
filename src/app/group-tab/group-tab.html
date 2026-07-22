@@ -1,7 +1,7 @@
-<section class="glass-card">
+<section class="glass-card" data-tutorial="group-list-section">
   <h2>{{ i18n.t('group.myGroups') }}</h2>
 
-  <div class="chip-row">
+  <div class="chip-row" data-tutorial="group-create-join">
     <button class="glass-button small" (click)="openCreateGroupDialog()">{{ i18n.t('group.createNewGroup') }}</button>
     <button class="glass-button small" (click)="openJoinGroupDialog()">{{ i18n.t('group.joinGroup') }}</button>
   </div>
@@ -236,7 +236,7 @@
 </div>
 }
 
-<section class="glass-card">
+<section class="glass-card" data-tutorial="group-players">
   <div class="section-header-row">
     <h2>{{ i18n.t('group.players') }}</h2>
     @if (groupService.isOwner()) {

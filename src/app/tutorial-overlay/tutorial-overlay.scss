@@ -1,0 +1,76 @@
+.tutorial-backdrop {
+  position: fixed;
+  inset: 0;
+  // Muss über allem anderen liegen, inkl. Deck-Detailansicht (z-index 700) und den
+  // .options-menu-overlay-Dialogen (z-index 750, siehe styles.scss) - sonst landet die Tour
+  // dahinter und ist erst nach dem Schließen der jeweiligen Ansicht sichtbar.
+  z-index: 900;
+  // Kein eigener Hintergrund hier - der kommt vom Spotlight-Element (Box-Shadow-Trick) bzw. von
+  // .tutorial-tooltip.centered für Schritte ohne Ziel-Element.
+  pointer-events: none;
+}
+
+.tutorial-spotlight {
+  position: fixed;
+  border-radius: 14px;
+  // Der riesige Spread erzeugt ein abgedunkeltes "Loch" um das Element, ohne SVG-Masken zu brauchen.
+  box-shadow: 0 0 0 2000px rgba(0, 0, 0, 0.75);
+  border: 2px solid rgba(255, 255, 255, 0.7);
+  transition: top 0.25s ease, left 0.25s ease, width 0.25s ease, height 0.25s ease;
+  pointer-events: none;
+}
+
+.tutorial-tooltip {
+  position: fixed;
+  width: 320px;
+  max-width: calc(100vw - 32px);
+  padding: 16px;
+  border-radius: 16px;
+  background: rgba(30, 24, 46, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: 0 10px 35px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(12px);
+  color: var(--text);
+  pointer-events: auto;
+  transition: top 0.25s ease, left 0.25s ease;
+
+  &.centered {
+    top: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%);
+  }
+
+  h3 {
+    margin: 0 0 8px;
+  }
+
+  .hint {
+    margin: 0 0 12px;
+  }
+
+  .tutorial-progress {
+    font-size: 0.8rem;
+    opacity: 0.6;
+    margin-bottom: 12px;
+  }
+
+  .tutorial-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px 12px;
+    flex-wrap: wrap;
+  }
+
+  .tutorial-nav-buttons {
+    display: flex;
+    gap: 8px;
+  }
+
+  // Buttons dürfen nie intern umbrechen (Pfeil + Text auf zwei Zeilen) - stattdessen bricht bei
+  // Platzmangel die ganze Zeile um (siehe flex-wrap oben auf .tutorial-actions), "Überspringen"
+  // rutscht dann einfach in eine eigene Zeile über die Navigations-Buttons.
+  button {
+    white-space: nowrap;
+  }
+}

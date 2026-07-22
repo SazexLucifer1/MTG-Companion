@@ -7,6 +7,7 @@
     <div class="header-actions">
       <button
         class="lang-toggle"
+        data-tutorial="lang-toggle"
         (click)="i18n.toggleLang()"
         [attr.aria-label]="i18n.t('header.switchLanguage')"
         [title]="i18n.t('header.switchLanguage')"
@@ -33,10 +34,16 @@
 <app-deck-detail-view />
 <app-deck-import-dialogs />
 <app-deck-pdf-dialog />
+<app-tutorial-overlay />
 
-<nav class="tab-bar">
+<nav class="tab-bar" data-tutorial="tab-bar">
   @for (tab of tabs; track tab.id) {
-  <button class="tab-item" [class.active]="navigation.activeTab() === tab.id" (click)="navigation.goToTab(tab.id)">
+  <button
+    class="tab-item"
+    [attr.data-tutorial]="'nav-' + tab.id"
+    [class.active]="navigation.activeTab() === tab.id"
+    (click)="navigation.goToTab(tab.id)"
+  >
     <span class="tab-icon">{{ tab.icon }}</span>
     <span class="tab-label">{{ i18n.t(tab.labelKey) }}</span>
   </button>

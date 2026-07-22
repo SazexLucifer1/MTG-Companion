@@ -1,5 +1,5 @@
 @if (!readonlyMode()) {
-  <div class="chip-row">
+  <div class="chip-row" data-tutorial="deck-import-buttons">
     <button class="glass-button small" (click)="openNewDeckDialog()">{{ i18n.t('deck.importDeck') }}</button>
     <button class="glass-button small" (click)="openPreconDialog()">{{ i18n.t('deck.importPrecon') }}</button>
     <button class="glass-button small" (click)="openNewEmptyDeckDialog()">{{ i18n.t('deck.newDeck') }}</button>

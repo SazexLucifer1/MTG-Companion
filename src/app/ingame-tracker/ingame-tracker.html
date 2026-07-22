@@ -31,6 +31,7 @@
           }
           <div
             class="panel-icon-pair"
+            data-tutorial="ingame-panel-icons"
             [ngClass]="iconPairCorner(i)"
             [style.flex-direction]="iconPairDirection(i)"
           >
@@ -118,7 +119,7 @@
             }
           </div>
           } } @else { @if (!session.isPoisonView(p.key)) {
-          <div class="life-tap-area">
+          <div class="life-tap-area" data-tutorial="ingame-life-area">
             <button
               class="life-tap-zone"
               (pointerdown)="startLifeHold(p.key, -1)"
@@ -169,7 +170,7 @@
           </div>
           }
 
-          <div class="mode-toggle-row">
+          <div class="mode-toggle-row" data-tutorial="ingame-mode-toggle">
             <button class="mode-toggle-button" (click)="session.startCommanderDamageFocus(p.key)">
               {{ i18n.t('ingame.commanderDmg') }}
             </button>
@@ -190,6 +191,7 @@
 
   <button
     class="center-menu-button"
+    data-tutorial="ingame-menu-button"
     [style.top]="'calc(' + session.centerButtonTopPercent() + '% + (env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)) / 2)'"
     (click)="reorderMode() ? closeReorderMode() : openOptionsMenu()"
     [attr.aria-label]="reorderMode() ? i18n.t('ingame.endReorder') : i18n.t('ingame.openMenu')"

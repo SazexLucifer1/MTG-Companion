@@ -8,6 +8,8 @@ export interface Profile {
   avatarUrl: string | null;
   favoriteCommanders: string[];
   language: 'de' | 'en';
+  /** IDs der schon gesehenen/übersprungenen Einführungs-Touren (z.B. "intro", "match", "deckDetail", ...) - siehe tutorial.service.ts. */
+  tutorialsSeen: string[];
 }
 
 @Injectable({ providedIn: 'root' })
@@ -55,7 +57,7 @@ export class ProfileService {
     this.loading.set(true);
     const { data, error } = await supabase
       .from('profiles')
-      .select('id, display_name, avatar_url, favorite_commanders, language')
+      .select('id, display_name, avatar_url, favorite_commanders, language, tutorials_seen')
       .eq('id', userId)
       .single();
 
@@ -69,6 +71,7 @@ export class ProfileService {
         avatarUrl: data.avatar_url,
         favoriteCommanders: data.favorite_commanders ?? [],
         language: data.language === 'en' ? 'en' : 'de',
+        tutorialsSeen: data.tutorials_seen ?? [],
       });
     }
     this.loading.set(false);
@@ -90,6 +93,27 @@ export class ProfileService {
     }
 
     this.profile.update((p) => (p ? { ...p, language } : p));
+    return true;
+  }
+
+  /** Merkt sich, dass der Nutzer eine bestimmte Einführungs-Tour gesehen (oder übersprungen) hat - danach startet genau diese Tour nicht mehr automatisch, ist aber jederzeit über den ❓-Button im Profil erneut wählbar. */
+  async markTutorialSeen(tutorialId: string): Promise<boolean> {
+    const current = this.profile();
+    if (!current) return false;
+    if (current.tutorialsSeen.includes(tutorialId)) return true;
+
+    const next = [...current.tutorialsSeen, tutorialId];
+    const { error } = await supabase
+      .from('profiles')
+      .update({ tutorials_seen: next })
+      .eq('id', current.id);
+
+    if (error) {
+      console.error('Konnte Tutorial-Status nicht speichern:', error);
+      return false;
+    }
+
+    this.profile.update((p) => (p ? { ...p, tutorialsSeen: next } : p));
     return true;
   }
 
