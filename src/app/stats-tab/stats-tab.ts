@@ -466,12 +466,27 @@ export class StatsTab {
       key: `c:${c.commander}`,
       name: c.commander,
       cardName: c.commander,
+      cardImageUrl: this.storedCommanderImageByName().get(c.commander.toLowerCase()),
       games: c.games,
       wins: c.wins,
       winRate: c.winRate,
       playedBy: c.playedBy.map((name) => ({ name, borrowed: false })),
     })),
   ]);
+
+  /**
+   * Commander-Name -> im jeweiligen Deck hinterlegtes Bild, aus storedDeckCommanders abgeleitet -
+   * für commanderStats() (Precons/unverlinkte Matches), die pro Commander-NAME statt pro Deck-ID
+   * zusammengefasst werden und deshalb sonst nie von einem individuell gewählten Artwork
+   * profitieren würden.
+   */
+  private readonly storedCommanderImageByName = computed(() => {
+    const map = new Map<string, string>();
+    for (const { name, imageUrl } of this.storedDeckCommanders().values()) {
+      if (imageUrl && !map.has(name.toLowerCase())) map.set(name.toLowerCase(), imageUrl);
+    }
+    return map;
+  });
 
   /** Rangliste: nur qualifizierte Decks/Commander (>= Schwelle), sortiert nach Winrate. */
   readonly rankedCombinedStats = computed<CombinedRankEntry[]>(() =>
