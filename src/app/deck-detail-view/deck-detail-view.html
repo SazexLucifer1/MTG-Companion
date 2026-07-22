@@ -634,7 +634,7 @@
       }
 
       @for (section of viewer.filteredGroupedDeckCards(); track section.label) {
-        <h4 class="deck-section-title">{{ section.label }} ({{ section.cards.length }})</h4>
+        <h4 class="deck-section-title">{{ section.label }} ({{ sectionCardCount(section.cards) }})</h4>
         @if (viewer.viewMode() === 'visual') {
           <div class="deck-visual-grid">
             @for (card of section.cards; track card.cardName) {

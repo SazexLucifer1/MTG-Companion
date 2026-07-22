@@ -2,7 +2,7 @@ import { Component, inject } from '@angular/core';
 import { DatePipe, DecimalPipe, PercentPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { DeckViewerService } from '../deck-viewer.service';
-import { DeckService } from '../deck.service';
+import { DeckService, DeckCard } from '../deck.service';
 import { DeckImportService } from '../deck-import.service';
 import { EdhrecCardlist } from '../edhrec.service';
 
@@ -31,6 +31,11 @@ export class DeckDetailView {
       const fresh = decks.find((d) => d.id === deck.id) ?? deck;
       await this.viewer.open(fresh);
     });
+  }
+
+  /** Summe der Kartenanzahl (nicht Anzahl unterschiedlicher Kartennamen) für den Zähler in der Abschnitts-Überschrift, z.B. "Land (12)" bei 7 Forest + 5 Island statt fälschlich nur 2 (Zeilenanzahl). */
+  sectionCardCount(cards: DeckCard[]): number {
+    return cards.reduce((sum, c) => sum + c.quantity, 0);
   }
 
   curveBarHeight(count: number): number {
