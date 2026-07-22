@@ -105,6 +105,15 @@
         <button class="glass-chip small" (click)="openPdfExport()">{{ viewer.i18n.t('deckView.asPdf') }}</button>
         @if (viewer.canEditViewingDeck()) {
           <button class="glass-chip small" (click)="reimportDecklist()">{{ viewer.i18n.t('deckView.reimportList') }}</button>
+          <button
+            class="glass-chip small"
+            data-tutorial="deck-outdated-toggle"
+            [class.active]="deck.isOutdated"
+            [disabled]="viewer.outdatedToggleBusy()"
+            (click)="viewer.toggleOutdated()"
+          >
+            {{ deck.isOutdated ? viewer.i18n.t('deckView.unmarkOutdated') : viewer.i18n.t('deckView.markOutdated') }}
+          </button>
         }
       </div>
 

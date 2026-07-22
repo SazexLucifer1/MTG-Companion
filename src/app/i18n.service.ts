@@ -407,6 +407,8 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     'deck.deleteAria': 'Deck löschen',
     'deck.privateBadge': 'Privat - nur für dich sichtbar',
     'deck.preconBadge': 'Precon',
+    'deck.outdatedBadge': 'Outdated - aus der normalen Ansicht ausgeblendet',
+    'deck.showOutdated': '🗄️ Outdated anzeigen',
     'deck.msg.confirmDelete': 'Deck „{{name}}" wirklich löschen?',
 
     // --- Deck-Viewer (Deckansicht) ---
@@ -593,6 +595,8 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     'deckView.newTagPlaceholder': 'z.B. Removal, Wincon …',
     'deckView.create': '+ Anlegen',
     'deckView.done': 'Fertig',
+    'deckView.markOutdated': '🗄️ Als Outdated markieren',
+    'deckView.unmarkOutdated': '✅ Nicht mehr Outdated',
 
     // --- Deck-Import-Dialoge ---
     'importDialog.updateDeckTitle': 'Deck aktualisieren',
@@ -1287,6 +1291,8 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     'deck.deleteAria': 'Delete deck',
     'deck.privateBadge': 'Private - only visible to you',
     'deck.preconBadge': 'Precon',
+    'deck.outdatedBadge': 'Outdated - hidden from the normal view',
+    'deck.showOutdated': '🗄️ Show outdated',
     'deck.msg.confirmDelete': 'Really delete deck "{{name}}"?',
 
     // --- Deck viewer ---
@@ -1473,6 +1479,8 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     'deckView.newTagPlaceholder': 'e.g. Removal, Wincon …',
     'deckView.create': '+ Create',
     'deckView.done': 'Done',
+    'deckView.markOutdated': '🗄️ Mark as outdated',
+    'deckView.unmarkOutdated': '✅ No longer outdated',
 
     // --- Deck import dialogs ---
     'importDialog.updateDeckTitle': 'Update deck',

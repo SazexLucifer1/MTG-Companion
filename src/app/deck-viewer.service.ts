@@ -111,6 +111,20 @@ export class DeckViewerService {
     }
   }
 
+  readonly outdatedToggleBusy = signal(false);
+
+  /** Markiert/entmarkiert das gerade angesehene Deck als "Outdated" - solche Decks sind standardmäßig in der Deck-Liste ausgeblendet. */
+  async toggleOutdated(): Promise<void> {
+    const deck = this.viewingDeck();
+    if (!deck || !this.canEditViewingDeck()) return;
+
+    this.outdatedToggleBusy.set(true);
+    const next = !deck.isOutdated;
+    const ok = await this.deckService.setDeckOutdated(deck.id, next);
+    this.outdatedToggleBusy.set(false);
+    if (ok) this.viewingDeck.set({ ...deck, isOutdated: next });
+  }
+
   /** Kartenname (lowercase) -> Scryfall-Zusatzdaten (Manakosten, Farbidentität, Game-Changer-Flag). */
   readonly viewingCardDetails = signal<Map<string, ScryfallCard>>(new Map());
   readonly analysisBusy = signal(false);

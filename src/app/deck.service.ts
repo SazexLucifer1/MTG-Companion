@@ -15,6 +15,8 @@ export interface Deck {
   edhrecTag: string | null;
   /** Privat gestellte Decks tauchen nicht auf, wenn andere User dieses Profil ansehen - Standard ist sichtbar (opt-in privat, nicht opt-in sichtbar). */
   isPrivate: boolean;
+  /** Als "Outdated" markierte Decks sind standardmäßig in der Deck-Liste ausgeblendet (z.B. für Decks, die nicht mehr gespielt werden, aber nicht gelöscht werden sollen). */
+  isOutdated: boolean;
 }
 
 export interface DeckGameStats {
@@ -63,7 +65,7 @@ export class DeckService {
   async loadDecksForUser(userId: string): Promise<Deck[]> {
     const { data, error } = await supabase
       .from('decks')
-      .select('id, user_id, name, format, updated_at, is_precon, edhrec_tag, is_private')
+      .select('id, user_id, name, format, updated_at, is_precon, edhrec_tag, is_private, is_outdated')
       .eq('user_id', userId)
       .order('updated_at', { ascending: false });
 
@@ -81,6 +83,7 @@ export class DeckService {
       isPrecon: row.is_precon,
       edhrecTag: row.edhrec_tag,
       isPrivate: row.is_private ?? false,
+      isOutdated: row.is_outdated ?? false,
     }));
   }
 
@@ -141,7 +144,14 @@ export class DeckService {
 
     for (const rawLine of text.split('\n')) {
       const line = rawLine.trim();
-      if (!line) continue;
+      if (!line) {
+        // Eine Leerzeile trennt bei den meisten Export-Formaten (deckstats.net, Moxfield,
+        // Archidekt, ...) die Commander-Sektion vom Rest der Liste, OHNE dass danach nochmal ein
+        // eigener "Deck:"/"Mainboard:"-Header folgt - ohne dieses Zurücksetzen bliebe sonst jede
+        // nachfolgende Karte fälschlich als Commander markiert.
+        inCommanderSection = false;
+        continue;
+      }
 
       const headerMatch = line.replace(/^\/\/\s*/, '').match(SECTION_HEADER);
       if (headerMatch || line.startsWith('//') || line.startsWith('#')) {
@@ -613,6 +623,17 @@ export class DeckService {
 
     if (error) {
       console.error('Konnte Sichtbarkeit nicht ändern:', error);
+      return false;
+    }
+    return true;
+  }
+
+  /** Markiert/entmarkiert ein Deck als "Outdated" - solche Decks sind standardmäßig in der Deck-Liste ausgeblendet, ohne dass sie gelöscht werden müssen. */
+  async setDeckOutdated(deckId: string, isOutdated: boolean): Promise<boolean> {
+    const { error } = await supabase.from('decks').update({ is_outdated: isOutdated }).eq('id', deckId);
+
+    if (error) {
+      console.error('Konnte Outdated-Status nicht ändern:', error);
       return false;
     }
     return true;

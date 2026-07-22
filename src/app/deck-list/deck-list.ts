@@ -1,4 +1,4 @@
-import { Component, computed, effect, inject, input, signal } from '@angular/core';
+import { Component, ElementRef, computed, effect, inject, input, signal, viewChild } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { DeckService, Deck, DeckGameStats } from '../deck.service';
@@ -18,7 +18,12 @@ interface DeckWithStats extends Deck {
   commanderImageUrl?: string | null;
 }
 
-const PAGE_SIZE = 10;
+/** Obergrenze für die Seitengröße - auf dem Handy (1 Spalte) weiterhin genau dieser Wert. */
+const PAGE_SIZE_CAP = 10;
+/** Muss zu deck-list.scss (.deck-list Grid) passen: grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px. */
+const GRID_MIN_COLUMN_PX = 300;
+const GRID_GAP_PX = 12;
+const GRID_BREAKPOINT_QUERY = '(min-width: 640px)';
 
 @Component({
   selector: 'app-deck-list',
@@ -46,6 +51,23 @@ export class DeckList {
   readonly searchQuery = signal('');
   readonly sortMode = signal<DeckSortMode>('alpha');
   readonly page = signal(0);
+  /** Als "Outdated" markierte Decks sind standardmäßig ausgeblendet. */
+  readonly showOutdated = signal(false);
+
+  private readonly deckListEl = viewChild<ElementRef<HTMLElement>>('deckListEl');
+  private resizeObserver: ResizeObserver | null = null;
+
+  /** Live gemessene Spaltenanzahl des Karten-Grids (1 auf dem Handy, mehr auf breiteren Bildschirmen). */
+  readonly columnsPerRow = signal(1);
+
+  /** Größte Seitengröße bis maximal 10, die ein Vielfaches der aktuellen Spaltenanzahl ist - so
+   * bleibt die letzte Zeile im Mehrspalten-Grid immer voll (z.B. 9 statt 10 bei 3 Spalten, 8 bei 4
+   * Spalten), ohne auf dem Handy (1 Spalte) von den gewohnten 10 abzuweichen. */
+  readonly pageSize = computed(() => {
+    const cols = this.columnsPerRow();
+    if (cols <= 1) return PAGE_SIZE_CAP;
+    return Math.max(cols, Math.floor(PAGE_SIZE_CAP / cols) * cols);
+  });
 
   /** Kartenname (lowercase) -> Bild-URL oder null (nicht gefunden). Nur für aktuell sichtbare Einträge geladen. */
   private readonly cardImages = signal<Record<string, string | null>>({});
@@ -98,6 +120,32 @@ export class DeckList {
       if (wasViewingDeck && !isViewing) this.refreshDecks();
       wasViewingDeck = isViewing;
     });
+
+    // Beobachtet die tatsächliche Breite des Karten-Grids, um columnsPerRow live nachzuführen -
+    // erscheint das Element erst später (z.B. weil die Liste anfangs noch "Lade Decks …" zeigt),
+    // greift der Effect erneut, sobald viewChild() eine Referenz liefert.
+    effect((onCleanup) => {
+      const el = this.deckListEl()?.nativeElement;
+      this.resizeObserver?.disconnect();
+      this.resizeObserver = null;
+      if (!el) {
+        this.columnsPerRow.set(1);
+        return;
+      }
+      this.resizeObserver = new ResizeObserver(() => this.measureColumns(el));
+      this.resizeObserver.observe(el);
+      this.measureColumns(el);
+      onCleanup(() => this.resizeObserver?.disconnect());
+    });
+  }
+
+  private measureColumns(el: HTMLElement): void {
+    if (!window.matchMedia(GRID_BREAKPOINT_QUERY).matches) {
+      this.columnsPerRow.set(1);
+      return;
+    }
+    const cols = Math.max(1, Math.floor((el.clientWidth + GRID_GAP_PX) / (GRID_MIN_COLUMN_PX + GRID_GAP_PX)));
+    this.columnsPerRow.set(cols);
   }
 
   /** Kartenbild für ein Deck - individuell gewähltes Artwork des Commanders hat Vorrang vor dem generischen Scryfall-Bild zum Namen. */
@@ -124,6 +172,9 @@ export class DeckList {
     // Bei fremden Profilen (readonlyMode) private Decks komplett ausblenden - im eigenen Profil
     // sieht man natürlich weiterhin alle eigenen, auch die privat gestellten.
     let list = this.readonlyMode() ? this.decksWithStats().filter((d) => !d.isPrivate) : this.decksWithStats();
+    if (!this.showOutdated()) {
+      list = list.filter((d) => !d.isOutdated);
+    }
     if (query) {
       list = list.filter((d) => d.name.toLowerCase().includes(query));
     }
@@ -140,15 +191,16 @@ export class DeckList {
     return list;
   });
 
-  readonly totalPages = computed(() => Math.max(1, Math.ceil(this.filteredSortedDecks().length / PAGE_SIZE)));
+  readonly totalPages = computed(() => Math.max(1, Math.ceil(this.filteredSortedDecks().length / this.pageSize())));
 
   readonly pagedDecks = computed<DeckWithStats[]>(() => {
-    const start = this.page() * PAGE_SIZE;
-    return this.filteredSortedDecks().slice(start, start + PAGE_SIZE);
+    const size = this.pageSize();
+    const start = this.page() * size;
+    return this.filteredSortedDecks().slice(start, start + size);
   });
 
   readonly pageRangeEnd = computed(() =>
-    Math.min((this.page() + 1) * PAGE_SIZE, this.filteredSortedDecks().length)
+    Math.min((this.page() + 1) * this.pageSize(), this.filteredSortedDecks().length)
   );
 
   setSearchQuery(value: string): void {
@@ -158,6 +210,11 @@ export class DeckList {
 
   setSortMode(mode: DeckSortMode): void {
     this.sortMode.set(mode);
+    this.page.set(0);
+  }
+
+  toggleShowOutdated(): void {
+    this.showOutdated.update((v) => !v);
     this.page.set(0);
   }
 

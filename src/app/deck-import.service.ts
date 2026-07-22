@@ -217,6 +217,7 @@ export class DeckImportService {
         isPrecon: false,
         edhrecTag: tag,
         isPrivate: false,
+        isOutdated: false,
       });
     } else {
       this.newDeckMessage.set(this.i18n.t('importDialog.msg.createFailed'));
