@@ -434,9 +434,10 @@
 // NEU
 .deck-card-stepper {
   position: absolute;
-  // Unten mittig auf dem Kartenbild, mit etwas mehr Abstand zur Krone/Artwork/Tag-Icon-Reihe
-  // darunter, damit er auf dem Bild sitzt statt zu tief Richtung Kartentext zu rutschen.
-  bottom: 46px;
+  // Mittig auf dem Kartenbild, aber im Illustrations-Bereich (oberer/mittlerer Teil der Karte) statt
+  // über der Textbox im unteren Kartendrittel - deshalb in % statt fixem px, damit die Position
+  // unabhängig von der tatsächlichen Kachelgröße im Kunstbereich bleibt.
+  bottom: 55%;
   left: 50%;
   transform: translateX(-50%);
   display: flex;
