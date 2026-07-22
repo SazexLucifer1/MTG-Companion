@@ -609,10 +609,13 @@ export class DeckViewerService {
    * offensichtlich ungeeigneten Karten (Zaubersprüche, normale Kreaturen, Länder, ...) aus, statt
    * sie auf jeder einzelnen Karte anzuzeigen. Legendäre Kreaturen sind der Regelfall, manche
    * Planeswalker/Sagas haben zusätzlich explizit "can be your commander" im Kartentext stehen.
+   * Background-Karten zählen ebenfalls dazu - die wandern bei "Choose a background" mit in die
+   * Kommandozone und sind damit genauso markierbar (siehe canBeSecondCommander()).
    */
   isCommanderEligible(card: DeckCard): boolean {
     const typeLine = card.typeLine ?? '';
     if (typeLine.includes('Legendary') && typeLine.includes('Creature')) return true;
+    if (typeLine.includes('Background')) return true;
     const oracleText = this.viewingCardDetails().get(card.cardName.toLowerCase())?.oracleText ?? '';
     return oracleText.includes('can be your commander');
   }
