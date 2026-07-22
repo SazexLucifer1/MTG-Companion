@@ -733,15 +733,18 @@ export class DeckService {
    * Der im Deck selbst hinterlegte Commander (deck_cards.is_commander) je Deck-ID - als Fallback
    * für die Deckliste, wenn getDeckStatsForDecks() keinen Commander liefert (noch keine Partie
    * gespielt, z.B. bei einem frisch angelegten leeren Deck). Bei Partner-Commandern wird nur
-   * einer davon zurückgegeben, wie auch sonst in der App für Karten-Thumbnails üblich.
+   * einer davon zurückgegeben, wie auch sonst in der App für Karten-Thumbnails üblich. Liefert
+   * auch das dort hinterlegte Bild mit (statt nur den Namen), damit ein individuell gewähltes
+   * Artwork (siehe deck-viewer.service.ts selectArtwork) auch im Deckliste-Vorschaubild ankommt,
+   * statt dass dort immer nur das generische Scryfall-Standardbild zum Namen gezeigt wird.
    */
-  async getStoredCommanders(deckIds: string[]): Promise<Map<string, string>> {
-    const result = new Map<string, string>();
+  async getStoredCommanders(deckIds: string[]): Promise<Map<string, { name: string; imageUrl: string | null }>> {
+    const result = new Map<string, { name: string; imageUrl: string | null }>();
     if (deckIds.length === 0) return result;
 
     const { data, error } = await supabase
       .from('deck_cards')
-      .select('deck_id, card_name')
+      .select('deck_id, card_name, image_url')
       .eq('is_commander', true)
       .in('deck_id', deckIds);
 
@@ -751,7 +754,7 @@ export class DeckService {
     }
 
     for (const row of data) {
-      if (!result.has(row.deck_id)) result.set(row.deck_id, row.card_name);
+      if (!result.has(row.deck_id)) result.set(row.deck_id, { name: row.card_name, imageUrl: row.image_url });
     }
     return result;
   }

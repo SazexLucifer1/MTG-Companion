@@ -13,6 +13,8 @@ interface DeckWithStats extends Deck {
   wins: number;
   winRate: number;
   commander?: string;
+  /** Individuell gewähltes Artwork des markierten Commanders (deck_cards.image_url) - hat Vorrang vor dem generischen Scryfall-Bild zum Namen. */
+  commanderImageUrl?: string | null;
 }
 
 const PAGE_SIZE = 10;
@@ -36,7 +38,7 @@ export class DeckList {
   readonly decks = signal<Deck[]>([]);
   private readonly deckStats = signal<Map<string, DeckGameStats>>(new Map());
   /** Fallback-Commander direkt aus dem Deck (deck_cards), falls noch keine Partie mit Commander-Angabe existiert. */
-  private readonly storedCommanders = signal<Map<string, string>>(new Map());
+  private readonly storedCommanders = signal<Map<string, { name: string; imageUrl: string | null }>>(new Map());
   readonly loading = signal(true);
 
   readonly searchQuery = signal('');
@@ -65,7 +67,9 @@ export class DeckList {
     });
 
     effect(() => {
+      // Nur Namen ohne bereits hinterlegtes Artwork nachladen (commanderImageUrl hat Vorrang, siehe commanderImage()).
       const names = this.pagedDecks()
+        .filter((d) => !d.commanderImageUrl)
         .map((d) => d.commander)
         .filter((n): n is string => !!n);
       const cache = this.cardImages();
@@ -94,20 +98,22 @@ export class DeckList {
     });
   }
 
-  /** Kartenbild-URL für einen Commander-Namen, falls schon geladen. */
-  commanderImage(name: string | undefined): string | null {
-    if (!name) return null;
-    return this.cardImages()[name.toLowerCase()] ?? null;
+  /** Kartenbild für ein Deck - individuell gewähltes Artwork des Commanders hat Vorrang vor dem generischen Scryfall-Bild zum Namen. */
+  commanderImage(deck: DeckWithStats): string | null {
+    if (deck.commanderImageUrl) return deck.commanderImageUrl;
+    if (!deck.commander) return null;
+    return this.cardImages()[deck.commander.toLowerCase()] ?? null;
   }
 
   private readonly decksWithStats = computed<DeckWithStats[]>(() =>
     this.decks().map((d) => {
       const s = this.deckStats().get(d.id) ?? { games: 0, wins: 0, winRate: 0 };
+      const stored = this.storedCommanders().get(d.id);
       // Markierter Commander (deck_cards.is_commander) hat Vorrang vor dem in Partien
       // hinterlegten Namen, da der markierte Commander die aktuelle Wahrheit ist und sich
       // nach der letzten Partie geändert haben kann.
-      const commander = this.storedCommanders().get(d.id) ?? s.commander;
-      return { ...d, ...s, commander };
+      const commander = stored?.name ?? s.commander;
+      return { ...d, ...s, commander, commanderImageUrl: stored?.imageUrl };
     })
   );
 

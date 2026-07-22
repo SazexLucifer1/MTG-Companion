@@ -38,7 +38,7 @@
     @for (deck of pagedDecks(); track deck.id) {
       <li>
         <div class="deck-thumb">
-          @if (commanderImage(deck.commander); as img) {
+          @if (commanderImage(deck); as img) {
             <img [src]="img" [alt]="deck.commander" />
           } @else {
             <div class="deck-thumb-placeholder">{{ deck.name }}</div>
