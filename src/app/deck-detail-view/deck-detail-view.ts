@@ -41,6 +41,14 @@ export class DeckDetailView {
     this.pdfService.open(deck.name, this.viewer.viewingDeckCards());
   }
 
+  async onCustomArtworkSelected(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file) return;
+    await this.viewer.uploadCustomArtwork(file);
+  }
+
   /** Summe der Kartenanzahl (nicht Anzahl unterschiedlicher Kartennamen) für den Zähler in der Abschnitts-Überschrift, z.B. "Land (12)" bei 7 Forest + 5 Island statt fälschlich nur 2 (Zeilenanzahl). */
   sectionCardCount(cards: DeckCard[]): number {
     return cards.reduce((sum, c) => sum + c.quantity, 0);

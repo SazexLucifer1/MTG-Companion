@@ -760,6 +760,16 @@
       @if (viewer.artworkPickerError()) {
         <p class="hint">{{ viewer.artworkPickerError() }}</p>
       }
+      <label class="glass-button small artwork-upload-label">
+        {{ viewer.artworkPickerBusy() ? 'Lädt …' : '📤 Eigenes Bild hochladen' }}
+        <input
+          type="file"
+          accept="image/*"
+          [disabled]="viewer.artworkPickerBusy()"
+          (change)="onCustomArtworkSelected($event)"
+        />
+      </label>
+
       @if (viewer.artworkOptions().length > 0) {
         <div class="artwork-picker-grid">
           @for (option of viewer.artworkOptions(); track option.id) {

@@ -631,6 +631,27 @@ export class DeckService {
     return true;
   }
 
+  /** Lädt ein eigenes Bild in den "deck-art"-Storage-Bucket hoch und liefert die öffentliche URL - für ein selbst gewähltes Artwork statt einer Scryfall-Edition. */
+  async uploadCustomCardArt(userId: string, file: File): Promise<string | null> {
+    if (!file.type.startsWith('image/')) return null;
+    if (file.size > 10 * 1024 * 1024) return null;
+
+    const ext = file.name.split('.').pop() ?? 'jpg';
+    const path = `${userId}/${crypto.randomUUID()}.${ext}`;
+
+    const { error } = await supabase.storage
+      .from('deck-art')
+      .upload(path, file, { contentType: file.type });
+
+    if (error) {
+      console.error('Konnte eigenes Kartenbild nicht hochladen:', error);
+      return null;
+    }
+
+    const { data } = supabase.storage.from('deck-art').getPublicUrl(path);
+    return data.publicUrl;
+  }
+
   /**
    * Gesamt-Statistik für ein Deck über ALLE Gruppen hinweg (nicht nur die aktuell aktive) und
    * unabhängig davon, wer es jeweils gespielt hat (eigener Pilot oder ausgeliehen) - im

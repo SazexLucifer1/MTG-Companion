@@ -706,6 +706,18 @@
   overflow-y: auto;
 }
 
+.artwork-upload-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  margin: 8px 0;
+
+  input[type='file'] {
+    display: none;
+  }
+}
+
 .artwork-picker-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);

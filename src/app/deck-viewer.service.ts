@@ -723,6 +723,23 @@ export class DeckViewerService {
     this.closeArtworkPicker();
   }
 
+  /** Eigenes Bild statt einer Scryfall-Edition hochladen und direkt als Artwork setzen. */
+  async uploadCustomArtwork(file: File): Promise<void> {
+    const uid = this.auth.currentUser()?.id;
+    if (!uid || !this.canEditViewingDeck()) return;
+
+    this.artworkPickerBusy.set(true);
+    this.artworkPickerError.set(null);
+    const url = await this.deckService.uploadCustomCardArt(uid, file);
+    this.artworkPickerBusy.set(false);
+
+    if (!url) {
+      this.artworkPickerError.set('Hochladen fehlgeschlagen (nur Bilder bis 10 MB).');
+      return;
+    }
+    await this.selectArtwork(url);
+  }
+
   toggleEditMode(): void {
     if (this.editMode() || !this.canEditViewingDeck()) return; // Verlassen geht nur bewusst über saveEdits()/cancelEdits()
     this.editMode.set(true);
