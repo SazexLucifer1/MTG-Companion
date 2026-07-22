@@ -1,0 +1,40 @@
+@if (feedback.showDialog()) {
+<div class="options-menu-overlay" (click)="feedback.close()">
+  <div class="options-menu-sheet" (click)="$event.stopPropagation()">
+    <h3>{{ i18n.t('feedback.dialogTitle') }}</h3>
+    <p class="hint">{{ i18n.t('feedback.dialogHint') }}</p>
+
+    <div class="chip-row">
+      <button class="glass-chip small" [class.active]="feedback.category() === 'bug'" (click)="feedback.setCategory('bug')">
+        {{ i18n.t('feedback.categoryBug') }}
+      </button>
+      <button class="glass-chip small" [class.active]="feedback.category() === 'idea'" (click)="feedback.setCategory('idea')">
+        {{ i18n.t('feedback.categoryIdea') }}
+      </button>
+    </div>
+
+    <textarea
+      class="glass-input feedback-textarea"
+      rows="6"
+      [placeholder]="i18n.t('feedback.messagePlaceholder')"
+      [ngModel]="feedback.message()"
+      (ngModelChange)="feedback.setMessage($event)"
+    ></textarea>
+
+    @if (feedback.resultMessage()) {
+      <p [class.error]="feedback.resultIsError()" [class.success]="!feedback.resultIsError()">
+        {{ feedback.resultMessage() }}
+      </p>
+    }
+
+    <button
+      class="glass-button primary"
+      [disabled]="feedback.busy() || !feedback.message().trim()"
+      (click)="feedback.submit()"
+    >
+      {{ feedback.busy() ? i18n.t('feedback.sending') : i18n.t('feedback.send') }}
+    </button>
+    <button class="glass-button" (click)="feedback.close()">{{ i18n.t('group.cancel') }}</button>
+  </div>
+</div>
+}

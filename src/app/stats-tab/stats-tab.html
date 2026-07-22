@@ -109,7 +109,8 @@
 <section class="glass-card" data-tutorial="stats-filters">
   <div class="section-header-row">
     <h2>{{ i18n.t('stats.periodAndMode') }}</h2>
-    @if (groupService.isOwner()) {
+    @if (false && groupService.isOwner()) {
+    <!-- Excel-Import ist aktuell nicht mehr benötigt, Code/Dialog bleiben zur späteren Wiederverwendung erhalten. -->
     <button
       class="icon-button"
       (click)="openImportDialog()"
@@ -200,6 +201,12 @@
       <span class="stat-value">{{ playerWinRate() | number: '1.0-0' }}%</span>
       <span class="stat-label">{{ i18n.t('stats.winRate') }}</span>
     </div>
+    @if (playerAveragePlacement(); as avgPlacement) {
+    <div class="stat-tile">
+      <span class="stat-value">{{ avgPlacement | number: '1.1-1' }}</span>
+      <span class="stat-label">{{ i18n.t('stats.avgPlacement', { count: playerPlacementCount() }) }}</span>
+    </div>
+    }
   </div>
 
   @if (isSingleMode() === null) {
@@ -387,6 +394,10 @@
   <p class="hint">
     {{ i18n.t('stats.qualificationHint', { threshold: qualificationThreshold() }) }}
   </p>
+  <button class="glass-chip" (click)="toggleQualification()">
+    {{ showQualification() ? i18n.t('stats.playerQualificationToggleExpanded', { count: playersInQualification().length }) : i18n.t('stats.playerQualificationToggle', { count: playersInQualification().length }) }}
+  </button>
+  @if (showQualification()) {
   <ul class="qualification">
     @for (p of pagedPlayersInQualification(); track p.name) {
     <li>
@@ -406,8 +417,119 @@
     <button class="icon-button" (click)="nextPlayerQualPage()" [disabled]="playerQualEffectivePage() >= playerQualTotalPages() - 1" [attr.aria-label]="i18n.t('stats.nextPage')">▶</button>
   </div>
   }
+  }
 </section>
-} @if (combinedDeckCommanderStats().length > 0) {
+}
+
+<section class="glass-card" data-tutorial="stats-h2h">
+  <button class="section-header-row h2h-toggle" (click)="toggleH2h()">
+    <h2>{{ i18n.t('stats.h2h.title') }}</h2>
+    <span class="chevron">{{ showH2h() ? '▾' : '▸' }}</span>
+  </button>
+  @if (showH2h()) {
+  <p class="hint">{{ i18n.t('stats.h2h.hint') }}</p>
+
+  <div class="import-field">
+    <label class="hint" for="h2h-player-a">{{ i18n.t('stats.h2h.playerA') }}</label>
+    <select
+      id="h2h-player-a"
+      class="glass-input"
+      [ngModel]="h2hPlayerA() ?? ''"
+      (ngModelChange)="setH2hPlayerA($event)"
+    >
+      <option value="">{{ i18n.t('stats.h2h.choosePlayer') }}</option>
+      @for (player of mtg.allPlayers(); track player) {
+      <option [value]="player">{{ player }}</option>
+      }
+    </select>
+  </div>
+  <div class="import-field">
+    <label class="hint" for="h2h-player-b">{{ i18n.t('stats.h2h.playerB') }}</label>
+    <select
+      id="h2h-player-b"
+      class="glass-input"
+      [ngModel]="h2hPlayerB() ?? ''"
+      (ngModelChange)="setH2hPlayerB($event)"
+    >
+      <option value="">{{ i18n.t('stats.h2h.choosePlayer') }}</option>
+      @for (player of mtg.allPlayers(); track player) {
+      <option [value]="player">{{ player }}</option>
+      }
+    </select>
+  </div>
+
+  @if (!h2hPlayerA() || !h2hPlayerB()) {
+  <p class="hint">{{ i18n.t('stats.h2h.choosePlayersHint') }}</p>
+  } @else if (h2hPlayerA() === h2hPlayerB()) {
+  <p class="hint">{{ i18n.t('stats.h2h.samePlayerHint') }}</p>
+  } @else if (h2hGames() === 0) {
+  <p class="hint">{{ i18n.t('stats.h2h.noGames', { a: h2hPlayerA() ?? '', b: h2hPlayerB() ?? '' }) }}</p>
+  } @else {
+  <div class="stat-tiles">
+    <div class="stat-tile">
+      <span class="stat-value">{{ h2hGames() }}</span>
+      <span class="stat-label">{{ i18n.t('stats.h2h.gamesTogether') }}</span>
+    </div>
+    <div class="stat-tile">
+      <span class="stat-value">{{ h2hWinsA() }}</span>
+      <span class="stat-label">{{ i18n.t('stats.h2h.winsOf', { name: h2hPlayerA() ?? '' }) }}</span>
+    </div>
+    <div class="stat-tile">
+      <span class="stat-value">{{ h2hWinsB() }}</span>
+      <span class="stat-label">{{ i18n.t('stats.h2h.winsOf', { name: h2hPlayerB() ?? '' }) }}</span>
+    </div>
+  </div>
+  @if (h2hWinsOther() > 0) {
+  <p class="hint">{{ i18n.t('stats.h2h.otherWinnerHint', { count: h2hWinsOther() }) }}</p>
+  }
+
+  @if (h2hCommanderStatsA().length > 0) {
+  <h3>{{ i18n.t('stats.h2h.commandersOf', { name: h2hPlayerA() ?? '' }) }}</h3>
+  <ul class="ranking">
+    @for (c of h2hCommanderStatsA(); track c.commander; let i = $index) {
+    <li>
+      <span class="rank">{{ medal(i) }}</span>
+      <span class="name card-name-cell">
+        @if (commanderImage(c.commander); as img) {
+          <img class="card-thumb" [src]="img" [alt]="c.commander" />
+        }
+        <span class="card-name-text">{{ c.commander }}</span>
+      </span>
+      <span class="detail">{{ c.wins }} / {{ c.games }} {{ i18n.t('stats.wins') }}</span>
+      <span class="rate">{{ c.winRate | number: '1.0-0' }}%</span>
+      <div class="bar">
+        <div class="bar-fill" [style.width.%]="c.winRate"></div>
+      </div>
+    </li>
+    }
+  </ul>
+  }
+  @if (h2hCommanderStatsB().length > 0) {
+  <h3>{{ i18n.t('stats.h2h.commandersOf', { name: h2hPlayerB() ?? '' }) }}</h3>
+  <ul class="ranking">
+    @for (c of h2hCommanderStatsB(); track c.commander; let i = $index) {
+    <li>
+      <span class="rank">{{ medal(i) }}</span>
+      <span class="name card-name-cell">
+        @if (commanderImage(c.commander); as img) {
+          <img class="card-thumb" [src]="img" [alt]="c.commander" />
+        }
+        <span class="card-name-text">{{ c.commander }}</span>
+      </span>
+      <span class="detail">{{ c.wins }} / {{ c.games }} {{ i18n.t('stats.wins') }}</span>
+      <span class="rate">{{ c.winRate | number: '1.0-0' }}%</span>
+      <div class="bar">
+        <div class="bar-fill" [style.width.%]="c.winRate"></div>
+      </div>
+    </li>
+    }
+  </ul>
+  }
+  }
+  }
+</section>
+
+@if (combinedDeckCommanderStats().length > 0) {
 <section class="glass-card" data-tutorial="stats-decks-commanders">
   <h2>{{ i18n.t('stats.decksAndCommanders') }}</h2>
   <p class="hint">

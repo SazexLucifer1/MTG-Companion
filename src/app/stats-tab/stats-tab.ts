@@ -12,7 +12,15 @@ import {
   IMPORT_LOSS_PLACEHOLDER,
   IMPORT_ARCHENEMY_LOSS_PLACEHOLDER,
 } from '../excel-import.service';
-import { CommanderStats, DeckStats, GAME_MODES, GameMode, Match, PlayerStats } from '../models';
+import {
+  CommanderStats,
+  DeckStats,
+  GAME_MODES,
+  GameMode,
+  LIVE_TRACKING_START_DATE,
+  Match,
+  PlayerStats,
+} from '../models';
 import { I18nService } from '../i18n.service';
 
 export type RankSortMode = 'wins' | 'winRate' | 'games';
@@ -89,6 +97,12 @@ export class StatsTab {
       }
       for (const d of this.playerDeckStats()) {
         if (d.commander) names.add(d.commander);
+      }
+      for (const c of this.h2hCommanderStatsA()) {
+        names.add(c.commander);
+      }
+      for (const c of this.h2hCommanderStatsB()) {
+        names.add(c.commander);
       }
       const cache = this.cardImages();
       const missing = [...names].filter((n) => !(n.toLowerCase() in cache));
@@ -338,6 +352,13 @@ export class StatsTab {
 
   nextPlayerQualPage(): void {
     this.playerQualPage.update((p) => Math.min(this.playerQualTotalPages() - 1, p + 1));
+  }
+
+  /** Ob die Spielerliste in "Spiele bis zur Qualifikation" ausgeklappt ist - analog zu showPlayerDecks/showPlayerCommanders. */
+  readonly showQualification = signal(false);
+
+  toggleQualification(): void {
+    this.showQualification.update((v) => !v);
   }
 
   /**
@@ -604,6 +625,23 @@ export class StatsTab {
 
   readonly playerTotalGames = computed(() => this.selectedPlayerMatches().length);
 
+  /** Nur Matches, in denen für den gewählten Spieler eine Platzierung eingetragen wurde (rein optionale Zusatz-Info). */
+  private readonly playerPlacements = computed<number[]>(() => {
+    const player = this.selectedPlayer();
+    if (!player) return [];
+    return this.selectedPlayerMatches()
+      .map((m) => m.players.find((p) => p.name === player)?.placement)
+      .filter((v): v is number => v != null);
+  });
+
+  readonly playerPlacementCount = computed(() => this.playerPlacements().length);
+
+  readonly playerAveragePlacement = computed(() => {
+    const placements = this.playerPlacements();
+    if (placements.length === 0) return null;
+    return placements.reduce((sum, p) => sum + p, 0) / placements.length;
+  });
+
   readonly playerTotalWins = computed(() => {
     const player = this.selectedPlayer();
     if (!player) return 0;
@@ -752,6 +790,88 @@ export class StatsTab {
     return [...stats.entries()]
       .map(([mode, s]) => ({ mode, ...s, winRate: s.games > 0 ? (s.wins / s.games) * 100 : 0 }))
       .sort((a, b) => b.games - a.games);
+  });
+
+  // --- Head-to-Head ---
+
+  /** Ob die Head-to-Head-Sektion ausgeklappt ist - standardmäßig eingeklappt, da nicht jeder das immer sehen will. */
+  readonly showH2h = signal(false);
+
+  toggleH2h(): void {
+    this.showH2h.update((v) => !v);
+  }
+
+  readonly h2hPlayerA = signal<string | null>(null);
+  readonly h2hPlayerB = signal<string | null>(null);
+
+  setH2hPlayerA(player: string): void {
+    this.h2hPlayerA.set(player || null);
+  }
+
+  setH2hPlayerB(player: string): void {
+    this.h2hPlayerB.set(player || null);
+  }
+
+  /**
+   * Head-to-Head bezieht sich bewusst nur auf live getrackte Spiele (ab LIVE_TRACKING_START_DATE),
+   * nicht auf die per Excel importierten historischen Partien - die Import-Datensätze bilden
+   * echte Gruppenrunden ab (oft >2 Spieler gleichzeitig) und eignen sich nicht für eine saubere
+   * 1-gegen-1-Bilanz zwischen zwei bestimmten Spielern.
+   */
+  private readonly h2hMatches = computed<Match[]>(() => {
+    const a = this.h2hPlayerA();
+    const b = this.h2hPlayerB();
+    if (!a || !b || a === b) return [];
+    return this.filteredMatches().filter(
+      (m) =>
+        new Date(m.date) >= LIVE_TRACKING_START_DATE &&
+        m.players.some((p) => p.name === a) &&
+        m.players.some((p) => p.name === b)
+    );
+  });
+
+  readonly h2hGames = computed(() => this.h2hMatches().length);
+
+  readonly h2hWinsA = computed(() => {
+    const a = this.h2hPlayerA();
+    if (!a) return 0;
+    return this.h2hMatches().filter((m) => this.isPlayerWinner(m, a)).length;
+  });
+
+  readonly h2hWinsB = computed(() => {
+    const b = this.h2hPlayerB();
+    if (!b) return 0;
+    return this.h2hMatches().filter((m) => this.isPlayerWinner(m, b)).length;
+  });
+
+  /** Spiele, die weder A noch B gewonnen hat (bei mehr als 2 Teilnehmern im Match möglich). */
+  readonly h2hWinsOther = computed(
+    () => this.h2hGames() - this.h2hWinsA() - this.h2hWinsB()
+  );
+
+  private h2hCommanderStatsFor(player: string): { commander: string; games: number; wins: number; winRate: number }[] {
+    const stats = new Map<string, { games: number; wins: number }>();
+    for (const match of this.h2hMatches()) {
+      const entry0 = match.players.find((p) => p.name === player);
+      if (!entry0?.commander) continue;
+      const entry = stats.get(entry0.commander) ?? { games: 0, wins: 0 };
+      entry.games++;
+      if (this.isPlayerWinner(match, player)) entry.wins++;
+      stats.set(entry0.commander, entry);
+    }
+    return [...stats.entries()]
+      .map(([commander, s]) => ({ commander, ...s, winRate: s.games > 0 ? (s.wins / s.games) * 100 : 0 }))
+      .sort((a, b) => b.games - a.games);
+  }
+
+  readonly h2hCommanderStatsA = computed(() => {
+    const a = this.h2hPlayerA();
+    return a ? this.h2hCommanderStatsFor(a) : [];
+  });
+
+  readonly h2hCommanderStatsB = computed(() => {
+    const b = this.h2hPlayerB();
+    return b ? this.h2hCommanderStatsFor(b) : [];
   });
 
   private readonly ARCHENEMY_OTHERS = '__OTHERS__';

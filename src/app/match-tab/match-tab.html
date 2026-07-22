@@ -329,6 +329,7 @@
         }
         <span class="history-date">{{ match.date | date: 'dd.MM.yyyy, HH:mm' }}</span>
         <button class="icon-button" (click)="startEditWinner(match.id)" [attr.aria-label]="i18n.t('match.changeWinner')">✏️</button>
+        <button class="icon-button" (click)="startEditPlacements(match)" [attr.aria-label]="i18n.t('placement.editButton')">🏁</button>
         @if (groupService.isOwner()) {
           <button class="icon-button" (click)="deleteMatch(match.id)" [attr.aria-label]="i18n.t('match.deleteMatch')">🗑</button>
         }
@@ -348,6 +349,7 @@
             @if (p.name === match.winner) {🏆 }{{ p.name }}
             @if (match.mode === 'Two-Headed Giant' && p.team) {<em> – Team {{ p.team }}</em>}
             @if (p.commander) {<em> – {{ p.commander }}</em>}
+            @if (p.placement) {<em class="placement-badge"> · {{ i18n.t('placement.badge', { placement: p.placement }) }}</em>}
           </span>
         }
       }
@@ -368,6 +370,31 @@
           }
         </div>
         <button class="glass-button small" (click)="editingMatchId.set(null)">{{ i18n.t('match.cancel') }}</button>
+      </div>
+    }
+
+    @if (editingPlacementsMatchId() === match.id) {
+      <div class="winner-edit">
+        <p class="hint">{{ i18n.t('placement.editTitle') }}</p>
+        <ul class="placement-edit-list">
+          @for (p of match.players; track p.name) {
+          <li>
+            <span class="placement-name">{{ p.name }}</span>
+            <select
+              class="glass-input"
+              [ngModel]="placementDraft()[p.name] ?? ''"
+              (ngModelChange)="setPlacementDraft(p.name, $event)"
+            >
+              <option value="">{{ i18n.t('placement.notSet') }}</option>
+              @for (n of match.players; track n.name; let i = $index) {
+              <option [value]="i + 1">{{ i + 1 }}.</option>
+              }
+            </select>
+          </li>
+          }
+        </ul>
+        <button class="glass-button small primary" (click)="savePlacements(match)">{{ i18n.t('placement.save') }}</button>
+        <button class="glass-button small" (click)="editingPlacementsMatchId.set(null)">{{ i18n.t('placement.cancel') }}</button>
       </div>
     }
   </li>

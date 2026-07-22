@@ -10,6 +10,8 @@ export interface Profile {
   language: 'de' | 'en';
   /** IDs der schon gesehenen/übersprungenen Einführungs-Touren (z.B. "intro", "match", "deckDetail", ...) - siehe tutorial.service.ts. */
   tutorialsSeen: string[];
+  /** Darf eingereichte Bugreports/Feedback aller Nutzer einsehen (siehe feedback.service.ts) - manuell in Supabase gesetzt, kein Selbstbedienungs-Feature. */
+  isAppAdmin: boolean;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -57,7 +59,7 @@ export class ProfileService {
     this.loading.set(true);
     const { data, error } = await supabase
       .from('profiles')
-      .select('id, display_name, avatar_url, favorite_commanders, language, tutorials_seen')
+      .select('id, display_name, avatar_url, favorite_commanders, language, tutorials_seen, is_app_admin')
       .eq('id', userId)
       .single();
 
@@ -72,6 +74,7 @@ export class ProfileService {
         favoriteCommanders: data.favorite_commanders ?? [],
         language: data.language === 'en' ? 'en' : 'de',
         tutorialsSeen: data.tutorials_seen ?? [],
+        isAppAdmin: data.is_app_admin ?? false,
       });
     }
     this.loading.set(false);

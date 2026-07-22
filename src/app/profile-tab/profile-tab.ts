@@ -1,6 +1,6 @@
 import { Component, computed, effect, inject, signal, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { DecimalPipe } from '@angular/common';
+import { DatePipe, DecimalPipe } from '@angular/common';
 import QRCode from 'qrcode';
 import { ProfileService } from '../profile.service';
 import { MtgService } from '../mtg.service';
@@ -12,10 +12,11 @@ import { BackgroundService } from '../background.service';
 import { ScryfallService } from '../scryfall.service';
 import { I18nService } from '../i18n.service';
 import { TutorialService } from '../tutorial.service';
+import { FeedbackService } from '../feedback.service';
 
 @Component({
   selector: 'app-profile-tab',
-  imports: [FormsModule, DecimalPipe, DeckList],
+  imports: [FormsModule, DecimalPipe, DatePipe, DeckList],
   templateUrl: './profile-tab.html',
   styleUrl: './profile-tab.scss',
 })
@@ -29,8 +30,34 @@ export class ProfileTab {
   private readonly scryfall = inject(ScryfallService);
   readonly i18n = inject(I18nService);
   readonly tutorial = inject(TutorialService);
+  readonly feedback = inject(FeedbackService);
 
   readonly deckListRef = viewChild<DeckList>('deckListRef');
+
+  /** Findet den Spielernamen (mtg.playerUserIds ist name-indiziert) zu einer Account-User-ID, oder null ohne Zuordnung. */
+  private playerNameForUserId(userId: string | null): string | null {
+    if (!userId) return null;
+    const entry = Object.entries(this.mtg.playerUserIds()).find(([, uid]) => uid === userId);
+    return entry?.[0] ?? null;
+  }
+
+  /**
+   * Wie oft welcher Platz (1., 2., ...) erreicht wurde - nur Matches mit eingetragener
+   * Platzierung zählen mit (rein optionale Zusatz-Info, siehe models.ts MatchPlayer.placement).
+   * Gilt für das gerade angezeigte Profil (eigenes oder fremdes, je nach viewingUserId).
+   */
+  readonly placementDistribution = computed<{ placement: number; count: number }[]>(() => {
+    const userId = this.profileService.viewingUserId() ?? this.profileService.profile()?.id ?? null;
+    const name = this.playerNameForUserId(userId);
+    if (!name) return [];
+
+    const counts = new Map<number, number>();
+    for (const match of this.mtg.history()) {
+      const placement = match.players.find((p) => p.name === name)?.placement;
+      if (placement != null) counts.set(placement, (counts.get(placement) ?? 0) + 1);
+    }
+    return [...counts.entries()].sort((a, b) => a[0] - b[0]).map(([placement, count]) => ({ placement, count }));
+  });
 
   readonly unassignedCommanderStats = signal<CommanderGameStats[]>([]);
   /** Gleiches wie unassignedCommanderStats, aber für ein FREMDES Profil - rein zum Ansehen, ohne Reparieren/Verlinken (das kann nur der Account-Besitzer selbst). */
@@ -102,6 +129,14 @@ export class ProfileTab {
         });
       });
     });
+
+    // Lädt die Feedback-Eingänge einmalig nach, sobald erkannt wird, dass der Account App-Admin ist.
+    let feedbackLoadTriggered = false;
+    effect(() => {
+      if (!this.profileService.profile()?.isAppAdmin || feedbackLoadTriggered) return;
+      feedbackLoadTriggered = true;
+      this.feedback.loadEntries();
+    });
   }
 
   /** Kartenname (lowercase) -> Bild-URL oder null (nicht gefunden), für die "Commander ohne Deck"-Liste. */
@@ -111,6 +146,13 @@ export class ProfileTab {
     if (!name) return null;
     return this.commanderCardImages()[name.toLowerCase()] ?? null;
   }
+
+  /** Feedback-Einträge für die Admin-Ansicht - "erledigt" standardmäßig ausgeblendet. */
+  readonly visibleFeedbackEntries = computed(() =>
+    this.feedback.showDoneEntries()
+      ? this.feedback.entries()
+      : this.feedback.entries().filter((e) => e.status === 'open')
+  );
 
   // --- Top-3-Lieblings-Commander (füllt den sonst leeren Bereich neben Avatar/Gruppen) ---
 

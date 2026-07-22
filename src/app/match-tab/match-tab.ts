@@ -10,7 +10,7 @@ import { GroupService } from '../group.service';
 import { PlayerAvatar } from '../player-avatar/player-avatar';
 import { DeckService } from '../deck.service';
 import { I18nService } from '../i18n.service';
-import { GAME_MODES, TEAM_OPTIONS, Match } from '../models';
+import { GAME_MODES, TEAM_OPTIONS, Match, LIVE_TRACKING_START_DATE } from '../models';
 
 @Component({
   selector: 'app-match-tab',
@@ -302,10 +302,8 @@ export class MatchTab {
    * sie zählen weiterhin ganz normal in der Statistik mit (die liest direkt aus mtg.history()),
    * nur die Anzeige im Verlauf lässt sie weg.
    */
-  private static readonly HISTORY_VISIBLE_FROM = new Date('2026-07-17');
-
   readonly visibleHistory = computed(() =>
-    this.mtg.history().filter((m) => new Date(m.date) >= MatchTab.HISTORY_VISIBLE_FROM)
+    this.mtg.history().filter((m) => new Date(m.date) >= LIVE_TRACKING_START_DATE)
   );
 
   readonly historyTotalPages = computed(() =>
@@ -352,6 +350,33 @@ export class MatchTab {
   async setMatchWinner(id: string, winner: string): Promise<void> {
     await this.mtg.updateMatchWinner(id, winner);
     this.editingMatchId.set(null);
+  }
+
+  // --- Platzierung nachträglich eintragen/ändern ---
+
+  readonly editingPlacementsMatchId = signal<string | null>(null);
+  readonly placementDraft = signal<Record<string, number | null>>({});
+
+  startEditPlacements(match: Match): void {
+    if (this.editingPlacementsMatchId() === match.id) {
+      this.editingPlacementsMatchId.set(null);
+      return;
+    }
+    this.placementDraft.set(Object.fromEntries(match.players.map((p) => [p.name, p.placement ?? null])));
+    this.editingPlacementsMatchId.set(match.id);
+  }
+
+  setPlacementDraft(name: string, value: string): void {
+    this.placementDraft.update((d) => ({ ...d, [name]: value === '' ? null : Number(value) }));
+  }
+
+  async savePlacements(match: Match): Promise<void> {
+    const draft = this.placementDraft();
+    await this.mtg.setPlacements(
+      match.id,
+      match.players.map((p) => ({ name: p.name, placement: draft[p.name] ?? null }))
+    );
+    this.editingPlacementsMatchId.set(null);
   }
   /** Mögliche Gewinner-Optionen für ein Match, abhängig vom Spielmodus. */
   winnerOptions(match: Match): { value: string; label: string }[] {

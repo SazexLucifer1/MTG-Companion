@@ -57,6 +57,13 @@ export class GameSessionService {
   readonly selectedDraftSet = signal<SelectedDraftSet | null>(null);
 
   /**
+   * Zuletzt gespeichertes Match (gesetzt direkt nach saveAndReset()), damit optional noch
+   * Platzierungen nachgetragen werden können - siehe PlacementDialog, der dieses Signal beobachtet.
+   * Wird beim Speichern/Überspringen im Dialog wieder auf null gesetzt.
+   */
+  readonly lastFinishedMatch = signal<{ matchId: string; players: MatchPlayer[] } | null>(null);
+
+  /**
    * lifeTotals & co. sind ab jetzt generisch nach "Panel-Key" indiziert:
    * bei normalen Modi der Spielername, bei 2HG der Team-Name. Die Methoden
    * selbst (adjustLife, toggleDead, ...) kennt den Unterschied nicht – sie
@@ -525,10 +532,11 @@ export class GameSessionService {
     try {
       const cube = this.mtg.cubes().find((c) => c.id === this.selectedCubeId());
       const draftSet = this.selectedDraftSet();
+      const players = this.selectedPlayers();
 
-      await this.mtg.addMatch({
+      const matchId = await this.mtg.addMatch({
         mode: this.mode(),
-        players: this.selectedPlayers(),
+        players,
         winner,
         cube: cube ? { id: cube.id, name: cube.name, isCommander: cube.isCommander } : undefined,
         draftSet:
@@ -541,6 +549,10 @@ export class GameSessionService {
               }
             : undefined,
       });
+
+      if (matchId) {
+        this.lastFinishedMatch.set({ matchId, players });
+      }
 
       this.resetAll();
       this.deadMessageMap.set({}); // NEU

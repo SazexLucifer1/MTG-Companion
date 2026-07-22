@@ -1,0 +1,31 @@
+@if (session.lastFinishedMatch(); as match) {
+<div class="options-menu-overlay" (click)="skip()">
+  <div class="options-menu-sheet" (click)="$event.stopPropagation()">
+    <h3>{{ i18n.t('placement.dialogTitle') }}</h3>
+    <p class="hint">{{ i18n.t('placement.dialogHint') }}</p>
+
+    <ul class="placement-list">
+      @for (p of match.players; track p.name) {
+      <li>
+        <span class="placement-name">{{ p.name }}</span>
+        <select
+          class="glass-input"
+          [ngModel]="draft()[p.name] ?? ''"
+          (ngModelChange)="setPlacement(p.name, $event)"
+        >
+          <option value="">{{ i18n.t('placement.notSet') }}</option>
+          @for (n of placementOptions(); track n) {
+          <option [value]="n">{{ n }}.</option>
+          }
+        </select>
+      </li>
+      }
+    </ul>
+
+    <button class="glass-button primary" [disabled]="saving()" (click)="save()">
+      {{ saving() ? i18n.t('placement.saving') : i18n.t('placement.save') }}
+    </button>
+    <button class="glass-button" (click)="skip()">{{ i18n.t('placement.skip') }}</button>
+  </div>
+</div>
+}

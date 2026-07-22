@@ -253,6 +253,38 @@
     padding: 6px 0;
   }
 
+  &.feedback-list li.feedback-entry {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+    padding: 10px 0;
+
+    &.done {
+      opacity: 0.55;
+    }
+
+    .feedback-entry-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .feedback-category {
+      font-weight: 600;
+    }
+
+    .feedback-message {
+      margin: 0;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    button {
+      align-self: flex-start;
+    }
+  }
+
   li.clickable {
     cursor: pointer;
 

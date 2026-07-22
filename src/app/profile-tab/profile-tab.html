@@ -78,6 +78,21 @@
       }
     </section>
   }
+
+  @if (placementDistribution().length > 0) {
+    <section class="glass-card">
+      <h2>{{ i18n.t('profile.placementDistribution') }}</h2>
+      <p class="hint">{{ i18n.t('profile.placementDistributionHint') }}</p>
+      <ul class="player-list compact-list">
+        @for (p of placementDistribution(); track p.placement) {
+          <li>
+            <span class="player-name">{{ i18n.t('placement.badge', { placement: p.placement }) }}</span>
+            <span class="hint">{{ p.count }}×</span>
+          </li>
+        }
+      </ul>
+    </section>
+  }
 } @else {
 
 <section class="glass-card">
@@ -230,6 +245,21 @@
       <button class="glass-button" (click)="closeFavoriteCommanderDialog()">{{ i18n.t('profile.close') }}</button>
     </div>
   </div>
+  }
+
+  @if (placementDistribution().length > 0) {
+    <section class="glass-card">
+      <h2>{{ i18n.t('profile.placementDistribution') }}</h2>
+      <p class="hint">{{ i18n.t('profile.placementDistributionHint') }}</p>
+      <ul class="player-list compact-list">
+        @for (p of placementDistribution(); track p.placement) {
+          <li>
+            <span class="player-name">{{ i18n.t('placement.badge', { placement: p.placement }) }}</span>
+            <span class="hint">{{ p.count }}×</span>
+          </li>
+        }
+      </ul>
+    </section>
   }
 
   @if (profileService.profile(); as profile) {
@@ -503,6 +533,41 @@
       <button class="glass-button" (click)="closeGeminiSettings()">{{ i18n.t('profile.close') }}</button>
     </div>
   </div>
+  }
+
+  @if (profileService.profile()?.isAppAdmin) {
+  <section class="glass-card">
+    <div class="section-header-row">
+      <h2>{{ i18n.t('feedback.adminTitle') }}</h2>
+      <button class="glass-chip small" [class.active]="feedback.showDoneEntries()" (click)="feedback.toggleShowDone()">
+        {{ i18n.t('feedback.showDone') }}
+      </button>
+    </div>
+
+    @if (feedback.entriesLoading()) {
+      <p class="hint">{{ i18n.t('feedback.loading') }}</p>
+    } @else if (visibleFeedbackEntries().length === 0) {
+      <p class="hint">{{ i18n.t('feedback.noneFound') }}</p>
+    } @else {
+      <ul class="player-list compact-list feedback-list">
+        @for (entry of visibleFeedbackEntries(); track entry.id) {
+          <li class="feedback-entry" [class.done]="entry.status === 'done'">
+            <div class="feedback-entry-header">
+              <span class="feedback-category">{{ entry.category === 'bug' ? i18n.t('feedback.categoryBug') : i18n.t('feedback.categoryIdea') }}</span>
+              <span class="hint">{{ entry.displayName }} · {{ entry.createdAt | date: 'dd.MM.yyyy HH:mm' }}</span>
+            </div>
+            <p class="feedback-message">{{ entry.message }}</p>
+            <button
+              class="glass-chip small"
+              (click)="feedback.setStatus(entry.id, entry.status === 'open' ? 'done' : 'open')"
+            >
+              {{ entry.status === 'open' ? i18n.t('feedback.markDone') : i18n.t('feedback.markOpen') }}
+            </button>
+          </li>
+        }
+      </ul>
+    }
+  </section>
   }
 
   <section class="glass-card danger-zone">

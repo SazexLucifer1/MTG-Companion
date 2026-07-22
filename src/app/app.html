@@ -6,6 +6,14 @@
     <h1>MTG Companion</h1>
     <div class="header-actions">
       <button
+        class="feedback-toggle"
+        (click)="feedback.open()"
+        [attr.aria-label]="i18n.t('feedback.openAria')"
+        [title]="i18n.t('feedback.openAria')"
+      >
+        🐛
+      </button>
+      <button
         class="lang-toggle"
         data-tutorial="lang-toggle"
         (click)="i18n.toggleLang()"
@@ -35,6 +43,8 @@
 <app-deck-import-dialogs />
 <app-deck-pdf-dialog />
 <app-tutorial-overlay />
+<app-feedback-dialog />
+<app-placement-dialog />
 
 <nav class="tab-bar" data-tutorial="tab-bar">
   @for (tab of tabs; track tab.id) {

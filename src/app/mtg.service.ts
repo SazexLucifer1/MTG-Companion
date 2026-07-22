@@ -524,6 +524,7 @@ export class MtgService {
           team,
           is_archenemy,
           deck_id,
+          placement,
           decks ( name, user_id, is_precon ),
           players ( display_name )
         )
@@ -557,6 +558,7 @@ export class MtgService {
         deckName: mp.decks?.name ?? undefined,
         deckOwnerId: mp.decks?.user_id ?? undefined,
         deckIsPrecon: mp.decks?.is_precon ?? undefined,
+        placement: mp.placement ?? undefined,
       })),
     };
 
@@ -611,9 +613,10 @@ export class MtgService {
     return resolved;
   }
 
-  async addMatch(match: Omit<Match, 'id' | 'date'>): Promise<void> {
+  /** Legt ein Match an und liefert dessen ID zurück (z.B. um danach optional Platzierungen nachzutragen) - null bei Fehler. */
+  async addMatch(match: Omit<Match, 'id' | 'date'>): Promise<string | null> {
     const groupId = this.groupService.groupId();
-    if (!groupId) return;
+    if (!groupId) return null;
 
     const players = await this.resolveAutoDeckLinks(match.players);
 
@@ -635,7 +638,7 @@ export class MtgService {
 
     if (matchError || !matchRow) {
       console.error('Konnte Match nicht anlegen:', matchError);
-      return;
+      return null;
     }
 
     // Schritt 2: Für jeden Spieler eine Zeile in "match_players" anlegen
@@ -654,7 +657,7 @@ export class MtgService {
 
     if (playersError) {
       console.error('Konnte Match-Spieler nicht anlegen:', playersError);
-      return;
+      return null;
     }
 
     // Schritt 3: Lokal ans Signal anhängen, damit die UI sofort aktualisiert.
@@ -687,6 +690,40 @@ export class MtgService {
       })),
     };
     this.history.update((matches) => [full, ...matches]);
+    return matchRow.id;
+  }
+
+  /**
+   * Trägt nachträglich die Platzierung (1 = Sieger, 2 = zweiter Platz, ...) einzelner Spieler
+   * eines Matches ein oder ändert sie - rein optionale Zusatz-Info, der Sieger/Verlierer-Status
+   * (matches.winner_name) bleibt davon komplett unberührt.
+   */
+  async setPlacements(matchId: string, placements: { name: string; placement: number | null }[]): Promise<void> {
+    for (const { name, placement } of placements) {
+      const { error } = await supabase
+        .from('match_players')
+        .update({ placement })
+        .eq('match_id', matchId)
+        .eq('player_name', name);
+
+      if (error) {
+        console.error('Konnte Platzierung nicht speichern:', error);
+      }
+    }
+
+    this.history.update((matches) =>
+      matches.map((m) =>
+        m.id !== matchId
+          ? m
+          : {
+              ...m,
+              players: m.players.map((p) => {
+                const entry = placements.find((pl) => pl.name === p.name);
+                return entry ? { ...p, placement: entry.placement ?? undefined } : p;
+              }),
+            }
+      )
+    );
   }
 
   /** crypto.randomUUID() existiert nur in sicheren Kontexten (HTTPS/localhost) – daher Fallback. */

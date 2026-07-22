@@ -8,12 +8,15 @@ import { DeckDetailView } from './deck-detail-view/deck-detail-view';
 import { DeckImportDialogs } from './deck-import-dialogs/deck-import-dialogs';
 import { DeckPdfDialog } from './deck-pdf-dialog/deck-pdf-dialog';
 import { TutorialOverlay } from './tutorial-overlay/tutorial-overlay';
+import { FeedbackDialog } from './feedback-dialog/feedback-dialog';
+import { PlacementDialog } from './placement-dialog/placement-dialog';
 import { Login } from './login/login';
 import { ResetPassword } from './reset-password/reset-password';
 import { GameSessionService } from './game-session.service';
 import { AuthService } from './auth.service';
 import { NavigationService, AppTab } from './navigation.service';
 import { I18nService } from './i18n.service';
+import { FeedbackService } from './feedback.service';
 
 @Component({
   selector: 'app-root',
@@ -29,6 +32,8 @@ import { I18nService } from './i18n.service';
     Login,
     ResetPassword,
     TutorialOverlay,
+    FeedbackDialog,
+    PlacementDialog,
   ],
   templateUrl: './app.html',
   styleUrl: './app.scss',
@@ -38,6 +43,7 @@ export class App {
   readonly session = inject(GameSessionService);
   readonly navigation = inject(NavigationService);
   readonly i18n = inject(I18nService);
+  readonly feedback = inject(FeedbackService);
 
   readonly tabs: { id: AppTab; labelKey: string; icon: string }[] = [
     { id: 'match', labelKey: 'nav.match', icon: '⚔️' },

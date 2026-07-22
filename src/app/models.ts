@@ -1,3 +1,10 @@
+/**
+ * Ab diesem Datum gelten Spiele als "live getrackt" - alles davor stammt aus dem
+ * Excel-Bulk-Import (siehe ExcelImportService), auch wenn es kein explizites Import-Flag gibt
+ * (Import-Batches bekommen beim Anlegen immer den 31.12. des gewählten Jahres als Datum).
+ */
+export const LIVE_TRACKING_START_DATE = new Date('2026-07-17');
+
 export type GameMode = 'Commander' | 'Two-Headed Giant' | 'Archenemy' | 'Cube' | 'Draft' | 'Spezialevent';
 
 export const GAME_MODES: GameMode[] = ['Commander', 'Two-Headed Giant', 'Archenemy', 'Cube', 'Draft', 'Spezialevent'];
@@ -21,6 +28,12 @@ export interface MatchPlayer {
   deckOwnerId?: string;
   /** Nur beim Lesen aus der Historie befüllt (Join). */
   deckIsPrecon?: boolean;
+  /**
+   * Optionale Zusatz-Info: welchen Platz (1 = Sieger, 2 = zweiter Platz, ...) dieser Spieler in
+   * diesem Match belegt hat. Rein informativ - der Sieg/Niederlage-Status (siehe Match.winner)
+   * bleibt davon unberührt, jeder Nicht-Sieger zählt weiterhin ganz normal als Niederlage.
+   */
+  placement?: number;
 }
 
 export interface Match {
