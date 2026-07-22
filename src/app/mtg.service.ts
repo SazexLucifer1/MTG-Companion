@@ -366,6 +366,20 @@ export class MtgService {
         players: m.players.map((mp) => (mp.name === oldName ? { ...mp, name: trimmed } : mp)),
       }))
     );
+
+    // Die Account-Verknüpfung (playerUserIds u.a.) ist name-indiziert - ohne dieses Umschlüsseln
+    // würde sie unter dem alten Namen "hängen bleiben" und wirkt dann bis zum nächsten Neuladen
+    // wie verloren (z.B. Avatar/Sichtbarkeit unter dem neuen Namen nicht mehr auffindbar).
+    const rekey = <T,>(map: Record<string, T>): Record<string, T> => {
+      if (!(oldName in map)) return map;
+      const { [oldName]: value, ...rest } = map;
+      return { ...rest, [trimmed]: value };
+    };
+    this.playerIdsByName.update(rekey);
+    this.playerUserIds.update(rekey);
+    this.playerAvatars.update(rekey);
+    this.playerBackgrounds.update(rekey);
+
     return true;
   }
 
