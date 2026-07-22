@@ -232,7 +232,12 @@
   </div>
   <ul class="ranking">
     @for (d of playerDeckStats(); track d.deckId; let i = $index) {
-    <li>
+    <li
+      class="commander-row"
+      [class.expandable]="isSingleMode() === null"
+      [class.expanded]="isSingleMode() === null && selectedDeckDetail() === d.deckId"
+      (click)="toggleDeckDetail(d.deckId)"
+    >
       <span class="rank">{{ medal(i) }}</span>
       <span class="name card-name-cell">
         @if (commanderImage(d.commander, d.commanderImageUrl); as img) {
@@ -243,12 +248,27 @@
           {{ d.deckName }}
           @if (d.borrowed) {<span class="borrowed-badge">🤝 von {{ d.ownerName }}</span>}
         </span>
+        @if (isSingleMode() === null) {
+          <span class="chevron">{{ selectedDeckDetail() === d.deckId ? '▾' : '▸' }}</span>
+        }
       </span>
       <span class="detail">{{ d.wins }} / {{ d.games }} Siege</span>
       <span class="rate">{{ d.winRate | number: '1.0-0' }}%</span>
       <div class="bar">
         <div class="bar-fill" [style.width.%]="d.winRate"></div>
       </div>
+
+      @if (isSingleMode() === null && selectedDeckDetail() === d.deckId) {
+      <div class="commander-detail">
+        @for (m of deckDetailStats(); track m.mode) {
+        <div class="commander-detail-row">
+          <span class="mode-name">{{ m.mode }}</span>
+          <span class="mode-detail">{{ m.wins }} / {{ m.games }} Siege</span>
+          <span class="mode-rate">{{ m.winRate | number: '1.0-0' }}%</span>
+        </div>
+        }
+      </div>
+      }
     </li>
     }
   </ul>

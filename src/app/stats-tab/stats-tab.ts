@@ -165,6 +165,7 @@ export class StatsTab {
     const value = (event.target as HTMLSelectElement).value;
     this.selectedYear.set(value === 'Alle' ? 'Alle' : Number(value));
     this.selectedCommanderDetail.set(null);
+    this.selectedDeckDetail.set(null);
   }
 
   private readonly yearFilteredMatches = computed<Match[]>(() => {
@@ -208,11 +209,13 @@ export class StatsTab {
       return next;
     });
     this.selectedCommanderDetail.set(null);
+    this.selectedDeckDetail.set(null);
   }
 
   selectAllModes(): void {
     this.selectedModes.set(new Set(GAME_MODES));
     this.selectedCommanderDetail.set(null);
+    this.selectedDeckDetail.set(null);
   }
 
   readonly filteredMatches = computed<Match[]>(() => {
@@ -568,11 +571,13 @@ export class StatsTab {
 
   readonly selectedPlayer = signal<string | null>(null);
   readonly selectedCommanderDetail = signal<string | null>(null);
+  readonly selectedDeckDetail = signal<string | null>(null);
 
   selectPlayer(player: string): void {
     const isSame = this.selectedPlayer() === player;
     this.selectedPlayer.set(isSame ? null : player);
     this.selectedCommanderDetail.set(null);
+    this.selectedDeckDetail.set(null);
     this.showPlayerDecks.set(false);
     this.showPlayerCommanders.set(false);
   }
@@ -582,6 +587,11 @@ export class StatsTab {
     this.selectedCommanderDetail.set(
       this.selectedCommanderDetail() === commander ? null : commander
     );
+  }
+
+  toggleDeckDetail(deckId: string): void {
+    if (this.isSingleMode() !== null) return;
+    this.selectedDeckDetail.set(this.selectedDeckDetail() === deckId ? null : deckId);
   }
 
   private readonly selectedPlayerMatches = computed<Match[]>(() => {
@@ -710,6 +720,27 @@ export class StatsTab {
     for (const match of this.filteredMatches()) {
       const entry0 = match.players.find((p) => p.name === player);
       if (!entry0 || entry0.commander !== commander) continue;
+      const entry = stats.get(match.mode) ?? { games: 0, wins: 0 };
+      entry.games++;
+      if (this.isPlayerWinner(match, player)) entry.wins++;
+      stats.set(match.mode, entry);
+    }
+
+    return [...stats.entries()]
+      .map(([mode, s]) => ({ mode, ...s, winRate: s.games > 0 ? (s.wins / s.games) * 100 : 0 }))
+      .sort((a, b) => b.games - a.games);
+  });
+
+  /** Wie commanderDetailStats(), aber für ein aufgeklapptes Deck statt einen Commander. */
+  readonly deckDetailStats = computed(() => {
+    const player = this.selectedPlayer();
+    const deckId = this.selectedDeckDetail();
+    if (!player || !deckId) return [];
+
+    const stats = new Map<GameMode, { games: number; wins: number }>();
+    for (const match of this.filteredMatches()) {
+      const entry0 = match.players.find((p) => p.name === player);
+      if (!entry0 || entry0.deckId !== deckId) continue;
       const entry = stats.get(match.mode) ?? { games: 0, wins: 0 };
       entry.games++;
       if (this.isPlayerWinner(match, player)) entry.wins++;
@@ -919,6 +950,7 @@ export class StatsTab {
     this.closeResetConfirm();
     this.selectedPlayer.set(null);
     this.selectedCommanderDetail.set(null);
+    this.selectedDeckDetail.set(null);
     this.importMessage.set('');
   }
 }
