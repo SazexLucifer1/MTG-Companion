@@ -267,9 +267,13 @@
       (click)="toggleCommanderDetail(c.commander)"
     >
       <span class="rank">{{ medal(i) }}</span>
-      <span class="name">
-        {{ c.commander }} @if (isSingleMode() === null) {
-        <span class="chevron">{{ selectedCommanderDetail() === c.commander ? '▾' : '▸' }}</span>
+      <span class="name card-name-cell">
+        @if (commanderImage(c.commander); as img) {
+          <img class="card-thumb" [src]="img" [alt]="c.commander" />
+        }
+        <span class="card-name-text">{{ c.commander }}</span>
+        @if (isSingleMode() === null) {
+          <span class="chevron">{{ selectedCommanderDetail() === c.commander ? '▾' : '▸' }}</span>
         }
       </span>
       <span class="detail">{{ c.wins }} / {{ c.games }} Siege</span>

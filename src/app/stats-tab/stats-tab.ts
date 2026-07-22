@@ -61,6 +61,9 @@ export class StatsTab {
       for (const e of this.pagedCombinedInQualification()) {
         if (e.cardName) names.add(e.cardName);
       }
+      for (const c of this.playerCommanderStats()) {
+        names.add(c.commander);
+      }
       const cache = this.cardImages();
       const missing = [...names].filter((n) => !(n.toLowerCase() in cache));
       if (missing.length === 0) return;
