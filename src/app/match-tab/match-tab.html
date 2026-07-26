@@ -152,29 +152,55 @@
   @if (deckPickerTarget()) {
     <div class="options-menu-overlay" (click)="closeDeckPicker()">
       <div class="options-menu-sheet" (click)="$event.stopPropagation()">
-        <h3>{{ i18n.t('match.deckFor', { name: deckPickerTarget() ?? '' }) }}</h3>
-        @if (deckPickerBusy()) {
-          <p class="hint">{{ i18n.t('match.loadingDecks') }}</p>
-        } @else if (deckPickerOptions().length === 0) {
-          <p class="hint">{{ deckPickerMessage() || i18n.t('match.noDecksFound') }}</p>
-        } @else {
-          @if (deckPickerMessage()) {
-            <p class="error">{{ deckPickerMessage() }}</p>
+        @if (deckPickerBorrowMode() && !borrowFromOwner()) {
+          <h3>{{ i18n.t('match.borrowFrom', { name: deckPickerTarget() ?? '' }) }}</h3>
+          @if (borrowOwnerOptions().length === 0) {
+            <p class="hint">{{ deckPickerMessage() || i18n.t('match.noOtherDecksFound') }}</p>
+          } @else {
+            <ul class="player-list">
+              @for (owner of borrowOwnerOptions(); track owner) {
+                <li>
+                  <span class="player-name">{{ owner }}</span>
+                  <button class="glass-button small" (click)="selectBorrowOwner(owner)">{{ i18n.t('match.choose') }}</button>
+                </li>
+              }
+            </ul>
           }
-          <ul class="player-list">
-            @for (option of deckPickerOptions(); track option.deckId) {
-              <li>
-                <span class="player-name">
-                  @if (option.isPrecon) {<span title="Precon">📦</span>}
-                  {{ option.deckName }}
-                </span>
-                @if (option.ownerName) {
-                  <span class="hint">{{ i18n.t('match.from', { name: option.ownerName }) }}</span>
-                }
-                <button class="glass-button small" (click)="selectDeck(option.deckId)">{{ i18n.t('match.choose') }}</button>
-              </li>
+        } @else {
+          <h3>{{ i18n.t('match.deckFor', { name: deckPickerTarget() ?? '' }) }}</h3>
+          @if (deckPickerBusy()) {
+            <p class="hint">{{ i18n.t('match.loadingDecks') }}</p>
+          } @else if (deckPickerOptions().length === 0) {
+            <p class="hint">{{ deckPickerMessage() || i18n.t('match.noDecksFound') }}</p>
+          } @else {
+            @if (deckPickerMessage()) {
+              <p class="error">{{ deckPickerMessage() }}</p>
             }
-          </ul>
+            <ul class="player-list deck-picker-list">
+              @for (option of deckPickerOptions(); track option.deckId) {
+                <li>
+                  <div class="deck-thumb">
+                    @if (deckPickerThumb(option); as img) {
+                      <img [src]="img" [alt]="option.commanderName ?? option.deckName" />
+                    } @else {
+                      <div class="deck-thumb-placeholder">{{ option.deckName }}</div>
+                    }
+                  </div>
+                  <span class="player-name">
+                    @if (option.isPrecon) {<span title="Precon">📦</span>}
+                    {{ option.deckName }}
+                  </span>
+                  @if (option.ownerName) {
+                    <span class="hint">{{ i18n.t('match.from', { name: option.ownerName }) }}</span>
+                  }
+                  <button class="glass-button small" (click)="selectDeck(option.deckId)">{{ i18n.t('match.choose') }}</button>
+                </li>
+              }
+            </ul>
+          }
+          @if (deckPickerBorrowMode()) {
+            <button class="glass-button" (click)="backToBorrowOwners()">{{ i18n.t('match.back') }}</button>
+          }
         }
         <button class="glass-button" (click)="closeDeckPicker()">{{ i18n.t('match.cancel') }}</button>
       </div>
@@ -342,6 +368,8 @@
             {{ (match.winner === '__OTHERS__' ? (!p.isArchenemy ? '🏆 ' : '') : (p.name === match.winner ? '🏆 ' : '')) }}{{ p.name }}
             @if (p.isArchenemy) {<em> – Archenemy</em>}
             @if (p.commander) {<em> – {{ p.commander }}</em>}
+            @if (p.deckId) {<span class="deck-badge" title="Aus importiertem Deck">📚 {{ p.deckName }}</span>}
+            @if (isBorrowedDeck(p)) {<span class="borrowed-badge">🤝 {{ i18n.t('match.from', { name: deckOwnerName(p.deckOwnerId) ?? '' }) }}</span>}
           </span>
         } @else {
           <span class="history-player" [class.is-winner]="p.name === match.winner">
@@ -349,6 +377,8 @@
             @if (p.name === match.winner) {🏆 }{{ p.name }}
             @if (match.mode === 'Two-Headed Giant' && p.team) {<em> – Team {{ p.team }}</em>}
             @if (p.commander) {<em> – {{ p.commander }}</em>}
+            @if (p.deckId) {<span class="deck-badge" title="Aus importiertem Deck">📚 {{ p.deckName }}</span>}
+            @if (isBorrowedDeck(p)) {<span class="borrowed-badge">🤝 {{ i18n.t('match.from', { name: deckOwnerName(p.deckOwnerId) ?? '' }) }}</span>}
             @if (p.placement) {<em class="placement-badge"> · {{ i18n.t('placement.badge', { placement: p.placement }) }}</em>}
           </span>
         }

@@ -157,59 +157,137 @@ export class MatchTab {
 
   readonly deckPickerTarget = signal<string | null>(null);
   readonly deckPickerOptions = signal<
-    { deckId: string; deckName: string; isPrecon: boolean; ownerName?: string }[]
+    {
+      deckId: string;
+      deckName: string;
+      isPrecon: boolean;
+      ownerName?: string;
+      commanderName?: string;
+      commanderImageUrl?: string | null;
+    }[]
   >([]);
   readonly deckPickerBusy = signal(false);
   readonly deckPickerMessage = signal('');
+  /** Kartenname (lowercase) -> Bild-URL oder null (nicht gefunden) - Fallback fürs Vorschaubild, wenn das Deck kein individuell gewähltes Artwork hinterlegt hat. */
+  readonly deckPickerImages = signal<Record<string, string | null>>({});
+  /** true = "Deck ausleihen"-Fluss, in dem zuerst die leihgebende Person und erst danach deren Decks gewählt werden. */
+  readonly deckPickerBorrowMode = signal(false);
+  /** Andere mitspielende Personen mit eigenem Account, von denen geliehen werden kann - Zwischenschritt vor der eigentlichen Deck-Liste. */
+  readonly borrowOwnerOptions = signal<string[]>([]);
+  /** Gewählte leihgebende Person im Borrow-Flow, oder null solange noch die Personen-Auswahl angezeigt wird. */
+  readonly borrowFromOwner = signal<string | null>(null);
 
   async openOwnDeckPicker(playerName: string): Promise<void> {
     const userId = this.mtg.playerUserIds()[playerName];
     if (!userId) return;
 
     this.deckPickerTarget.set(playerName);
+    this.deckPickerBorrowMode.set(false);
+    this.borrowFromOwner.set(null);
     this.deckPickerMessage.set('');
     this.deckPickerBusy.set(true);
+    this.deckPickerImages.set({});
 
     const decks = await this.deckService.loadDecksForUser(userId);
-    this.deckPickerOptions.set(
-      decks.map((d) => ({ deckId: d.id, deckName: d.name, isPrecon: d.isPrecon }))
-    );
+    const options = decks.map((d) => ({ deckId: d.id, deckName: d.name, isPrecon: d.isPrecon }));
+    this.deckPickerOptions.set(options);
     if (decks.length === 0) {
       this.deckPickerMessage.set(this.i18n.t('match.msg.noOwnDecksImported'));
     }
     this.deckPickerBusy.set(false);
+    await this.loadDeckPickerCommanders(options);
   }
 
-  async openBorrowDeckPicker(playerName: string): Promise<void> {
+  openBorrowDeckPicker(playerName: string): void {
     this.deckPickerTarget.set(playerName);
+    this.deckPickerBorrowMode.set(true);
+    this.borrowFromOwner.set(null);
     this.deckPickerMessage.set('');
-    this.deckPickerBusy.set(true);
+    this.deckPickerOptions.set([]);
 
     const others = this.session
       .selectedPlayers()
       .map((p) => p.name)
       .filter((name) => name !== playerName && this.mtg.playerUserIds()[name]);
 
-    const options: { deckId: string; deckName: string; isPrecon: boolean; ownerName?: string }[] = [];
-    for (const owner of others) {
-      const userId = this.mtg.playerUserIds()[owner]!;
-      const decks = await this.deckService.loadDecksForUser(userId);
-      for (const d of decks) {
-        options.push({ deckId: d.id, deckName: d.name, isPrecon: d.isPrecon, ownerName: owner });
-      }
-    }
-
-    this.deckPickerOptions.set(options);
-    if (options.length === 0) {
+    this.borrowOwnerOptions.set(others);
+    if (others.length === 0) {
       this.deckPickerMessage.set(this.i18n.t('match.msg.noOtherDecksFound'));
     }
+  }
+
+  async selectBorrowOwner(owner: string): Promise<void> {
+    this.borrowFromOwner.set(owner);
+    this.deckPickerMessage.set('');
+    this.deckPickerBusy.set(true);
+    this.deckPickerImages.set({});
+
+    const userId = this.mtg.playerUserIds()[owner]!;
+    const decks = await this.deckService.loadDecksForUser(userId);
+    const options = decks.map((d) => ({ deckId: d.id, deckName: d.name, isPrecon: d.isPrecon, ownerName: owner }));
+    this.deckPickerOptions.set(options);
+    if (decks.length === 0) {
+      this.deckPickerMessage.set(this.i18n.t('match.msg.noOwnDecksImported'));
+    }
     this.deckPickerBusy.set(false);
+    await this.loadDeckPickerCommanders(options);
+  }
+
+  backToBorrowOwners(): void {
+    this.borrowFromOwner.set(null);
+    this.deckPickerOptions.set([]);
+    this.deckPickerMessage.set('');
+    this.deckPickerImages.set({});
+  }
+
+  /** Lädt den hinterlegten Commander je Deck (inkl. individuell gewähltem Artwork) und lädt fehlende Bilder per Scryfall nach, damit die Deck-Auswahl Vorschaubilder statt nur Namen zeigt. */
+  private async loadDeckPickerCommanders(
+    options: { deckId: string; deckName: string; isPrecon: boolean; ownerName?: string }[]
+  ): Promise<void> {
+    if (options.length === 0) return;
+
+    const stored = await this.deckService.getStoredCommanders(options.map((o) => o.deckId));
+    this.deckPickerOptions.update((current) =>
+      current.map((o) => {
+        const commander = stored.get(o.deckId);
+        return commander ? { ...o, commanderName: commander.name, commanderImageUrl: commander.imageUrl } : o;
+      })
+    );
+
+    const missing = [
+      ...new Set(
+        this.deckPickerOptions()
+          .filter((o) => !o.commanderImageUrl && o.commanderName)
+          .map((o) => o.commanderName!)
+      ),
+    ];
+    if (missing.length === 0) return;
+
+    const found = await this.scryfall.findCardsBulk(missing);
+    this.deckPickerImages.update((current) => {
+      const next = { ...current };
+      for (const name of missing) {
+        next[name.toLowerCase()] = found.get(name.toLowerCase())?.imageUrl ?? null;
+      }
+      return next;
+    });
+  }
+
+  /** Vorschaubild für eine Deck-Option - individuell gewähltes Artwork hat Vorrang vor dem generischen Scryfall-Bild zum Commander-Namen. */
+  deckPickerThumb(option: { commanderName?: string; commanderImageUrl?: string | null }): string | null {
+    if (option.commanderImageUrl) return option.commanderImageUrl;
+    if (!option.commanderName) return null;
+    return this.deckPickerImages()[option.commanderName.toLowerCase()] ?? null;
   }
 
   closeDeckPicker(): void {
     this.deckPickerTarget.set(null);
     this.deckPickerOptions.set([]);
     this.deckPickerMessage.set('');
+    this.deckPickerImages.set({});
+    this.deckPickerBorrowMode.set(false);
+    this.borrowFromOwner.set(null);
+    this.borrowOwnerOptions.set([]);
   }
 
   async selectDeck(deckId: string): Promise<void> {
@@ -318,6 +396,19 @@ export class MatchTab {
   readonly historyRangeEnd = computed(() =>
     Math.min((this.historyPage() + 1) * this.historyPageSize, this.visibleHistory().length)
   );
+
+  /** Findet zu einer Account-User-ID den Spielernamen in der aktuellen Gruppe (für "ausgeliehen von X" im Verlauf). */
+  deckOwnerName(ownerId: string | undefined): string | null {
+    if (!ownerId) return null;
+    const entry = Object.entries(this.mtg.playerUserIds()).find(([, uid]) => uid === ownerId);
+    return entry?.[0] ?? null;
+  }
+
+  /** true, wenn das im Verlauf gezeigte Deck nicht dem Account der spielenden Person gehört (also geliehen wurde). */
+  isBorrowedDeck(player: { name: string; deckOwnerId?: string }): boolean {
+    if (!player.deckOwnerId) return false;
+    return this.mtg.playerUserIds()[player.name] !== player.deckOwnerId;
+  }
 
   toggleHistory(): void {
     this.historyExpanded.update((v) => !v);

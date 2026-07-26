@@ -77,6 +77,39 @@
   }
 }
 
+// Deck-Auswahl-Dialog (eigenes/geliehenes Deck): kleineres Vorschaubild als in der Deck-Liste
+// (deck-list.scss), da der Dialog nur max-width: 300px hat (siehe .options-menu-sheet).
+.deck-picker-list {
+  .deck-thumb {
+    flex: 0 0 40px;
+    width: 40px;
+    aspect-ratio: 63 / 88;
+    border-radius: 6px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.06);
+
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+  }
+
+  .deck-thumb-placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2px;
+    font-size: 0.5rem;
+    text-align: center;
+    opacity: 0.7;
+  }
+}
+
 .player-commander-list {
   list-style: none;
   margin: 0;
@@ -229,6 +262,17 @@
   .history-player.is-winner {
     color: var(--gold);
     font-weight: 600;
+  }
+
+  .deck-badge {
+    font-size: 0.78rem;
+    opacity: 0.75;
+  }
+
+  .borrowed-badge {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--gold);
   }
 
   em {
