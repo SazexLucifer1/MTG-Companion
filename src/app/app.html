@@ -45,6 +45,7 @@
 <app-tutorial-overlay />
 <app-feedback-dialog />
 <app-placement-dialog />
+<app-tournament-panel />
 
 <nav class="tab-bar" data-tutorial="tab-bar">
   @for (tab of tabs; track tab.id) {
@@ -65,6 +66,15 @@
   >
     <span class="tab-icon">🎮</span>
     <span class="tab-label">{{ i18n.t('nav.game') }}</span>
+  </button>
+  } @if (tournament.activeTournament()) {
+  <button
+    class="tab-item ingame-tab"
+    [class.active]="tournament.panelExpanded()"
+    (click)="tournament.togglePanel()"
+  >
+    <span class="tab-icon">🏆</span>
+    <span class="tab-label">{{ i18n.t('nav.tournament') }}</span>
   </button>
   }
 </nav>

@@ -1,0 +1,1093 @@
+import { Injectable, computed, effect, inject, signal } from '@angular/core';
+import { supabase } from './supabase.client';
+import { AuthService } from './auth.service';
+import { GroupService } from './group.service';
+import { MtgService } from './mtg.service';
+import { GameSessionService } from './game-session.service';
+import { GameMode } from './models';
+import {
+  ParticipantStatus,
+  RoundCountMode,
+  StandingsRow,
+  TableSize,
+  Tournament,
+  TournamentMatch,
+  TournamentParticipant,
+  TournamentRound,
+  TournamentStatus,
+} from './tournament.models';
+
+/** Pro Tisch ermittelte Paarung, bevor sie als tournament_matches-Zeile gespeichert wird. Ein einzelner Eintrag bedeutet Freilos. */
+interface Pairing {
+  playerIds: string[];
+}
+
+/**
+ * Swiss-Turnier, unterstützt sowohl klassisches 1v1 mit Best-of-3 (tableSize=2) als auch
+ * Mehrspieler-Pods mit Einzelspiel pro Tisch (tableSize=4, wie normales Commander). Jedes Spiel
+ * eines Tisches läuft als ganz normales Match über den bestehenden GameSessionService/
+ * ingame-tracker (unterstützt Pods bereits nativ) - dieser Service bildet nur die Turnier-Ebene
+ * darüber (Kader, Paarungen, Standings) und hört per effect() auf session.lastFinishedMatch(), um
+ * Ergebnisse einzusammeln (gleiches Muster wie PlacementDialog).
+ */
+@Injectable({ providedIn: 'root' })
+export class TournamentService {
+  private readonly auth = inject(AuthService);
+  private readonly groupService = inject(GroupService);
+  private readonly mtg = inject(MtgService);
+  private readonly session = inject(GameSessionService);
+
+  /** Steuert die Sichtbarkeit des globalen Turnier-Overlays (TournamentPanel), unabhängig davon, ob schon ein Turnier existiert (Erstellungs-Wizard nutzt dasselbe Overlay). */
+  readonly panelExpanded = signal(false);
+
+  openPanel(): void {
+    this.panelExpanded.set(true);
+  }
+
+  closePanel(): void {
+    this.panelExpanded.set(false);
+  }
+
+  togglePanel(): void {
+    this.panelExpanded.update((v) => !v);
+  }
+
+  /** Genau ein aktives/laufendes Turnier pro Gruppe in v1 - das jeweils neueste. */
+  readonly activeTournament = signal<Tournament | null>(null);
+  readonly participants = signal<TournamentParticipant[]>([]);
+  readonly rounds = signal<TournamentRound[]>([]);
+  /** Alle Tische aller Runden dieses Turniers (für Pairing-History + aktuelle Ansicht). */
+  readonly matches = signal<TournamentMatch[]>([]);
+
+  readonly isOrganizer = computed(
+    () => !!this.activeTournament() && this.auth.currentUser()?.id === this.activeTournament()!.createdBy
+  );
+
+  readonly myParticipant = computed(() => {
+    const name = this.mtg.myPlayerName();
+    if (!name) return null;
+    const playerId = this.mtg.playerIdFor(name);
+    if (!playerId) return null;
+    return this.participants().find((p) => p.playerId === playerId) ?? null;
+  });
+
+  readonly pendingParticipants = computed(() => this.participants().filter((p) => p.status === 'invited'));
+
+  readonly currentRound = computed(() =>
+    this.rounds().find((r) => r.roundNumber === this.activeTournament()?.currentRound) ?? null
+  );
+
+  readonly currentRoundMatches = computed(() => {
+    const round = this.currentRound();
+    if (!round) return [];
+    return this.matches().filter((m) => m.roundId === round.id);
+  });
+
+  readonly myCurrentMatch = computed(() => {
+    const participant = this.myParticipant();
+    if (!participant) return null;
+    return (
+      this.currentRoundMatches().find((m) => m.participants.some((p) => p.playerId === participant.playerId)) ?? null
+    );
+  });
+
+  /** Prüft completedAt statt winnerPlayerId, damit unentschiedene Pod-Tische (kein Sieger, aber fertig) mitzählen. */
+  readonly canAdvanceRound = computed(() => {
+    const current = this.currentRoundMatches();
+    return current.length > 0 && current.every((m) => !!m.completedAt);
+  });
+
+  readonly standings = computed<StandingsRow[]>(() => this.computeStandings());
+
+  /** Zeitlimit (Minuten) läuft pro Tisch erst ab dem tatsächlichen "Spiel starten"-Klick, nicht ab Rundenbeginn. */
+  matchDeadlineAt(match: TournamentMatch): string | null {
+    if (!match.startedAt) return null;
+    const roundLengthMinutes = this.activeTournament()?.roundLengthMinutes ?? 50;
+    return new Date(new Date(match.startedAt).getTime() + roundLengthMinutes * 60_000).toISOString();
+  }
+
+  private pollTimer: ReturnType<typeof setInterval> | null = null;
+
+  constructor() {
+    effect(() => {
+      const groupId = this.groupService.groupId();
+      if (groupId) {
+        this.loadForGroup(groupId);
+      } else {
+        this.clear();
+      }
+    });
+
+    // Ersatz für Supabase Realtime (im Repo bisher nirgends verwendet) - reicht für den
+    // Sonntags-Event, um mitzubekommen, wenn andere Tische ihr Ergebnis eintragen.
+    effect(() => {
+      const active = this.activeTournament()?.status === 'active';
+      if (this.pollTimer) {
+        clearInterval(this.pollTimer);
+        this.pollTimer = null;
+      }
+      if (active) {
+        this.pollTimer = setInterval(() => {
+          const t = this.activeTournament();
+          if (t) this.loadRoundsAndMatches(t.id);
+        }, 15_000);
+      }
+    });
+
+    // Bridge: ein im Turnier-Kontext gespieltes Spiel fließt automatisch ins Tisch-Ergebnis ein.
+    effect(() => {
+      const finished = this.session.lastFinishedMatch();
+      if (!finished || !finished.tournamentMatchId) return;
+      this.recordGameResult(finished.tournamentMatchId, finished.matchId, finished.winner);
+    });
+  }
+
+  private clear(): void {
+    this.activeTournament.set(null);
+    this.participants.set([]);
+    this.rounds.set([]);
+    this.matches.set([]);
+  }
+
+  // --- Laden ---
+
+  private async loadForGroup(groupId: string): Promise<void> {
+    // Abgeschlossene Turniere zählen bewusst nicht als "aktiv" - sobald ein Turnier beendet ist,
+    // soll es aus der App komplett verschwinden (Nav-Button, Panel), bis ein neues erstellt wird.
+    const { data, error } = await supabase
+      .from('tournaments')
+      .select('*')
+      .eq('group_id', groupId)
+      .in('status', ['setup', 'active'])
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error) {
+      console.error('Konnte Turnier nicht laden:', error);
+      this.clear();
+      return;
+    }
+    if (!data) {
+      this.clear();
+      return;
+    }
+
+    this.activeTournament.set(this.mapTournament(data));
+    await this.loadParticipants(data.id);
+    await this.loadRoundsAndMatches(data.id);
+  }
+
+  private async loadParticipants(tournamentId: string): Promise<void> {
+    this.participants.set(await this.fetchParticipants(tournamentId));
+  }
+
+  private async fetchParticipants(tournamentId: string): Promise<TournamentParticipant[]> {
+    const { data, error } = await supabase
+      .from('tournament_participants')
+      .select('id, tournament_id, player_id, status, had_bye, joined_at, players ( display_name )')
+      .eq('tournament_id', tournamentId);
+
+    if (error) {
+      console.error('Konnte Turnier-Teilnehmer nicht laden:', error);
+      return [];
+    }
+
+    return (data ?? []).map((row: any) => ({
+      id: row.id,
+      tournamentId: row.tournament_id,
+      playerId: row.player_id,
+      playerName: row.players?.display_name ?? '',
+      status: row.status as ParticipantStatus,
+      hadBye: row.had_bye,
+      joinedAt: row.joined_at,
+    }));
+  }
+
+  private async loadRoundsAndMatches(tournamentId: string): Promise<void> {
+    const { rounds, matches } = await this.fetchRoundsAndMatches(tournamentId);
+    this.rounds.set(rounds);
+    this.matches.set(matches);
+  }
+
+  private async fetchRoundsAndMatches(
+    tournamentId: string
+  ): Promise<{ rounds: TournamentRound[]; matches: TournamentMatch[] }> {
+    const { data: roundsData, error: roundsError } = await supabase
+      .from('tournament_rounds')
+      .select('*')
+      .eq('tournament_id', tournamentId)
+      .order('round_number');
+
+    if (roundsError) {
+      console.error('Konnte Turnier-Runden nicht laden:', roundsError);
+      return { rounds: [], matches: [] };
+    }
+
+    const rounds: TournamentRound[] = (roundsData ?? []).map((row: any) => ({
+      id: row.id,
+      tournamentId: row.tournament_id,
+      roundNumber: row.round_number,
+      status: row.status,
+      startedAt: row.started_at,
+      deadlineAt: row.deadline_at,
+    }));
+    const roundNumberById = new Map(rounds.map((r) => [r.id, r.roundNumber]));
+
+    // Embedded Join ist hier unproblematisch (genau eine FK von tournament_match_players auf
+    // players, anders als früher mit zwei fest verdrahteten Spieler-Spalten auf tournament_matches).
+    const { data: matchesData, error: matchesError } = await supabase
+      .from('tournament_matches')
+      .select(
+        `
+        id, tournament_id, round_id, table_number, is_bye, is_draw, started_at,
+        winner_player_id, winner_source, completed_at,
+        tournament_match_players ( player_id, games_won, players ( display_name ) )
+      `
+      )
+      .eq('tournament_id', tournamentId)
+      .order('table_number');
+
+    if (matchesError) {
+      console.error('Konnte Turnier-Paarungen nicht laden:', matchesError);
+      return { rounds, matches: [] };
+    }
+
+    const matches: TournamentMatch[] = (matchesData ?? []).map((row: any) => ({
+      id: row.id,
+      tournamentId: row.tournament_id,
+      roundId: row.round_id,
+      roundNumber: roundNumberById.get(row.round_id) ?? 0,
+      tableNumber: row.table_number,
+      isBye: row.is_bye,
+      isDraw: row.is_draw,
+      startedAt: row.started_at,
+      participants: (row.tournament_match_players ?? []).map((p: any) => ({
+        playerId: p.player_id,
+        playerName: p.players?.display_name ?? '',
+        gamesWon: p.games_won,
+      })),
+      winnerPlayerId: row.winner_player_id,
+      winnerSource: row.winner_source,
+      completedAt: row.completed_at,
+    }));
+
+    return { rounds, matches };
+  }
+
+  // --- Historie (abgeschlossene Turniere) für den Turniere-Tab im Stats-Bereich ---
+
+  /** Alle Turniere dieser Gruppe (jeder Status), neueste zuerst - für die Turnier-Historie-Ansicht. */
+  readonly tournamentHistory = signal<Tournament[]>([]);
+
+  async loadTournamentHistory(groupId: string): Promise<void> {
+    const { data, error } = await supabase
+      .from('tournaments')
+      .select('*')
+      .eq('group_id', groupId)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Konnte Turnier-Historie nicht laden:', error);
+      this.tournamentHistory.set([]);
+      return;
+    }
+    this.tournamentHistory.set((data ?? []).map((row) => this.mapTournament(row)));
+  }
+
+  /** Kader, Paarungen und Endstand eines beliebigen (auch abgeschlossenen) Turniers - unabhängig vom "aktiven" Turnier des Live-Panels. */
+  async loadTournamentDetail(
+    tournamentId: string
+  ): Promise<{ participants: TournamentParticipant[]; matches: TournamentMatch[]; standings: StandingsRow[] }> {
+    const participants = await this.fetchParticipants(tournamentId);
+    const { matches } = await this.fetchRoundsAndMatches(tournamentId);
+    return { participants, matches, standings: this.computeStandingsFor(participants, matches) };
+  }
+
+  /** Aggregierte Rangliste über alle abgeschlossenen Turniere der Gruppe hinweg (Gesamtpunkte, Siege, durchschnittliche Platzierung). */
+  readonly aggregateStandings = signal<
+    { playerId: string; playerName: string; tournamentsPlayed: number; totalPoints: number; wins: number; avgPlacement: number }[]
+  >([]);
+
+  async loadAggregateStandings(groupId: string): Promise<void> {
+    const { data: tournamentRows, error } = await supabase
+      .from('tournaments')
+      .select('id')
+      .eq('group_id', groupId)
+      .eq('status', 'completed');
+
+    if (error) {
+      console.error('Konnte Turnier-Gesamtrangliste nicht laden:', error);
+      this.aggregateStandings.set([]);
+      return;
+    }
+
+    const acc = new Map<
+      string,
+      { playerName: string; tournamentsPlayed: number; totalPoints: number; wins: number; placementSum: number }
+    >();
+
+    for (const row of tournamentRows ?? []) {
+      const { standings } = await this.loadTournamentDetail(row.id);
+      standings.forEach((s, index) => {
+        const entry = acc.get(s.playerId) ?? {
+          playerName: s.playerName,
+          tournamentsPlayed: 0,
+          totalPoints: 0,
+          wins: 0,
+          placementSum: 0,
+        };
+        entry.tournamentsPlayed += 1;
+        entry.totalPoints += s.points;
+        entry.wins += s.wins;
+        entry.placementSum += index + 1;
+        acc.set(s.playerId, entry);
+      });
+    }
+
+    this.aggregateStandings.set(
+      [...acc.entries()]
+        .map(([playerId, e]) => ({
+          playerId,
+          playerName: e.playerName,
+          tournamentsPlayed: e.tournamentsPlayed,
+          totalPoints: e.totalPoints,
+          wins: e.wins,
+          avgPlacement: e.placementSum / e.tournamentsPlayed,
+        }))
+        .sort((a, b) => b.totalPoints - a.totalPoints || a.avgPlacement - b.avgPlacement)
+    );
+  }
+
+  private mapTournament(row: any): Tournament {
+    return {
+      id: row.id,
+      groupId: row.group_id,
+      name: row.name,
+      status: row.status as TournamentStatus,
+      gameMode: row.game_mode as GameMode,
+      tableSize: row.table_size as TableSize,
+      roundCountMode: row.round_count_mode as RoundCountMode,
+      manualRoundCount: row.manual_round_count,
+      roundCount: row.round_count,
+      currentRound: row.current_round,
+      roundLengthMinutes: row.round_length_minutes,
+      inviteCode: row.invite_code,
+      createdBy: row.created_by,
+      createdAt: row.created_at,
+    };
+  }
+
+  // --- Erstellen / Beitreten ---
+
+  private generateCode(): string {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let code = '';
+    for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
+    return code;
+  }
+
+  async createTournament(
+    groupId: string,
+    name: string,
+    gameMode: GameMode,
+    tableSize: TableSize,
+    roundCountMode: RoundCountMode,
+    manualRoundCount: number | null,
+    initialPlayerNames: string[]
+  ): Promise<string | null> {
+    const user = this.auth.currentUser();
+    const trimmedName = name.trim();
+    if (!user || !trimmedName || initialPlayerNames.length < 2) return null;
+
+    let tournamentId: string | null = null;
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const code = this.generateCode();
+      const { data, error } = await supabase
+        .from('tournaments')
+        .insert({
+          group_id: groupId,
+          name: trimmedName,
+          game_mode: gameMode,
+          table_size: tableSize,
+          round_count_mode: roundCountMode,
+          manual_round_count: roundCountMode === 'manual' ? manualRoundCount : null,
+          invite_code: code,
+          created_by: user.id,
+        })
+        .select('id')
+        .single();
+
+      if (!error && data) {
+        tournamentId = data.id;
+        break;
+      }
+      if (error && error.code !== '23505') {
+        console.error('Konnte Turnier nicht anlegen:', error);
+        return null;
+      }
+    }
+
+    if (!tournamentId) {
+      console.error('Konnte keinen eindeutigen Turnier-Code finden.');
+      return null;
+    }
+
+    const participantRows = initialPlayerNames
+      .map((name) => ({ id: this.mtg.playerIdFor(name), status: this.initialStatusFor(name) }))
+      .filter((p): p is { id: string; status: ParticipantStatus } => !!p.id)
+      .map((p) => ({
+        tournament_id: tournamentId,
+        player_id: p.id,
+        status: p.status,
+        joined_at: p.status === 'joined' ? new Date().toISOString() : null,
+      }));
+
+    if (participantRows.length > 0) {
+      const { error } = await supabase.from('tournament_participants').insert(participantRows);
+      if (error) console.error('Konnte Turnier-Teilnehmer nicht anlegen:', error);
+    }
+
+    await this.loadForGroup(groupId);
+    return tournamentId;
+  }
+
+  /**
+   * Beitritt per Einladungscode - für Personen, die die veranstaltende Person beim Erstellen
+   * nicht direkt ausgewählt hat. Setzt voraus, dass die Person bereits Mitglied dieser Gruppe ist
+   * (players-Eintrag vorhanden) - für alle anderen greift weiterhin der normale Gruppen-Beitritt
+   * per Code (group.service.ts), das ist hier bewusst nicht dupliziert.
+   */
+  async joinByCode(code: string): Promise<{ success: boolean; messageKey: string; params?: Record<string, string> }> {
+    const trimmedCode = code.trim().toUpperCase();
+    if (!trimmedCode) return { success: false, messageKey: 'tournament.msg.codeRequired' };
+
+    const { data: tournamentRow, error: tournamentError } = await supabase
+      .from('tournaments')
+      .select('id, group_id, status')
+      .eq('invite_code', trimmedCode)
+      .maybeSingle();
+
+    if (tournamentError || !tournamentRow) {
+      return { success: false, messageKey: 'tournament.msg.invalidCode' };
+    }
+    if (tournamentRow.status !== 'setup') {
+      return { success: false, messageKey: 'tournament.msg.notJoinable' };
+    }
+
+    const groupId = this.groupService.groupId();
+    if (!groupId || groupId !== tournamentRow.group_id) {
+      // Betrifft sowohl "noch in gar keiner Gruppe" als auch "in einer anderen Gruppe" - die
+      // Lösung ist in beiden Fällen dieselbe: erst per Gruppen-Code beitreten (group.service.ts).
+      return { success: false, messageKey: 'tournament.msg.notInGroup' };
+    }
+
+    const name = this.mtg.myPlayerName();
+    const playerId = name ? this.mtg.playerIdFor(name) : null;
+    if (!playerId) {
+      return { success: false, messageKey: 'tournament.msg.noPlayerProfile' };
+    }
+
+    const { data: existingRow } = await supabase
+      .from('tournament_participants')
+      .select('id, status')
+      .eq('tournament_id', tournamentRow.id)
+      .eq('player_id', playerId)
+      .maybeSingle();
+
+    if (existingRow) {
+      if (existingRow.status === 'invited') {
+        const { error } = await supabase
+          .from('tournament_participants')
+          .update({ status: 'joined', joined_at: new Date().toISOString() })
+          .eq('id', existingRow.id);
+        if (error) {
+          console.error('Konnte Turnier-Beitritt nicht speichern:', error);
+          return { success: false, messageKey: 'tournament.msg.joinFailed' };
+        }
+      }
+    } else {
+      const { error } = await supabase.from('tournament_participants').insert({
+        tournament_id: tournamentRow.id,
+        player_id: playerId,
+        status: 'joined',
+        joined_at: new Date().toISOString(),
+      });
+      if (error) {
+        console.error('Konnte Turnier-Teilnahme nicht anlegen:', error);
+        return { success: false, messageKey: 'tournament.msg.joinFailed' };
+      }
+    }
+
+    await this.loadForGroup(groupId);
+    return { success: true, messageKey: 'tournament.msg.joinSuccess' };
+  }
+
+  /**
+   * Accountlose Spieler (players.user_id === null, z.B. Gäste ohne eigenen Login) können sich nie
+   * selbst per confirmJoin() bestätigen - sie treten deshalb sofort als "joined" bei, sobald die
+   * veranstaltende Person sie auswählt. Die veranstaltende Person selbst braucht sich ebenfalls
+   * nicht extra zu bestätigen. Alle anderen Personen mit Account müssen weiterhin selbst bestätigen.
+   */
+  private initialStatusFor(playerName: string): ParticipantStatus {
+    const uid = this.mtg.playerUserIds()[playerName];
+    if (!uid) return 'joined';
+    if (uid === this.auth.currentUser()?.id) return 'joined';
+    return 'invited';
+  }
+
+  async addParticipant(tournamentId: string, playerName: string): Promise<boolean> {
+    const playerId = this.mtg.playerIdFor(playerName);
+    if (!playerId) return false;
+
+    const status = this.initialStatusFor(playerName);
+    const { error } = await supabase.from('tournament_participants').insert({
+      tournament_id: tournamentId,
+      player_id: playerId,
+      status,
+      joined_at: status === 'joined' ? new Date().toISOString() : null,
+    });
+
+    if (error) {
+      console.error('Konnte Teilnehmer nicht hinzufügen:', error);
+      return false;
+    }
+    await this.loadParticipants(tournamentId);
+    return true;
+  }
+
+  async removeParticipant(participantId: string, tournamentId: string): Promise<boolean> {
+    const { error } = await supabase.from('tournament_participants').delete().eq('id', participantId);
+    if (error) {
+      console.error('Konnte Teilnehmer nicht entfernen:', error);
+      return false;
+    }
+    await this.loadParticipants(tournamentId);
+    return true;
+  }
+
+  async confirmJoin(tournamentId: string): Promise<boolean> {
+    const name = this.mtg.myPlayerName();
+    const playerId = name ? this.mtg.playerIdFor(name) : null;
+    if (!playerId) return false;
+
+    const { error } = await supabase
+      .from('tournament_participants')
+      .update({ status: 'joined', joined_at: new Date().toISOString() })
+      .eq('tournament_id', tournamentId)
+      .eq('player_id', playerId);
+
+    if (error) {
+      console.error('Konnte Turnier-Beitritt nicht speichern:', error);
+      return false;
+    }
+    await this.loadParticipants(tournamentId);
+    return true;
+  }
+
+  // --- Runden / Pairing ---
+
+  async startTournament(tournamentId: string): Promise<boolean> {
+    const tournament = this.activeTournament();
+    if (!tournament || tournament.id !== tournamentId || !this.isOrganizer()) return false;
+
+    const joined = this.participants().filter((p) => p.status === 'joined');
+    if (joined.length < 2) {
+      console.error('Mindestens 2 beigetretene Personen nötig, um das Turnier zu starten.');
+      return false;
+    }
+
+    const roundCount =
+      tournament.roundCountMode === 'manual'
+        ? Math.max(1, tournament.manualRoundCount ?? 1)
+        : Math.max(1, Math.ceil(Math.log2(joined.length)));
+
+    const { error } = await supabase
+      .from('tournaments')
+      .update({ status: 'active', round_count: roundCount })
+      .eq('id', tournamentId);
+
+    if (error) {
+      console.error('Konnte Turnier nicht starten:', error);
+      return false;
+    }
+
+    await this.loadForGroup(tournament.groupId);
+    return this.startNextRound(tournamentId);
+  }
+
+  async startNextRound(tournamentId: string): Promise<boolean> {
+    const tournament = this.activeTournament();
+    if (!tournament || tournament.id !== tournamentId || !this.isOrganizer()) return false;
+
+    const nextRoundNumber = tournament.currentRound + 1;
+    if (tournament.roundCount && nextRoundNumber > tournament.roundCount) {
+      return this.endTournament(tournamentId);
+    }
+
+    const joined = this.participants().filter((p) => p.status === 'joined');
+    const pairings =
+      nextRoundNumber === 1
+        ? this.generateRound1Pairings(joined, tournament.tableSize)
+        : this.generateSwissPairings(joined, tournament.tableSize);
+
+    const deadlineAt = new Date(Date.now() + tournament.roundLengthMinutes * 60_000).toISOString();
+
+    const { data: roundRow, error: roundError } = await supabase
+      .from('tournament_rounds')
+      .insert({ tournament_id: tournamentId, round_number: nextRoundNumber, deadline_at: deadlineAt })
+      .select('id')
+      .single();
+
+    if (roundError || !roundRow) {
+      console.error('Konnte Runde nicht anlegen:', roundError);
+      return false;
+    }
+
+    // Tische bewusst einzeln nacheinander anlegen (statt Bulk-Insert), damit jede zurückgegebene
+    // ID sicher der richtigen Paarung zugeordnet werden kann - ein Bulk-Insert garantiert keine
+    // zur Eingabe passende Rückgabe-Reihenfolge, und die Teilnehmer-Zeilen brauchen die echte ID.
+    const nowIso = new Date().toISOString();
+    const insertedTables: { id: string; playerIds: string[] }[] = [];
+    for (let i = 0; i < pairings.length; i++) {
+      const pairing = pairings[i];
+      const isBye = pairing.playerIds.length === 1;
+      const { data: tableRow, error: tableError } = await supabase
+        .from('tournament_matches')
+        .insert({
+          tournament_id: tournamentId,
+          round_id: roundRow.id,
+          table_number: i + 1,
+          is_bye: isBye,
+          winner_player_id: isBye ? pairing.playerIds[0] : null,
+          winner_source: isBye ? 'bye' : null,
+          completed_at: isBye ? nowIso : null,
+        })
+        .select('id')
+        .single();
+
+      if (tableError || !tableRow) {
+        console.error('Konnte Tisch nicht anlegen:', tableError);
+        return false;
+      }
+      insertedTables.push({ id: tableRow.id, playerIds: pairing.playerIds });
+    }
+
+    const participantRows = insertedTables.flatMap((t) =>
+      t.playerIds.map((playerId) => ({ tournament_match_id: t.id, player_id: playerId }))
+    );
+    const { error: participantsError } = await supabase.from('tournament_match_players').insert(participantRows);
+    if (participantsError) {
+      console.error('Konnte Tisch-Teilnehmer nicht anlegen:', participantsError);
+      return false;
+    }
+
+    const byePlayerIds = pairings.filter((p) => p.playerIds.length === 1).map((p) => p.playerIds[0]);
+    for (const byePlayerId of byePlayerIds) {
+      await supabase
+        .from('tournament_participants')
+        .update({ had_bye: true })
+        .eq('tournament_id', tournamentId)
+        .eq('player_id', byePlayerId);
+    }
+
+    const { error: bumpError } = await supabase
+      .from('tournaments')
+      .update({ current_round: nextRoundNumber })
+      .eq('id', tournamentId);
+    if (bumpError) console.error('Konnte aktuelle Runde nicht aktualisieren:', bumpError);
+
+    await this.loadForGroup(tournament.groupId);
+    return true;
+  }
+
+  async endTournament(tournamentId: string): Promise<boolean> {
+    const { error } = await supabase.from('tournaments').update({ status: 'completed' }).eq('id', tournamentId);
+    if (error) {
+      console.error('Konnte Turnier nicht abschließen:', error);
+      return false;
+    }
+    const groupId = this.activeTournament()?.groupId;
+    if (groupId) await this.loadForGroup(groupId);
+    return true;
+  }
+
+  /**
+   * Bricht ein Turnier unwiderruflich ab (Organizer-only) - löscht die tournaments-Zeile, was
+   * Teilnehmer/Runden/Tische/Tisch-Teilnehmer per on-delete-cascade mitlöscht. Bereits gespielte
+   * Einzelspiele bleiben in der normalen Statistik erhalten (matches.tournament_match_id wird per
+   * on-delete-set-null nur entkoppelt, nicht die Zeile selbst gelöscht).
+   */
+  async cancelTournament(tournamentId: string): Promise<boolean> {
+    const tournament = this.activeTournament();
+    if (!tournament || tournament.id !== tournamentId || !this.isOrganizer()) return false;
+
+    const { error } = await supabase.from('tournaments').delete().eq('id', tournamentId);
+    if (error) {
+      console.error('Konnte Turnier nicht abbrechen:', error);
+      return false;
+    }
+
+    this.closePanel();
+    await this.loadForGroup(tournament.groupId);
+    return true;
+  }
+
+  private shuffle<T>(items: T[]): T[] {
+    const copy = [...items];
+    for (let i = copy.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [copy[i], copy[j]] = [copy[j], copy[i]];
+    }
+    return copy;
+  }
+
+  private generateRound1Pairings(joined: TournamentParticipant[], tableSize: TableSize): Pairing[] {
+    const shuffled = this.shuffle(joined).map((p) => p.playerId);
+    return this.buildTablesAvoidingRepeats(shuffled, tableSize, new Set());
+  }
+
+  /** playerIdA::playerIdB (sortiert) für jedes bereits gemeinsam an einem Tisch gesessene Personen-Paar dieses Turniers. */
+  private pairingHistory(): Set<string> {
+    const history = new Set<string>();
+    for (const m of this.matches()) {
+      if (m.isBye) continue;
+      const ids = m.participants.map((p) => p.playerId);
+      for (let i = 0; i < ids.length; i++) {
+        for (let j = i + 1; j < ids.length; j++) {
+          history.add([ids[i], ids[j]].sort().join('::'));
+        }
+      }
+    }
+    return history;
+  }
+
+  private generateSwissPairings(joined: TournamentParticipant[], tableSize: TableSize): Pairing[] {
+    const pointsById = new Map(this.computeStandings().map((s) => [s.playerId, s.points]));
+    const sorted = [...joined].sort((a, b) => {
+      const diff = (pointsById.get(b.playerId) ?? 0) - (pointsById.get(a.playerId) ?? 0);
+      return diff !== 0 ? diff : Math.random() - 0.5;
+    });
+
+    const tables = this.buildTablesAvoidingRepeats(
+      sorted.map((p) => p.playerId),
+      tableSize,
+      this.pairingHistory()
+    );
+    return this.ensureByeFairness(tables);
+  }
+
+  /**
+   * Verteilt eine geordnete Spielerliste (Runde 1: zufällig, Swiss: nach Punkten sortiert) auf
+   * Tische der Zielgröße `tableSize`, möglichst gleichmäßig (Größen tableSize oder tableSize-1)
+   * statt eines kleinen Rest-Tisches. Ein einzelner übrig bleibender Spieler bekommt ein Freilos.
+   * Versucht beim Auffüllen jedes Tisches, Personen zu bevorzugen, die laut `history` noch nicht
+   * zusammen an einem Tisch saßen; findet sich niemand Konfliktfreies mehr, wird die Person mit
+   * den wenigsten Wiederholungs-Konflikten genommen (Fallback, wird geloggt).
+   *
+   * Die Suche nach einer konfliktfreien Person ist bewusst auf ein Fenster der Größe `tableSize`
+   * um die aktuelle Position im (nach Punkten sortierten) Pool begrenzt, statt das gesamte
+   * restliche Feld zu durchsuchen - sonst reißt die Wiederholungs-Vermeidung Punktgruppen
+   * auseinander (z.B. würden zwei punktgleiche Erstplatzierte quer durchs Feld getrennt, nur um
+   * eine Wiederholung zu vermeiden, statt sie für einen klaren Showdown zusammenzulassen).
+   */
+  private buildTablesAvoidingRepeats(orderedPlayerIds: string[], tableSize: number, history: Set<string>): Pairing[] {
+    const n = orderedPlayerIds.length;
+    if (n === 0) return [];
+    if (n === 1) return [{ playerIds: orderedPlayerIds }];
+
+    const numTables = Math.max(1, Math.ceil(n / tableSize));
+    const base = Math.floor(n / numTables);
+    const remainder = n % numTables;
+    const tableSizes = Array.from({ length: numTables }, (_, t) => base + (t < remainder ? 1 : 0));
+
+    const pool = [...orderedPlayerIds];
+    const tables: Pairing[] = [];
+
+    for (const size of tableSizes) {
+      const table: string[] = [pool.shift()!];
+
+      while (table.length < size && pool.length > 0) {
+        const searchWindow = Math.min(pool.length, tableSize);
+        let bestIndex = 0;
+        let bestConflicts = Infinity;
+        for (let i = 0; i < searchWindow; i++) {
+          const conflicts = table.filter((memberId) => history.has([memberId, pool[i]].sort().join('::'))).length;
+          if (conflicts < bestConflicts) {
+            bestConflicts = conflicts;
+            bestIndex = i;
+            if (conflicts === 0) break;
+          }
+        }
+        if (bestConflicts > 0) {
+          console.warn(`Swiss-Pairing: Wiederholte Paarung(en) an einem Tisch nicht vermeidbar (${bestConflicts}).`);
+        }
+        table.push(pool.splice(bestIndex, 1)[0]);
+      }
+
+      tables.push({ playerIds: table });
+    }
+
+    return tables;
+  }
+
+  /** Tauscht ein Freilos mit jemandem, der noch keins hatte, falls die aktuelle Zuteilung eine Person doppelt trifft. */
+  private ensureByeFairness(tables: Pairing[]): Pairing[] {
+    const byeTable = tables.find((t) => t.playerIds.length === 1);
+    if (!byeTable) return tables;
+
+    const byePlayerId = byeTable.playerIds[0];
+    const hadBye = this.participants().find((p) => p.playerId === byePlayerId)?.hadBye;
+    if (!hadBye) return tables;
+
+    for (const table of tables) {
+      if (table === byeTable) continue;
+      const swapIndex = table.playerIds.findIndex(
+        (id) => !this.participants().find((p) => p.playerId === id)?.hadBye
+      );
+      if (swapIndex !== -1) {
+        const swapId = table.playerIds[swapIndex];
+        table.playerIds[swapIndex] = byePlayerId;
+        byeTable.playerIds[0] = swapId;
+        break;
+      }
+    }
+    return tables;
+  }
+
+  private computeStandings(): StandingsRow[] {
+    return this.computeStandingsFor(this.participants(), this.matches());
+  }
+
+  private computeStandingsFor(participants: TournamentParticipant[], matches: TournamentMatch[]): StandingsRow[] {
+    const wins = new Map<string, number>();
+    const losses = new Map<string, number>();
+    const byes = new Map<string, number>();
+
+    for (const p of participants) {
+      wins.set(p.playerId, 0);
+      losses.set(p.playerId, 0);
+      byes.set(p.playerId, 0);
+    }
+
+    for (const m of matches) {
+      if (m.isBye) {
+        const byePlayerId = m.participants[0]?.playerId;
+        if (byePlayerId) {
+          byes.set(byePlayerId, (byes.get(byePlayerId) ?? 0) + 1);
+          wins.set(byePlayerId, (wins.get(byePlayerId) ?? 0) + 1);
+        }
+        continue;
+      }
+      if (!m.winnerPlayerId) continue; // noch offen oder unentschieden -> niemand bekommt Punkte
+      wins.set(m.winnerPlayerId, (wins.get(m.winnerPlayerId) ?? 0) + 1);
+      for (const participant of m.participants) {
+        if (participant.playerId !== m.winnerPlayerId) {
+          losses.set(participant.playerId, (losses.get(participant.playerId) ?? 0) + 1);
+        }
+      }
+    }
+
+    return participants
+      .map((p) => ({
+        playerId: p.playerId,
+        playerName: p.playerName,
+        points: (wins.get(p.playerId) ?? 0) * 3,
+        wins: wins.get(p.playerId) ?? 0,
+        losses: losses.get(p.playerId) ?? 0,
+        byes: byes.get(p.playerId) ?? 0,
+      }))
+      .sort((a, b) => b.points - a.points || b.wins - a.wins);
+  }
+
+  // --- Spiel-Integration ---
+
+  /**
+   * Startet die bestehende Einzel-Match-Session (ingame-tracker/Commander-Pods) für diesen Tisch.
+   * Nutzt bewusst immer die tatsächlichen Namen aller Tisch-Teilnehmer statt einer "ich"-
+   * Perspektive - so kann auch die veranstaltende Person das Spiel stellvertretend für accountlose
+   * Personen starten und deren Ergebnis eintragen, nicht nur die Spielenden selbst.
+   *
+   * Das 50-Minuten-Limit beginnt bewusst erst mit dem ersten "Spiel starten"-Klick an diesem Tisch
+   * (startedAt), nicht schon mit dem Auslosen der Runde - bei Spiel 2/3 desselben 1v1-Tisches
+   * bleibt der einmal gesetzte Zeitpunkt stehen.
+   */
+  async startGameForMatch(match: TournamentMatch): Promise<void> {
+    if (match.isBye || match.participants.length < 2) return;
+
+    if (!match.startedAt) {
+      const startedAt = new Date().toISOString();
+      const { error } = await supabase
+        .from('tournament_matches')
+        .update({ started_at: startedAt })
+        .eq('id', match.id);
+      if (error) {
+        console.error('Konnte Start-Zeitpunkt nicht speichern:', error);
+      } else {
+        this.matches.update((current) => current.map((m) => (m.id === match.id ? { ...m, startedAt } : m)));
+      }
+    }
+
+    const tournament = this.activeTournament();
+    this.session.mode.set(tournament?.gameMode ?? 'Commander');
+    this.session.selectedDraftSet.set(null);
+    this.session.selectedPlayers.set(match.participants.map((p) => ({ name: p.playerName })));
+    this.session.activeTournamentMatchId.set(match.id);
+    this.session.startGame();
+    this.closePanel();
+  }
+
+  private async recordGameResult(tournamentMatchId: string, matchRowId: string, winnerName: string): Promise<void> {
+    const match = this.matches().find((m) => m.id === tournamentMatchId);
+    if (!match) return;
+
+    const isDraw = winnerName === this.session.DRAW;
+
+    if (match.participants.length === 2) {
+      // 1v1 Best-of-3: ein Unentschieden-Einzelspiel zählt für keine Seite, Tisch bleibt offen.
+      if (isDraw) return;
+
+      const winnerPlayerId = this.mtg.playerIdFor(winnerName);
+      const winnerEntry = match.participants.find((p) => p.playerId === winnerPlayerId);
+      const otherEntry = match.participants.find((p) => p.playerId !== winnerPlayerId);
+      if (!winnerEntry || !otherEntry) return;
+
+      const newGamesWon = winnerEntry.gamesWon + 1;
+      const decided = newGamesWon >= 2;
+
+      const { error } = await supabase
+        .from('tournament_match_players')
+        .update({ games_won: newGamesWon })
+        .eq('tournament_match_id', tournamentMatchId)
+        .eq('player_id', winnerPlayerId);
+      if (error) {
+        console.error('Konnte Spielstand nicht speichern:', error);
+        return;
+      }
+
+      if (decided) {
+        const { error: winnerError } = await supabase
+          .from('tournament_matches')
+          .update({
+            winner_player_id: winnerPlayerId,
+            winner_source: 'games',
+            completed_at: new Date().toISOString(),
+          })
+          .eq('id', tournamentMatchId);
+        if (winnerError) console.error('Konnte Turnier-Sieger nicht speichern:', winnerError);
+      }
+
+      const { error: gameNumberError } = await supabase
+        .from('matches')
+        .update({ tournament_game_number: newGamesWon + otherEntry.gamesWon })
+        .eq('id', matchRowId);
+      if (gameNumberError) console.error('Konnte Spielnummer nicht am Match hinterlegen:', gameNumberError);
+    } else {
+      // Pod (3-4 Personen): das erste eingetragene Ergebnis entscheidet den Tisch sofort.
+      if (isDraw) {
+        const { error } = await supabase
+          .from('tournament_matches')
+          .update({ is_draw: true, completed_at: new Date().toISOString() })
+          .eq('id', tournamentMatchId);
+        if (error) console.error('Konnte Unentschieden nicht speichern:', error);
+      } else {
+        const winnerPlayerId = this.mtg.playerIdFor(winnerName);
+        if (!winnerPlayerId) return;
+        const { error } = await supabase
+          .from('tournament_matches')
+          .update({ winner_player_id: winnerPlayerId, winner_source: 'games', completed_at: new Date().toISOString() })
+          .eq('id', tournamentMatchId);
+        if (error) console.error('Konnte Turnier-Sieger nicht speichern:', error);
+      }
+
+      const { error: gameNumberError } = await supabase
+        .from('matches')
+        .update({ tournament_game_number: 1 })
+        .eq('id', matchRowId);
+      if (gameNumberError) console.error('Konnte Spielnummer nicht am Match hinterlegen:', gameNumberError);
+    }
+
+    await this.loadRoundsAndMatches(match.tournamentId);
+  }
+
+  /**
+   * "Sieger festlegen"-Override, unabhängig vom bisherigen Spielstand nutzbar (z.B. bei
+   * Zeitablauf). Legt zusätzlich eine ganz normale matches-Zeile an (wie ein live über den
+   * Ingame-Tracker gespieltes Spiel) - sonst würde dieser Tisch zwar in der Turnier-Tabelle
+   * mitzählen, aber nie im Match-Verlauf/in der Statistik auftauchen, weil dort ausschließlich
+   * über addMatch() befüllt wird.
+   */
+  async setManualWinner(tournamentMatchId: string, winnerPlayerId: string): Promise<boolean> {
+    const match = this.matches().find((m) => m.id === tournamentMatchId);
+    if (!match || match.isBye || match.participants.length < 2) return false;
+
+    const { error } = await supabase
+      .from('tournament_matches')
+      .update({
+        winner_player_id: winnerPlayerId,
+        winner_source: 'manual',
+        is_draw: false,
+        completed_at: new Date().toISOString(),
+      })
+      .eq('id', tournamentMatchId);
+
+    if (error) {
+      console.error('Konnte Sieger nicht manuell festlegen:', error);
+      return false;
+    }
+
+    await this.recordManualMatchRow(match, winnerPlayerId);
+    await this.loadRoundsAndMatches(match.tournamentId);
+    return true;
+  }
+
+  /** Manuelles "kein Sieger" für Pods (z.B. Zeitablauf ohne eindeutiges Ergebnis) - trägt ebenfalls eine matches-Zeile nach, siehe setManualWinner(). */
+  async setManualDraw(tournamentMatchId: string): Promise<boolean> {
+    const match = this.matches().find((m) => m.id === tournamentMatchId);
+    if (!match || match.isBye || match.participants.length < 2) return false;
+
+    const { error } = await supabase
+      .from('tournament_matches')
+      .update({
+        is_draw: true,
+        winner_player_id: null,
+        winner_source: 'manual',
+        completed_at: new Date().toISOString(),
+      })
+      .eq('id', tournamentMatchId);
+
+    if (error) {
+      console.error('Konnte Unentschieden nicht manuell festlegen:', error);
+      return false;
+    }
+
+    await this.recordManualMatchRow(match, null);
+    await this.loadRoundsAndMatches(match.tournamentId);
+    return true;
+  }
+
+  private async recordManualMatchRow(match: TournamentMatch, winnerPlayerId: string | null): Promise<void> {
+    const winnerName = winnerPlayerId
+      ? match.participants.find((p) => p.playerId === winnerPlayerId)?.playerName
+      : this.session.DRAW;
+    if (!winnerName) return;
+
+    const matchRowId = await this.mtg.addMatch({
+      mode: this.activeTournament()?.gameMode ?? 'Commander',
+      players: match.participants.map((p) => ({ name: p.playerName })),
+      winner: winnerName,
+      tournamentMatchId: match.id,
+    });
+    if (!matchRowId) return;
+
+    const gameNumber =
+      match.participants.length === 2
+        ? match.participants.reduce((sum, p) => sum + p.gamesWon, 0) + 1
+        : 1;
+    const { error: gameNumberError } = await supabase
+      .from('matches')
+      .update({ tournament_game_number: gameNumber })
+      .eq('id', matchRowId);
+    if (gameNumberError) console.error('Konnte Spielnummer nicht am Match hinterlegen:', gameNumberError);
+  }
+}

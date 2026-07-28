@@ -11,6 +11,10 @@
     }
   </div>
 
+  <button class="glass-chip" (click)="openTournamentPanel()">
+    🏆 {{ tournament.activeTournament() ? i18n.t('tournament.openPanelButton') : i18n.t('tournament.createButton') }}
+  </button>
+
   <h3 data-tutorial="match-players-heading">{{ i18n.t('match.whoPlays') }}</h3>
   @if (mtg.allPlayers().length === 0) {
     <p class="hint">{{ i18n.t('match.noPlayersYet') }}</p>

@@ -49,6 +49,11 @@ export class MtgService {
     return entry?.[0] ?? null;
   });
 
+  /** players.id zu einem Spielernamen dieser Gruppe - für Features, die direkt mit der players-ID arbeiten müssen (z.B. Turniere). */
+  playerIdFor(name: string): string | null {
+    return this.playerIdsByName()[name] ?? null;
+  }
+
   constructor() {
     effect(() => {
       const groupId = this.groupService.groupId();
@@ -614,7 +619,7 @@ export class MtgService {
   }
 
   /** Legt ein Match an und liefert dessen ID zurück (z.B. um danach optional Platzierungen nachzutragen) - null bei Fehler. */
-  async addMatch(match: Omit<Match, 'id' | 'date'>): Promise<string | null> {
+  async addMatch(match: Omit<Match, 'id' | 'date'> & { tournamentMatchId?: string }): Promise<string | null> {
     const groupId = this.groupService.groupId();
     if (!groupId) return null;
 
@@ -632,6 +637,7 @@ export class MtgService {
         draft_set_code: match.draftSet?.code ?? null,
         draft_set_name: match.draftSet?.name ?? null,
         draft_set_released_at: match.draftSet?.releasedAt ?? null,
+        tournament_match_id: match.tournamentMatchId ?? null,
       })
       .select('id, played_at')
       .single();

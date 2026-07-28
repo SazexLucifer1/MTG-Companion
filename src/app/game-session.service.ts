@@ -59,9 +59,19 @@ export class GameSessionService {
   /**
    * Zuletzt gespeichertes Match (gesetzt direkt nach saveAndReset()), damit optional noch
    * Platzierungen nachgetragen werden können - siehe PlacementDialog, der dieses Signal beobachtet.
-   * Wird beim Speichern/Überspringen im Dialog wieder auf null gesetzt.
+   * Wird beim Speichern/Überspringen im Dialog wieder auf null gesetzt. tournamentMatchId ist nur
+   * gesetzt, wenn dieses Spiel Teil eines laufenden Turnier-Tisches war - TournamentService
+   * beobachtet dasselbe Signal unabhängig von PlacementDialog, um das BO3-Ergebnis zu übernehmen.
    */
-  readonly lastFinishedMatch = signal<{ matchId: string; players: MatchPlayer[] } | null>(null);
+  readonly lastFinishedMatch = signal<{
+    matchId: string;
+    players: MatchPlayer[];
+    winner: string;
+    tournamentMatchId?: string;
+  } | null>(null);
+
+  /** Gesetzt, wenn das aktuelle Spiel Teil eines Turnier-Tisches ist - siehe TournamentService.startGameForMatch(). */
+  readonly activeTournamentMatchId = signal<string | null>(null);
 
   /**
    * lifeTotals & co. sind ab jetzt generisch nach "Panel-Key" indiziert:
@@ -533,6 +543,7 @@ export class GameSessionService {
       const cube = this.mtg.cubes().find((c) => c.id === this.selectedCubeId());
       const draftSet = this.selectedDraftSet();
       const players = this.selectedPlayers();
+      const tournamentMatchId = this.activeTournamentMatchId() ?? undefined;
 
       const matchId = await this.mtg.addMatch({
         mode: this.mode(),
@@ -548,10 +559,11 @@ export class GameSessionService {
                 releasedAt: draftSet.releasedAt,
               }
             : undefined,
+        tournamentMatchId,
       });
 
       if (matchId) {
-        this.lastFinishedMatch.set({ matchId, players });
+        this.lastFinishedMatch.set({ matchId, players, winner, tournamentMatchId });
       }
 
       this.resetAll();
@@ -589,6 +601,7 @@ export class GameSessionService {
     this.pinnedBottomKey.set(null);
     this.pinnedBottomKey.set(null);
     this.manualOrder.set(null); // NEU // NEU
+    this.activeTournamentMatchId.set(null);
   }
 
   // --- Setup-Mutationen (Spieler, Commander, Team, Archenemy) ---

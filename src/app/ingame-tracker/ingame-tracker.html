@@ -1,5 +1,16 @@
 @if (session.phase() === 'ingame' && !session.minimized()) {
 <div class="ingame-overlay">
+  @if (tournamentDeadline()) {
+    <div class="tournament-timer-banner" [class.warning]="tournamentFiveMinuteWarning() || tournamentTimeIsUp()">
+      @if (tournamentTimeIsUp()) {
+        ⏰ {{ i18n.t('tournament.timeIsUp') }}
+      } @else if (tournamentFiveMinuteWarning()) {
+        ⏰ {{ i18n.t('tournament.fiveMinuteWarning') }} ({{ tournamentRemainingLabel() }})
+      } @else {
+        ⏱ {{ tournamentRemainingLabel() }}
+      }
+    </div>
+  }
   <div class="ingame-grid" [style.--columns]="session.ingameColumns()">
     @for (p of session.ingameUnits(); track p.key; let i = $index) {
     <div

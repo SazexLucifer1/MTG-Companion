@@ -1,0 +1,71 @@
+<section class="glass-card">
+  <h2>🏆 {{ i18n.t('tournamentHistory.title') }}</h2>
+
+  @if (selectedTournament(); as t) {
+    <button class="glass-button" (click)="closeTournament()">{{ i18n.t('tournament.back') }}</button>
+    <h3>{{ t.name }}</h3>
+    <p class="hint">{{ t.createdAt | date: 'dd.MM.yyyy' }} · {{ t.gameMode }}</p>
+
+    @if (loadingDetail()) {
+      <p class="hint">{{ i18n.t('tournamentHistory.loading') }}</p>
+    } @else {
+      <h4>{{ i18n.t('tournament.standingsHeading') }}</h4>
+      <ol class="tournament-history-list">
+        @for (s of selectedStandings(); track s.playerId; let i = $index) {
+          <li>
+            <span class="rank">{{ i + 1 }}.</span>
+            <span class="player-name">{{ s.playerName }}</span>
+            <span class="hint">{{ i18n.t('tournament.pointsLabel', { points: s.points, wins: s.wins, losses: s.losses }) }}</span>
+          </li>
+        }
+      </ol>
+
+      <h4>{{ i18n.t('tournamentHistory.matchesHeading') }}</h4>
+      <ul class="tournament-history-list">
+        @for (m of selectedMatches(); track m.id) {
+          <li>
+            <span class="hint">{{ i18n.t('tournamentHistory.roundTable', { round: m.roundNumber, table: m.tableNumber }) }}</span>
+            <span class="pairing-names">{{ participantNamesFor(m) }}</span>
+            @if (m.isDraw) {
+              <span class="hint">{{ i18n.t('tournament.drawResult') }}</span>
+            } @else if (winnerNameFor(m)) {
+              <span class="hint">🏆 {{ winnerNameFor(m) }}</span>
+            }
+          </li>
+        }
+      </ul>
+    }
+  } @else {
+    @if (aggregateStandings().length > 0) {
+      <h3>{{ i18n.t('tournamentHistory.overallStandingsHeading') }}</h3>
+      <ol class="tournament-history-list">
+        @for (s of aggregateStandings(); track s.playerId; let i = $index) {
+          <li>
+            <span class="rank">{{ i + 1 }}.</span>
+            <span class="player-name">{{ s.playerName }}</span>
+            <span class="hint">
+              {{ i18n.t('tournamentHistory.overallStatsLabel', { points: s.totalPoints, count: s.tournamentsPlayed, avg: s.avgPlacement.toFixed(1) }) }}
+            </span>
+          </li>
+        }
+      </ol>
+    }
+
+    <h3>{{ i18n.t('tournamentHistory.listHeading') }}</h3>
+    @if (tournaments().length === 0) {
+      <p class="hint">{{ i18n.t('tournamentHistory.noneYet') }}</p>
+    } @else {
+      <ul class="tournament-history-list">
+        @for (t of tournaments(); track t.id) {
+          <li (click)="openTournament(t)">
+            <span class="player-name">{{ t.name }}</span>
+            <span class="hint">{{ t.createdAt | date: 'dd.MM.yyyy' }} · {{ t.gameMode }}</span>
+            <span class="hint">
+              {{ t.status === 'completed' ? i18n.t('tournamentHistory.statusCompleted') : t.status === 'active' ? i18n.t('tournamentHistory.statusActive') : i18n.t('tournamentHistory.statusSetup') }}
+            </span>
+          </li>
+        }
+      </ul>
+    }
+  }
+</section>

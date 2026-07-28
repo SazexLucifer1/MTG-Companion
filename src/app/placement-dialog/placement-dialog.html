@@ -1,4 +1,5 @@
 @if (session.lastFinishedMatch(); as match) {
+@if (match.players.length > 2) {
 <div class="options-menu-overlay" (click)="skip()">
   <div class="options-menu-sheet" (click)="$event.stopPropagation()">
     <h3>{{ i18n.t('placement.dialogTitle') }}</h3>
@@ -28,4 +29,5 @@
     <button class="glass-button" (click)="skip()">{{ i18n.t('placement.skip') }}</button>
   </div>
 </div>
+}
 }

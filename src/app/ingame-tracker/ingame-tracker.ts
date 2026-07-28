@@ -1,11 +1,25 @@
-import { AfterViewInit, Component, ElementRef, OnDestroy, QueryList, ViewChildren, inject, signal } from '@angular/core';
+import {
+  AfterViewInit,
+  Component,
+  ElementRef,
+  OnDestroy,
+  QueryList,
+  ViewChildren,
+  computed,
+  effect,
+  inject,
+  signal,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Subscription } from 'rxjs';
 import { GameSessionService, IngameUnit } from '../game-session.service';
 import { MtgService } from '../mtg.service';
 import { BackgroundService } from '../background.service';
+import { TournamentService } from '../tournament.service';
 import { TEAM_OPTIONS } from '../models';
 import { I18nService } from '../i18n.service';
+
+const FIVE_MINUTES_MS = 5 * 60_000;
 
 @Component({
   selector: 'app-ingame-tracker',
@@ -17,8 +31,52 @@ export class IngameTracker implements AfterViewInit, OnDestroy {
   readonly session = inject(GameSessionService);
   readonly mtg = inject(MtgService);
   readonly backgrounds = inject(BackgroundService);
+  readonly tournament = inject(TournamentService);
   readonly i18n = inject(I18nService);
   readonly teamOptions = TEAM_OPTIONS;
+
+  // --- Turnier-Rundenzeit (nur sichtbar, wenn dieses Spiel Teil eines Turnier-Tisches ist) ---
+  private readonly now = signal(Date.now());
+
+  readonly tournamentDeadline = computed<string | null>(() => {
+    const matchId = this.session.activeTournamentMatchId();
+    if (!matchId) return null;
+    const match = this.tournament.matches().find((m) => m.id === matchId);
+    return match ? this.tournament.matchDeadlineAt(match) : null;
+  });
+
+  readonly tournamentRemainingMs = computed<number | null>(() => {
+    const deadline = this.tournamentDeadline();
+    return deadline ? new Date(deadline).getTime() - this.now() : null;
+  });
+
+  readonly tournamentRemainingLabel = computed(() => {
+    const remaining = this.tournamentRemainingMs();
+    if (remaining === null) return '';
+    const clamped = Math.max(0, remaining);
+    const totalSeconds = Math.floor(clamped / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  });
+
+  readonly tournamentFiveMinuteWarning = computed(() => {
+    const r = this.tournamentRemainingMs();
+    return r !== null && r > 0 && r <= FIVE_MINUTES_MS;
+  });
+
+  readonly tournamentTimeIsUp = computed(() => {
+    const r = this.tournamentRemainingMs();
+    return r !== null && r <= 0;
+  });
+
+  constructor() {
+    effect((onCleanup) => {
+      if (!this.session.activeTournamentMatchId()) return;
+      const id = setInterval(() => this.now.set(Date.now()), 1000);
+      onCleanup(() => clearInterval(id));
+    });
+  }
 
   readonly backgroundPickerFor = signal<string | null>(null);
 

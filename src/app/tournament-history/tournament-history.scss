@@ -1,0 +1,36 @@
+.tournament-history-list {
+  list-style: none;
+  margin: 0 0 16px;
+  padding: 0;
+
+  li {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+
+    &:last-child {
+      border-bottom: none;
+    }
+  }
+
+  .player-name {
+    flex: 1;
+    font-weight: 600;
+  }
+
+  .rank {
+    font-weight: 700;
+    min-width: 24px;
+  }
+}
+
+ul.tournament-history-list li {
+  cursor: pointer;
+
+  &:active {
+    opacity: 0.8;
+  }
+}

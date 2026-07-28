@@ -10,6 +10,7 @@ import { GroupService } from '../group.service';
 import { PlayerAvatar } from '../player-avatar/player-avatar';
 import { DeckService } from '../deck.service';
 import { I18nService } from '../i18n.service';
+import { TournamentService } from '../tournament.service';
 import { GAME_MODES, TEAM_OPTIONS, Match, LIVE_TRACKING_START_DATE } from '../models';
 
 @Component({
@@ -26,6 +27,11 @@ export class MatchTab {
   private readonly gemini = inject(GeminiService);
   private readonly deckService = inject(DeckService);
   readonly i18n = inject(I18nService);
+  readonly tournament = inject(TournamentService);
+
+  openTournamentPanel(): void {
+    this.tournament.openPanel();
+  }
 
   readonly modes = GAME_MODES;
   readonly teamOptions = TEAM_OPTIONS;

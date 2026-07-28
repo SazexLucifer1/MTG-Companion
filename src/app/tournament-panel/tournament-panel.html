@@ -1,0 +1,231 @@
+@if (tournament.panelExpanded()) {
+<div class="tournament-overlay" (click)="close()">
+  <div class="tournament-sheet" (click)="$event.stopPropagation()">
+    <div class="tournament-header">
+      <h2>🏆 {{ tournament.activeTournament()?.name ?? i18n.t('tournament.newTitle') }}</h2>
+      <button class="icon-button" (click)="close()" [attr.aria-label]="i18n.t('tournament.minimizeAria')">✕</button>
+    </div>
+
+    @if (tournament.activeTournament(); as t) {
+      @if (tournament.isOrganizer()) {
+        <button class="glass-button danger" (click)="cancelTournament()">
+          {{ i18n.t('tournament.cancelButton') }}
+        </button>
+      }
+      @if (t.status === 'setup') {
+        @if (tournament.isOrganizer()) {
+          <p class="hint">{{ i18n.t('tournament.inviteCodeHint', { code: t.inviteCode ?? '' }) }}</p>
+          @if (groupInviteCode()) {
+            <p class="hint">{{ i18n.t('tournament.groupInviteCodeHint', { code: groupInviteCode() ?? '' }) }}</p>
+          }
+
+          <h4>{{ i18n.t('tournament.rosterHeading') }}</h4>
+          <ul class="tournament-list">
+            @for (p of tournament.participants(); track p.id) {
+              <li>
+                <span class="player-name">{{ p.playerName }}</span>
+                <span class="hint">
+                  {{ p.status === 'joined' ? i18n.t('tournament.statusJoined') : i18n.t('tournament.statusInvited') }}
+                </span>
+              </li>
+            }
+          </ul>
+
+          <button
+            class="glass-button primary"
+            [disabled]="tournament.participants().length < 2"
+            (click)="startTournament()"
+          >
+            {{ i18n.t('tournament.startButton') }}
+          </button>
+        } @else if (tournament.myParticipant()?.status === 'invited') {
+          <p>{{ i18n.t('tournament.youAreInvited') }}</p>
+          <button class="glass-button primary" (click)="confirmJoin()">{{ i18n.t('tournament.joinButton') }}</button>
+        } @else {
+          <p class="hint">{{ i18n.t('tournament.waitingForStart') }}</p>
+        }
+      } @else if (t.status === 'active') {
+        <p class="hint">
+          {{ i18n.t('tournament.roundLabel', { round: t.currentRound, total: t.roundCount ?? '?' }) }}
+        </p>
+
+        @if (tournament.myCurrentMatch(); as myMatch) {
+          <div class="my-match-card">
+            <h4>{{ i18n.t('tournament.yourMatch') }}</h4>
+            @if (myMatch.isBye) {
+              <p>{{ i18n.t('tournament.byeMessage') }}</p>
+            } @else {
+              <p>{{ i18n.t('tournament.vsLabel', { name: othersLabelFor(myMatch) }) }}</p>
+              @if (myMatch.participants.length === 2) {
+                <p class="hint">{{ myMatch.participants[0].gamesWon }} : {{ myMatch.participants[1].gamesWon }}</p>
+              }
+              @if (myMatch.isDraw) {
+                <p class="success">{{ i18n.t('tournament.drawResult') }}</p>
+              } @else if (!myMatch.winnerPlayerId) {
+                <button class="glass-button primary" (click)="startMyGame()">
+                  {{ i18n.t('tournament.startGameButton') }}
+                </button>
+                @if (!myMatch.startedAt) {
+                  <p class="hint">{{ i18n.t('tournament.timerStartsHint') }}</p>
+                }
+              } @else {
+                <p class="success">🏆 {{ winnerNameFor(myMatch) }}</p>
+              }
+            }
+          </div>
+        }
+
+        <h4>{{ i18n.t('tournament.pairingsHeading') }}</h4>
+        <ul class="tournament-list">
+          @for (m of tournament.currentRoundMatches(); track m.id) {
+            <li>
+              <span class="table-number">#{{ m.tableNumber }}</span>
+              @if (m.isBye) {
+                <span class="pairing-names">{{ participantNamesFor(m) }} – {{ i18n.t('tournament.bye') }}</span>
+              } @else {
+                <span class="pairing-names">
+                  {{ participantNamesFor(m) }}
+                  @if (m.participants.length === 2) {
+                    ({{ m.participants[0].gamesWon }}:{{ m.participants[1].gamesWon }})
+                  }
+                </span>
+              }
+              @if (m.isDraw) {
+                <span class="hint">{{ i18n.t('tournament.drawResult') }}</span>
+              } @else if (winnerNameFor(m)) {
+                <span class="hint">🏆 {{ winnerNameFor(m) }}</span>
+              } @else if (!m.isBye && canManageMatch(m)) {
+                <button class="glass-chip small" (click)="startGameFor(m)">
+                  {{ i18n.t('tournament.startGameButton') }}
+                </button>
+                <button class="glass-chip small" (click)="openWinnerPicker(m.id)">
+                  {{ i18n.t('tournament.setWinner') }}
+                </button>
+              }
+              @if (winnerPickerFor() === m.id) {
+                <div class="chip-row">
+                  @for (p of m.participants; track p.playerId) {
+                    <button class="glass-chip small" (click)="pickWinner(m.id, p.playerId)">{{ p.playerName }}</button>
+                  }
+                  @if (m.participants.length > 2) {
+                    <button class="glass-chip small" (click)="pickDraw(m.id)">{{ i18n.t('tournament.drawButton') }}</button>
+                  }
+                  <button class="icon-button" (click)="closeWinnerPicker()" [attr.aria-label]="i18n.t('match.cancel')">✕</button>
+                </div>
+              }
+            </li>
+          }
+        </ul>
+
+        <h4>{{ i18n.t('tournament.standingsHeading') }}</h4>
+        <ol class="tournament-list standings-list">
+          @for (s of tournament.standings(); track s.playerId) {
+            <li>
+              <span class="player-name">{{ s.playerName }}</span>
+              <span class="hint">{{ i18n.t('tournament.pointsLabel', { points: s.points, wins: s.wins, losses: s.losses }) }}</span>
+            </li>
+          }
+        </ol>
+
+        @if (tournament.isOrganizer()) {
+          @if (!t.roundCount || t.currentRound < t.roundCount) {
+            <button class="glass-button primary" (click)="startNextRound()">
+              {{ i18n.t('tournament.nextRoundButton') }}
+            </button>
+          }
+          <button class="glass-button" (click)="endTournament()">
+            {{ i18n.t('tournament.endTournamentButton') }}
+          </button>
+        }
+      }
+    } @else {
+      <h3>{{ i18n.t('tournament.createHeading') }}</h3>
+      <input
+        class="glass-input"
+        type="text"
+        [placeholder]="i18n.t('tournament.namePlaceholder')"
+        [ngModel]="newName()"
+        (ngModelChange)="newName.set($event)"
+      />
+
+      <h4>{{ i18n.t('tournament.gameModeHeading') }}</h4>
+      <div class="chip-row">
+        @for (m of gameModes; track m) {
+          <button class="glass-chip" [class.active]="selectedGameMode() === m" (click)="selectedGameMode.set(m)">
+            {{ m }}
+          </button>
+        }
+      </div>
+
+      <h4>{{ i18n.t('tournament.tableSizeHeading') }}</h4>
+      <div class="chip-row">
+        <button class="glass-chip" [class.active]="selectedTableSize() === 2" (click)="selectedTableSize.set(2)">
+          {{ i18n.t('tournament.tableSize1v1') }}
+        </button>
+        <button class="glass-chip" [class.active]="selectedTableSize() === 4" (click)="selectedTableSize.set(4)">
+          {{ i18n.t('tournament.tableSizePod') }}
+        </button>
+      </div>
+
+      <h4>{{ i18n.t('tournament.roundCountHeading') }}</h4>
+      <div class="chip-row">
+        <button class="glass-chip" [class.active]="roundCountMode() === 'auto'" (click)="roundCountMode.set('auto')">
+          {{ i18n.t('tournament.roundCountAuto') }}
+        </button>
+        <button class="glass-chip" [class.active]="roundCountMode() === 'manual'" (click)="roundCountMode.set('manual')">
+          {{ i18n.t('tournament.roundCountManual') }}
+        </button>
+      </div>
+      @if (roundCountMode() === 'manual') {
+        <input
+          class="glass-input small"
+          type="number"
+          min="1"
+          [ngModel]="manualRoundCount()"
+          (ngModelChange)="setManualRoundCount($event)"
+        />
+      }
+
+      <h4>{{ i18n.t('tournament.pickPlayersHeading') }}</h4>
+      <div class="chip-row">
+        @for (player of mtg.allPlayers(); track player) {
+          <button
+            class="glass-chip"
+            [class.active]="selectedPlayerNames().has(player)"
+            (click)="togglePlayerSelection(player)"
+          >
+            {{ player }}
+          </button>
+        }
+      </div>
+
+      <button
+        class="glass-button primary"
+        [disabled]="creating() || !newName().trim() || selectedPlayerNames().size < 2"
+        (click)="createTournament()"
+      >
+        {{ i18n.t('tournament.createButton') }}
+      </button>
+
+      <h4>{{ i18n.t('tournament.joinByCodeHeading') }}</h4>
+      <div class="join-by-code-row">
+        <input
+          class="glass-input"
+          type="text"
+          [placeholder]="i18n.t('tournament.codePlaceholder')"
+          [ngModel]="joinCode()"
+          (ngModelChange)="joinCode.set($event)"
+        />
+        <button class="glass-button" [disabled]="joining() || !joinCode().trim()" (click)="redeemCode()">
+          {{ i18n.t('tournament.joinByCodeButton') }}
+        </button>
+      </div>
+      @if (joinMessage()) {
+        <p class="hint">{{ joinMessage() }}</p>
+      }
+    }
+
+    <button class="glass-button" (click)="close()">{{ i18n.t('tournament.minimizeButton') }}</button>
+  </div>
+</div>
+}

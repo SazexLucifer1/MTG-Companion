@@ -22,8 +22,10 @@ import {
   PlayerStats,
 } from '../models';
 import { I18nService } from '../i18n.service';
+import { TournamentHistory } from '../tournament-history/tournament-history';
 
 export type RankSortMode = 'wins' | 'winRate' | 'games';
+export type StatsViewMode = 'stats' | 'tournaments';
 
 const PAGE_SIZE = 10;
 
@@ -49,7 +51,7 @@ interface ImportMappingRow {
 
 @Component({
   selector: 'app-stats-tab',
-  imports: [DecimalPipe, PlayerAvatar, FormsModule],
+  imports: [DecimalPipe, PlayerAvatar, FormsModule, TournamentHistory],
   templateUrl: './stats-tab.html',
   styleUrl: './stats-tab.scss',
 })
@@ -60,6 +62,9 @@ export class StatsTab {
   private readonly scryfall = inject(ScryfallService);
   private readonly deckService = inject(DeckService);
   readonly i18n = inject(I18nService);
+
+  /** Umschalter oben im Stats-Tab zwischen normaler Statistik und der Turnier-Historie. */
+  readonly viewMode = signal<StatsViewMode>('stats');
 
   // --- Kartenbilder (Commander/Erfolgreichste Commander & Decks) ---
 

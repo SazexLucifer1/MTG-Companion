@@ -100,6 +100,19 @@
 </div>
 }
 
+<div class="chip-row stats-view-toggle">
+  <button class="glass-chip" [class.active]="viewMode() === 'stats'" (click)="viewMode.set('stats')">
+    {{ i18n.t('stats.viewStats') }}
+  </button>
+  <button class="glass-chip" [class.active]="viewMode() === 'tournaments'" (click)="viewMode.set('tournaments')">
+    {{ i18n.t('stats.viewTournaments') }}
+  </button>
+</div>
+
+@if (viewMode() === 'tournaments') {
+  <app-tournament-history />
+} @else {
+
 @if (mtg.history().length === 0) {
 <section class="glass-card">
   <h2>{{ i18n.t('stats.title') }}</h2>
@@ -646,4 +659,6 @@
     <button class="glass-button" (click)="closeResetConfirm()">{{ i18n.t('stats.cancel') }}</button>
   </div>
 </div>
+}
+
 }
