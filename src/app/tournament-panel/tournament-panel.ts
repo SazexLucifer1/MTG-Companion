@@ -115,6 +115,12 @@ export class TournamentPanel {
     const t = this.tournament.activeTournament();
     if (!t) return;
 
+    const joinedCount = this.tournament.participants().filter((p) => p.status === 'joined').length;
+    if (joinedCount < 2) {
+      alert(this.i18n.t('tournament.notEnoughJoined'));
+      return;
+    }
+
     const pending = this.tournament.pendingParticipants();
     if (pending.length > 0) {
       const names = pending.map((p) => p.playerName).join(', ');

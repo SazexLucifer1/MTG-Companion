@@ -119,18 +119,18 @@ export class TournamentService {
     });
 
     // Ersatz für Supabase Realtime (im Repo bisher nirgends verwendet) - reicht für den
-    // Sonntags-Event, um mitzubekommen, wenn andere Tische ihr Ergebnis eintragen.
+    // Sonntags-Event. Pollt bewusst, sobald überhaupt eine Gruppe aktiv ist (nicht erst, wenn
+    // schon ein Turnier läuft) - sonst bekommt jemand, der die App schon offen hatte, BEVOR die
+    // veranstaltende Person ein neues Turnier erstellt hat, das nie mit (der 🏆-Nav-Button taucht
+    // dann für diese Person nie auf, ohne dass sie die Seite manuell neu lädt).
     effect(() => {
-      const active = this.activeTournament()?.status === 'active';
+      const groupId = this.groupService.groupId();
       if (this.pollTimer) {
         clearInterval(this.pollTimer);
         this.pollTimer = null;
       }
-      if (active) {
-        this.pollTimer = setInterval(() => {
-          const t = this.activeTournament();
-          if (t) this.loadRoundsAndMatches(t.id);
-        }, 15_000);
+      if (groupId) {
+        this.pollTimer = setInterval(() => this.loadForGroup(groupId), 15_000);
       }
     });
 
