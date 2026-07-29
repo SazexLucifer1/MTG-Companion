@@ -36,11 +36,22 @@
 .tournament-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 10px;
 
   h2 {
     margin: 0;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .spinning {
+    animation: tournament-refresh-spin 0.7s linear infinite;
+  }
+}
+
+@keyframes tournament-refresh-spin {
+  to {
+    transform: rotate(360deg);
   }
 }
 

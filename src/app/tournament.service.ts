@@ -133,7 +133,7 @@ export class TournamentService {
         this.pollTimer = null;
       }
       if (groupId) {
-        this.pollTimer = setInterval(() => this.loadForGroup(groupId), 15_000);
+        this.pollTimer = setInterval(() => this.loadForGroup(groupId), 8_000);
       }
     });
 
@@ -143,6 +143,20 @@ export class TournamentService {
       if (!finished || !finished.tournamentMatchId) return;
       this.recordGameResult(finished.tournamentMatchId, finished.matchId, finished.winner);
     });
+  }
+
+  readonly refreshing = signal(false);
+
+  /** Manuelles Nachladen auf Knopfdruck (im Turnier-Panel) - ergänzt das automatische Polling, wenn jemand nicht bis zu 8 Sekunden warten möchte. */
+  async refreshNow(): Promise<void> {
+    const groupId = this.groupService.groupId();
+    if (!groupId || this.refreshing()) return;
+    this.refreshing.set(true);
+    try {
+      await this.loadForGroup(groupId);
+    } finally {
+      this.refreshing.set(false);
+    }
   }
 
   private clear(): void {

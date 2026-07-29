@@ -658,6 +658,7 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     // --- Turnier ---
     'tournament.newTitle': 'Turnier',
     'tournament.minimizeAria': 'Turnier-Fenster verkleinern',
+    'tournament.refreshAria': 'Jetzt aktualisieren',
     'tournament.minimizeButton': 'Verkleinern',
     'tournament.openPanelButton': 'Turnier öffnen',
     'tournament.createHeading': 'Neues Turnier erstellen',
@@ -1672,6 +1673,7 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     // --- Tournament ---
     'tournament.newTitle': 'Tournament',
     'tournament.minimizeAria': 'Minimize tournament window',
+    'tournament.refreshAria': 'Refresh now',
     'tournament.minimizeButton': 'Minimize',
     'tournament.openPanelButton': 'Open tournament',
     'tournament.createHeading': 'Create new tournament',

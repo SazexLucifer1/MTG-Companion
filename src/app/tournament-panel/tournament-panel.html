@@ -3,6 +3,15 @@
   <div class="tournament-sheet" (click)="$event.stopPropagation()">
     <div class="tournament-header">
       <h2>🏆 {{ tournament.activeTournament()?.name ?? i18n.t('tournament.newTitle') }}</h2>
+      <button
+        class="icon-button"
+        [class.spinning]="tournament.refreshing()"
+        (click)="tournament.refreshNow()"
+        [attr.aria-label]="i18n.t('tournament.refreshAria')"
+        [title]="i18n.t('tournament.refreshAria')"
+      >
+        🔄
+      </button>
       <button class="icon-button" (click)="close()" [attr.aria-label]="i18n.t('tournament.minimizeAria')">✕</button>
     </div>
 
