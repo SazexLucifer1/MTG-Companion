@@ -108,6 +108,9 @@ export class TournamentService {
 
   private pollTimer: ReturnType<typeof setInterval> | null = null;
 
+  /** Verhindert, dass dieselbe fertig gespielte Partie (matchRowId) innerhalb derselben Sitzung mehrfach verarbeitet wird - zusätzliche Absicherung neben der ohnehin idempotenten Neuberechnung in recordGameResult(). */
+  private readonly processedGameResults = new Set<string>();
+
   constructor() {
     effect(() => {
       const groupId = this.groupService.groupId();
@@ -938,6 +941,9 @@ export class TournamentService {
   }
 
   private async recordGameResult(tournamentMatchId: string, matchRowId: string, winnerName: string): Promise<void> {
+    if (this.processedGameResults.has(matchRowId)) return;
+    this.processedGameResults.add(matchRowId);
+
     const match = this.matches().find((m) => m.id === tournamentMatchId);
     if (!match) return;
 
@@ -952,24 +958,47 @@ export class TournamentService {
       const otherEntry = match.participants.find((p) => p.playerId !== winnerPlayerId);
       if (!winnerEntry || !otherEntry) return;
 
-      const newGamesWon = winnerEntry.gamesWon + 1;
-      const decided = newGamesWon >= 2;
+      // Bewusst NICHT "+1 auf den letzten Stand" - das war anfällig dafür, bei einem doppelten
+      // Aufruf (aus welchem Grund auch immer) endlos weiterzuzählen. Stattdessen wird der
+      // Spielstand jedes Mal frisch aus den tatsächlich gespeicherten matches-Zeilen berechnet -
+      // ein wiederholter Aufruf mit demselben Ergebnis schreibt dann höchstens denselben
+      // (korrekten) Wert nochmal, kann aber rechnerisch nicht mehr hochlaufen.
+      const { data: gameRows, error: gameRowsError } = await supabase
+        .from('matches')
+        .select('winner_name')
+        .eq('tournament_match_id', tournamentMatchId);
+
+      if (gameRowsError || !gameRows) {
+        console.error('Konnte Spielstand nicht neu berechnen:', gameRowsError);
+        return;
+      }
+
+      const winnerWins = gameRows.filter((r) => r.winner_name === winnerEntry.playerName).length;
+      const otherWins = gameRows.filter((r) => r.winner_name === otherEntry.playerName).length;
+      const decided = winnerWins >= 2 || otherWins >= 2;
+      const overallWinnerId = winnerWins >= 2 ? winnerEntry.playerId : otherWins >= 2 ? otherEntry.playerId : null;
 
       const { error } = await supabase
         .from('tournament_match_players')
-        .update({ games_won: newGamesWon })
+        .update({ games_won: winnerWins })
         .eq('tournament_match_id', tournamentMatchId)
-        .eq('player_id', winnerPlayerId);
+        .eq('player_id', winnerEntry.playerId);
       if (error) {
         console.error('Konnte Spielstand nicht speichern:', error);
         return;
       }
+      const { error: otherError } = await supabase
+        .from('tournament_match_players')
+        .update({ games_won: otherWins })
+        .eq('tournament_match_id', tournamentMatchId)
+        .eq('player_id', otherEntry.playerId);
+      if (otherError) console.error('Konnte Spielstand nicht speichern:', otherError);
 
-      if (decided) {
+      if (decided && overallWinnerId) {
         const { error: winnerError } = await supabase
           .from('tournament_matches')
           .update({
-            winner_player_id: winnerPlayerId,
+            winner_player_id: overallWinnerId,
             winner_source: 'games',
             completed_at: new Date().toISOString(),
           })
@@ -979,7 +1008,7 @@ export class TournamentService {
 
       const { error: gameNumberError } = await supabase
         .from('matches')
-        .update({ tournament_game_number: newGamesWon + otherEntry.gamesWon })
+        .update({ tournament_game_number: winnerWins + otherWins })
         .eq('id', matchRowId);
       if (gameNumberError) console.error('Konnte Spielnummer nicht am Match hinterlegen:', gameNumberError);
     } else {
