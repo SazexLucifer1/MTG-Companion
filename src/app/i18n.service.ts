@@ -6,6 +6,10 @@ export type Lang = 'de' | 'en';
 /** Flache Key-Value-Übersetzungstabellen pro Sprache. Namensschema: "bereich.beschreibung". */
 const TRANSLATIONS: Record<Lang, Record<string, string>> = {
   de: {
+    // --- Globaler Bestätigungsdialog (Ersatz für confirm()/alert()) ---
+    'dialog.ok': 'OK',
+    'dialog.cancel': 'Abbrechen',
+
     // --- Header / Navigation ---
     'nav.match': 'Match',
     'nav.stats': 'Statistik',
@@ -695,6 +699,10 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     'tournament.bye': 'Freilos',
     'tournament.setWinner': 'Sieger festlegen',
     'tournament.changeWinner': 'Sieger ändern',
+    'tournament.gameLabel': 'Spiel {{number}}',
+    'tournament.correctGameTo': 'Stattdessen {{name}}',
+    'tournament.resultsHeading': 'Endergebnis',
+    'tournament.closeResultsButton': 'Schließen',
     'tournament.standingsHeading': 'Tabelle',
     'tournament.pointsLabel': '{{points}} Punkte ({{wins}}-{{losses}})',
     'tournament.nextRoundButton': 'Nächste Runde starten',
@@ -1023,6 +1031,10 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     'tutorial.ingame.winner.text': 'Wähle den Gewinner (oder Unentschieden) und speichere die Partie - sie fließt danach sofort in die Statistik ein. Über "Ohne Speichern schließen" lässt sich ein Testlauf verwerfen.',
   },
   en: {
+    // --- Global confirm dialog (replacement for confirm()/alert()) ---
+    'dialog.ok': 'OK',
+    'dialog.cancel': 'Cancel',
+
     // --- Header / Navigation ---
     'nav.match': 'Match',
     'nav.stats': 'Stats',
@@ -1712,6 +1724,10 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     'tournament.bye': 'Bye',
     'tournament.setWinner': 'Set winner',
     'tournament.changeWinner': 'Change winner',
+    'tournament.gameLabel': 'Game {{number}}',
+    'tournament.correctGameTo': 'Instead {{name}}',
+    'tournament.resultsHeading': 'Final results',
+    'tournament.closeResultsButton': 'Close',
     'tournament.standingsHeading': 'Standings',
     'tournament.pointsLabel': '{{points}} points ({{wins}}-{{losses}})',
     'tournament.nextRoundButton': 'Start next round',

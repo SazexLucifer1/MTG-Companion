@@ -118,3 +118,61 @@
     margin-top: 0;
   }
 }
+
+.game-correction-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 0;
+}
+
+.podium {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 8px;
+  margin: 20px 0;
+}
+
+.podium-place {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  padding: 12px 10px;
+  min-width: 88px;
+  border-radius: 14px 14px 0 0;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-bottom: none;
+
+  .medal {
+    font-size: 2rem;
+  }
+
+  .podium-name {
+    font-weight: 700;
+    text-align: center;
+    word-break: break-word;
+  }
+}
+
+.place-1 {
+  order: 2;
+  height: 150px;
+  background: rgba(255, 209, 102, 0.18);
+  border-color: rgba(255, 209, 102, 0.5);
+}
+
+.place-2 {
+  order: 1;
+  height: 115px;
+}
+
+.place-3 {
+  order: 3;
+  height: 90px;
+}

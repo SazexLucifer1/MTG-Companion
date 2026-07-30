@@ -2,20 +2,57 @@
 <div class="tournament-overlay" (click)="close()">
   <div class="tournament-sheet" (click)="$event.stopPropagation()">
     <div class="tournament-header">
-      <h2>🏆 {{ tournament.activeTournament()?.name ?? i18n.t('tournament.newTitle') }}</h2>
-      <button
-        class="icon-button"
-        [class.spinning]="tournament.refreshing()"
-        (click)="tournament.refreshNow()"
-        [attr.aria-label]="i18n.t('tournament.refreshAria')"
-        [title]="i18n.t('tournament.refreshAria')"
-      >
-        🔄
-      </button>
+      <h2>🏆 {{ showFinalResults() ? i18n.t('tournament.resultsHeading') : (tournament.activeTournament()?.name ?? i18n.t('tournament.newTitle')) }}</h2>
+      @if (!showFinalResults()) {
+        <button
+          class="icon-button"
+          [class.spinning]="tournament.refreshing()"
+          (click)="tournament.refreshNow()"
+          [attr.aria-label]="i18n.t('tournament.refreshAria')"
+          [title]="i18n.t('tournament.refreshAria')"
+        >
+          🔄
+        </button>
+      }
       <button class="icon-button" (click)="close()" [attr.aria-label]="i18n.t('tournament.minimizeAria')">✕</button>
     </div>
 
-    @if (tournament.activeTournament(); as t) {
+    @if (showFinalResults()) {
+      <div class="podium">
+        @if (finalStandings()[1]; as second) {
+          <div class="podium-place place-2">
+            <span class="medal">🥈</span>
+            <span class="podium-name">{{ second.playerName }}</span>
+          </div>
+        }
+        @if (finalStandings()[0]; as first) {
+          <div class="podium-place place-1">
+            <span class="medal">🥇</span>
+            <span class="podium-name">{{ first.playerName }}</span>
+          </div>
+        }
+        @if (finalStandings()[2]; as third) {
+          <div class="podium-place place-3">
+            <span class="medal">🥉</span>
+            <span class="podium-name">{{ third.playerName }}</span>
+          </div>
+        }
+      </div>
+
+      @if (finalStandings().length > 3) {
+        <ol class="tournament-list standings-list" start="4">
+          @for (s of finalStandings().slice(3); track s.playerId; let i = $index) {
+            <li>
+              <span class="rank">{{ i + 4 }}.</span>
+              <span class="player-name">{{ s.playerName }}</span>
+              <span class="hint">{{ i18n.t('tournament.pointsLabel', { points: s.points, wins: s.wins, losses: s.losses }) }}</span>
+            </li>
+          }
+        </ol>
+      }
+
+      <button class="glass-button primary" (click)="closeFinalResults()">{{ i18n.t('tournament.closeResultsButton') }}</button>
+    } @else if (tournament.activeTournament(); as t) {
       @if (tournament.isOrganizer()) {
         <button class="glass-button danger" (click)="cancelTournament()">
           {{ i18n.t('tournament.cancelButton') }}
@@ -110,17 +147,32 @@
                     {{ i18n.t('tournament.startGameButton') }}
                   </button>
                 }
-                <button class="glass-chip small" (click)="openWinnerPicker(m.id)">
+                <button class="glass-chip small" (click)="openWinnerPicker(m)">
                   {{ winnerNameFor(m) || m.isDraw ? i18n.t('tournament.changeWinner') : i18n.t('tournament.setWinner') }}
                 </button>
               }
               @if (winnerPickerFor() === m.id) {
                 <div class="chip-row">
-                  @for (p of m.participants; track p.playerId) {
-                    <button class="glass-chip small" (click)="pickWinner(m, p.playerId)">{{ p.playerName }}</button>
-                  }
-                  @if (m.participants.length > 2) {
-                    <button class="glass-chip small" (click)="pickDraw(m.id)">{{ i18n.t('tournament.drawButton') }}</button>
+                  @if (gamesForCorrection().length > 0) {
+                    @for (g of gamesForCorrection(); track g.id) {
+                      <div class="game-correction-row">
+                        <span class="hint">{{ i18n.t('tournament.gameLabel', { number: g.gameNumber }) }}: {{ g.winnerName }}</span>
+                        @for (p of m.participants; track p.playerId) {
+                          @if (p.playerName !== g.winnerName) {
+                            <button class="glass-chip small" (click)="correctGame(m.id, g.id, p.playerName)">
+                              {{ i18n.t('tournament.correctGameTo', { name: p.playerName }) }}
+                            </button>
+                          }
+                        }
+                      </div>
+                    }
+                  } @else {
+                    @for (p of m.participants; track p.playerId) {
+                      <button class="glass-chip small" (click)="pickWinner(m, p.playerId)">{{ p.playerName }}</button>
+                    }
+                    @if (m.participants.length > 2) {
+                      <button class="glass-chip small" (click)="pickDraw(m.id)">{{ i18n.t('tournament.drawButton') }}</button>
+                    }
                   }
                   <button class="icon-button" (click)="closeWinnerPicker()" [attr.aria-label]="i18n.t('match.cancel')">✕</button>
                 </div>
@@ -237,7 +289,9 @@
       }
     }
 
-    <button class="glass-button" (click)="close()">{{ i18n.t('tournament.minimizeButton') }}</button>
+    @if (!showFinalResults()) {
+      <button class="glass-button" (click)="close()">{{ i18n.t('tournament.minimizeButton') }}</button>
+    }
   </div>
 </div>
 }

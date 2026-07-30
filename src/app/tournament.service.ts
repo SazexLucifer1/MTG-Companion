@@ -957,6 +957,101 @@ export class TournamentService {
     this.closePanel();
   }
 
+  /**
+   * Berechnet den BO3-Spielstand eines 2-Personen-Tisches komplett neu aus den tatsächlich
+   * gespeicherten matches-Zeilen (statt hochzuzählen - siehe Kommentar zur Endlos-Zähler-Absicherung
+   * weiter unten) und schreibt Spielstand + Tisch-Sieger entsprechend fest. Wird sowohl beim
+   * automatischen Eintragen eines fertig gespielten Spiels als auch bei der nachträglichen
+   * Korrektur eines einzelnen Spielergebnisses aufgerufen - kann den Tisch dabei auch wieder von
+   * "entschieden" zurück auf "offen" setzen, falls eine Korrektur das nötig macht.
+   */
+  private async recomputeBo3(
+    tournamentMatchId: string,
+    winnerEntry: { playerId: string; playerName: string },
+    otherEntry: { playerId: string; playerName: string }
+  ): Promise<{ winnerWins: number; otherWins: number }> {
+    const { data: gameRows, error: gameRowsError } = await supabase
+      .from('matches')
+      .select('winner_name')
+      .eq('tournament_match_id', tournamentMatchId);
+
+    if (gameRowsError || !gameRows) {
+      console.error('Konnte Spielstand nicht neu berechnen:', gameRowsError);
+      return { winnerWins: 0, otherWins: 0 };
+    }
+
+    const winnerWins = gameRows.filter((r) => r.winner_name === winnerEntry.playerName).length;
+    const otherWins = gameRows.filter((r) => r.winner_name === otherEntry.playerName).length;
+    const decided = winnerWins >= 2 || otherWins >= 2;
+    const overallWinnerId = winnerWins >= 2 ? winnerEntry.playerId : otherWins >= 2 ? otherEntry.playerId : null;
+
+    const { error } = await supabase
+      .from('tournament_match_players')
+      .update({ games_won: winnerWins })
+      .eq('tournament_match_id', tournamentMatchId)
+      .eq('player_id', winnerEntry.playerId);
+    if (error) console.error('Konnte Spielstand nicht speichern:', error);
+
+    const { error: otherError } = await supabase
+      .from('tournament_match_players')
+      .update({ games_won: otherWins })
+      .eq('tournament_match_id', tournamentMatchId)
+      .eq('player_id', otherEntry.playerId);
+    if (otherError) console.error('Konnte Spielstand nicht speichern:', otherError);
+
+    const { error: winnerError } = await supabase
+      .from('tournament_matches')
+      .update({
+        winner_player_id: overallWinnerId,
+        winner_source: overallWinnerId ? 'games' : null,
+        completed_at: decided ? new Date().toISOString() : null,
+      })
+      .eq('id', tournamentMatchId);
+    if (winnerError) console.error('Konnte Turnier-Sieger nicht speichern:', winnerError);
+
+    return { winnerWins, otherWins };
+  }
+
+  /** Einzelne gespeicherte Spiele eines Tisches (für die nachträgliche "Sieger ändern"-Korrektur bei BO3-Tischen). */
+  async fetchGamesFor(tournamentMatchId: string): Promise<{ id: string; gameNumber: number; winnerName: string }[]> {
+    const { data, error } = await supabase
+      .from('matches')
+      .select('id, tournament_game_number, winner_name')
+      .eq('tournament_match_id', tournamentMatchId)
+      .order('tournament_game_number', { ascending: true });
+
+    if (error) {
+      console.error('Konnte Einzelspiele nicht laden:', error);
+      return [];
+    }
+    return (data ?? []).map((row) => ({
+      id: row.id,
+      gameNumber: row.tournament_game_number ?? 0,
+      winnerName: row.winner_name,
+    }));
+  }
+
+  /**
+   * Korrigiert, wer ein einzelnes bereits gespeichertes Spiel innerhalb eines BO3-Tisches
+   * gewonnen hat - der eigentliche Grund, warum man überhaupt einen Tisch-Sieger ändern will, ist
+   * ja fast immer, dass genau dieses Einzelspiel falsch gespeichert wurde. Berechnet danach
+   * Spielstand und Tisch-Sieger frisch aus den (jetzt korrigierten) Spielen.
+   */
+  async correctGameWinner(tournamentMatchId: string, gameRowId: string, newWinnerName: string): Promise<boolean> {
+    const match = this.matches().find((m) => m.id === tournamentMatchId);
+    if (!match || match.participants.length !== 2) return false;
+
+    const { error } = await supabase.from('matches').update({ winner_name: newWinnerName }).eq('id', gameRowId);
+    if (error) {
+      console.error('Konnte Spielergebnis nicht korrigieren:', error);
+      return false;
+    }
+
+    await this.recomputeBo3(tournamentMatchId, match.participants[0], match.participants[1]);
+    await this.loadRoundsAndMatches(match.tournamentId);
+    return true;
+  }
+
   private async recordGameResult(tournamentMatchId: string, matchRowId: string, winnerName: string): Promise<void> {
     if (this.processedGameResults.has(matchRowId)) return;
     this.processedGameResults.add(matchRowId);
@@ -975,53 +1070,7 @@ export class TournamentService {
       const otherEntry = match.participants.find((p) => p.playerId !== winnerPlayerId);
       if (!winnerEntry || !otherEntry) return;
 
-      // Bewusst NICHT "+1 auf den letzten Stand" - das war anfällig dafür, bei einem doppelten
-      // Aufruf (aus welchem Grund auch immer) endlos weiterzuzählen. Stattdessen wird der
-      // Spielstand jedes Mal frisch aus den tatsächlich gespeicherten matches-Zeilen berechnet -
-      // ein wiederholter Aufruf mit demselben Ergebnis schreibt dann höchstens denselben
-      // (korrekten) Wert nochmal, kann aber rechnerisch nicht mehr hochlaufen.
-      const { data: gameRows, error: gameRowsError } = await supabase
-        .from('matches')
-        .select('winner_name')
-        .eq('tournament_match_id', tournamentMatchId);
-
-      if (gameRowsError || !gameRows) {
-        console.error('Konnte Spielstand nicht neu berechnen:', gameRowsError);
-        return;
-      }
-
-      const winnerWins = gameRows.filter((r) => r.winner_name === winnerEntry.playerName).length;
-      const otherWins = gameRows.filter((r) => r.winner_name === otherEntry.playerName).length;
-      const decided = winnerWins >= 2 || otherWins >= 2;
-      const overallWinnerId = winnerWins >= 2 ? winnerEntry.playerId : otherWins >= 2 ? otherEntry.playerId : null;
-
-      const { error } = await supabase
-        .from('tournament_match_players')
-        .update({ games_won: winnerWins })
-        .eq('tournament_match_id', tournamentMatchId)
-        .eq('player_id', winnerEntry.playerId);
-      if (error) {
-        console.error('Konnte Spielstand nicht speichern:', error);
-        return;
-      }
-      const { error: otherError } = await supabase
-        .from('tournament_match_players')
-        .update({ games_won: otherWins })
-        .eq('tournament_match_id', tournamentMatchId)
-        .eq('player_id', otherEntry.playerId);
-      if (otherError) console.error('Konnte Spielstand nicht speichern:', otherError);
-
-      if (decided && overallWinnerId) {
-        const { error: winnerError } = await supabase
-          .from('tournament_matches')
-          .update({
-            winner_player_id: overallWinnerId,
-            winner_source: 'games',
-            completed_at: new Date().toISOString(),
-          })
-          .eq('id', tournamentMatchId);
-        if (winnerError) console.error('Konnte Turnier-Sieger nicht speichern:', winnerError);
-      }
+      const { winnerWins, otherWins } = await this.recomputeBo3(tournamentMatchId, winnerEntry, otherEntry);
 
       const { error: gameNumberError } = await supabase
         .from('matches')
@@ -1057,10 +1106,10 @@ export class TournamentService {
   }
 
   /**
-   * Korrigiert den Sieger eines bereits entschiedenen Tisches (z.B. im Live-Tracker versehentlich
-   * die falsche Person ausgewählt) - fasst bewusst nur die Turnier-Wertung an, ohne nochmal eine
-   * zusätzliche matches-Zeile anzulegen (die echte Partie wurde ja schon einmal korrekt
-   * gespeichert, nur der Sieger-Eintrag im Turnier selbst war falsch).
+   * Korrigiert den Sieger eines bereits entschiedenen Pod-Tisches (3-4 Personen) - für 2-Personen-
+   * BO3-Tische gibt es stattdessen die genauere correctGameWinner()-Korrektur pro Einzelspiel.
+   * Ein Pod-Tisch hat normalerweise genau ein gespeichertes Spiel; dessen winner_name wird
+   * gleich mit korrigiert, damit die normale Statistik konsistent zur Turnier-Wertung bleibt.
    */
   async correctWinner(tournamentMatchId: string, winnerPlayerId: string): Promise<boolean> {
     const match = this.matches().find((m) => m.id === tournamentMatchId);
@@ -1079,6 +1128,15 @@ export class TournamentService {
     if (error) {
       console.error('Konnte Sieger nicht korrigieren:', error);
       return false;
+    }
+
+    const winnerEntry = match.participants.find((p) => p.playerId === winnerPlayerId);
+    if (winnerEntry && match.participants.length > 2) {
+      const { error: gameError } = await supabase
+        .from('matches')
+        .update({ winner_name: winnerEntry.playerName })
+        .eq('tournament_match_id', tournamentMatchId);
+      if (gameError) console.error('Konnte Spielergebnis nicht mit korrigieren:', gameError);
     }
 
     await this.loadRoundsAndMatches(match.tournamentId);

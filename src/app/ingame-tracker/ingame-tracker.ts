@@ -16,6 +16,7 @@ import { GameSessionService, IngameUnit } from '../game-session.service';
 import { MtgService } from '../mtg.service';
 import { BackgroundService } from '../background.service';
 import { TournamentService } from '../tournament.service';
+import { DialogService } from '../dialog.service';
 import { TEAM_OPTIONS } from '../models';
 import { I18nService } from '../i18n.service';
 
@@ -32,6 +33,7 @@ export class IngameTracker implements AfterViewInit, OnDestroy {
   readonly mtg = inject(MtgService);
   readonly backgrounds = inject(BackgroundService);
   readonly tournament = inject(TournamentService);
+  private readonly dialog = inject(DialogService);
   readonly i18n = inject(I18nService);
   readonly teamOptions = TEAM_OPTIONS;
 
@@ -115,7 +117,7 @@ export class IngameTracker implements AfterViewInit, OnDestroy {
 
   async deleteOwnBackground(event: Event, id: string): Promise<void> {
     event.stopPropagation();
-    if (confirm(this.i18n.t('ingame.msg.confirmDeleteBackground'))) {
+    if (await this.dialog.confirm(this.i18n.t('ingame.msg.confirmDeleteBackground'))) {
       await this.backgrounds.deleteBackground(id);
     }
   }
@@ -401,15 +403,15 @@ export class IngameTracker implements AfterViewInit, OnDestroy {
     return winner;
   }
 
-  finishGame(): void {
+  async finishGame(): Promise<void> {
     if (!this.session.canSave()) return;
-    if (!confirm(this.i18n.t('ingame.confirmSaveWinner', { winner: this.winnerLabel() }))) return;
+    if (!(await this.dialog.confirm(this.i18n.t('ingame.confirmSaveWinner', { winner: this.winnerLabel() })))) return;
     this.stopAllHolds();
     this.session.saveAndReset();
   }
 
-  discardGame(): void {
-    const confirmed = confirm(this.i18n.t('ingame.msg.confirmDiscardGame'));
+  async discardGame(): Promise<void> {
+    const confirmed = await this.dialog.confirm(this.i18n.t('ingame.msg.confirmDiscardGame'));
     if (!confirmed) return;
 
     this.stopAllHolds();

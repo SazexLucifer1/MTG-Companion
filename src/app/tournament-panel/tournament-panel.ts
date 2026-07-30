@@ -4,7 +4,8 @@ import { TournamentService } from '../tournament.service';
 import { MtgService } from '../mtg.service';
 import { GroupService } from '../group.service';
 import { I18nService } from '../i18n.service';
-import { TournamentMatch, TableSize } from '../tournament.models';
+import { DialogService } from '../dialog.service';
+import { TournamentMatch, TableSize, StandingsRow } from '../tournament.models';
 import { GAME_MODES, GameMode } from '../models';
 
 /** Two-Headed Giant ist teambasiert und passt nicht zu individuellem Swiss-Ranking - daher hier ausgeschlossen. */
@@ -27,6 +28,7 @@ export class TournamentPanel {
   readonly tournament = inject(TournamentService);
   readonly mtg = inject(MtgService);
   private readonly groupService = inject(GroupService);
+  private readonly dialog = inject(DialogService);
   readonly i18n = inject(I18nService);
 
   readonly gameModes = TOURNAMENT_GAME_MODES;
@@ -42,6 +44,8 @@ export class TournamentPanel {
 
   // --- "Sieger festlegen"-Auswahl pro Tisch ---
   readonly winnerPickerFor = signal<string | null>(null);
+  /** Bei bereits entschiedenen BO3-Tischen: die Einzelspiele, um gezielt eins davon zu korrigieren statt nur den Gesamt-Sieger zu überschreiben. */
+  readonly gamesForCorrection = signal<{ id: string; gameNumber: number; winnerName: string }[]>([]);
 
   // --- Beitritt per Einladungscode ---
   readonly joinCode = signal('');
@@ -50,6 +54,10 @@ export class TournamentPanel {
 
   /** Zusätzlich zum Turnier-Code angezeigt - wer noch nicht Gruppenmitglied ist, braucht zuerst diesen. */
   readonly groupInviteCode = signal<string | null>(null);
+
+  /** Endstand-Bildschirm nach "Turnier beenden" - hält einen Schnappschuss der Standings, weil das Turnier danach sofort aus der App verschwindet. */
+  readonly showFinalResults = signal(false);
+  readonly finalStandings = signal<StandingsRow[]>([]);
 
   constructor() {
     // Lädt den (dauerhaften, idempotenten) Gruppen-Einladungscode nach, sobald die veranstaltende
@@ -117,14 +125,14 @@ export class TournamentPanel {
 
     const joinedCount = this.tournament.participants().filter((p) => p.status === 'joined').length;
     if (joinedCount < 2) {
-      alert(this.i18n.t('tournament.notEnoughJoined'));
+      await this.dialog.alert(this.i18n.t('tournament.notEnoughJoined'));
       return;
     }
 
     const pending = this.tournament.pendingParticipants();
     if (pending.length > 0) {
       const names = pending.map((p) => p.playerName).join(', ');
-      if (!confirm(this.i18n.t('tournament.confirmStartWithPending', { names }))) return;
+      if (!(await this.dialog.confirm(this.i18n.t('tournament.confirmStartWithPending', { names })))) return;
     }
     await this.tournament.startTournament(t.id);
   }
@@ -134,7 +142,7 @@ export class TournamentPanel {
     if (!t) return;
 
     if (!this.tournament.canAdvanceRound()) {
-      if (!confirm(this.i18n.t('tournament.confirmForceNextRound'))) return;
+      if (!(await this.dialog.confirm(this.i18n.t('tournament.confirmForceNextRound')))) return;
     }
     await this.tournament.startNextRound(t.id);
   }
@@ -142,7 +150,7 @@ export class TournamentPanel {
   async cancelTournament(): Promise<void> {
     const t = this.tournament.activeTournament();
     if (!t) return;
-    if (!confirm(this.i18n.t('tournament.confirmCancel'))) return;
+    if (!(await this.dialog.confirm(this.i18n.t('tournament.confirmCancel')))) return;
     await this.tournament.cancelTournament(t.id);
   }
 
@@ -150,9 +158,22 @@ export class TournamentPanel {
     const t = this.tournament.activeTournament();
     if (!t) return;
     if (!this.tournament.canAdvanceRound()) {
-      if (!confirm(this.i18n.t('tournament.confirmEndEarly'))) return;
+      if (!(await this.dialog.confirm(this.i18n.t('tournament.confirmEndEarly')))) return;
     }
-    await this.tournament.endTournament(t.id);
+
+    // Schnappschuss VOR dem Beenden - danach verschwindet das Turnier sofort aus den Live-Signalen.
+    const finalStandings = this.tournament.standings();
+    const success = await this.tournament.endTournament(t.id);
+    if (success) {
+      this.finalStandings.set(finalStandings);
+      this.showFinalResults.set(true);
+    }
+  }
+
+  closeFinalResults(): void {
+    this.showFinalResults.set(false);
+    this.finalStandings.set([]);
+    this.close();
   }
 
   async startMyGame(): Promise<void> {
@@ -189,12 +210,19 @@ export class TournamentPanel {
     return match.participants.find((p) => p.playerId === match.winnerPlayerId)?.playerName ?? null;
   }
 
-  openWinnerPicker(matchId: string): void {
-    this.winnerPickerFor.set(matchId);
+  /** Öffnet die Sieger-Auswahl - bei bereits entschiedenen BO3-Tischen werden stattdessen die Einzelspiele zum gezielten Korrigieren geladen. */
+  async openWinnerPicker(match: TournamentMatch): Promise<void> {
+    this.winnerPickerFor.set(match.id);
+    if (match.participants.length === 2 && (match.winnerPlayerId || match.isDraw)) {
+      this.gamesForCorrection.set(await this.tournament.fetchGamesFor(match.id));
+    } else {
+      this.gamesForCorrection.set([]);
+    }
   }
 
   closeWinnerPicker(): void {
     this.winnerPickerFor.set(null);
+    this.gamesForCorrection.set([]);
   }
 
   async pickWinner(match: TournamentMatch, winnerPlayerId: string): Promise<void> {
@@ -209,6 +237,12 @@ export class TournamentPanel {
   async pickDraw(matchId: string): Promise<void> {
     await this.tournament.setManualDraw(matchId);
     this.closeWinnerPicker();
+  }
+
+  /** Korrigiert, wer ein einzelnes bereits gespeichertes Spiel innerhalb eines BO3-Tisches gewonnen hat - lädt die Liste danach neu, damit man bei Bedarf gleich noch ein weiteres Spiel korrigieren kann. */
+  async correctGame(tournamentMatchId: string, gameRowId: string, newWinnerName: string): Promise<void> {
+    await this.tournament.correctGameWinner(tournamentMatchId, gameRowId, newWinnerName);
+    this.gamesForCorrection.set(await this.tournament.fetchGamesFor(tournamentMatchId));
   }
 
   close(): void {

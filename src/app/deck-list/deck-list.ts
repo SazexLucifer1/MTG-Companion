@@ -6,6 +6,7 @@ import { DeckViewerService } from '../deck-viewer.service';
 import { DeckImportService } from '../deck-import.service';
 import { ScryfallService } from '../scryfall.service';
 import { I18nService } from '../i18n.service';
+import { DialogService } from '../dialog.service';
 
 export type DeckSortMode = 'alpha' | 'winRate' | 'games';
 
@@ -41,6 +42,7 @@ export class DeckList {
   readonly importService = inject(DeckImportService);
   private readonly scryfall = inject(ScryfallService);
   readonly i18n = inject(I18nService);
+  private readonly dialog = inject(DialogService);
 
   readonly decks = signal<Deck[]>([]);
   private readonly deckStats = signal<Map<string, DeckGameStats>>(new Map());
@@ -255,7 +257,7 @@ export class DeckList {
   }
 
   async deleteDeck(deck: Deck): Promise<void> {
-    if (!confirm(this.i18n.t('deck.msg.confirmDelete', { name: deck.name }))) return;
+    if (!(await this.dialog.confirm(this.i18n.t('deck.msg.confirmDelete', { name: deck.name })))) return;
     await this.deckService.deleteDeck(deck.id);
     if (this.viewer.viewingDeck()?.id === deck.id) this.viewer.close();
     await this.refreshDecks();

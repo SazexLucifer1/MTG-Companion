@@ -7,6 +7,7 @@ import { DeckService } from '../deck.service';
 import { NavigationService } from '../navigation.service';
 import { PlayerAvatar } from '../player-avatar/player-avatar';
 import { I18nService } from '../i18n.service';
+import { DialogService } from '../dialog.service';
 import { GAME_MODES, GameMode } from '../models';
 
 @Component({
@@ -22,6 +23,7 @@ export class GroupTab {
   private readonly deckService = inject(DeckService);
   private readonly navigation = inject(NavigationService);
   readonly i18n = inject(I18nService);
+  private readonly dialog = inject(DialogService);
 
   // --- Gruppen erstellen/wechseln ---
 
@@ -337,7 +339,7 @@ export class GroupTab {
       games > 0
         ? this.i18n.t('group.msg.confirmDeletePlayerWithGames', { name, games })
         : this.i18n.t('group.msg.confirmDeletePlayer', { name });
-    if (confirm(warning)) {
+    if (await this.dialog.confirm(warning)) {
       await this.mtg.deletePlayer(name);
     }
   }

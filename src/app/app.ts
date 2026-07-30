@@ -11,6 +11,7 @@ import { TutorialOverlay } from './tutorial-overlay/tutorial-overlay';
 import { FeedbackDialog } from './feedback-dialog/feedback-dialog';
 import { PlacementDialog } from './placement-dialog/placement-dialog';
 import { TournamentPanel } from './tournament-panel/tournament-panel';
+import { Dialog } from './dialog/dialog';
 import { Login } from './login/login';
 import { ResetPassword } from './reset-password/reset-password';
 import { GameSessionService } from './game-session.service';
@@ -37,6 +38,7 @@ import { TournamentService } from './tournament.service';
     FeedbackDialog,
     PlacementDialog,
     TournamentPanel,
+    Dialog,
   ],
   templateUrl: './app.html',
   styleUrl: './app.scss',

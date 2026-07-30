@@ -13,6 +13,7 @@ import { ScryfallService } from '../scryfall.service';
 import { I18nService } from '../i18n.service';
 import { TutorialService } from '../tutorial.service';
 import { FeedbackService } from '../feedback.service';
+import { DialogService } from '../dialog.service';
 
 @Component({
   selector: 'app-profile-tab',
@@ -31,6 +32,7 @@ export class ProfileTab {
   readonly i18n = inject(I18nService);
   readonly tutorial = inject(TutorialService);
   readonly feedback = inject(FeedbackService);
+  private readonly dialog = inject(DialogService);
 
   readonly deckListRef = viewChild<DeckList>('deckListRef');
 
@@ -549,7 +551,7 @@ export class ProfileTab {
   }
 
   async deleteBackground(id: string): Promise<void> {
-    if (confirm(this.i18n.t('profile.msg.confirmDeleteBackground'))) {
+    if (await this.dialog.confirm(this.i18n.t('profile.msg.confirmDeleteBackground'))) {
       await this.backgrounds.deleteBackground(id);
     }
   }

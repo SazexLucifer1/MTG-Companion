@@ -11,6 +11,7 @@ import { PlayerAvatar } from '../player-avatar/player-avatar';
 import { DeckService } from '../deck.service';
 import { I18nService } from '../i18n.service';
 import { TournamentService } from '../tournament.service';
+import { DialogService } from '../dialog.service';
 import { GAME_MODES, TEAM_OPTIONS, Match, LIVE_TRACKING_START_DATE } from '../models';
 
 @Component({
@@ -28,6 +29,7 @@ export class MatchTab {
   private readonly deckService = inject(DeckService);
   readonly i18n = inject(I18nService);
   readonly tournament = inject(TournamentService);
+  private readonly dialog = inject(DialogService);
 
   openTournamentPanel(): void {
     this.tournament.openPanel();
@@ -368,7 +370,7 @@ export class MatchTab {
     }
   }
   async deleteCube(id: string, name: string): Promise<void> {
-    if (confirm(this.i18n.t('match.msg.confirmDeleteCube', { name }))) {
+    if (await this.dialog.confirm(this.i18n.t('match.msg.confirmDeleteCube', { name }))) {
       if (this.session.selectedCubeId() === id) {
         this.session.selectedCubeId.set(null);
       }
@@ -429,7 +431,7 @@ export class MatchTab {
   }
 
   async deleteMatch(id: string): Promise<void> {
-    if (confirm(this.i18n.t('match.msg.confirmDeleteMatch'))) {
+    if (await this.dialog.confirm(this.i18n.t('match.msg.confirmDeleteMatch'))) {
       await this.mtg.deleteMatch(id);
     }
   }

@@ -1,0 +1,10 @@
+.options-menu-overlay {
+  // Muss über allen anderen Overlays liegen (Turnier-Panel/Ingame-Tracker: 750, Deck-Detail: 700),
+  // da ein Bestätigungsdialog aus jedem von ihnen heraus ausgelöst werden kann - aber unter der
+  // Tutorial-Tour (900), die grundsätzlich alles überdecken soll.
+  z-index: 800;
+}
+
+.dialog-message {
+  white-space: pre-line;
+}
