@@ -103,18 +103,21 @@
                 <span class="hint">{{ i18n.t('tournament.drawResult') }}</span>
               } @else if (winnerNameFor(m)) {
                 <span class="hint">🏆 {{ winnerNameFor(m) }}</span>
-              } @else if (!m.isBye && canManageMatch(m)) {
-                <button class="glass-chip small" (click)="startGameFor(m)">
-                  {{ i18n.t('tournament.startGameButton') }}
-                </button>
+              }
+              @if (!m.isBye && canManageMatch(m)) {
+                @if (!winnerNameFor(m) && !m.isDraw) {
+                  <button class="glass-chip small" (click)="startGameFor(m)">
+                    {{ i18n.t('tournament.startGameButton') }}
+                  </button>
+                }
                 <button class="glass-chip small" (click)="openWinnerPicker(m.id)">
-                  {{ i18n.t('tournament.setWinner') }}
+                  {{ winnerNameFor(m) || m.isDraw ? i18n.t('tournament.changeWinner') : i18n.t('tournament.setWinner') }}
                 </button>
               }
               @if (winnerPickerFor() === m.id) {
                 <div class="chip-row">
                   @for (p of m.participants; track p.playerId) {
-                    <button class="glass-chip small" (click)="pickWinner(m.id, p.playerId)">{{ p.playerName }}</button>
+                    <button class="glass-chip small" (click)="pickWinner(m, p.playerId)">{{ p.playerName }}</button>
                   }
                   @if (m.participants.length > 2) {
                     <button class="glass-chip small" (click)="pickDraw(m.id)">{{ i18n.t('tournament.drawButton') }}</button>

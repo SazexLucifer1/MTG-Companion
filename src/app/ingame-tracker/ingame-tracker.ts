@@ -392,8 +392,18 @@ export class IngameTracker implements AfterViewInit, OnDestroy {
     this.panelRefsSub?.unsubscribe();
   }
 
+  /** Menschenlesbarer Text für den aktuell gewählten Sieger - für die Bestätigungsabfrage vor dem Speichern. */
+  private winnerLabel(): string {
+    const winner = this.session.winner();
+    if (!winner) return '';
+    if (winner === this.session.DRAW) return this.i18n.t('ingame.draw');
+    if (winner === this.session.OTHERS) return this.i18n.t('ingame.allOthers');
+    return winner;
+  }
+
   finishGame(): void {
     if (!this.session.canSave()) return;
+    if (!confirm(this.i18n.t('ingame.confirmSaveWinner', { winner: this.winnerLabel() }))) return;
     this.stopAllHolds();
     this.session.saveAndReset();
   }

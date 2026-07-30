@@ -138,9 +138,12 @@ export class TournamentService {
     });
 
     // Bridge: ein im Turnier-Kontext gespieltes Spiel fließt automatisch ins Tisch-Ergebnis ein.
+    // Öffnet außerdem sofort wieder das Turnier-Panel, statt die spielende Person einfach im
+    // normalen Match-Tab-Setup stehen zu lassen - sonst wirkt es so, als wäre man "rausgeflogen".
     effect(() => {
       const finished = this.session.lastFinishedMatch();
       if (!finished || !finished.tournamentMatchId) return;
+      this.openPanel();
       this.recordGameResult(finished.tournamentMatchId, finished.matchId, finished.winner);
     });
   }
@@ -1051,6 +1054,35 @@ export class TournamentService {
     }
 
     await this.loadRoundsAndMatches(match.tournamentId);
+  }
+
+  /**
+   * Korrigiert den Sieger eines bereits entschiedenen Tisches (z.B. im Live-Tracker versehentlich
+   * die falsche Person ausgewählt) - fasst bewusst nur die Turnier-Wertung an, ohne nochmal eine
+   * zusätzliche matches-Zeile anzulegen (die echte Partie wurde ja schon einmal korrekt
+   * gespeichert, nur der Sieger-Eintrag im Turnier selbst war falsch).
+   */
+  async correctWinner(tournamentMatchId: string, winnerPlayerId: string): Promise<boolean> {
+    const match = this.matches().find((m) => m.id === tournamentMatchId);
+    if (!match || match.isBye || match.participants.length < 2) return false;
+
+    const { error } = await supabase
+      .from('tournament_matches')
+      .update({
+        winner_player_id: winnerPlayerId,
+        winner_source: 'manual',
+        is_draw: false,
+        completed_at: new Date().toISOString(),
+      })
+      .eq('id', tournamentMatchId);
+
+    if (error) {
+      console.error('Konnte Sieger nicht korrigieren:', error);
+      return false;
+    }
+
+    await this.loadRoundsAndMatches(match.tournamentId);
+    return true;
   }
 
   /**

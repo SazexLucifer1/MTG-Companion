@@ -197,8 +197,12 @@ export class TournamentPanel {
     this.winnerPickerFor.set(null);
   }
 
-  async pickWinner(matchId: string, winnerPlayerId: string): Promise<void> {
-    await this.tournament.setManualWinner(matchId, winnerPlayerId);
+  async pickWinner(match: TournamentMatch, winnerPlayerId: string): Promise<void> {
+    if (match.winnerPlayerId) {
+      await this.tournament.correctWinner(match.id, winnerPlayerId);
+    } else {
+      await this.tournament.setManualWinner(match.id, winnerPlayerId);
+    }
     this.closeWinnerPicker();
   }
 
