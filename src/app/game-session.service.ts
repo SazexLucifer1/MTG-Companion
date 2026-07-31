@@ -560,9 +560,9 @@ export class GameSessionService {
     const initialState = this.syncSnapshot();
 
     (async () => {
-      // Opportunistisches Aufräumen: falls durch Absturz/Tab-Schließen noch eine eigene alte Zeile
-      // herumliegt, verschwindet sie hier - kein Anspruch auf vollständige Garbage-Collection.
-      await supabase.from('live_game_sessions').delete().eq('created_by', userId).eq('group_id', groupId);
+      // Kein "Aufräumen" alter eigener Zeilen mehr hier - wenn zwei Geräte mit demselben Account
+      // gleichzeitig spielen (z.B. beim Testen), würde das sonst versehentlich eine gerade aktive
+      // Session eines anderen Geräts löschen und einen Endlos-Beitritts-Loop auslösen.
       const { error } = await supabase.from('live_game_sessions').insert({
         id,
         group_id: groupId,
