@@ -7,6 +7,7 @@ import { DeckImportService } from '../deck-import.service';
 import { ScryfallService } from '../scryfall.service';
 import { I18nService } from '../i18n.service';
 import { DialogService } from '../dialog.service';
+import { GoldfishService } from '../goldfish.service';
 
 export type DeckSortMode = 'alpha' | 'winRate' | 'games';
 
@@ -39,6 +40,7 @@ export class DeckList {
 
   private readonly deckService = inject(DeckService);
   readonly viewer = inject(DeckViewerService);
+  readonly goldfish = inject(GoldfishService);
   readonly importService = inject(DeckImportService);
   private readonly scryfall = inject(ScryfallService);
   readonly i18n = inject(I18nService);
@@ -270,5 +272,9 @@ export class DeckList {
 
   openDeckDetail(deck: Deck): void {
     this.viewer.open(deck);
+  }
+
+  openGoldfish(deck: Deck): void {
+    this.goldfish.open(deck);
   }
 }

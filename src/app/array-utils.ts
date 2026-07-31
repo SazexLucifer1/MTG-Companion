@@ -15,3 +15,13 @@ export function chunk<T>(items: T[], size: number): T[][] {
 export function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
+
+/** Fisher-Yates - liefert eine neu gemischte Kopie, mutiert das Original nicht. */
+export function shuffle<T>(items: T[]): T[] {
+  const result = [...items];
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  return result;
+}

@@ -1,0 +1,192 @@
+@if (goldfish.activeDeck(); as deck) {
+<div class="goldfish-fullscreen">
+  <div class="goldfish-header">
+    <button class="glass-button small" (click)="goldfish.close()">{{ i18n.t('deckView.back') }}</button>
+    <span class="goldfish-header-name">{{ deck.name }}</span>
+    @if (goldfish.mulliganCount() > 0) {
+      <span class="goldfish-mulligan-badge">{{ i18n.t('goldfish.mulliganCount', { count: goldfish.mulliganCount() }) }}</span>
+    }
+  </div>
+
+  @if (goldfish.busy()) {
+    <p class="hint">{{ i18n.t('goldfish.loadingDeck') }}</p>
+  } @else {
+    <div class="goldfish-main">
+      <div
+        class="goldfish-battlefield"
+        id="goldfish-battlefield-list"
+        cdkDropList
+        [cdkDropListConnectedTo]="['goldfish-hand-list']"
+        (cdkDropListDropped)="onCardDropped($event)"
+      >
+        <div class="goldfish-bf-row">
+          @for (card of goldfish.battlefieldCreatures(); track card.instanceId) {
+            <ng-container *ngTemplateOutlet="battlefieldTile; context: { card: card }" />
+          }
+        </div>
+        <div class="goldfish-bf-row">
+          @for (card of goldfish.battlefieldOther(); track card.instanceId) {
+            <ng-container *ngTemplateOutlet="battlefieldTile; context: { card: card }" />
+          }
+        </div>
+        <div class="goldfish-bf-row">
+          @for (card of goldfish.battlefieldLands(); track card.instanceId) {
+            <ng-container *ngTemplateOutlet="battlefieldTile; context: { card: card }" />
+          }
+        </div>
+      </div>
+
+      <div class="goldfish-zone-column">
+        <button class="goldfish-zone-icon" (click)="goldfish.openZoneList('library')" [attr.aria-label]="zoneLabel('library')">
+          <span class="goldfish-zone-icon-face">📚</span>
+          <span class="deck-card-qty">{{ goldfish.library().length }}</span>
+        </button>
+        <button class="goldfish-zone-icon" (click)="goldfish.openZoneList('graveyard')" [attr.aria-label]="zoneLabel('graveyard')">
+          <span class="goldfish-zone-icon-face">🪦</span>
+          <span class="deck-card-qty">{{ goldfish.graveyard().length }}</span>
+        </button>
+        <button class="goldfish-zone-icon" (click)="goldfish.openZoneList('exile')" [attr.aria-label]="zoneLabel('exile')">
+          <span class="goldfish-zone-icon-face">🌀</span>
+          <span class="deck-card-qty">{{ goldfish.exile().length }}</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="goldfish-bottom-strip">
+      <div class="goldfish-command-col">
+        @for (card of goldfish.command(); track card.instanceId) {
+          <ng-container *ngTemplateOutlet="plainTile; context: { card: card }" />
+        }
+      </div>
+
+      <div
+        class="goldfish-hand"
+        id="goldfish-hand-list"
+        cdkDropList
+        [cdkDropListConnectedTo]="['goldfish-battlefield-list']"
+        (cdkDropListDropped)="onCardDropped($event)"
+      >
+        @for (card of goldfish.hand(); track card.instanceId) {
+          <div
+            class="deck-card-tile goldfish-hand-tile"
+            cdkDrag
+            [cdkDragData]="card"
+            [cdkDragStartDelay]="{ touch: 150, mouse: 0 }"
+            (click)="goldfish.openMoveMenu(card.instanceId)"
+          >
+            <ng-container *ngTemplateOutlet="cardFace; context: { card: card }" />
+          </div>
+        } @empty {
+          <p class="hint">{{ i18n.t('goldfish.emptyZone') }}</p>
+        }
+      </div>
+
+      <div class="goldfish-actions">
+        <button
+          class="glass-chip small"
+          (pointerdown)="startDrawHold()"
+          (pointerup)="stopDrawHold()"
+          (pointerleave)="stopDrawHold()"
+          (pointercancel)="stopDrawHold()"
+        >
+          {{ i18n.t('goldfish.draw') }}
+        </button>
+        <button class="glass-chip small" (click)="goldfish.shuffleLibrary()">{{ i18n.t('goldfish.shuffle') }}</button>
+        <button class="glass-chip small" (click)="goldfish.mulligan()">{{ i18n.t('goldfish.mulligan') }}</button>
+        <button class="glass-chip small" (click)="goldfish.untapAll()">{{ i18n.t('goldfish.untapAll') }}</button>
+        <button class="glass-chip small" (click)="goldfish.restart()">{{ i18n.t('goldfish.restart') }}</button>
+      </div>
+    </div>
+  }
+
+  @if (goldfish.zoneListView(); as zone) {
+    <div class="goldfish-zone-detail">
+      <div class="goldfish-header">
+        <button class="glass-button small" (click)="goldfish.closeZoneList()">{{ i18n.t('deckView.back') }}</button>
+        <span class="goldfish-header-name">{{ zoneLabel(zone) }} ({{ goldfish.zoneListCards().length }})</span>
+      </div>
+      <input
+        class="glass-input goldfish-zone-search"
+        type="text"
+        [placeholder]="i18n.t('goldfish.searchPlaceholder')"
+        [ngModel]="goldfish.zoneListSearch()"
+        (ngModelChange)="goldfish.zoneListSearch.set($event)"
+      />
+      <div class="goldfish-zone-detail-body">
+        <div class="deck-visual-grid">
+          @for (card of goldfish.zoneListCards(); track card.instanceId) {
+            <div
+              class="deck-card-tile"
+              (pointerdown)="startZoneListPress(card.instanceId)"
+              (pointerup)="endZoneListPress(card.instanceId)"
+              (pointerleave)="cancelZoneListPress()"
+              (pointercancel)="cancelZoneListPress()"
+            >
+              <ng-container *ngTemplateOutlet="cardFace; context: { card: card }" />
+            </div>
+          } @empty {
+            <p class="hint">{{ i18n.t('goldfish.emptyZone') }}</p>
+          }
+        </div>
+      </div>
+    </div>
+  }
+
+  @if (moveMenuCard(); as card) {
+    <div class="options-menu-overlay" (click)="goldfish.closeMoveMenu()">
+      <div class="options-menu-sheet" (click)="$event.stopPropagation()">
+        <h3>{{ i18n.t('goldfish.moveCardTo', { name: card.cardName }) }}</h3>
+        @for (zone of moveMenuTargets(); track zone) {
+          <button class="glass-button small" (click)="goldfish.moveCard(card.instanceId, zone)">{{ zoneLabel(zone) }}</button>
+        }
+        <button class="glass-button small" (click)="goldfish.closeMoveMenu()">{{ i18n.t('group.cancel') }}</button>
+      </div>
+    </div>
+  }
+
+  @if (goldfish.previewCard(); as pc) {
+    <div class="goldfish-preview-overlay" (click)="goldfish.closePreview()">
+      @if (pc.imageUrl) {
+        <img class="goldfish-preview-img" [src]="pc.imageUrl" [alt]="pc.cardName" />
+      } @else {
+        <div class="goldfish-preview-placeholder">{{ pc.cardName }}</div>
+      }
+    </div>
+  }
+</div>
+
+<ng-template #cardFace let-card="card">
+  @if (card.imageUrl) {
+    <img [src]="card.imageUrl" [alt]="card.cardName" loading="lazy" />
+  } @else {
+    <div class="deck-card-placeholder">{{ card.cardName }}</div>
+  }
+  <button
+    class="goldfish-magnify"
+    (click)="$event.stopPropagation(); goldfish.openPreview(card)"
+    (pointerdown)="$event.stopPropagation()"
+    [attr.aria-label]="i18n.t('goldfish.previewAria')"
+  >
+    🔍
+  </button>
+</ng-template>
+
+<ng-template #battlefieldTile let-card="card">
+  <div
+    class="deck-card-tile goldfish-battlefield-tile"
+    [class.tapped]="card.tapped"
+    (pointerdown)="startBattlefieldPress(card.instanceId)"
+    (pointerup)="endBattlefieldPress(card.instanceId)"
+    (pointerleave)="cancelBattlefieldPress()"
+    (pointercancel)="cancelBattlefieldPress()"
+  >
+    <ng-container *ngTemplateOutlet="cardFace; context: { card: card }" />
+  </div>
+</ng-template>
+
+<ng-template #plainTile let-card="card">
+  <div class="deck-card-tile" (click)="goldfish.openMoveMenu(card.instanceId)">
+    <ng-container *ngTemplateOutlet="cardFace; context: { card: card }" />
+  </div>
+</ng-template>
+}

@@ -1,0 +1,338 @@
+.goldfish-fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 700;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: rgba(12, 8, 23, 0.98);
+  backdrop-filter: blur(30px) saturate(160%);
+  -webkit-backdrop-filter: blur(30px) saturate(160%);
+}
+
+.goldfish-header {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: calc(env(safe-area-inset-top, 0px) + 6px) calc(env(safe-area-inset-right, 0px) + 10px) 6px
+    calc(env(safe-area-inset-left, 0px) + 10px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.goldfish-header-name {
+  flex: 1;
+  min-width: 0;
+  font-weight: 700;
+  font-size: 0.9rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.goldfish-mulligan-badge {
+  flex-shrink: 0;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+/* --- Hauptbereich: Spielfeld (3 Zeilen) + Bibliothek/Friedhof/Exil-Spalte --- */
+
+.goldfish-main {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  gap: 8px;
+  padding: 8px calc(env(safe-area-inset-right, 0px) + 8px) 6px calc(env(safe-area-inset-left, 0px) + 8px);
+}
+
+.goldfish-battlefield {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.goldfish-bf-row {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.goldfish-zone-column {
+  flex-shrink: 0;
+  width: 56px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.goldfish-zone-icon {
+  position: relative;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  border: 1px solid var(--glass-border);
+  background: rgba(255, 255, 255, 0.06);
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-touch-callout: none;
+  user-select: none;
+
+  &:active {
+    background: rgba(255, 255, 255, 0.1);
+  }
+}
+
+.goldfish-zone-icon-face {
+  font-size: 1.5rem;
+}
+
+/* --- Unten: Kommandozone | Hand | Aktionen --- */
+
+.goldfish-bottom-strip {
+  flex-shrink: 0;
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  height: 96px;
+  padding: 0 calc(env(safe-area-inset-right, 0px) + 8px) calc(env(safe-area-inset-bottom, 0px) + 8px)
+    calc(env(safe-area-inset-left, 0px) + 8px);
+}
+
+.goldfish-command-col {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.goldfish-hand {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.goldfish-actions {
+  flex-shrink: 0;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  grid-auto-rows: 1fr;
+  gap: 4px;
+  width: 152px;
+
+  .glass-chip {
+    font-size: 0.72rem;
+    padding: 4px 6px;
+    white-space: nowrap;
+  }
+}
+
+/* --- Karten-Kacheln in den kompakten Zeilen (Spielfeld/Hand/Kommandozone) - höhengetrieben statt Grid-gesteuert --- */
+
+.goldfish-bf-row .deck-card-tile,
+.goldfish-hand .deck-card-tile,
+.goldfish-command-col .deck-card-tile {
+  flex-shrink: 0;
+  height: 100%;
+  width: auto;
+  aspect-ratio: 63 / 88;
+}
+
+.goldfish-battlefield-tile {
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-touch-callout: none;
+  user-select: none;
+  transition: transform 0.15s ease;
+
+  &.tapped {
+    transform: rotate(90deg);
+  }
+}
+
+.goldfish-hand-tile {
+  cursor: grab;
+  touch-action: manipulation;
+  -webkit-touch-callout: none;
+  user-select: none;
+
+  &.cdk-drag-preview {
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+  }
+}
+
+.cdk-drag-placeholder {
+  opacity: 0.25;
+}
+
+.cdk-drag-preview {
+  z-index: 1000;
+}
+
+/* --- Lupe-Vorschau-Button auf jeder Kartenkachel --- */
+
+.goldfish-magnify {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.65);
+  font-size: 0.6rem;
+  line-height: 1;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+/* --- Karten-Raster für die Bibliothek/Friedhof/Exil-Detailansicht - 1:1 aus deck-detail-view.scss --- */
+
+.deck-visual-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin: 0 0 16px;
+}
+
+@media (min-width: 700px) {
+  .deck-visual-grid {
+    grid-template-columns: repeat(6, 1fr);
+  }
+}
+
+@media (min-width: 1000px) {
+  .deck-visual-grid {
+    grid-template-columns: repeat(9, 1fr);
+  }
+}
+
+.deck-card-tile {
+  position: relative;
+  aspect-ratio: 63 / 88;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--glass-border);
+  background: rgba(255, 255, 255, 0.06);
+  padding: 0;
+  touch-action: manipulation;
+  -webkit-touch-callout: none;
+  user-select: none;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+}
+
+.deck-card-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  font-size: 0.6rem;
+  text-align: center;
+  opacity: 0.75;
+}
+
+.deck-card-qty {
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.7);
+  font-size: 0.65rem;
+  font-weight: 700;
+}
+
+/* --- Bibliothek/Friedhof/Exil durchsuchen (Vollbild-Unteransicht) --- */
+
+.goldfish-zone-detail {
+  position: fixed;
+  inset: 0;
+  z-index: 710;
+  display: flex;
+  flex-direction: column;
+  background: rgba(12, 8, 23, 0.98);
+  backdrop-filter: blur(30px) saturate(160%);
+  -webkit-backdrop-filter: blur(30px) saturate(160%);
+}
+
+.goldfish-zone-search {
+  flex-shrink: 0;
+  margin: 8px calc(env(safe-area-inset-right, 0px) + 10px) 0 calc(env(safe-area-inset-left, 0px) + 10px);
+}
+
+.goldfish-zone-detail-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px calc(env(safe-area-inset-right, 0px) + 10px) calc(env(safe-area-inset-bottom, 0px) + 10px)
+    calc(env(safe-area-inset-left, 0px) + 10px);
+}
+
+/* --- Vergrößerte Kartenvorschau (Lupe-Symbol) --- */
+
+.goldfish-preview-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 760;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(0, 0, 0, 0.75);
+}
+
+.goldfish-preview-img {
+  max-width: min(90vw, 420px);
+  max-height: 85vh;
+  border-radius: 16px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.7);
+}
+
+.goldfish-preview-placeholder {
+  padding: 40px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.08);
+  font-size: 1.1rem;
+  text-align: center;
+}
+
+/* --- Verschiebe-Menü / Zonen-Labels (globale .options-menu-* Klassen werden wiederverwendet) --- */
+
+h3 {
+  margin: 0 0 4px;
+  font-size: 1rem;
+}

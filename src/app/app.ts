@@ -5,6 +5,7 @@ import { ProfileTab } from './profile-tab/profile-tab';
 import { GroupTab } from './group-tab/group-tab';
 import { IngameTracker } from './ingame-tracker/ingame-tracker';
 import { DeckDetailView } from './deck-detail-view/deck-detail-view';
+import { GoldfishTracker } from './goldfish-tracker/goldfish-tracker';
 import { DeckImportDialogs } from './deck-import-dialogs/deck-import-dialogs';
 import { DeckPdfDialog } from './deck-pdf-dialog/deck-pdf-dialog';
 import { TutorialOverlay } from './tutorial-overlay/tutorial-overlay';
@@ -30,6 +31,7 @@ import { TournamentService } from './tournament.service';
     GroupTab,
     IngameTracker,
     DeckDetailView,
+    GoldfishTracker,
     DeckImportDialogs,
     DeckPdfDialog,
     Login,

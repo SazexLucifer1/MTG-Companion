@@ -60,6 +60,9 @@
           <div class="deck-actions">
             <button class="glass-button small" (click)="openDeckDetail(deck)">{{ i18n.t('deck.view') }}</button>
             @if (!readonlyMode()) {
+              <button class="glass-button small" (click)="openGoldfish(deck)" [attr.aria-label]="i18n.t('deck.goldfishAria')">
+                🐟 {{ i18n.t('deck.goldfish') }}
+              </button>
               <button
                 class="icon-button"
                 (click)="toggleDeckPrivate(deck)"
