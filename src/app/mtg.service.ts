@@ -522,6 +522,7 @@ export class MtgService {
         draft_set_name,
         draft_set_released_at,
         tournament_match_id,
+        tournament_game_number,
         cubes ( id, name, is_commander ),
         match_players (
           player_name,
@@ -555,6 +556,7 @@ export class MtgService {
       mode: row.game_mode,
       winner: row.winner_name,
       tournamentMatchId: row.tournament_match_id ?? undefined,
+      tournamentGameNumber: row.tournament_game_number ?? undefined,
       players: (row.match_players ?? []).map((mp: any) => ({
         name: mp.player_name ?? mp.players?.display_name ?? '',
         commander: mp.commander_name ?? undefined,
@@ -772,6 +774,37 @@ export class MtgService {
     }
 
     this.history.update((matches) => matches.filter((m) => m.id !== id));
+  }
+
+  /** Löscht alle bereits gespeicherten Einzelspiele eines Turnier-Tisches - genutzt beim manuellen Nachtragen eines Endstands (siehe TournamentService.setManualScore), das die Spiele durch neu passende Zeilen ersetzt statt sie zu addieren. */
+  async deleteMatchesForTournamentTable(tournamentMatchId: string): Promise<boolean> {
+    const { data: rows, error: fetchError } = await supabase
+      .from('matches')
+      .select('id')
+      .eq('tournament_match_id', tournamentMatchId);
+
+    if (fetchError) {
+      console.error('Konnte Turnier-Spiele nicht laden:', fetchError);
+      return false;
+    }
+
+    const ids = (rows ?? []).map((r) => r.id);
+    if (ids.length === 0) return true;
+
+    const { error: playersError } = await supabase.from('match_players').delete().in('match_id', ids);
+    if (playersError) {
+      console.error('Konnte Turnier-Spiel-Spieler nicht löschen:', playersError);
+      return false;
+    }
+
+    const { error: matchError } = await supabase.from('matches').delete().in('id', ids);
+    if (matchError) {
+      console.error('Konnte Turnier-Spiele nicht löschen:', matchError);
+      return false;
+    }
+
+    this.history.update((matches) => matches.filter((m) => !ids.includes(m.id)));
+    return true;
   }
 
   /** Ändert nachträglich den Gewinner eines gespeicherten Matches (z.B. bei Vertippern). */

@@ -1,6 +1,6 @@
 // NEU (komplette Datei)
 import { Component, computed, inject, signal } from '@angular/core';
-import { DatePipe } from '@angular/common';
+import { DatePipe, NgTemplateOutlet } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MtgService } from '../mtg.service';
 import { ScryfallService, ScryfallSet } from '../scryfall.service';
@@ -14,9 +14,22 @@ import { TournamentService } from '../tournament.service';
 import { DialogService } from '../dialog.service';
 import { GAME_MODES, TEAM_OPTIONS, Match, LIVE_TRACKING_START_DATE } from '../models';
 
+/** Ein einzelnes Spiel oder eine zu einer Karte zusammengefasste BO3-Turnierpartie (2-3 Einzelspiele) im Verlauf. */
+export type HistoryRow =
+  | { kind: 'single'; match: Match }
+  | {
+      kind: 'group';
+      tournamentMatchId: string;
+      date: string;
+      mode: Match['mode'];
+      players: [string, string];
+      scores: [number, number];
+      games: Match[];
+    };
+
 @Component({
   selector: 'app-match-tab',
-  imports: [FormsModule, DatePipe, PlayerAvatar],
+  imports: [FormsModule, DatePipe, NgTemplateOutlet, PlayerAvatar],
   templateUrl: './match-tab.html',
   styleUrl: './match-tab.scss',
 })
@@ -392,17 +405,62 @@ export class MatchTab {
     this.mtg.history().filter((m) => new Date(m.date) >= LIVE_TRACKING_START_DATE)
   );
 
+  /**
+   * Fasst die 2-3 Einzelspiele eines BO3-Turniertisches zu einer Karte zusammen (aufklappbar, siehe
+   * expandedGroupId) - sonst müsste man beim Nachtragen/Korrigieren eines Endstands durch 3 einzelne
+   * Verlaufseinträge klicken. Pod-Tische (nur ein Spiel) und normale Spiele bleiben einzelne Einträge.
+   */
+  readonly historyRows = computed<HistoryRow[]>(() => {
+    const matches = this.visibleHistory();
+    const seen = new Set<string>();
+    const rows: HistoryRow[] = [];
+
+    for (const m of matches) {
+      if (m.tournamentMatchId && m.players.length === 2) {
+        if (seen.has(m.tournamentMatchId)) continue;
+        seen.add(m.tournamentMatchId);
+
+        const games = matches
+          .filter((g) => g.tournamentMatchId === m.tournamentMatchId)
+          .sort((a, b) => (a.tournamentGameNumber ?? 0) - (b.tournamentGameNumber ?? 0));
+
+        if (games.length > 1) {
+          const [p1, p2] = m.players.map((p) => p.name);
+          rows.push({
+            kind: 'group',
+            tournamentMatchId: m.tournamentMatchId,
+            date: m.date,
+            mode: m.mode,
+            players: [p1, p2],
+            scores: [games.filter((g) => g.winner === p1).length, games.filter((g) => g.winner === p2).length],
+            games,
+          });
+          continue;
+        }
+      }
+      rows.push({ kind: 'single', match: m });
+    }
+
+    return rows;
+  });
+
+  readonly expandedGroupId = signal<string | null>(null);
+
+  toggleGroup(tournamentMatchId: string): void {
+    this.expandedGroupId.update((id) => (id === tournamentMatchId ? null : tournamentMatchId));
+  }
+
   readonly historyTotalPages = computed(() =>
-    Math.max(1, Math.ceil(this.visibleHistory().length / this.historyPageSize))
+    Math.max(1, Math.ceil(this.historyRows().length / this.historyPageSize))
   );
 
   readonly pagedHistory = computed(() => {
     const start = this.historyPage() * this.historyPageSize;
-    return this.visibleHistory().slice(start, start + this.historyPageSize);
+    return this.historyRows().slice(start, start + this.historyPageSize);
   });
 
   readonly historyRangeEnd = computed(() =>
-    Math.min((this.historyPage() + 1) * this.historyPageSize, this.visibleHistory().length)
+    Math.min((this.historyPage() + 1) * this.historyPageSize, this.historyRows().length)
   );
 
   /** Findet zu einer Account-User-ID den Spielernamen in der aktuellen Gruppe (für "ausgeliehen von X" im Verlauf). */
@@ -440,10 +498,22 @@ export class MatchTab {
   private readonly ARCHENEMY_OTHERS = '__OTHERS__';
   private readonly DRAW = '__DRAW__';
 
-  readonly editingMatchId = signal<string | null>(null);
+  // --- Ergebnis nachträglich bearbeiten (Sieger + Platzierung zusammen in einem Panel) ---
 
-  startEditWinner(id: string): void {
-    this.editingMatchId.set(this.editingMatchId() === id ? null : id);
+  readonly editingResultMatchId = signal<string | null>(null);
+  readonly placementDraft = signal<Record<string, number | null>>({});
+
+  startEditResult(match: Match): void {
+    if (this.editingResultMatchId() === match.id) {
+      this.editingResultMatchId.set(null);
+      return;
+    }
+    this.placementDraft.set(Object.fromEntries(match.players.map((p) => [p.name, p.placement ?? null])));
+    this.editingResultMatchId.set(match.id);
+  }
+
+  closeEditResult(): void {
+    this.editingResultMatchId.set(null);
   }
 
   /**
@@ -463,22 +533,6 @@ export class MatchTab {
         if (winnerPlayerId) await this.tournament.correctWinner(match.tournamentMatchId, winnerPlayerId);
       }
     }
-
-    this.editingMatchId.set(null);
-  }
-
-  // --- Platzierung nachträglich eintragen/ändern ---
-
-  readonly editingPlacementsMatchId = signal<string | null>(null);
-  readonly placementDraft = signal<Record<string, number | null>>({});
-
-  startEditPlacements(match: Match): void {
-    if (this.editingPlacementsMatchId() === match.id) {
-      this.editingPlacementsMatchId.set(null);
-      return;
-    }
-    this.placementDraft.set(Object.fromEntries(match.players.map((p) => [p.name, p.placement ?? null])));
-    this.editingPlacementsMatchId.set(match.id);
   }
 
   setPlacementDraft(name: string, value: string): void {
@@ -491,7 +545,7 @@ export class MatchTab {
       match.id,
       match.players.map((p) => ({ name: p.name, placement: draft[p.name] ?? null }))
     );
-    this.editingPlacementsMatchId.set(null);
+    this.editingResultMatchId.set(null);
   }
   /** Mögliche Gewinner-Optionen für ein Match, abhängig vom Spielmodus. */
   winnerOptions(match: Match): { value: string; label: string }[] {

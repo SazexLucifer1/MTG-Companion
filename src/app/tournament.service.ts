@@ -138,13 +138,13 @@ export class TournamentService {
     });
 
     // Bridge: ein im Turnier-Kontext gespieltes Spiel fließt automatisch ins Tisch-Ergebnis ein.
-    // Öffnet außerdem sofort wieder das Turnier-Panel, statt die spielende Person einfach im
-    // normalen Match-Tab-Setup stehen zu lassen - sonst wirkt es so, als wäre man "rausgeflogen".
+    // Bei einem noch unentschiedenen BO3 wird direkt das nächste Spiel gestartet (siehe
+    // handleGameFinished) - erst ein entschiedener Tisch öffnet wieder das Turnier-Panel, statt die
+    // spielende Person einfach im normalen Match-Tab-Setup stehen zu lassen.
     effect(() => {
       const finished = this.session.lastFinishedMatch();
       if (!finished || !finished.tournamentMatchId) return;
-      this.openPanel();
-      this.recordGameResult(finished.tournamentMatchId, finished.matchId, finished.winner);
+      this.handleGameFinished(finished.tournamentMatchId, finished.matchId, finished.winner);
     });
   }
 
@@ -1052,25 +1052,28 @@ export class TournamentService {
     return true;
   }
 
-  private async recordGameResult(tournamentMatchId: string, matchRowId: string, winnerName: string): Promise<void> {
-    if (this.processedGameResults.has(matchRowId)) return;
+  /** Trägt ein fertig gespieltes Einzelspiel ein und meldet zurück, ob der Tisch damit entschieden ist (BO3 erst ab 2 Siegen, Pods sofort) - siehe handleGameFinished(). */
+  private async recordGameResult(tournamentMatchId: string, matchRowId: string, winnerName: string): Promise<boolean> {
+    if (this.processedGameResults.has(matchRowId)) return false;
     this.processedGameResults.add(matchRowId);
 
     const match = this.matches().find((m) => m.id === tournamentMatchId);
-    if (!match) return;
+    if (!match) return false;
 
     const isDraw = winnerName === this.session.DRAW;
+    let decided = false;
 
     if (match.participants.length === 2) {
       // 1v1 Best-of-3: ein Unentschieden-Einzelspiel zählt für keine Seite, Tisch bleibt offen.
-      if (isDraw) return;
+      if (isDraw) return false;
 
       const winnerPlayerId = this.mtg.playerIdFor(winnerName);
       const winnerEntry = match.participants.find((p) => p.playerId === winnerPlayerId);
       const otherEntry = match.participants.find((p) => p.playerId !== winnerPlayerId);
-      if (!winnerEntry || !otherEntry) return;
+      if (!winnerEntry || !otherEntry) return false;
 
       const { winnerWins, otherWins } = await this.recomputeBo3(tournamentMatchId, winnerEntry, otherEntry);
+      decided = winnerWins >= 2 || otherWins >= 2;
 
       const { error: gameNumberError } = await supabase
         .from('matches')
@@ -1079,6 +1082,7 @@ export class TournamentService {
       if (gameNumberError) console.error('Konnte Spielnummer nicht am Match hinterlegen:', gameNumberError);
     } else {
       // Pod (3-4 Personen): das erste eingetragene Ergebnis entscheidet den Tisch sofort.
+      decided = true;
       if (isDraw) {
         const { error } = await supabase
           .from('tournament_matches')
@@ -1087,7 +1091,7 @@ export class TournamentService {
         if (error) console.error('Konnte Unentschieden nicht speichern:', error);
       } else {
         const winnerPlayerId = this.mtg.playerIdFor(winnerName);
-        if (!winnerPlayerId) return;
+        if (!winnerPlayerId) return false;
         const { error } = await supabase
           .from('tournament_matches')
           .update({ winner_player_id: winnerPlayerId, winner_source: 'games', completed_at: new Date().toISOString() })
@@ -1103,6 +1107,26 @@ export class TournamentService {
     }
 
     await this.loadRoundsAndMatches(match.tournamentId);
+    return decided;
+  }
+
+  /**
+   * Reagiert auf ein fertig gespieltes Turnier-Spiel: bei einem noch unentschiedenen BO3-Tisch
+   * (weniger als 2 Siege für beide Seiten) wird direkt das nächste Spiel am selben Tisch gestartet,
+   * statt zurück ins Turnier-Panel zu springen - sonst müsste man nach jedem Einzelspiel manuell
+   * wieder "Spiel starten" klicken. Erst wenn der Tisch entschieden ist (BO3 mit 2 Siegen, oder ein
+   * Pod-Tisch nach seinem einen Spiel), geht es automatisch zurück ins Turnier-Panel.
+   */
+  private async handleGameFinished(tournamentMatchId: string, matchRowId: string, winnerName: string): Promise<void> {
+    const decided = await this.recordGameResult(tournamentMatchId, matchRowId, winnerName);
+    const match = this.matches().find((m) => m.id === tournamentMatchId);
+
+    if (decided || !match || match.participants.length !== 2) {
+      this.openPanel();
+      return;
+    }
+
+    await this.startGameForMatch(match);
   }
 
   /**
@@ -1195,6 +1219,44 @@ export class TournamentService {
     }
 
     await this.recordManualMatchRow(match, null);
+    await this.loadRoundsAndMatches(match.tournamentId);
+    return true;
+  }
+
+  /**
+   * Trägt für einen 2-Personen-BO3-Tisch direkt einen Endstand (2:0 oder 2:1) nach, ohne dass die
+   * Einzelspiele über den Ingame-Tracker gespielt wurden - für den Fall, dass die Spieler ihre
+   * Partien nicht live mit der App getrackt haben. Ersetzt dazu alle bisher zu diesem Tisch
+   * gespeicherten matches-Zeilen durch genau winnerWins + loserWins neue Zeilen, damit die
+   * allgemeine Statistik weiterhin pro Einzelspiel (nicht nur pro Tisch) korrekt zählt.
+   */
+  async setManualScore(tournamentMatchId: string, winnerPlayerId: string, loserWins: 0 | 1): Promise<boolean> {
+    const match = this.matches().find((m) => m.id === tournamentMatchId);
+    if (!match || match.isBye || match.participants.length !== 2) return false;
+
+    const winnerEntry = match.participants.find((p) => p.playerId === winnerPlayerId);
+    const otherEntry = match.participants.find((p) => p.playerId !== winnerPlayerId);
+    if (!winnerEntry || !otherEntry) return false;
+
+    const deleted = await this.mtg.deleteMatchesForTournamentTable(tournamentMatchId);
+    if (!deleted) return false;
+
+    const winnerWins = 2;
+    for (let i = 0; i < winnerWins + loserWins; i++) {
+      const thisWinnerName = i < winnerWins ? winnerEntry.playerName : otherEntry.playerName;
+      const matchRowId = await this.mtg.addMatch({
+        mode: this.activeTournament()?.gameMode ?? 'Commander',
+        players: match.participants.map((p) => ({ name: p.playerName })),
+        winner: thisWinnerName,
+        tournamentMatchId: match.id,
+      });
+      if (matchRowId) {
+        const { error } = await supabase.from('matches').update({ tournament_game_number: i + 1 }).eq('id', matchRowId);
+        if (error) console.error('Konnte Spielnummer nicht am Match hinterlegen:', error);
+      }
+    }
+
+    await this.recomputeBo3(tournamentMatchId, winnerEntry, otherEntry);
     await this.loadRoundsAndMatches(match.tournamentId);
     return true;
   }

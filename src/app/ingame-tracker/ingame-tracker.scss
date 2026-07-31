@@ -22,6 +22,16 @@
   }
 }
 
+.tournament-score-banner {
+  flex: 0 0 auto;
+  padding: 6px 12px;
+  text-align: center;
+  font-weight: 700;
+  font-size: 0.9rem;
+  background: rgba(138, 180, 255, 0.15);
+  color: var(--text);
+}
+
 // NEU
 .ingame-grid {
   flex: 1;

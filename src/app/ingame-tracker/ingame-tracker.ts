@@ -72,6 +72,16 @@ export class IngameTracker implements AfterViewInit, OnDestroy {
     return r !== null && r <= 0;
   });
 
+  /** Laufender BO3-Spielstand des aktuellen Turnier-Tisches (nur bei 1v1) - bleibt sichtbar, solange die BO3 noch nicht entschieden ist (siehe TournamentService.handleGameFinished, das dann automatisch das nächste Spiel hier startet). */
+  readonly tournamentBo3Score = computed<{ p1: string; s1: number; p2: string; s2: number } | null>(() => {
+    const matchId = this.session.activeTournamentMatchId();
+    if (!matchId) return null;
+    const match = this.tournament.matches().find((m) => m.id === matchId);
+    if (!match || match.participants.length !== 2) return null;
+    const [a, b] = match.participants;
+    return { p1: a.playerName, s1: a.gamesWon, p2: b.playerName, s2: b.gamesWon };
+  });
+
   constructor() {
     effect((onCleanup) => {
       if (!this.session.activeTournamentMatchId()) return;

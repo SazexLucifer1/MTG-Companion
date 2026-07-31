@@ -335,7 +335,7 @@
           i18n.t('match.gamesRange', {
             start: historyPage() * historyPageSize + 1,
             end: historyRangeEnd(),
-            total: visibleHistory().length
+            total: historyRows().length
           })
         }}</span>
         <button
@@ -349,90 +349,109 @@
       </div>
     }
     <ul class="history-list">
-      @for (match of pagedHistory(); track match.id) {
-        <li class="history-item">
-        <div class="history-head">
-        @if (match.mode === 'Cube' && match.cube) {
-          <span class="history-mode">{{ match.mode }} – {{ match.cube.name }}</span>
-        } @else {
-          <span class="history-mode">{{ match.mode }}</span>
-        }
-        <span class="history-date">{{ match.date | date: 'dd.MM.yyyy, HH:mm' }}</span>
-        <button class="icon-button" (click)="startEditWinner(match.id)" [attr.aria-label]="i18n.t('match.changeWinner')">✏️</button>
-        <button class="icon-button" (click)="startEditPlacements(match)" [attr.aria-label]="i18n.t('placement.editButton')">🏁</button>
-        @if (groupService.isOwner()) {
-          <button class="icon-button" (click)="deleteMatch(match.id)" [attr.aria-label]="i18n.t('match.deleteMatch')">🗑</button>
-        }
-      </div>
-      <div class="history-players">
-      @for (p of match.players; track p.name) {
-        @if (match.mode === 'Archenemy') {
-          <span class="history-player" [class.is-winner]="(match.winner === '__OTHERS__' ? !p.isArchenemy : p.name === match.winner)">
-            <app-player-avatar [url]="mtg.playerAvatars()[p.name] ?? null" />
-            {{ (match.winner === '__OTHERS__' ? (!p.isArchenemy ? '🏆 ' : '') : (p.name === match.winner ? '🏆 ' : '')) }}{{ p.name }}
-            @if (p.isArchenemy) {<em> – Archenemy</em>}
-            @if (p.commander) {<em> – {{ p.commander }}</em>}
-            @if (p.deckId) {<span class="deck-badge" title="Aus importiertem Deck">📚 {{ p.deckName }}</span>}
-            @if (isBorrowedDeck(p)) {<span class="borrowed-badge">🤝 {{ i18n.t('match.from', { name: deckOwnerName(p.deckOwnerId) ?? '' }) }}</span>}
-          </span>
-        } @else {
-          <span class="history-player" [class.is-winner]="p.name === match.winner">
-            <app-player-avatar [url]="mtg.playerAvatars()[p.name] ?? null" />
-            @if (p.name === match.winner) {🏆 }{{ p.name }}
-            @if (match.mode === 'Two-Headed Giant' && p.team) {<em> – Team {{ p.team }}</em>}
-            @if (p.commander) {<em> – {{ p.commander }}</em>}
-            @if (p.deckId) {<span class="deck-badge" title="Aus importiertem Deck">📚 {{ p.deckName }}</span>}
-            @if (isBorrowedDeck(p)) {<span class="borrowed-badge">🤝 {{ i18n.t('match.from', { name: deckOwnerName(p.deckOwnerId) ?? '' }) }}</span>}
-            @if (p.placement) {<em class="placement-badge"> · {{ i18n.t('placement.badge', { placement: p.placement }) }}</em>}
-          </span>
-        }
-      }
-    </div>
-
-    @if (editingMatchId() === match.id) {
-      <div class="winner-edit">
-        <p class="hint">{{ i18n.t('match.whoWon') }}</p>
-        <div class="chip-row">
-          @for (opt of winnerOptions(match); track opt.value) {
-            <button
-              class="glass-chip small"
-              [class.active]="opt.value === match.winner"
-              (click)="setMatchWinner(match.id, opt.value)"
-            >
-              {{ opt.label }}
-            </button>
-          }
-        </div>
-        <button class="glass-button small" (click)="editingMatchId.set(null)">{{ i18n.t('match.cancel') }}</button>
-      </div>
-    }
-
-    @if (editingPlacementsMatchId() === match.id) {
-      <div class="winner-edit">
-        <p class="hint">{{ i18n.t('placement.editTitle') }}</p>
-        <ul class="placement-edit-list">
-          @for (p of match.players; track p.name) {
-          <li>
-            <span class="placement-name">{{ p.name }}</span>
-            <select
-              class="glass-input"
-              [ngModel]="placementDraft()[p.name] ?? ''"
-              (ngModelChange)="setPlacementDraft(p.name, $event)"
-            >
-              <option value="">{{ i18n.t('placement.notSet') }}</option>
-              @for (n of match.players; track n.name; let i = $index) {
-              <option [value]="i + 1">{{ i + 1 }}.</option>
-              }
-            </select>
+      @for (row of pagedHistory(); track row.kind === 'single' ? row.match.id : row.tournamentMatchId) {
+        @if (row.kind === 'group') {
+          <li class="history-item history-group">
+            <div class="history-head" (click)="toggleGroup(row.tournamentMatchId)">
+              <span class="history-mode">{{ row.mode }}</span>
+              <span class="history-date">{{ row.date | date: 'dd.MM.yyyy, HH:mm' }}</span>
+              <span class="hint">
+                {{ i18n.t('match.bo3Summary', { p1: row.players[0], s1: row.scores[0], s2: row.scores[1], p2: row.players[1] }) }}
+              </span>
+              <button class="icon-button" [attr.aria-label]="i18n.t('match.toggleGroup')">
+                {{ expandedGroupId() === row.tournamentMatchId ? '▲' : '▼' }}
+              </button>
+            </div>
+            @if (expandedGroupId() === row.tournamentMatchId) {
+              <ul class="history-list nested">
+                @for (game of row.games; track game.id) {
+                  <ng-container *ngTemplateOutlet="matchRow; context: { match: game }" />
+                }
+              </ul>
+            }
           </li>
-          }
-        </ul>
-        <button class="glass-button small primary" (click)="savePlacements(match)">{{ i18n.t('placement.save') }}</button>
-        <button class="glass-button small" (click)="editingPlacementsMatchId.set(null)">{{ i18n.t('placement.cancel') }}</button>
-      </div>
-    }
-  </li>
+        } @else {
+          <ng-container *ngTemplateOutlet="matchRow; context: { match: row.match }" />
+        }
       }
     </ul>
   }
 </section>
+
+<ng-template #matchRow let-match="match">
+  <li class="history-item">
+    <div class="history-head">
+    @if (match.mode === 'Cube' && match.cube) {
+      <span class="history-mode">{{ match.mode }} – {{ match.cube.name }}</span>
+    } @else {
+      <span class="history-mode">{{ match.mode }}</span>
+    }
+    <span class="history-date">{{ match.date | date: 'dd.MM.yyyy, HH:mm' }}</span>
+    <button class="icon-button" (click)="startEditResult(match)" [attr.aria-label]="i18n.t('match.changeWinner')">✏️</button>
+    @if (groupService.isOwner()) {
+      <button class="icon-button" (click)="deleteMatch(match.id)" [attr.aria-label]="i18n.t('match.deleteMatch')">🗑</button>
+    }
+  </div>
+  <div class="history-players">
+  @for (p of match.players; track p.name) {
+    @if (match.mode === 'Archenemy') {
+      <span class="history-player" [class.is-winner]="(match.winner === '__OTHERS__' ? !p.isArchenemy : p.name === match.winner)">
+        <app-player-avatar [url]="mtg.playerAvatars()[p.name] ?? null" />
+        {{ (match.winner === '__OTHERS__' ? (!p.isArchenemy ? '🏆 ' : '') : (p.name === match.winner ? '🏆 ' : '')) }}{{ p.name }}
+        @if (p.isArchenemy) {<em> – Archenemy</em>}
+        @if (p.commander) {<em> – {{ p.commander }}</em>}
+        @if (p.deckId) {<span class="deck-badge" title="Aus importiertem Deck">📚 {{ p.deckName }}</span>}
+        @if (isBorrowedDeck(p)) {<span class="borrowed-badge">🤝 {{ i18n.t('match.from', { name: deckOwnerName(p.deckOwnerId) ?? '' }) }}</span>}
+      </span>
+    } @else {
+      <span class="history-player" [class.is-winner]="p.name === match.winner">
+        <app-player-avatar [url]="mtg.playerAvatars()[p.name] ?? null" />
+        @if (p.name === match.winner) {🏆 }{{ p.name }}
+        @if (match.mode === 'Two-Headed Giant' && p.team) {<em> – Team {{ p.team }}</em>}
+        @if (p.commander) {<em> – {{ p.commander }}</em>}
+        @if (p.deckId) {<span class="deck-badge" title="Aus importiertem Deck">📚 {{ p.deckName }}</span>}
+        @if (isBorrowedDeck(p)) {<span class="borrowed-badge">🤝 {{ i18n.t('match.from', { name: deckOwnerName(p.deckOwnerId) ?? '' }) }}</span>}
+        @if (p.placement) {<em class="placement-badge"> · {{ i18n.t('placement.badge', { placement: p.placement }) }}</em>}
+      </span>
+    }
+  }
+</div>
+
+@if (editingResultMatchId() === match.id) {
+  <div class="winner-edit">
+    <p class="hint">{{ i18n.t('match.whoWon') }}</p>
+    <div class="chip-row">
+      @for (opt of winnerOptions(match); track opt.value) {
+        <button
+          class="glass-chip small"
+          [class.active]="opt.value === match.winner"
+          (click)="setMatchWinner(match.id, opt.value)"
+        >
+          {{ opt.label }}
+        </button>
+      }
+    </div>
+    <p class="hint">{{ i18n.t('placement.editTitle') }}</p>
+    <ul class="placement-edit-list">
+      @for (p of match.players; track p.name) {
+      <li>
+        <span class="placement-name">{{ p.name }}</span>
+        <select
+          class="glass-input"
+          [ngModel]="placementDraft()[p.name] ?? ''"
+          (ngModelChange)="setPlacementDraft(p.name, $event)"
+        >
+          <option value="">{{ i18n.t('placement.notSet') }}</option>
+          @for (n of match.players; track n.name; let i = $index) {
+          <option [value]="i + 1">{{ i + 1 }}.</option>
+          }
+        </select>
+      </li>
+      }
+    </ul>
+    <button class="glass-button small primary" (click)="savePlacements(match)">{{ i18n.t('placement.save') }}</button>
+    <button class="glass-button small" (click)="closeEditResult()">{{ i18n.t('match.cancel') }}</button>
+  </div>
+}
+  </li>
+</ng-template>

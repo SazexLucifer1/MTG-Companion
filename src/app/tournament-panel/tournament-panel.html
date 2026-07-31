@@ -1,6 +1,5 @@
 @if (tournament.panelExpanded()) {
-<div class="tournament-overlay" (click)="close()">
-  <div class="tournament-sheet" (click)="$event.stopPropagation()">
+<section class="glass-card tournament-sheet">
     <div class="tournament-header">
       <h2>🏆 {{ showFinalResults() ? i18n.t('tournament.resultsHeading') : (tournament.activeTournament()?.name ?? i18n.t('tournament.newTitle')) }}</h2>
       @if (!showFinalResults()) {
@@ -166,6 +165,15 @@
                         }
                       </div>
                     }
+                  } @else if (m.participants.length === 2) {
+                    <span class="hint">{{ i18n.t('tournament.enterFinalScore') }}</span>
+                    @for (p of m.participants; track p.playerId) {
+                      <div class="game-correction-row">
+                        <span class="hint">{{ p.playerName }}</span>
+                        <button class="glass-chip small" (click)="pickScore(m, p.playerId, 0)">2:0</button>
+                        <button class="glass-chip small" (click)="pickScore(m, p.playerId, 1)">2:1</button>
+                      </div>
+                    }
                   } @else {
                     @for (p of m.participants; track p.playerId) {
                       <button class="glass-chip small" (click)="pickWinner(m, p.playerId)">{{ p.playerName }}</button>
@@ -292,6 +300,5 @@
     @if (!showFinalResults()) {
       <button class="glass-button" (click)="close()">{{ i18n.t('tournament.minimizeButton') }}</button>
     }
-  </div>
-</div>
+</section>
 }

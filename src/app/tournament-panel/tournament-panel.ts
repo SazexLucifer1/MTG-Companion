@@ -234,6 +234,12 @@ export class TournamentPanel {
     this.closeWinnerPicker();
   }
 
+  /** Trägt einen BO3-Endstand direkt ein (2:0/2:1), ohne dass die Einzelspiele über den Ingame-Tracker gespielt wurden. */
+  async pickScore(match: TournamentMatch, winnerPlayerId: string, loserWins: 0 | 1): Promise<void> {
+    await this.tournament.setManualScore(match.id, winnerPlayerId, loserWins);
+    this.closeWinnerPicker();
+  }
+
   async pickDraw(matchId: string): Promise<void> {
     await this.tournament.setManualDraw(matchId);
     this.closeWinnerPicker();

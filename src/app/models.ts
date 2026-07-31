@@ -59,6 +59,8 @@ export interface Match {
   };
   /** Gesetzt, wenn dieses Spiel Teil eines Turnier-Tisches war - für die Sieger-Korrektur im Verlauf (siehe match-tab.ts setMatchWinner). */
   tournamentMatchId?: string;
+  /** Laufende Spielnummer innerhalb des Turnier-Tisches (1., 2., 3. Spiel einer BO3) - für die Gruppierung im Verlauf. */
+  tournamentGameNumber?: number;
 }
 
 export interface Cube {

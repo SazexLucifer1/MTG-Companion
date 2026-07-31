@@ -11,6 +11,11 @@
       }
     </div>
   }
+  @if (tournamentBo3Score(); as score) {
+    <div class="tournament-score-banner">
+      🏆 {{ i18n.t('tournament.bo3ScoreLabel', { p1: score.p1, s1: score.s1, s2: score.s2, p2: score.p2 }) }}
+    </div>
+  }
   <div class="ingame-grid" [style.--columns]="session.ingameColumns()">
     @for (p of session.ingameUnits(); track p.key; let i = $index) {
     <div
