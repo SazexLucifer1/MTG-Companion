@@ -165,9 +165,9 @@ export class TournamentPanel {
     await this.tournament.endTournament(t.id);
   }
 
-  closeFinalResults(): void {
+  async closeFinalResults(): Promise<void> {
     const t = this.tournament.activeTournament();
-    if (t) this.tournament.dismissedTournamentId.set(t.id);
+    if (t) await this.tournament.dismissResults(t.id);
     this.close();
   }
 

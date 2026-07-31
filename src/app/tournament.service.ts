@@ -52,26 +52,12 @@ export class TournamentService {
     this.panelExpanded.update((v) => !v);
   }
 
-  /** Genau ein aktives/laufendes Turnier pro Gruppe in v1 - das jeweils neueste (schließt auch ein gerade beendetes mit ein, siehe visibleTournament). */
+  /** Genau ein aktives/laufendes Turnier pro Gruppe in v1 - das jeweils neueste (schließt auch ein gerade beendetes, aber noch nicht weggeklicktes Podium mit ein). */
   readonly activeTournament = signal<Tournament | null>(null);
   readonly participants = signal<TournamentParticipant[]>([]);
   readonly rounds = signal<TournamentRound[]>([]);
   /** Alle Tische aller Runden dieses Turniers (für Pairing-History + aktuelle Ansicht). */
   readonly matches = signal<TournamentMatch[]>([]);
-
-  /** ID des zuletzt weggeklickten Podiums (pro Gerät, nur im Speicher) - siehe visibleTournament(). */
-  readonly dismissedTournamentId = signal<string | null>(null);
-
-  /**
-   * Wie activeTournament(), blendet aber ein bereits weggeklicktes beendetes Turnier aus - dafür
-   * gedacht, überall dort verwendet zu werden, wo Nav-Button/Panel-Sichtbarkeit entschieden wird
-   * (z.B. app.html). Für Dateninhalte (Podium-Anzeige selbst) bleibt activeTournament() maßgeblich.
-   */
-  readonly visibleTournament = computed(() => {
-    const t = this.activeTournament();
-    if (t && t.status === 'completed' && t.id === this.dismissedTournamentId()) return null;
-    return t;
-  });
 
   readonly isOrganizer = computed(
     () => !!this.activeTournament() && this.auth.currentUser()?.id === this.activeTournament()!.createdBy
@@ -195,9 +181,9 @@ export class TournamentService {
 
   private async loadForGroup(groupId: string): Promise<void> {
     // 'completed' wird bewusst mitgeladen (nicht nur 'setup'/'active') - sonst bekommt niemand
-    // außer der Person, die "Turnier beenden" geklickt hat, den Endstand zu sehen. Das komplette
-    // Verschwinden aus der App passiert stattdessen erst, wenn das Podium aktiv weggeklickt wurde
-    // (siehe visibleTournament/dismissedTournamentId).
+    // außer der Person, die "Turnier beenden" geklickt hat, den Endstand zu sehen. Ein bereits aktiv
+    // weggeklicktes Podium (results_dismissed) zählt hier absichtlich wie "kein Turnier" - persistiert
+    // in der DB statt nur lokal, damit es nach einem Reload nicht wieder auftaucht.
     const { data, error } = await supabase
       .from('tournaments')
       .select('*')
@@ -212,7 +198,7 @@ export class TournamentService {
       this.clear();
       return;
     }
-    if (!data) {
+    if (!data || (data.status === 'completed' && data.results_dismissed)) {
       this.clear();
       return;
     }
@@ -220,6 +206,20 @@ export class TournamentService {
     this.activeTournament.set(this.mapTournament(data));
     await this.loadParticipants(data.id);
     await this.loadRoundsAndMatches(data.id);
+  }
+
+  /** Blendet das Endergebnis-Podium eines beendeten Turniers dauerhaft aus (für alle Geräte, übersteht auch einen Reload) - siehe TournamentPanel.closeFinalResults(). */
+  async dismissResults(tournamentId: string): Promise<void> {
+    const { error } = await supabase
+      .from('tournaments')
+      .update({ results_dismissed: true })
+      .eq('id', tournamentId);
+    if (error) {
+      console.error('Konnte Podium nicht schließen:', error);
+      return;
+    }
+    const groupId = this.activeTournament()?.groupId;
+    if (groupId) await this.loadForGroup(groupId);
   }
 
   private async loadParticipants(tournamentId: string): Promise<void> {
