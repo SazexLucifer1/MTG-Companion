@@ -511,13 +511,20 @@ export class GameSessionService {
         // mit dem letzten bekannten Stand hängen, statt automatisch abzuschließen.
         'postgres_changes',
         { event: 'DELETE', schema: 'public', table: 'live_game_sessions', filter: `id=eq.${sessionId}` },
-        () => {
-          // Gleiche Absicherung wie oben: ein verspätetes DELETE-Event von einer bereits verlassenen
-          // alten Verbindung soll nicht die inzwischen aktuelle, weiterhin gültige Session beenden -
-          // das war die Ursache für einen beobachteten Beitritts-Loop (Session X gilt als beendet,
-          // wird aber sofort wieder gefunden und erneut gejoint, was denselben Mechanismus erneut
-          // auslösen konnte).
+        async () => {
           if (this.liveSessionId() !== sessionId) return;
+
+          // Verifizieren statt blind vertrauen: bei schnell aufeinanderfolgenden Re-Subscribes kamen
+          // beobachtbar Fehlalarm-DELETE-Events für Zeilen, die in Wirklichkeit noch existieren -
+          // das führte zu einem sich selbst befeuernden Beitritts-Loop (als beendet behandelt, aber
+          // sofort wieder gefunden und erneut gejoint). Erst nach echter Bestätigung reagieren.
+          const { data } = await supabase.from('live_game_sessions').select('id').eq('id', sessionId).maybeSingle();
+          if (data) {
+            console.log('[live-sync] DELETE-Event ignoriert (Zeile existiert noch, vermutlich Fehlalarm)');
+            return;
+          }
+          if (this.liveSessionId() !== sessionId) return;
+
           console.log('[live-sync] Session wurde vom anderen Gerät beendet (gelöscht)');
           this.handleRemoteSessionEnded();
         }
