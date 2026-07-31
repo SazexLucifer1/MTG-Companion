@@ -545,16 +545,19 @@ export class GameSessionService {
     this.lastSyncedSignature = stableStringify(state);
   }
 
-  /** Legt beim Start eines neuen Spiels die eigene live_game_sessions-Zeile an (fire-and-forget, blockiert das lokale Spiel nicht). */
+  /**
+   * Legt beim Start eines neuen Spiels die eigene live_game_sessions-Zeile an (fire-and-forget,
+   * blockiert das lokale Spiel nicht). liveSessionId wird bewusst erst NACH erfolgreichem Insert
+   * gesetzt - sonst könnte der Push-Effect (siehe Konstruktor) schon ein UPDATE auf eine Zeile
+   * schicken, die in der Datenbank noch gar nicht existiert (Race Condition).
+   */
   private beginLiveSession(): void {
     const groupId = this.groupService.groupId();
     const userId = this.auth.currentUser()?.id;
     if (!groupId || !userId) return;
 
     const id = crypto.randomUUID();
-    this.liveSessionId.set(id);
-    this.lastSyncedSignature = null;
-    this.subscribeLiveSession(id);
+    const initialState = this.syncSnapshot();
 
     (async () => {
       // Opportunistisches Aufräumen: falls durch Absturz/Tab-Schließen noch eine eigene alte Zeile
@@ -565,11 +568,17 @@ export class GameSessionService {
         group_id: groupId,
         tournament_match_id: this.activeTournamentMatchId(),
         created_by: userId,
-        state: this.syncSnapshot(),
+        state: initialState,
         updated_by_client: CLIENT_ID,
       });
-      if (error) console.error('Konnte Live-Session nicht anlegen:', error);
-      else console.log('[live-sync] Neue Session angelegt:', id, 'tournamentMatchId:', this.activeTournamentMatchId());
+      if (error) {
+        console.error('Konnte Live-Session nicht anlegen:', error);
+        return;
+      }
+      console.log('[live-sync] Neue Session angelegt:', id, 'tournamentMatchId:', this.activeTournamentMatchId());
+      this.lastSyncedSignature = stableStringify(initialState);
+      this.liveSessionId.set(id);
+      this.subscribeLiveSession(id);
     })();
   }
 

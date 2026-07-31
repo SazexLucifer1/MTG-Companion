@@ -189,12 +189,17 @@ export class TournamentService {
     delayMs = 400
   ): Promise<string | null> {
     for (let i = 0; i < attempts; i++) {
-      const { data } = await supabase
+      // .limit(1) statt .maybeSingle(): robust falls durch frühere Test-/Absturz-Reste mehr als eine
+      // Zeile zu diesem Tisch existiert (maybeSingle() würde dann mit einem Fehler abbrechen) - nimmt
+      // in dem Fall einfach die neueste.
+      const { data, error } = await supabase
         .from('live_game_sessions')
         .select('id')
         .eq('tournament_match_id', tournamentMatchId)
-        .maybeSingle();
-      if (data) return data.id;
+        .order('created_at', { ascending: false })
+        .limit(1);
+      if (error) console.error('Konnte laufende Session nicht suchen:', error);
+      if (data && data.length > 0) return data[0].id;
       await new Promise((resolve) => setTimeout(resolve, delayMs));
     }
     return null;
@@ -1030,12 +1035,16 @@ export class TournamentService {
     // Falls für diesen Tisch schon eine laufende Live-Session existiert (z.B. weil die andere Person
     // bereits "Spiel starten" geklickt hat), an diese ankoppeln statt unabhängig neu aufzusetzen -
     // beide Geräte sehen dann denselben Live-Stand, siehe GameSessionService.joinLiveSession.
-    const { data: existingSession, error: findError } = await supabase
+    // .limit(1) statt .maybeSingle(): robust falls durch frühere Test-/Absturz-Reste mehr als eine
+    // Zeile zu diesem Tisch existiert.
+    const { data: existingSessions, error: findError } = await supabase
       .from('live_game_sessions')
       .select('id')
       .eq('tournament_match_id', match.id)
-      .maybeSingle();
+      .order('created_at', { ascending: false })
+      .limit(1);
     if (findError) console.error('Konnte laufende Session für diesen Tisch nicht prüfen:', findError);
+    const existingSession = existingSessions?.[0] ?? null;
     console.log('[live-sync] Vorhandene Session für Tisch', match.id, ':', existingSession);
 
     this.session.activeTournamentMatchId.set(match.id);
