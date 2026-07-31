@@ -155,9 +155,23 @@ export class TournamentService {
     effect(() => {
       const ended = this.session.remoteSessionEnded();
       if (!ended || !ended.tournamentMatchId) return;
+
+      // Harte Bremse: egal was remoteSessionEnded() wiederholt neu auslöst, für denselben Tisch wird
+      // innerhalb von 5s nur EIN Durchlauf gestartet - ohne das konnte ein sich selbst befeuernder
+      // Loop den Browser in die Knie zwingen (siehe Konsolen-Absturz beim Testen).
+      const now = Date.now();
+      const last = this.lastRemoteSessionEndedHandledAt.get(ended.tournamentMatchId) ?? 0;
+      if (now - last < 5000) {
+        console.warn('[live-sync] Wiederholtes remoteSessionEnded für denselben Tisch innerhalb von 5s ignoriert (Notbremse)');
+        return;
+      }
+      this.lastRemoteSessionEndedHandledAt.set(ended.tournamentMatchId, now);
+
       this.handleRemoteSessionEnded(ended.tournamentMatchId);
     });
   }
+
+  private readonly lastRemoteSessionEndedHandledAt = new Map<string, number>();
 
   /**
    * Wartet nach einer Fremd-Beendigung darauf, dass entweder der Tisch inzwischen entschieden ist

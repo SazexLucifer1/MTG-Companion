@@ -606,27 +606,30 @@ export class GameSessionService {
    * "Laufende Spiele"-Liste im Match-Tab.
    */
   private readonly joinLiveSessionCallLog: number[] = [];
+  private joinLiveSessionNotbremseLoggedAt = 0;
 
   async joinLiveSession(sessionId: string): Promise<void> {
-    // Diagnose: zeigt den Aufruf-Stack + den aktuellen liveSessionId-Stand, damit sich bei einem
-    // erneuten Loop nachvollziehen lässt, welcher Code das auslöst.
-    console.trace('[live-sync] joinLiveSession aufgerufen für', sessionId, '- aktuell liveSessionId:', this.liveSessionId());
+    // Bremse gegen wiederholte/parallele Aufrufe für dieselbe Session (z.B. mehrere Effects, die
+    // gleichzeitig reagieren) - ohne das kann daraus ein sich selbst befeuernder Beitritts-Loop
+    // werden, wenn applySyncSnapshot Signale ändert, auf die wiederum ein anderer Effect reagiert.
+    // Bewusst als ALLERERSTES geprüft (billigster Check, kein Logging), damit ein Loop nicht schon
+    // durchs Loggen selbst die Konsole/den Browser überlastet.
+    if (this.liveSessionId() === sessionId) return;
 
-    // Notbremse: falls trotz allem ein Loop entsteht, wenigstens die Datenbank nicht fluten.
+    // Notbremse: falls trotz allem ein Loop entsteht, wenigstens die Datenbank nicht fluten - und
+    // nach dem ersten Auslösen für 5s komplett stumm bleiben, statt die Konsole weiter zuzuspammen.
     const now = Date.now();
     while (this.joinLiveSessionCallLog.length > 0 && now - this.joinLiveSessionCallLog[0] > 2000) {
       this.joinLiveSessionCallLog.shift();
     }
     this.joinLiveSessionCallLog.push(now);
     if (this.joinLiveSessionCallLog.length > 5) {
-      console.error('[live-sync] NOTBREMSE: joinLiveSession wurde >5x in 2s aufgerufen - breche ab.');
+      if (now - this.joinLiveSessionNotbremseLoggedAt > 5000) {
+        console.error('[live-sync] NOTBREMSE: joinLiveSession wurde >5x in 2s aufgerufen - breche für 5s ab.');
+        this.joinLiveSessionNotbremseLoggedAt = now;
+      }
       return;
     }
-
-    // Bremse gegen wiederholte/parallele Aufrufe für dieselbe Session (z.B. mehrere Effects, die
-    // gleichzeitig reagieren) - ohne das kann daraus ein sich selbst befeuernder Beitritts-Loop
-    // werden, wenn applySyncSnapshot Signale ändert, auf die wiederum ein anderer Effect reagiert.
-    if (this.liveSessionId() === sessionId) return;
 
     const { data, error } = await supabase
       .from('live_game_sessions')
