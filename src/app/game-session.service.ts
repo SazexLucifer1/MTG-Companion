@@ -589,6 +589,11 @@ export class GameSessionService {
    * "Laufende Spiele"-Liste im Match-Tab.
    */
   async joinLiveSession(sessionId: string): Promise<void> {
+    // Bremse gegen wiederholte/parallele Aufrufe für dieselbe Session (z.B. mehrere Effects, die
+    // gleichzeitig reagieren) - ohne das kann daraus ein sich selbst befeuernder Beitritts-Loop
+    // werden, wenn applySyncSnapshot Signale ändert, auf die wiederum ein anderer Effect reagiert.
+    if (this.liveSessionId() === sessionId) return;
+
     const { data, error } = await supabase
       .from('live_game_sessions')
       .select('state')
