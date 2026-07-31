@@ -984,6 +984,7 @@ export class TournamentService {
       .eq('tournament_match_id', match.id)
       .maybeSingle();
     if (findError) console.error('Konnte laufende Session für diesen Tisch nicht prüfen:', findError);
+    console.log('[live-sync] Vorhandene Session für Tisch', match.id, ':', existingSession);
 
     this.session.activeTournamentMatchId.set(match.id);
 

@@ -417,6 +417,7 @@ export class GameSessionService {
           .eq('id', sessionId)
           .then(({ error }) => {
             if (error) console.error('Konnte Live-Spielstand nicht synchronisieren:', error);
+            else console.log('[live-sync] Push erfolgreich für Session', sessionId);
           });
       }, 400);
     });
@@ -474,12 +475,15 @@ export class GameSessionService {
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'live_game_sessions', filter: `id=eq.${sessionId}` },
         (payload) => {
+          console.log('[live-sync] Update empfangen', payload);
           const row = payload.new as { state: LiveSessionState; updated_by_client: string };
           if (row.updated_by_client === CLIENT_ID) return; // eigenes Echo, nicht nochmal übernehmen
           this.applySyncSnapshot(row.state);
         }
       )
-      .subscribe();
+      .subscribe((status, err) => {
+        console.log('[live-sync] Channel-Status für Session', sessionId, ':', status, err ?? '');
+      });
   }
 
   private applySyncSnapshot(state: LiveSessionState): void {
@@ -524,6 +528,7 @@ export class GameSessionService {
         updated_by_client: CLIENT_ID,
       });
       if (error) console.error('Konnte Live-Session nicht anlegen:', error);
+      else console.log('[live-sync] Neue Session angelegt:', id, 'tournamentMatchId:', this.activeTournamentMatchId());
     })();
   }
 
@@ -543,6 +548,7 @@ export class GameSessionService {
       console.error('Konnte laufendes Spiel nicht laden:', error);
       return;
     }
+    console.log('[live-sync] Session beigetreten:', sessionId, data.state);
     this.applySyncSnapshot(data.state as LiveSessionState);
     this.liveSessionId.set(sessionId);
     this.minimized.set(false);
