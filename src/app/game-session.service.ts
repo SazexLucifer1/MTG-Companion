@@ -495,6 +495,10 @@ export class GameSessionService {
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'live_game_sessions', filter: `id=eq.${sessionId}` },
         (payload) => {
+          // Absicherung gegen ein verspätetes Event von einem inzwischen schon wieder verlassenen
+          // Channel (z.B. weil zwischenzeitlich erneut gejoint wurde) - sessionId ist hier bewusst
+          // die beim ERZEUGEN dieses Channels erfasste ID, nicht neu abgefragt.
+          if (this.liveSessionId() !== sessionId) return;
           console.log('[live-sync] Update empfangen', payload);
           const row = payload.new as { state: LiveSessionState; updated_by_client: string };
           if (row.updated_by_client === CLIENT_ID) return; // eigenes Echo, nicht nochmal übernehmen
@@ -508,6 +512,12 @@ export class GameSessionService {
         'postgres_changes',
         { event: 'DELETE', schema: 'public', table: 'live_game_sessions', filter: `id=eq.${sessionId}` },
         () => {
+          // Gleiche Absicherung wie oben: ein verspätetes DELETE-Event von einer bereits verlassenen
+          // alten Verbindung soll nicht die inzwischen aktuelle, weiterhin gültige Session beenden -
+          // das war die Ursache für einen beobachteten Beitritts-Loop (Session X gilt als beendet,
+          // wird aber sofort wieder gefunden und erneut gejoint, was denselben Mechanismus erneut
+          // auslösen konnte).
+          if (this.liveSessionId() !== sessionId) return;
           console.log('[live-sync] Session wurde vom anderen Gerät beendet (gelöscht)');
           this.handleRemoteSessionEnded();
         }
