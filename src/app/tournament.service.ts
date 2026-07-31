@@ -133,7 +133,7 @@ export class TournamentService {
         this.pollTimer = null;
       }
       if (groupId) {
-        this.pollTimer = setInterval(() => this.loadForGroup(groupId), 8_000);
+        this.pollTimer = setInterval(() => this.loadForGroup(groupId), 2_000);
       }
     });
 

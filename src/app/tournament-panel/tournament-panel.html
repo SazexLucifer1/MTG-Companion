@@ -108,7 +108,7 @@
                 <p class="success">{{ i18n.t('tournament.drawResult') }}</p>
               } @else if (!myMatch.winnerPlayerId) {
                 <button class="glass-button primary" (click)="startMyGame()">
-                  {{ i18n.t('tournament.startGameButton') }}
+                  {{ session.hasLiveSessionForTable(myMatch.id) ? i18n.t('tournament.joinGameButton') : i18n.t('tournament.startGameButton') }}
                 </button>
                 @if (!myMatch.startedAt) {
                   <p class="hint">{{ i18n.t('tournament.timerStartsHint') }}</p>
@@ -143,7 +143,7 @@
               @if (!m.isBye && canManageMatch(m)) {
                 @if (!winnerNameFor(m) && !m.isDraw) {
                   <button class="glass-chip small" (click)="startGameFor(m)">
-                    {{ i18n.t('tournament.startGameButton') }}
+                    {{ session.hasLiveSessionForTable(m.id) ? i18n.t('tournament.joinGameButton') : i18n.t('tournament.startGameButton') }}
                   </button>
                 }
                 <button class="glass-chip small" (click)="openWinnerPicker(m)">

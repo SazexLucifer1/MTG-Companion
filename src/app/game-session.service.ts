@@ -130,13 +130,20 @@ export class GameSessionService {
   /** Gesetzt, wenn die eigene Live-Session gerade von einem ANDEREN Gerät beendet wurde (dort gespeichert/verworfen) - TournamentService reagiert darauf, um bei einem entschiedenen Tisch automatisch das Panel zu öffnen, obwohl dieses Gerät das Spiel nicht selbst gespeichert hat. */
   readonly remoteSessionEnded = signal<{ tournamentMatchId: string | null } | null>(null);
 
-  /** Alle aktuell laufenden Spiele der eigenen Gruppe (für die "Laufende Spiele"-Übersicht im Match-Tab), roh - inkl. der eigenen Session. */
-  private readonly groupLiveSessions = signal<{ id: string; mode: GameMode; playerNames: string[] }[]>([]);
+  /** Alle aktuell laufenden Spiele der eigenen Gruppe (für die "Laufende Spiele"-Übersicht im Match-Tab UND die "Beitreten statt Starten"-Beschriftung im Turnier-Panel), roh - inkl. der eigenen Session. */
+  private readonly groupLiveSessions = signal<
+    { id: string; mode: GameMode; playerNames: string[]; tournamentMatchId: string | null }[]
+  >([]);
 
   /** Wie groupLiveSessions, aber ohne die eigene laufende Session - das ist die für die UI relevante Liste ("bei wem kann ich mitschauen/beitreten"). */
   readonly otherGroupLiveSessions = computed(() =>
     this.groupLiveSessions().filter((s) => s.id !== this.liveSessionId())
   );
+
+  /** Läuft für diesen Turnier-Tisch bereits eine Live-Session (egal ob meine eigene oder die einer anderen Person)? Treibt die "Beitreten"- statt "Starten"-Beschriftung im Turnier-Panel. */
+  hasLiveSessionForTable(tournamentMatchId: string): boolean {
+    return this.groupLiveSessions().some((s) => s.tournamentMatchId === tournamentMatchId);
+  }
 
   private realtimeChannel: RealtimeChannel | null = null;
   private groupSessionsChannel: RealtimeChannel | null = null;
@@ -467,7 +474,10 @@ export class GameSessionService {
   }
 
   private async refreshGroupLiveSessions(groupId: string): Promise<void> {
-    const { data, error } = await supabase.from('live_game_sessions').select('id, state').eq('group_id', groupId);
+    const { data, error } = await supabase
+      .from('live_game_sessions')
+      .select('id, state, tournament_match_id')
+      .eq('group_id', groupId);
     if (error) {
       console.error('Konnte laufende Spiele der Gruppe nicht laden:', error);
       return;
@@ -475,7 +485,12 @@ export class GameSessionService {
     this.groupLiveSessions.set(
       (data ?? []).map((row) => {
         const state = row.state as LiveSessionState;
-        return { id: row.id, mode: state.mode, playerNames: state.selectedPlayers.map((p) => p.name) };
+        return {
+          id: row.id,
+          mode: state.mode,
+          playerNames: state.selectedPlayers.map((p) => p.name),
+          tournamentMatchId: row.tournament_match_id ?? null,
+        };
       })
     );
   }

@@ -1,6 +1,7 @@
 import { Component, computed, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { TournamentService } from '../tournament.service';
+import { GameSessionService } from '../game-session.service';
 import { MtgService } from '../mtg.service';
 import { GroupService } from '../group.service';
 import { I18nService } from '../i18n.service';
@@ -26,6 +27,7 @@ const TOURNAMENT_GAME_MODES: GameMode[] = GAME_MODES.filter((m) => m !== 'Two-He
 })
 export class TournamentPanel {
   readonly tournament = inject(TournamentService);
+  readonly session = inject(GameSessionService);
   readonly mtg = inject(MtgService);
   private readonly groupService = inject(GroupService);
   private readonly dialog = inject(DialogService);
