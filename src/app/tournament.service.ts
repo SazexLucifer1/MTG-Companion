@@ -148,17 +148,56 @@ export class TournamentService {
     });
 
     // Bridge: wurde die eigene Live-Session von einem ANDEREN Gerät beendet (dort gespeichert), hat
-    // dieses Gerät nie selbst lastFinishedMatch gesetzt und würde sonst nie automatisch ins
-    // Turnier-Panel zurückkehren, obwohl der Tisch inzwischen entschieden sein kann.
+    // dieses Gerät nie selbst lastFinishedMatch gesetzt. Ist der Tisch noch nicht entschieden, startet
+    // das andere Gerät bei sich bereits automatisch das nächste Spiel (siehe handleGameFinished) -
+    // hier wird kurz auf dessen neue Live-Session gewartet und ihr beigetreten, statt unabhängig eine
+    // zweite anzulegen oder einfach im Turnier-Panel hängen zu bleiben.
     effect(() => {
       const ended = this.session.remoteSessionEnded();
       if (!ended || !ended.tournamentMatchId) return;
-      const groupId = this.activeTournament()?.groupId;
-      (async () => {
-        if (groupId) await this.loadForGroup(groupId);
-        this.openPanel();
-      })();
+      this.handleRemoteSessionEnded(ended.tournamentMatchId);
     });
+  }
+
+  private async handleRemoteSessionEnded(tournamentMatchId: string): Promise<void> {
+    const groupId = this.activeTournament()?.groupId;
+    if (groupId) await this.loadForGroup(groupId);
+
+    const match = this.matches().find((m) => m.id === tournamentMatchId);
+    const decided = !match || match.participants.length !== 2 || !!match.winnerPlayerId || match.isDraw;
+
+    if (decided || !match) {
+      this.openPanel();
+      return;
+    }
+
+    const sessionId = await this.waitForLiveSession(tournamentMatchId);
+    if (sessionId) {
+      await this.session.joinLiveSession(sessionId);
+      this.session.activeTournamentMatchId.set(tournamentMatchId);
+    } else {
+      // Falls binnen ~4s keine neue Session auftaucht (z.B. Netzwerk-Hänger auf der anderen Seite):
+      // ins Panel zurückfallen, dort kann notfalls manuell "Spiel starten" geklickt werden.
+      this.openPanel();
+    }
+  }
+
+  /** Wartet kurz darauf, dass für diesen Tisch eine neue Live-Session auftaucht (siehe handleRemoteSessionEnded) - pollt statt Realtime, weil bewusst nur ein einmaliges, kurzes Warten nötig ist. */
+  private async waitForLiveSession(
+    tournamentMatchId: string,
+    attempts = 10,
+    delayMs = 400
+  ): Promise<string | null> {
+    for (let i = 0; i < attempts; i++) {
+      const { data } = await supabase
+        .from('live_game_sessions')
+        .select('id')
+        .eq('tournament_match_id', tournamentMatchId)
+        .maybeSingle();
+      if (data) return data.id;
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+    return null;
   }
 
   /**
