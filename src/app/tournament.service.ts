@@ -159,36 +159,31 @@ export class TournamentService {
     });
   }
 
-  private async handleRemoteSessionEnded(tournamentMatchId: string): Promise<void> {
-    const groupId = this.activeTournament()?.groupId;
-    if (groupId) await this.loadForGroup(groupId);
-
-    const match = this.matches().find((m) => m.id === tournamentMatchId);
-    const decided = !match || match.participants.length !== 2 || !!match.winnerPlayerId || match.isDraw;
-
-    if (decided || !match) {
-      this.openPanel();
-      return;
-    }
-
-    const sessionId = await this.waitForLiveSession(tournamentMatchId);
-    if (sessionId) {
-      await this.session.joinLiveSession(sessionId);
-      this.session.activeTournamentMatchId.set(tournamentMatchId);
-    } else {
-      // Falls binnen ~4s keine neue Session auftaucht (z.B. Netzwerk-Hänger auf der anderen Seite):
-      // ins Panel zurückfallen, dort kann notfalls manuell "Spiel starten" geklickt werden.
-      this.openPanel();
-    }
-  }
-
-  /** Wartet kurz darauf, dass für diesen Tisch eine neue Live-Session auftaucht (siehe handleRemoteSessionEnded) - pollt statt Realtime, weil bewusst nur ein einmaliges, kurzes Warten nötig ist. */
-  private async waitForLiveSession(
+  /**
+   * Wartet nach einer Fremd-Beendigung darauf, dass entweder der Tisch inzwischen entschieden ist
+   * (dann Panel öffnen) ODER eine neue Live-Session fürs nächste Spiel auftaucht (dann beitreten) -
+   * beide Prüfungen laufen bewusst zusammen in EINER Schleife, statt nacheinander: das andere Gerät
+   * braucht nach dem Löschen der alten Session selbst noch ein paar Netzwerk-Schritte, bis "Tisch
+   * entschieden" tatsächlich in der Datenbank steht, und in dem Fall wird nie eine neue Session
+   * angelegt - ein einmaliger Entschieden-Check ganz am Anfang würde das also verpassen und
+   * stattdessen sinnlos die vollen ~4s auf ein drittes Spiel warten, das nie kommt.
+   */
+  private async handleRemoteSessionEnded(
     tournamentMatchId: string,
     attempts = 10,
     delayMs = 400
-  ): Promise<string | null> {
+  ): Promise<void> {
     for (let i = 0; i < attempts; i++) {
+      const groupId = this.activeTournament()?.groupId;
+      if (groupId) await this.loadForGroup(groupId);
+
+      const match = this.matches().find((m) => m.id === tournamentMatchId);
+      const decided = !match || match.participants.length !== 2 || !!match.winnerPlayerId || match.isDraw;
+      if (decided || !match) {
+        this.openPanel();
+        return;
+      }
+
       // .limit(1) statt .maybeSingle(): robust falls durch frühere Test-/Absturz-Reste mehr als eine
       // Zeile zu diesem Tisch existiert (maybeSingle() würde dann mit einem Fehler abbrechen) - nimmt
       // in dem Fall einfach die neueste.
@@ -199,10 +194,18 @@ export class TournamentService {
         .order('created_at', { ascending: false })
         .limit(1);
       if (error) console.error('Konnte laufende Session nicht suchen:', error);
-      if (data && data.length > 0) return data[0].id;
+      if (data && data.length > 0) {
+        await this.session.joinLiveSession(data[0].id);
+        this.session.activeTournamentMatchId.set(tournamentMatchId);
+        return;
+      }
+
       await new Promise((resolve) => setTimeout(resolve, delayMs));
     }
-    return null;
+
+    // Falls binnen ~4s weder "entschieden" noch eine neue Session auftaucht (z.B. Netzwerk-Hänger):
+    // ins Panel zurückfallen, dort kann notfalls manuell "Spiel starten" geklickt werden.
+    this.openPanel();
   }
 
   /**
