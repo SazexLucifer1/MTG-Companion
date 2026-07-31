@@ -444,7 +444,6 @@ export class GameSessionService {
           .eq('id', sessionId)
           .then(({ error }) => {
             if (error) console.error('Konnte Live-Spielstand nicht synchronisieren:', error);
-            else console.log('[live-sync] Push erfolgreich für Session', sessionId);
           });
       }, 400);
     });
@@ -514,7 +513,6 @@ export class GameSessionService {
           // Channel (z.B. weil zwischenzeitlich erneut gejoint wurde) - sessionId ist hier bewusst
           // die beim ERZEUGEN dieses Channels erfasste ID, nicht neu abgefragt.
           if (this.liveSessionId() !== sessionId) return;
-          console.log('[live-sync] Update empfangen', payload);
           const row = payload.new as { state: LiveSessionState; updated_by_client: string };
           if (row.updated_by_client === CLIENT_ID) return; // eigenes Echo, nicht nochmal übernehmen
           this.applySyncSnapshot(row.state);
@@ -535,18 +533,14 @@ export class GameSessionService {
           // sofort wieder gefunden und erneut gejoint). Erst nach echter Bestätigung reagieren.
           const { data } = await supabase.from('live_game_sessions').select('id').eq('id', sessionId).maybeSingle();
           if (data) {
-            console.log('[live-sync] DELETE-Event ignoriert (Zeile existiert noch, vermutlich Fehlalarm)');
             return;
           }
           if (this.liveSessionId() !== sessionId) return;
 
-          console.log('[live-sync] Session wurde vom anderen Gerät beendet (gelöscht)');
           this.handleRemoteSessionEnded();
         }
       )
-      .subscribe((status, err) => {
-        console.log('[live-sync] Channel-Status für Session', sessionId, ':', status, err ?? '');
-      });
+      .subscribe();
   }
 
   /** Reagiert darauf, dass die eigene Live-Session von einem ANDEREN Gerät beendet wurde (dort gespeichert/verworfen) - schließt hier lokal genauso ab, ohne die (schon gelöschte) Zeile nochmal selbst zu löschen. */
@@ -607,7 +601,6 @@ export class GameSessionService {
         console.error('Konnte Live-Session nicht anlegen:', error);
         return;
       }
-      console.log('[live-sync] Neue Session angelegt:', id, 'tournamentMatchId:', this.activeTournamentMatchId());
       this.lastSyncedSignature = stableStringify(initialState);
       this.liveSessionId.set(id);
       this.subscribeLiveSession(id);
@@ -655,7 +648,6 @@ export class GameSessionService {
       console.error('Konnte laufendes Spiel nicht laden:', error);
       return;
     }
-    console.log('[live-sync] Session beigetreten:', sessionId, data.state);
     this.applySyncSnapshot(data.state as LiveSessionState);
     this.liveSessionId.set(sessionId);
     this.minimized.set(false);
