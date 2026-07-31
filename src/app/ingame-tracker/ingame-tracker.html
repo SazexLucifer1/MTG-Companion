@@ -1,5 +1,10 @@
-@if (session.phase() === 'ingame' && !session.minimized()) {
+@if ((session.phase() === 'ingame' || tournament.autoAdvancing()) && !session.minimized()) {
 <div class="ingame-overlay">
+  @if (session.phase() !== 'ingame' && tournament.autoAdvancing()) {
+    <div class="tournament-auto-advance">
+      <p>{{ i18n.t('tournament.preparingNextGame') }}</p>
+    </div>
+  } @else {
   @if (tournamentDeadline()) {
     <div class="tournament-timer-banner" [class.warning]="tournamentFiveMinuteWarning() || tournamentTimeIsUp()">
       @if (tournamentTimeIsUp()) {
@@ -410,6 +415,7 @@
       <button class="glass-button" (click)="closeBackgroundPicker()">{{ i18n.t('deckView.done') }}</button>
     </div>
   </div>
+  }
   }
 </div>
 }

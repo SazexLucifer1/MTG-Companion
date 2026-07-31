@@ -148,6 +148,14 @@ export class TournamentService {
     });
   }
 
+  /**
+   * True, während handleGameFinished() ein gerade beendetes Turnier-Spiel verarbeitet (Server-
+   * Roundtrip für Spielstand/nächstes Spiel) - hält den Ingame-Tracker sichtbar (siehe
+   * ingame-tracker.html), statt kurz auf den leeren Match-Tab zurückzufallen und dann wieder
+   * reinzuspringen, bis feststeht, ob das nächste BO3-Spiel startet oder das Turnier-Panel öffnet.
+   */
+  readonly autoAdvancing = signal(false);
+
   readonly refreshing = signal(false);
 
   /** Manuelles Nachladen auf Knopfdruck (im Turnier-Panel) - ergänzt das automatische Polling, wenn jemand nicht bis zu 8 Sekunden warten möchte. */
@@ -933,7 +941,10 @@ export class TournamentService {
    * bleibt der einmal gesetzte Zeitpunkt stehen.
    */
   async startGameForMatch(match: TournamentMatch): Promise<void> {
-    if (match.isBye || match.participants.length < 2) return;
+    // Harte Absicherung: ein bereits entschiedener Tisch (BO3 mit 2 Siegen, Pod mit Ergebnis) darf
+    // nicht erneut gestartet werden - egal ob das versehentlich per Klick oder durch die
+    // automatische Weiterschaltung in handleGameFinished() passieren würde.
+    if (match.isBye || match.participants.length < 2 || match.winnerPlayerId || match.isDraw) return;
 
     if (!match.startedAt) {
       const startedAt = new Date().toISOString();
@@ -1118,15 +1129,24 @@ export class TournamentService {
    * Pod-Tisch nach seinem einen Spiel), geht es automatisch zurück ins Turnier-Panel.
    */
   private async handleGameFinished(tournamentMatchId: string, matchRowId: string, winnerName: string): Promise<void> {
-    const decided = await this.recordGameResult(tournamentMatchId, matchRowId, winnerName);
-    const match = this.matches().find((m) => m.id === tournamentMatchId);
+    this.autoAdvancing.set(true);
+    try {
+      await this.recordGameResult(tournamentMatchId, matchRowId, winnerName);
+      // Bewusst aus dem frisch neu geladenen Tisch selbst abgeleitet (statt nur aus dem Rückgabewert
+      // von recordGameResult) - so bleibt diese Entscheidung immer konsistent mit der Sperre in
+      // startGameForMatch(), die einen bereits entschiedenen Tisch ohnehin nicht mehr startet.
+      const match = this.matches().find((m) => m.id === tournamentMatchId);
+      const decided = !match || match.participants.length !== 2 || !!match.winnerPlayerId || match.isDraw;
 
-    if (decided || !match || match.participants.length !== 2) {
-      this.openPanel();
-      return;
+      if (decided || !match) {
+        this.openPanel();
+        return;
+      }
+
+      await this.startGameForMatch(match);
+    } finally {
+      this.autoAdvancing.set(false);
     }
-
-    await this.startGameForMatch(match);
   }
 
   /**
