@@ -1156,6 +1156,7 @@ export class TournamentService {
     }
 
     await this.recomputeBo3(tournamentMatchId, match.participants[0], match.participants[1]);
+    await this.deleteLiveSessionForTable(tournamentMatchId);
     await this.loadRoundsAndMatches(match.tournamentId);
     return true;
   }
@@ -1280,6 +1281,7 @@ export class TournamentService {
       if (gameError) console.error('Konnte Spielergebnis nicht mit korrigieren:', gameError);
     }
 
+    await this.deleteLiveSessionForTable(tournamentMatchId);
     await this.loadRoundsAndMatches(match.tournamentId);
     return true;
   }
@@ -1311,6 +1313,7 @@ export class TournamentService {
     }
 
     await this.recordManualMatchRow(match, winnerPlayerId);
+    await this.deleteLiveSessionForTable(tournamentMatchId);
     await this.loadRoundsAndMatches(match.tournamentId);
     return true;
   }
@@ -1336,6 +1339,7 @@ export class TournamentService {
     }
 
     await this.recordManualMatchRow(match, null);
+    await this.deleteLiveSessionForTable(tournamentMatchId);
     await this.loadRoundsAndMatches(match.tournamentId);
     return true;
   }
@@ -1374,8 +1378,25 @@ export class TournamentService {
     }
 
     await this.recomputeBo3(tournamentMatchId, winnerEntry, otherEntry);
+    await this.deleteLiveSessionForTable(tournamentMatchId);
     await this.loadRoundsAndMatches(match.tournamentId);
     return true;
+  }
+
+  /**
+   * Löscht eine ggf. noch laufende Live-Session dieses Tisches - nötig, wenn der Sieger manuell
+   * (nicht durch tatsächliches Zu-Ende-Spielen) festgelegt wird, z.B. per Endstand-Buttons. Ohne das
+   * würde ein Gerät, das gerade live mit diesem Tisch verbunden ist, nie erfahren, dass der Tisch
+   * inzwischen entschieden ist, und im Ingame-Tracker hängen bleiben (die Löschung löst über Realtime
+   * genau denselben Abschluss-Mechanismus aus wie ein normales Speichern - siehe
+   * GameSessionService.subscribeLiveSession/handleRemoteSessionEnded).
+   */
+  private async deleteLiveSessionForTable(tournamentMatchId: string): Promise<void> {
+    const { error } = await supabase
+      .from('live_game_sessions')
+      .delete()
+      .eq('tournament_match_id', tournamentMatchId);
+    if (error) console.error('Konnte Live-Session des Tisches nicht schließen:', error);
   }
 
   private async recordManualMatchRow(match: TournamentMatch, winnerPlayerId: string | null): Promise<void> {
