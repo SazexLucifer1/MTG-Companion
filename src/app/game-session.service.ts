@@ -588,7 +588,24 @@ export class GameSessionService {
    * TournamentService.startGameForMatch) als auch beim manuellen Mitschauen/Übernehmen über die
    * "Laufende Spiele"-Liste im Match-Tab.
    */
+  private readonly joinLiveSessionCallLog: number[] = [];
+
   async joinLiveSession(sessionId: string): Promise<void> {
+    // Diagnose: zeigt den Aufruf-Stack + den aktuellen liveSessionId-Stand, damit sich bei einem
+    // erneuten Loop nachvollziehen lässt, welcher Code das auslöst.
+    console.trace('[live-sync] joinLiveSession aufgerufen für', sessionId, '- aktuell liveSessionId:', this.liveSessionId());
+
+    // Notbremse: falls trotz allem ein Loop entsteht, wenigstens die Datenbank nicht fluten.
+    const now = Date.now();
+    while (this.joinLiveSessionCallLog.length > 0 && now - this.joinLiveSessionCallLog[0] > 2000) {
+      this.joinLiveSessionCallLog.shift();
+    }
+    this.joinLiveSessionCallLog.push(now);
+    if (this.joinLiveSessionCallLog.length > 5) {
+      console.error('[live-sync] NOTBREMSE: joinLiveSession wurde >5x in 2s aufgerufen - breche ab.');
+      return;
+    }
+
     // Bremse gegen wiederholte/parallele Aufrufe für dieselbe Session (z.B. mehrere Effects, die
     // gleichzeitig reagieren) - ohne das kann daraus ein sich selbst befeuernder Beitritts-Loop
     // werden, wenn applySyncSnapshot Signale ändert, auf die wiederum ein anderer Effect reagiert.
