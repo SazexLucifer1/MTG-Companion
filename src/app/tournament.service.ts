@@ -1016,12 +1016,25 @@ export class TournamentService {
    * (startedAt), nicht schon mit dem Auslosen der Runde - bei Spiel 2/3 desselben 1v1-Tisches
    * bleibt der einmal gesetzte Zeitpunkt stehen.
    */
+  /** Tische, für die gerade ein startGameForMatch()-Aufruf läuft - verhindert, dass zwei parallele Aufrufe (z.B. Auto-Weiterschaltung + ein gleichzeitiger Klick) für denselben Tisch je eine eigene Live-Session anlegen. */
+  private readonly startingGameForTable = new Set<string>();
+
   async startGameForMatch(match: TournamentMatch): Promise<void> {
     // Harte Absicherung: ein bereits entschiedener Tisch (BO3 mit 2 Siegen, Pod mit Ergebnis) darf
     // nicht erneut gestartet werden - egal ob das versehentlich per Klick oder durch die
     // automatische Weiterschaltung in handleGameFinished() passieren würde.
     if (match.isBye || match.participants.length < 2 || match.winnerPlayerId || match.isDraw) return;
+    if (this.startingGameForTable.has(match.id)) return;
+    this.startingGameForTable.add(match.id);
 
+    try {
+      await this.startGameForMatchInner(match);
+    } finally {
+      this.startingGameForTable.delete(match.id);
+    }
+  }
+
+  private async startGameForMatchInner(match: TournamentMatch): Promise<void> {
     if (!match.startedAt) {
       const startedAt = new Date().toISOString();
       const { error } = await supabase
