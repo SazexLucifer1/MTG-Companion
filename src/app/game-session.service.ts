@@ -135,9 +135,16 @@ export class GameSessionService {
     { id: string; mode: GameMode; playerNames: string[]; tournamentMatchId: string | null }[]
   >([]);
 
-  /** Wie groupLiveSessions, aber ohne die eigene laufende Session - das ist die für die UI relevante Liste ("bei wem kann ich mitschauen/beitreten"). */
+  /**
+   * Wie groupLiveSessions, aber ohne die eigene laufende Session und ohne Turnier-Tische - das ist
+   * die für die "Laufende Spiele"-Liste im Match-Tab relevante Auswahl (nur normale, nicht an ein
+   * Turnier gekoppelte Spiele). Turnier-Tische haben ihre eigene, auf Teilnehmende + veranstaltende
+   * Person beschränkte Zugriffsprüfung im Turnier-Panel (siehe TournamentPanel.canManageMatch) -
+   * ohne diesen Ausschluss könnte sich sonst jede Person aus der Gruppe über diese allgemeine Liste
+   * in ein fremdes Turnier-Match einklinken.
+   */
   readonly otherGroupLiveSessions = computed(() =>
-    this.groupLiveSessions().filter((s) => s.id !== this.liveSessionId())
+    this.groupLiveSessions().filter((s) => s.id !== this.liveSessionId() && !s.tournamentMatchId)
   );
 
   /** Läuft für diesen Turnier-Tisch bereits eine Live-Session (egal ob meine eigene oder die einer anderen Person)? Treibt die "Beitreten"- statt "Starten"-Beschriftung im Turnier-Panel. */
