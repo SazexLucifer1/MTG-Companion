@@ -521,6 +521,7 @@ export class MtgService {
         draft_set_code,
         draft_set_name,
         draft_set_released_at,
+        tournament_match_id,
         cubes ( id, name, is_commander ),
         match_players (
           player_name,
@@ -553,6 +554,7 @@ export class MtgService {
       date: row.played_at,
       mode: row.game_mode,
       winner: row.winner_name,
+      tournamentMatchId: row.tournament_match_id ?? undefined,
       players: (row.match_players ?? []).map((mp: any) => ({
         name: mp.player_name ?? mp.players?.display_name ?? '',
         commander: mp.commander_name ?? undefined,

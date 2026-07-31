@@ -57,6 +57,8 @@ export interface Match {
     name: string;
     releasedAt?: string;
   };
+  /** Gesetzt, wenn dieses Spiel Teil eines Turnier-Tisches war - für die Sieger-Korrektur im Verlauf (siehe match-tab.ts setMatchWinner). */
+  tournamentMatchId?: string;
 }
 
 export interface Cube {

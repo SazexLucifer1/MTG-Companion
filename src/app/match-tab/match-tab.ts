@@ -446,8 +446,24 @@ export class MatchTab {
     this.editingMatchId.set(this.editingMatchId() === id ? null : id);
   }
 
+  /**
+   * Ändert den Sieger eines Matches im Verlauf - bei einem Turnier-Spiel wird zusätzlich der
+   * zugehörige Tisch neu berechnet (Spielstand/Tisch-Sieger), sonst würde eine Korrektur hier nur
+   * die normale Statistik ändern, aber nicht die Turnier-Ansicht - siehe TournamentService.
+   */
   async setMatchWinner(id: string, winner: string): Promise<void> {
+    const match = this.mtg.history().find((m) => m.id === id);
     await this.mtg.updateMatchWinner(id, winner);
+
+    if (match?.tournamentMatchId) {
+      if (match.players.length === 2) {
+        await this.tournament.correctGameWinner(match.tournamentMatchId, id, winner);
+      } else {
+        const winnerPlayerId = this.mtg.playerIdFor(winner);
+        if (winnerPlayerId) await this.tournament.correctWinner(match.tournamentMatchId, winnerPlayerId);
+      }
+    }
+
     this.editingMatchId.set(null);
   }
 
