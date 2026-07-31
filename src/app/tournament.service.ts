@@ -52,12 +52,26 @@ export class TournamentService {
     this.panelExpanded.update((v) => !v);
   }
 
-  /** Genau ein aktives/laufendes Turnier pro Gruppe in v1 - das jeweils neueste. */
+  /** Genau ein aktives/laufendes Turnier pro Gruppe in v1 - das jeweils neueste (schließt auch ein gerade beendetes mit ein, siehe visibleTournament). */
   readonly activeTournament = signal<Tournament | null>(null);
   readonly participants = signal<TournamentParticipant[]>([]);
   readonly rounds = signal<TournamentRound[]>([]);
   /** Alle Tische aller Runden dieses Turniers (für Pairing-History + aktuelle Ansicht). */
   readonly matches = signal<TournamentMatch[]>([]);
+
+  /** ID des zuletzt weggeklickten Podiums (pro Gerät, nur im Speicher) - siehe visibleTournament(). */
+  readonly dismissedTournamentId = signal<string | null>(null);
+
+  /**
+   * Wie activeTournament(), blendet aber ein bereits weggeklicktes beendetes Turnier aus - dafür
+   * gedacht, überall dort verwendet zu werden, wo Nav-Button/Panel-Sichtbarkeit entschieden wird
+   * (z.B. app.html). Für Dateninhalte (Podium-Anzeige selbst) bleibt activeTournament() maßgeblich.
+   */
+  readonly visibleTournament = computed(() => {
+    const t = this.activeTournament();
+    if (t && t.status === 'completed' && t.id === this.dismissedTournamentId()) return null;
+    return t;
+  });
 
   readonly isOrganizer = computed(
     () => !!this.activeTournament() && this.auth.currentUser()?.id === this.activeTournament()!.createdBy
@@ -180,13 +194,15 @@ export class TournamentService {
   // --- Laden ---
 
   private async loadForGroup(groupId: string): Promise<void> {
-    // Abgeschlossene Turniere zählen bewusst nicht als "aktiv" - sobald ein Turnier beendet ist,
-    // soll es aus der App komplett verschwinden (Nav-Button, Panel), bis ein neues erstellt wird.
+    // 'completed' wird bewusst mitgeladen (nicht nur 'setup'/'active') - sonst bekommt niemand
+    // außer der Person, die "Turnier beenden" geklickt hat, den Endstand zu sehen. Das komplette
+    // Verschwinden aus der App passiert stattdessen erst, wenn das Podium aktiv weggeklickt wurde
+    // (siehe visibleTournament/dismissedTournamentId).
     const { data, error } = await supabase
       .from('tournaments')
       .select('*')
       .eq('group_id', groupId)
-      .in('status', ['setup', 'active'])
+      .in('status', ['setup', 'active', 'completed'])
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle();
@@ -959,12 +975,28 @@ export class TournamentService {
       }
     }
 
-    const tournament = this.activeTournament();
-    this.session.mode.set(tournament?.gameMode ?? 'Commander');
-    this.session.selectedDraftSet.set(null);
-    this.session.selectedPlayers.set(match.participants.map((p) => ({ name: p.playerName })));
+    // Falls für diesen Tisch schon eine laufende Live-Session existiert (z.B. weil die andere Person
+    // bereits "Spiel starten" geklickt hat), an diese ankoppeln statt unabhängig neu aufzusetzen -
+    // beide Geräte sehen dann denselben Live-Stand, siehe GameSessionService.joinLiveSession.
+    const { data: existingSession, error: findError } = await supabase
+      .from('live_game_sessions')
+      .select('id')
+      .eq('tournament_match_id', match.id)
+      .maybeSingle();
+    if (findError) console.error('Konnte laufende Session für diesen Tisch nicht prüfen:', findError);
+
     this.session.activeTournamentMatchId.set(match.id);
-    this.session.startGame();
+
+    if (existingSession) {
+      await this.session.joinLiveSession(existingSession.id);
+    } else {
+      const tournament = this.activeTournament();
+      this.session.mode.set(tournament?.gameMode ?? 'Commander');
+      this.session.selectedDraftSet.set(null);
+      this.session.selectedPlayers.set(match.participants.map((p) => ({ name: p.playerName })));
+      this.session.startGame();
+    }
+
     this.closePanel();
   }
 

@@ -1,8 +1,8 @@
 @if (tournament.panelExpanded()) {
 <section class="glass-card tournament-sheet">
     <div class="tournament-header">
-      <h2>🏆 {{ showFinalResults() ? i18n.t('tournament.resultsHeading') : (tournament.activeTournament()?.name ?? i18n.t('tournament.newTitle')) }}</h2>
-      @if (!showFinalResults()) {
+      <h2>🏆 {{ showingResults() ? i18n.t('tournament.resultsHeading') : (tournament.activeTournament()?.name ?? i18n.t('tournament.newTitle')) }}</h2>
+      @if (!showingResults()) {
         <button
           class="icon-button"
           [class.spinning]="tournament.refreshing()"
@@ -16,21 +16,21 @@
       <button class="icon-button" (click)="close()" [attr.aria-label]="i18n.t('tournament.minimizeAria')">✕</button>
     </div>
 
-    @if (showFinalResults()) {
+    @if (showingResults()) {
       <div class="podium">
-        @if (finalStandings()[1]; as second) {
+        @if (tournament.standings()[1]; as second) {
           <div class="podium-place place-2">
             <span class="medal">🥈</span>
             <span class="podium-name">{{ second.playerName }}</span>
           </div>
         }
-        @if (finalStandings()[0]; as first) {
+        @if (tournament.standings()[0]; as first) {
           <div class="podium-place place-1">
             <span class="medal">🥇</span>
             <span class="podium-name">{{ first.playerName }}</span>
           </div>
         }
-        @if (finalStandings()[2]; as third) {
+        @if (tournament.standings()[2]; as third) {
           <div class="podium-place place-3">
             <span class="medal">🥉</span>
             <span class="podium-name">{{ third.playerName }}</span>
@@ -38,9 +38,9 @@
         }
       </div>
 
-      @if (finalStandings().length > 3) {
+      @if (tournament.standings().length > 3) {
         <ol class="tournament-list standings-list" start="4">
-          @for (s of finalStandings().slice(3); track s.playerId; let i = $index) {
+          @for (s of tournament.standings().slice(3); track s.playerId; let i = $index) {
             <li>
               <span class="rank">{{ i + 4 }}.</span>
               <span class="player-name">{{ s.playerName }}</span>
@@ -297,7 +297,7 @@
       }
     }
 
-    @if (!showFinalResults()) {
+    @if (!showingResults()) {
       <button class="glass-button" (click)="close()">{{ i18n.t('tournament.minimizeButton') }}</button>
     }
 </section>

@@ -71,7 +71,7 @@
     <span class="tab-icon">🎮</span>
     <span class="tab-label">{{ i18n.t('nav.game') }}</span>
   </button>
-  } @if (tournament.activeTournament()) {
+  } @if (tournament.visibleTournament()) {
   <button
     class="tab-item ingame-tab"
     [class.active]="tournament.panelExpanded()"

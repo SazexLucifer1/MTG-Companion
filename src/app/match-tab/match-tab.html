@@ -15,6 +15,20 @@
     🏆 {{ tournament.activeTournament() ? i18n.t('tournament.openPanelButton') : i18n.t('tournament.createButton') }}
   </button>
 
+  @if (session.otherGroupLiveSessions().length > 0) {
+    <h3>{{ i18n.t('match.liveSessionsHeading') }}</h3>
+    <ul class="live-sessions-list">
+      @for (s of session.otherGroupLiveSessions(); track s.id) {
+        <li>
+          <span class="live-session-info">{{ s.mode }} · {{ s.playerNames.join(', ') }}</span>
+          <button class="glass-chip small" (click)="session.joinLiveSession(s.id)">
+            {{ i18n.t('match.liveSessionJoin') }}
+          </button>
+        </li>
+      }
+    </ul>
+  }
+
   <h3 data-tutorial="match-players-heading">{{ i18n.t('match.whoPlays') }}</h3>
   @if (mtg.allPlayers().length === 0) {
     <p class="hint">{{ i18n.t('match.noPlayersYet') }}</p>

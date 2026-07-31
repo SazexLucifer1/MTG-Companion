@@ -1,8 +1,38 @@
 // NEU (komplette Datei)
 import { Injectable, WritableSignal, computed, effect, inject, signal } from '@angular/core';
+import type { RealtimeChannel } from '@supabase/supabase-js';
 import { GameMode, MatchPlayer, TEAM_OPTIONS, TeamName } from './models';
 import { MtgService } from './mtg.service';
 import { I18nService } from './i18n.service';
+import { GroupService } from './group.service';
+import { AuthService } from './auth.service';
+import { supabase } from './supabase.client';
+
+/** Einmal pro Tab/Ladevorgang erzeugt - dient dazu, eigene Realtime-Updates (Echo) beim Empfang wiederzuerkennen und zu ignorieren. */
+const CLIENT_ID = crypto.randomUUID();
+
+/**
+ * Der Teil des Session-Zustands, der zwischen Geräten synchronisiert wird (siehe
+ * GameSessionService.buildSyncSnapshot/applySyncSnapshot). Bewusst NICHT enthalten: phase/minimized
+ * (jedes Gerät steuert sein eigenes Fenster unabhängig) und die pending*Delta-Puffer (rein lokale
+ * 700ms-Tap-Glättung, erst der committete Wert wird gesynced).
+ */
+export interface LiveSessionState {
+  mode: GameMode;
+  selectedPlayers: MatchPlayer[];
+  selectedCubeId: string | null;
+  selectedDraftSet: SelectedDraftSet | null;
+  lifeTotals: Record<string, number>;
+  commanderDamage: Record<string, Record<string, number>>;
+  poisonCounters: Record<string, number>;
+  poisonView: Record<string, boolean>;
+  deadPlayers: Record<string, boolean>;
+  deadMessageMap: Record<string, string>;
+  commanderDamageFocus: string | null;
+  manualOrder: string[] | null;
+  pinnedBottomKey: string | null;
+  winner: string | null;
+}
 
 export interface SelectedDraftSet {
   id: string;
@@ -42,6 +72,8 @@ export interface IngameUnit {
 export class GameSessionService {
   private readonly mtg = inject(MtgService);
   private readonly i18n = inject(I18nService);
+  private readonly groupService = inject(GroupService);
+  private readonly auth = inject(AuthService);
 
   readonly OTHERS = '__OTHERS__';
   readonly DRAW = '__DRAW__';
@@ -72,6 +104,43 @@ export class GameSessionService {
 
   /** Gesetzt, wenn das aktuelle Spiel Teil eines Turnier-Tisches ist - siehe TournamentService.startGameForMatch(). */
   readonly activeTournamentMatchId = signal<string | null>(null);
+
+  // --- Geräteübergreifender Live-Sync (live_game_sessions, Supabase Realtime) ---
+
+  /** ID meiner eigenen live_game_sessions-Zeile, solange ich (mit)spiele oder beigetreten bin - null, wenn dieses Gerät gerade nicht an einer laufenden Partie hängt. */
+  readonly liveSessionId = signal<string | null>(null);
+
+  /** Alle aktuell laufenden Spiele der eigenen Gruppe (für die "Laufende Spiele"-Übersicht im Match-Tab), roh - inkl. der eigenen Session. */
+  private readonly groupLiveSessions = signal<{ id: string; mode: GameMode; playerNames: string[] }[]>([]);
+
+  /** Wie groupLiveSessions, aber ohne die eigene laufende Session - das ist die für die UI relevante Liste ("bei wem kann ich mitschauen/beitreten"). */
+  readonly otherGroupLiveSessions = computed(() =>
+    this.groupLiveSessions().filter((s) => s.id !== this.liveSessionId())
+  );
+
+  private realtimeChannel: RealtimeChannel | null = null;
+  private groupSessionsChannel: RealtimeChannel | null = null;
+  private pushDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+  /** Signatur (JSON) des zuletzt gepushten oder empfangenen Stands - verhindert, dass ein gerade per Realtime übernommener Stand sofort wieder (unnötig) zurückgepusht wird. */
+  private lastSyncedSignature: string | null = null;
+
+  /** Der Teil des Zustands, der synchronisiert wird - siehe LiveSessionState. Neues Objekt bei jeder relevanten Änderung, damit der Push-Effect unten zuverlässig reagiert. */
+  private readonly syncSnapshot = computed<LiveSessionState>(() => ({
+    mode: this.mode(),
+    selectedPlayers: this.selectedPlayers(),
+    selectedCubeId: this.selectedCubeId(),
+    selectedDraftSet: this.selectedDraftSet(),
+    lifeTotals: this.lifeTotals(),
+    commanderDamage: this.commanderDamage(),
+    poisonCounters: this.poisonCounters(),
+    poisonView: this.poisonView(),
+    deadPlayers: this.deadPlayers(),
+    deadMessageMap: this.deadMessageMap(),
+    commanderDamageFocus: this.commanderDamageFocus(),
+    manualOrder: this.manualOrder(),
+    pinnedBottomKey: this.pinnedBottomKey(),
+    winner: this.winner(),
+  }));
 
   /**
    * lifeTotals & co. sind ab jetzt generisch nach "Panel-Key" indiziert:
@@ -325,6 +394,177 @@ export class GameSessionService {
       },
       { allowSignalWrites: true }
     );
+
+    // Push: sobald sich der synchronisierbare Zustand ändert, debounced (400ms) den eigenen
+    // live_game_sessions-Eintrag aktualisieren - läuft nur, solange liveSessionId gesetzt ist.
+    // Die Signatur-Prüfung verhindert, dass ein gerade per Realtime empfangener Fremd-Stand (siehe
+    // subscribeLiveSession) sofort unnötig zurückgepusht wird.
+    effect(() => {
+      const snapshot = this.syncSnapshot();
+      const sessionId = this.liveSessionId();
+      if (!sessionId) return;
+
+      const signature = JSON.stringify(snapshot);
+      if (signature === this.lastSyncedSignature) return;
+
+      if (this.pushDebounceTimer) clearTimeout(this.pushDebounceTimer);
+      this.pushDebounceTimer = setTimeout(() => {
+        this.pushDebounceTimer = null;
+        this.lastSyncedSignature = signature;
+        supabase
+          .from('live_game_sessions')
+          .update({ state: snapshot, updated_by_client: CLIENT_ID, updated_at: new Date().toISOString() })
+          .eq('id', sessionId)
+          .then(({ error }) => {
+            if (error) console.error('Konnte Live-Spielstand nicht synchronisieren:', error);
+          });
+      }, 400);
+    });
+
+    // Übersicht "laufende Spiele der Gruppe" (für die Beitreten-Liste im Match-Tab) - initial laden
+    // und per Realtime aktuell halten, sobald sich die aktive Gruppe ändert.
+    effect(() => {
+      const groupId = this.groupService.groupId();
+      if (this.groupSessionsChannel) {
+        supabase.removeChannel(this.groupSessionsChannel);
+        this.groupSessionsChannel = null;
+      }
+      if (!groupId) {
+        this.groupLiveSessions.set([]);
+        return;
+      }
+      this.refreshGroupLiveSessions(groupId);
+      this.groupSessionsChannel = supabase
+        .channel(`live_game_sessions_group:${groupId}`)
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'live_game_sessions', filter: `group_id=eq.${groupId}` },
+          () => this.refreshGroupLiveSessions(groupId)
+        )
+        .subscribe();
+    });
+  }
+
+  private async refreshGroupLiveSessions(groupId: string): Promise<void> {
+    const { data, error } = await supabase.from('live_game_sessions').select('id, state').eq('group_id', groupId);
+    if (error) {
+      console.error('Konnte laufende Spiele der Gruppe nicht laden:', error);
+      return;
+    }
+    this.groupLiveSessions.set(
+      (data ?? []).map((row) => {
+        const state = row.state as LiveSessionState;
+        return { id: row.id, mode: state.mode, playerNames: state.selectedPlayers.map((p) => p.name) };
+      })
+    );
+  }
+
+  private unsubscribeLiveSession(): void {
+    if (this.realtimeChannel) {
+      supabase.removeChannel(this.realtimeChannel);
+      this.realtimeChannel = null;
+    }
+  }
+
+  private subscribeLiveSession(sessionId: string): void {
+    this.unsubscribeLiveSession();
+    this.realtimeChannel = supabase
+      .channel(`live_game_session:${sessionId}`)
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'live_game_sessions', filter: `id=eq.${sessionId}` },
+        (payload) => {
+          const row = payload.new as { state: LiveSessionState; updated_by_client: string };
+          if (row.updated_by_client === CLIENT_ID) return; // eigenes Echo, nicht nochmal übernehmen
+          this.applySyncSnapshot(row.state);
+        }
+      )
+      .subscribe();
+  }
+
+  private applySyncSnapshot(state: LiveSessionState): void {
+    this.mode.set(state.mode);
+    this.selectedPlayers.set(state.selectedPlayers);
+    this.selectedCubeId.set(state.selectedCubeId);
+    this.selectedDraftSet.set(state.selectedDraftSet);
+    this.lifeTotals.set(state.lifeTotals);
+    this.commanderDamage.set(state.commanderDamage);
+    this.poisonCounters.set(state.poisonCounters);
+    this.poisonView.set(state.poisonView);
+    this.deadPlayers.set(state.deadPlayers);
+    this.deadMessageMap.set(state.deadMessageMap);
+    this.commanderDamageFocus.set(state.commanderDamageFocus);
+    this.manualOrder.set(state.manualOrder);
+    this.pinnedBottomKey.set(state.pinnedBottomKey);
+    this.winner.set(state.winner);
+    this.lastSyncedSignature = JSON.stringify(state);
+  }
+
+  /** Legt beim Start eines neuen Spiels die eigene live_game_sessions-Zeile an (fire-and-forget, blockiert das lokale Spiel nicht). */
+  private beginLiveSession(): void {
+    const groupId = this.groupService.groupId();
+    const userId = this.auth.currentUser()?.id;
+    if (!groupId || !userId) return;
+
+    const id = crypto.randomUUID();
+    this.liveSessionId.set(id);
+    this.lastSyncedSignature = null;
+    this.subscribeLiveSession(id);
+
+    (async () => {
+      // Opportunistisches Aufräumen: falls durch Absturz/Tab-Schließen noch eine eigene alte Zeile
+      // herumliegt, verschwindet sie hier - kein Anspruch auf vollständige Garbage-Collection.
+      await supabase.from('live_game_sessions').delete().eq('created_by', userId).eq('group_id', groupId);
+      const { error } = await supabase.from('live_game_sessions').insert({
+        id,
+        group_id: groupId,
+        tournament_match_id: this.activeTournamentMatchId(),
+        created_by: userId,
+        state: this.syncSnapshot(),
+        updated_by_client: CLIENT_ID,
+      });
+      if (error) console.error('Konnte Live-Session nicht anlegen:', error);
+    })();
+  }
+
+  /**
+   * Tritt einer bereits laufenden Live-Session bei (statt eine neue, unabhängige zu starten) -
+   * genutzt sowohl beim automatischen Koppeln an einen Turnier-Tisch (siehe
+   * TournamentService.startGameForMatch) als auch beim manuellen Mitschauen/Übernehmen über die
+   * "Laufende Spiele"-Liste im Match-Tab.
+   */
+  async joinLiveSession(sessionId: string): Promise<void> {
+    const { data, error } = await supabase
+      .from('live_game_sessions')
+      .select('state')
+      .eq('id', sessionId)
+      .maybeSingle();
+    if (error || !data) {
+      console.error('Konnte laufendes Spiel nicht laden:', error);
+      return;
+    }
+    this.applySyncSnapshot(data.state as LiveSessionState);
+    this.liveSessionId.set(sessionId);
+    this.minimized.set(false);
+    this.phase.set('ingame');
+    this.subscribeLiveSession(sessionId);
+  }
+
+  /** Beendet die eigene Live-Session (Speichern oder Verwerfen) - löscht die geteilte Zeile für alle Beteiligten. */
+  private endLiveSession(): void {
+    const id = this.liveSessionId();
+    this.unsubscribeLiveSession();
+    this.liveSessionId.set(null);
+    this.lastSyncedSignature = null;
+    if (id) {
+      supabase
+        .from('live_game_sessions')
+        .delete()
+        .eq('id', id)
+        .then(({ error }) => {
+          if (error) console.error('Konnte Live-Session nicht löschen:', error);
+        });
+    }
   }
 
   /** Alle Commander/Partner-Commander der Mitglieder einer Panel-Einheit als eigene Schadensquellen. */
@@ -520,6 +760,8 @@ export class GameSessionService {
     this.winner.set(null);
     this.minimized.set(false);
     this.phase.set('ingame');
+
+    this.beginLiveSession();
   }
 
   minimizeGame(): void {
@@ -579,6 +821,7 @@ export class GameSessionService {
   }
 
   private resetAll(): void {
+    this.endLiveSession();
     this.phase.set('setup');
     this.showWinnerPanel.set(false);
     this.minimized.set(false);

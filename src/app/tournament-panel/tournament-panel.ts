@@ -1,11 +1,11 @@
-import { Component, effect, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { TournamentService } from '../tournament.service';
 import { MtgService } from '../mtg.service';
 import { GroupService } from '../group.service';
 import { I18nService } from '../i18n.service';
 import { DialogService } from '../dialog.service';
-import { TournamentMatch, TableSize, StandingsRow } from '../tournament.models';
+import { TournamentMatch, TableSize } from '../tournament.models';
 import { GAME_MODES, GameMode } from '../models';
 
 /** Two-Headed Giant ist teambasiert und passt nicht zu individuellem Swiss-Ranking - daher hier ausgeschlossen. */
@@ -55,9 +55,8 @@ export class TournamentPanel {
   /** Zusätzlich zum Turnier-Code angezeigt - wer noch nicht Gruppenmitglied ist, braucht zuerst diesen. */
   readonly groupInviteCode = signal<string | null>(null);
 
-  /** Endstand-Bildschirm nach "Turnier beenden" - hält einen Schnappschuss der Standings, weil das Turnier danach sofort aus der App verschwindet. */
-  readonly showFinalResults = signal(false);
-  readonly finalStandings = signal<StandingsRow[]>([]);
+  /** Endstand-Bildschirm nach "Turnier beenden" - abgeleitet aus dem geladenen Status, damit ihn jedes Gerät sieht (nicht nur das, das auf "Turnier beenden" geklickt hat). */
+  readonly showingResults = computed(() => this.tournament.activeTournament()?.status === 'completed');
 
   constructor() {
     // Lädt den (dauerhaften, idempotenten) Gruppen-Einladungscode nach, sobald die veranstaltende
@@ -161,18 +160,14 @@ export class TournamentPanel {
       if (!(await this.dialog.confirm(this.i18n.t('tournament.confirmEndEarly')))) return;
     }
 
-    // Schnappschuss VOR dem Beenden - danach verschwindet das Turnier sofort aus den Live-Signalen.
-    const finalStandings = this.tournament.standings();
-    const success = await this.tournament.endTournament(t.id);
-    if (success) {
-      this.finalStandings.set(finalStandings);
-      this.showFinalResults.set(true);
-    }
+    // Standings bleiben nach dem Beenden weiter geladen (status='completed' zählt jetzt auch als
+    // ladbar, siehe loadForGroup) - kein Schnappschuss mehr nötig, jedes Gerät berechnet sie live.
+    await this.tournament.endTournament(t.id);
   }
 
   closeFinalResults(): void {
-    this.showFinalResults.set(false);
-    this.finalStandings.set([]);
+    const t = this.tournament.activeTournament();
+    if (t) this.tournament.dismissedTournamentId.set(t.id);
     this.close();
   }
 
