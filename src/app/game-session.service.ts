@@ -12,6 +12,23 @@ import { supabase } from './supabase.client';
 const CLIENT_ID = crypto.randomUUID();
 
 /**
+ * Wie JSON.stringify, aber mit sortierten Objekt-Keys - normales JSON.stringify reicht hier nicht,
+ * weil Postgres/JSONB die Feld-Reihenfolge beim Speichern verändert. Ohne das würde ein gerade per
+ * Realtime empfangener (inhaltlich identischer) Stand nie als "schon bekannt" erkannt und ständig
+ * unnötig zurückgepusht - ein Endlos-Ping-Pong zwischen zwei Geräten.
+ */
+function stableStringify(value: unknown): string {
+  if (Array.isArray(value)) {
+    return `[${value.map(stableStringify).join(',')}]`;
+  }
+  if (value && typeof value === 'object') {
+    const keys = Object.keys(value as Record<string, unknown>).sort();
+    return `{${keys.map((k) => JSON.stringify(k) + ':' + stableStringify((value as Record<string, unknown>)[k])).join(',')}}`;
+  }
+  return JSON.stringify(value);
+}
+
+/**
  * Der Teil des Session-Zustands, der zwischen Geräten synchronisiert wird (siehe
  * GameSessionService.buildSyncSnapshot/applySyncSnapshot). Bewusst NICHT enthalten: phase/minimized
  * (jedes Gerät steuert sein eigenes Fenster unabhängig) und die pending*Delta-Puffer (rein lokale
@@ -404,7 +421,7 @@ export class GameSessionService {
       const sessionId = this.liveSessionId();
       if (!sessionId) return;
 
-      const signature = JSON.stringify(snapshot);
+      const signature = stableStringify(snapshot);
       if (signature === this.lastSyncedSignature) return;
 
       if (this.pushDebounceTimer) clearTimeout(this.pushDebounceTimer);
@@ -501,7 +518,7 @@ export class GameSessionService {
     this.manualOrder.set(state.manualOrder);
     this.pinnedBottomKey.set(state.pinnedBottomKey);
     this.winner.set(state.winner);
-    this.lastSyncedSignature = JSON.stringify(state);
+    this.lastSyncedSignature = stableStringify(state);
   }
 
   /** Legt beim Start eines neuen Spiels die eigene live_game_sessions-Zeile an (fire-and-forget, blockiert das lokale Spiel nicht). */
