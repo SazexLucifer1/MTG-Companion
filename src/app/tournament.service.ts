@@ -146,6 +146,19 @@ export class TournamentService {
       if (!finished || !finished.tournamentMatchId) return;
       this.handleGameFinished(finished.tournamentMatchId, finished.matchId, finished.winner);
     });
+
+    // Bridge: wurde die eigene Live-Session von einem ANDEREN Gerät beendet (dort gespeichert), hat
+    // dieses Gerät nie selbst lastFinishedMatch gesetzt und würde sonst nie automatisch ins
+    // Turnier-Panel zurückkehren, obwohl der Tisch inzwischen entschieden sein kann.
+    effect(() => {
+      const ended = this.session.remoteSessionEnded();
+      if (!ended || !ended.tournamentMatchId) return;
+      const groupId = this.activeTournament()?.groupId;
+      (async () => {
+        if (groupId) await this.loadForGroup(groupId);
+        this.openPanel();
+      })();
+    });
   }
 
   /**

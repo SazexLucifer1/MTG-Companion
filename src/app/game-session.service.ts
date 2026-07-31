@@ -127,6 +127,9 @@ export class GameSessionService {
   /** ID meiner eigenen live_game_sessions-Zeile, solange ich (mit)spiele oder beigetreten bin - null, wenn dieses Gerät gerade nicht an einer laufenden Partie hängt. */
   readonly liveSessionId = signal<string | null>(null);
 
+  /** Gesetzt, wenn die eigene Live-Session gerade von einem ANDEREN Gerät beendet wurde (dort gespeichert/verworfen) - TournamentService reagiert darauf, um bei einem entschiedenen Tisch automatisch das Panel zu öffnen, obwohl dieses Gerät das Spiel nicht selbst gespeichert hat. */
+  readonly remoteSessionEnded = signal<{ tournamentMatchId: string | null } | null>(null);
+
   /** Alle aktuell laufenden Spiele der eigenen Gruppe (für die "Laufende Spiele"-Übersicht im Match-Tab), roh - inkl. der eigenen Session. */
   private readonly groupLiveSessions = signal<{ id: string; mode: GameMode; playerNames: string[] }[]>([]);
 
@@ -498,9 +501,30 @@ export class GameSessionService {
           this.applySyncSnapshot(row.state);
         }
       )
+      .on(
+        // Die andere Seite hat das Spiel gespeichert oder verworfen (siehe endLiveSession) - ohne
+        // diesen Handler bliebe ein nur beigetretenes/mitschauendes Gerät für immer im Ingame-Tracker
+        // mit dem letzten bekannten Stand hängen, statt automatisch abzuschließen.
+        'postgres_changes',
+        { event: 'DELETE', schema: 'public', table: 'live_game_sessions', filter: `id=eq.${sessionId}` },
+        () => {
+          console.log('[live-sync] Session wurde vom anderen Gerät beendet (gelöscht)');
+          this.handleRemoteSessionEnded();
+        }
+      )
       .subscribe((status, err) => {
         console.log('[live-sync] Channel-Status für Session', sessionId, ':', status, err ?? '');
       });
+  }
+
+  /** Reagiert darauf, dass die eigene Live-Session von einem ANDEREN Gerät beendet wurde (dort gespeichert/verworfen) - schließt hier lokal genauso ab, ohne die (schon gelöschte) Zeile nochmal selbst zu löschen. */
+  private handleRemoteSessionEnded(): void {
+    const tournamentMatchId = this.activeTournamentMatchId();
+    this.unsubscribeLiveSession();
+    this.liveSessionId.set(null);
+    this.lastSyncedSignature = null;
+    this.resetLocalState();
+    this.remoteSessionEnded.set({ tournamentMatchId });
   }
 
   private applySyncSnapshot(state: LiveSessionState): void {
@@ -845,6 +869,11 @@ export class GameSessionService {
 
   private resetAll(): void {
     this.endLiveSession();
+    this.resetLocalState();
+  }
+
+  /** Setzt alle lokalen Session-Signale zurück, ohne die geteilte live_game_sessions-Zeile anzufassen - für den Fall, dass die Zeile bereits woanders gelöscht wurde (siehe handleRemoteSessionEnded). */
+  private resetLocalState(): void {
     this.phase.set('setup');
     this.showWinnerPanel.set(false);
     this.minimized.set(false);
