@@ -152,6 +152,16 @@
     <div class="options-menu-overlay" (click)="goldfish.closeMoveMenu()">
       <div class="options-menu-sheet" (click)="$event.stopPropagation()">
         <h3>{{ i18n.t('goldfish.moveCardTo', { name: card.cardName }) }}</h3>
+        @if (moveMenuCardIsAttachable()) {
+          <button class="glass-button small" (click)="goldfish.closeMoveMenu(); goldfish.openAttachMenu(card.instanceId)">
+            {{ card.attachedTo ? i18n.t('goldfish.changeAttachment') : i18n.t('goldfish.attachToCreature') }}
+          </button>
+          @if (card.attachedTo) {
+            <button class="glass-button small" (click)="goldfish.detachFromCreature(card.instanceId); goldfish.closeMoveMenu()">
+              {{ i18n.t('goldfish.detach') }}
+            </button>
+          }
+        }
         @for (zone of moveMenuTargets(); track zone) {
           <button class="glass-button small" (click)="goldfish.moveCard(card.instanceId, zone)">{{ zoneLabel(zone) }}</button>
         }
@@ -160,9 +170,25 @@
     </div>
   }
 
+  @if (goldfish.attachMenuFor(); as attachId) {
+    <div class="options-menu-overlay" (click)="goldfish.closeAttachMenu()">
+      <div class="options-menu-sheet" (click)="$event.stopPropagation()">
+        <h3>{{ i18n.t('goldfish.attachToCreature') }}</h3>
+        @for (creature of attachTargetsFor(attachId); track creature.instanceId) {
+          <button class="glass-button small" (click)="goldfish.attachTo(attachId, creature.instanceId)">{{ creature.cardName }}</button>
+        } @empty {
+          <p class="hint">{{ i18n.t('goldfish.noCreaturesOnBattlefield') }}</p>
+        }
+        <button class="glass-button small" (click)="goldfish.closeAttachMenu()">{{ i18n.t('group.cancel') }}</button>
+      </div>
+    </div>
+  }
+
   @if (goldfish.previewCard(); as pc) {
     <div class="goldfish-preview-overlay" (click)="goldfish.closePreview()">
-      @if (pc.imageUrl) {
+      @if (pc.showingBack && pc.backImageUrl) {
+        <img class="goldfish-preview-img" [src]="pc.backImageUrl" [alt]="pc.cardName" />
+      } @else if (pc.imageUrl) {
         <img class="goldfish-preview-img" [src]="pc.imageUrl" [alt]="pc.cardName" />
       } @else {
         <div class="goldfish-preview-placeholder">{{ pc.cardName }}</div>
@@ -172,7 +198,9 @@
 </div>
 
 <ng-template #cardFace let-card="card">
-  @if (card.imageUrl) {
+  @if (card.showingBack && card.backImageUrl) {
+    <img [src]="card.backImageUrl" [alt]="card.cardName" loading="lazy" />
+  } @else if (card.imageUrl) {
     <img [src]="card.imageUrl" [alt]="card.cardName" loading="lazy" />
   } @else {
     <div class="deck-card-placeholder">{{ card.cardName }}</div>
@@ -185,6 +213,16 @@
   >
     🔍
   </button>
+  @if (card.backImageUrl) {
+    <button
+      class="goldfish-flip"
+      (click)="$event.stopPropagation(); goldfish.flip(card.instanceId)"
+      (pointerdown)="$event.stopPropagation()"
+      [attr.aria-label]="i18n.t('goldfish.flipAria')"
+    >
+      🔄
+    </button>
+  }
 </ng-template>
 
 <ng-template #battlefieldTile let-card="card">
@@ -197,6 +235,12 @@
     (pointercancel)="cancelBattlefieldPress()"
   >
     <ng-container *ngTemplateOutlet="cardFace; context: { card: card }" />
+    @if (goldfish.attachmentCount(card.instanceId) > 0) {
+      <span class="goldfish-attach-count">{{ goldfish.attachmentCount(card.instanceId) }}</span>
+    }
+    @if (card.attachedTo) {
+      <span class="goldfish-attach-link">🔗</span>
+    }
   </div>
 </ng-template>
 

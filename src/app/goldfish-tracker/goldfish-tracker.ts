@@ -2,7 +2,7 @@ import { Component, inject } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { CdkDropList, CdkDrag, CdkDragDrop } from '@angular/cdk/drag-drop';
-import { GoldfishService, GoldfishCardInstance, GoldfishZone, isEphemeralSpell } from '../goldfish.service';
+import { GoldfishService, GoldfishCardInstance, GoldfishZone, activeTypeLine, isEphemeralSpell, isAttachable } from '../goldfish.service';
 import { I18nService } from '../i18n.service';
 
 @Component({
@@ -33,11 +33,21 @@ export class GoldfishTracker {
   moveMenuTargets(): GoldfishZone[] {
     const card = this.moveMenuCard();
     if (!card) return [];
-    const zones: GoldfishZone[] = isEphemeralSpell(card.typeLine)
+    const zones: GoldfishZone[] = isEphemeralSpell(activeTypeLine(card))
       ? ['hand', 'library', 'graveyard', 'exile']
       : ['battlefield', 'hand', 'library', 'graveyard', 'exile'];
     if (card.isCommander) zones.push('command');
     return zones.filter((z) => z !== card.zone);
+  }
+
+  /** Ausrüstung/Verzauberung, die man an eine Kreatur anlegen kann - nur relevant, während sie auf dem Spielfeld liegt. */
+  moveMenuCardIsAttachable(): boolean {
+    const card = this.moveMenuCard();
+    return !!card && card.zone === 'battlefield' && isAttachable(activeTypeLine(card));
+  }
+
+  attachTargetsFor(instanceId: string): GoldfishCardInstance[] {
+    return this.goldfish.attachTargets(instanceId);
   }
 
   /**

@@ -244,6 +244,53 @@
   touch-action: manipulation;
 }
 
+/* --- Umdrehen-Button für Doppelkarten (Transform/Modal-DFC) --- */
+
+.goldfish-flip {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.65);
+  font-size: 0.6rem;
+  line-height: 1;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+/* --- Anlegen-Anzeige (Ausrüstung/Verzauberung an Kreatur) --- */
+
+.goldfish-attach-count {
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.7);
+  font-size: 0.6rem;
+  font-weight: 700;
+}
+
+.goldfish-attach-link {
+  position: absolute;
+  bottom: 2px;
+  left: 2px;
+  font-size: 0.7rem;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+}
+
 /* --- Karten-Raster für die Bibliothek/Friedhof/Exil-Detailansicht - 1:1 aus deck-detail-view.scss --- */
 
 .deck-visual-grid {

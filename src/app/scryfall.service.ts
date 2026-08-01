@@ -13,6 +13,13 @@ export interface ScryfallCard {
   oracleText?: string;
   /** Native Scryfall-Fähigkeiten-Liste ("Flying", "Lifelink", ...) - kein Tagger-Tag, kommt direkt mit jeder Karte. */
   keywords?: string[];
+  /**
+   * Nur gesetzt bei echten zweiseitigen Karten (Transform/Modal-DFC), deren Rückseite ein eigenes
+   * Kartenbild hat - NICHT bei Adventure/Split, die trotz mehrerer "Faces" nur ein einziges,
+   * gemeinsames Bild besitzen (dort fehlt image_uris auf der zweiten Face, siehe toCard()).
+   */
+  backImageUrl?: string;
+  backTypeLine?: string;
 }
 
 export interface ScryfallPrinting {
@@ -380,6 +387,10 @@ export class ScryfallService {
   }
 
   private toCard(data: any): ScryfallCard {
+    const backFace = data.card_faces?.[1];
+    // image_uris auf Face 2 fehlt bei Adventure/Split (die teilen sich ein Bild) - nur wenn es
+    // eins hat, ist es eine "echte" umdrehbare Rückseite (Transform/Modal-DFC).
+    const hasFlippableBack = !!backFace?.image_uris?.normal;
     return {
       name: data.name as string,
       imageUrl:
@@ -394,6 +405,8 @@ export class ScryfallService {
       gameChanger: data.game_changer as boolean | undefined,
       oracleText: (data.oracle_text || data.card_faces?.[0]?.oracle_text) as string | undefined,
       keywords: data.keywords as string[] | undefined,
+      backImageUrl: hasFlippableBack ? (backFace.image_uris?.normal as string) : undefined,
+      backTypeLine: hasFlippableBack ? (backFace.type_line as string | undefined) : undefined,
     };
   }
 }
