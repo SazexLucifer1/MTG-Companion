@@ -17,7 +17,7 @@
         id="goldfish-battlefield-list"
         cdkDropList
         [cdkDropListConnectedTo]="['goldfish-hand-list']"
-        (cdkDropListDropped)="onCardDropped($event)"
+        (cdkDropListDropped)="onZoneDropped($event, 'battlefield')"
       >
         <div class="goldfish-bf-row">
           @for (card of goldfish.battlefieldCreatures(); track card.instanceId) {
@@ -37,15 +37,39 @@
       </div>
 
       <div class="goldfish-zone-column">
-        <button class="goldfish-zone-icon" (click)="goldfish.openZoneList('library')" [attr.aria-label]="zoneLabel('library')">
+        <button
+          class="goldfish-zone-icon"
+          id="goldfish-library-list"
+          cdkDropList
+          [cdkDropListConnectedTo]="['goldfish-hand-list']"
+          (cdkDropListDropped)="onZoneDropped($event, 'library')"
+          (click)="goldfish.openZoneList('library')"
+          [attr.aria-label]="zoneLabel('library')"
+        >
           <span class="goldfish-zone-icon-face">📚</span>
           <span class="deck-card-qty">{{ goldfish.library().length }}</span>
         </button>
-        <button class="goldfish-zone-icon" (click)="goldfish.openZoneList('graveyard')" [attr.aria-label]="zoneLabel('graveyard')">
+        <button
+          class="goldfish-zone-icon"
+          id="goldfish-graveyard-list"
+          cdkDropList
+          [cdkDropListConnectedTo]="['goldfish-hand-list']"
+          (cdkDropListDropped)="onZoneDropped($event, 'graveyard')"
+          (click)="goldfish.openZoneList('graveyard')"
+          [attr.aria-label]="zoneLabel('graveyard')"
+        >
           <span class="goldfish-zone-icon-face">🪦</span>
           <span class="deck-card-qty">{{ goldfish.graveyard().length }}</span>
         </button>
-        <button class="goldfish-zone-icon" (click)="goldfish.openZoneList('exile')" [attr.aria-label]="zoneLabel('exile')">
+        <button
+          class="goldfish-zone-icon"
+          id="goldfish-exile-list"
+          cdkDropList
+          [cdkDropListConnectedTo]="['goldfish-hand-list']"
+          (cdkDropListDropped)="onZoneDropped($event, 'exile')"
+          (click)="goldfish.openZoneList('exile')"
+          [attr.aria-label]="zoneLabel('exile')"
+        >
           <span class="goldfish-zone-icon-face">🌀</span>
           <span class="deck-card-qty">{{ goldfish.exile().length }}</span>
         </button>
@@ -63,8 +87,8 @@
         class="goldfish-hand"
         id="goldfish-hand-list"
         cdkDropList
-        [cdkDropListConnectedTo]="['goldfish-battlefield-list']"
-        (cdkDropListDropped)="onCardDropped($event)"
+        [cdkDropListConnectedTo]="['goldfish-battlefield-list', 'goldfish-library-list', 'goldfish-graveyard-list', 'goldfish-exile-list']"
+        (cdkDropListDropped)="onZoneDropped($event, 'hand')"
       >
         @for (card of goldfish.hand(); track card.instanceId) {
           <div

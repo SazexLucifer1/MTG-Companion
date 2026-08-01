@@ -2,7 +2,7 @@ import { Component, inject } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { CdkDropList, CdkDrag, CdkDragDrop } from '@angular/cdk/drag-drop';
-import { GoldfishService, GoldfishCardInstance, GoldfishZone } from '../goldfish.service';
+import { GoldfishService, GoldfishCardInstance, GoldfishZone, isEphemeralSpell } from '../goldfish.service';
 import { I18nService } from '../i18n.service';
 
 @Component({
@@ -25,20 +25,30 @@ export class GoldfishTracker {
     return this.goldfish.cards().find((c) => c.instanceId === id) ?? null;
   }
 
-  /** Sinnvolle Zielzonen fürs Verschiebe-Menü - Kommandozone nur als Ziel, wenn die Karte tatsächlich ein Commander ist. */
+  /**
+   * Sinnvolle Zielzonen fürs Verschiebe-Menü - Kommandozone nur als Ziel, wenn die Karte tatsächlich
+   * ein Commander ist; "Spielfeld" wird bei Instant/Sorcery gar nicht erst angeboten, da das im
+   * Service ohnehin automatisch in den Friedhof umgeleitet würde (wäre als Button-Label irreführend).
+   */
   moveMenuTargets(): GoldfishZone[] {
     const card = this.moveMenuCard();
     if (!card) return [];
-    const zones: GoldfishZone[] = ['battlefield', 'hand', 'library', 'graveyard', 'exile'];
+    const zones: GoldfishZone[] = isEphemeralSpell(card.typeLine)
+      ? ['hand', 'library', 'graveyard', 'exile']
+      : ['battlefield', 'hand', 'library', 'graveyard', 'exile'];
     if (card.isCommander) zones.push('command');
     return zones.filter((z) => z !== card.zone);
   }
 
-  /** Ziel eines Drops ist immer das Spielfeld, egal auf welche der 3 (verbundenen) Ablage-Listen genau gezogen wurde - die tatsächliche Zeile ergibt sich automatisch aus der Type-Line. */
-  onCardDropped(event: CdkDragDrop<unknown>): void {
-    if (event.container.id !== 'goldfish-battlefield-list') return;
+  /**
+   * Generischer Drop-Handler für alle Ablageziele (Spielfeld/Bibliothek/Friedhof/Exil) - welche Zone
+   * gemeint ist, kommt direkt aus dem Template statt aus der Container-ID, damit jede neue Ablage-
+   * Liste nur eine zusätzliche Bindung braucht. Beim Spielfeld ergibt sich die tatsächliche Zeile
+   * (Kreatur/Rest/Land) automatisch aus der Type-Line, unabhängig davon, wo genau abgelegt wurde.
+   */
+  onZoneDropped(event: CdkDragDrop<unknown>, zone: GoldfishZone): void {
     const card = event.item.data as GoldfishCardInstance;
-    this.goldfish.moveCard(card.instanceId, 'battlefield');
+    this.goldfish.moveCard(card.instanceId, zone);
   }
 
   // --- Zonen-Liste (Bibliothek/Friedhof/Exil durchsuchen): Tap = direkt auf die Hand, Long-Press = volles Verschiebe-Menü ---

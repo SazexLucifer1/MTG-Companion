@@ -35,6 +35,12 @@ function restTypePriority(typeLine: string | null): number {
   return idx === -1 ? REST_TYPE_PRIORITY.length : idx;
 }
 
+/** Instants/Sorceries sind keine Permanents - "ins Spiel legen" bedeutet für sie: wirken und direkt in den Friedhof. */
+export function isEphemeralSpell(typeLine: string | null): boolean {
+  const t = typeLine ?? '';
+  return t.includes('Instant') || t.includes('Sorcery');
+}
+
 /**
  * Rein clientseitiger Solo-Deck-Simulator ("Goldfishing") - kein Bezug zu GameSessionService,
  * keine Supabase-Schreibaktionen, kein Einfluss auf Match-Historie/Statistiken. Zustand lebt nur
@@ -156,10 +162,17 @@ export class GoldfishService {
     });
   }
 
-  /** Generischer Zonenwechsel - keine Regel-Einschränkung, jede Karte darf in jede Zone. */
+  /**
+   * Generischer Zonenwechsel - keine Regel-Einschränkung, jede Karte darf in jede Zone, mit einer
+   * Ausnahme: Instant/Sorcery aufs Spielfeld gelegt heißt "gewirkt" und landet direkt im Friedhof.
+   */
   moveCard(instanceId: string, toZone: GoldfishZone): void {
     this.cards.update((all) =>
-      all.map((c) => (c.instanceId === instanceId ? { ...c, zone: toZone, tapped: false } : c))
+      all.map((c) => {
+        if (c.instanceId !== instanceId) return c;
+        const zone = toZone === 'battlefield' && isEphemeralSpell(c.typeLine) ? 'graveyard' : toZone;
+        return { ...c, zone, tapped: false };
+      })
     );
     this.closeMoveMenu();
   }

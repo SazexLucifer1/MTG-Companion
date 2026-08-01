@@ -14,17 +14,25 @@
   flex-shrink: 0;
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: calc(env(safe-area-inset-top, 0px) + 6px) calc(env(safe-area-inset-right, 0px) + 10px) 6px
-    calc(env(safe-area-inset-left, 0px) + 10px);
+  gap: 8px;
+  padding: calc(env(safe-area-inset-top, 0px) + 3px) calc(env(safe-area-inset-right, 0px) + 8px) 3px
+    calc(env(safe-area-inset-left, 0px) + 8px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+
+  // Überschreibt die globalen .glass-button-Maße (min-height 44px, großzügiges Padding) - im
+  // Kopfbereich zählt jeder Pixel, den das restliche Spielfeld sonst nicht bekommt.
+  .glass-button {
+    min-height: 0;
+    padding: 4px 10px;
+    font-size: 0.78rem;
+  }
 }
 
 .goldfish-header-name {
   flex: 1;
   min-width: 0;
   font-weight: 700;
-  font-size: 0.9rem;
+  font-size: 0.78rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -32,10 +40,10 @@
 
 .goldfish-mulligan-badge {
   flex-shrink: 0;
-  padding: 3px 10px;
+  padding: 2px 8px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.1);
-  font-size: 0.75rem;
+  font-size: 0.68rem;
   font-weight: 700;
 }
 
@@ -104,13 +112,16 @@
 
 /* --- Unten: Kommandozone | Hand | Aktionen --- */
 
+// Bewusst KEINE feste Höhe hier - die ergibt sich aus dem größten Kind (den 84px-Kartenkacheln
+// unten). Ein hartkodierter Wert hatte vorher nicht zu den echten Mindesthöhen der wiederverwendeten
+// .glass-chip-Buttons (global 40px) gepasst, wodurch der Aktionen-Block (3 Reihen) über den Rand
+// hinausragte und unten abgeschnitten wurde ("Restart schaut raus").
 .goldfish-bottom-strip {
   flex-shrink: 0;
   display: flex;
-  align-items: stretch;
+  align-items: center;
   gap: 8px;
-  height: 96px;
-  padding: 0 calc(env(safe-area-inset-right, 0px) + 8px) calc(env(safe-area-inset-bottom, 0px) + 8px)
+  padding: 4px calc(env(safe-area-inset-right, 0px) + 8px) calc(env(safe-area-inset-bottom, 0px) + 4px)
     calc(env(safe-area-inset-left, 0px) + 8px);
 }
 
@@ -126,6 +137,7 @@
   min-width: 0;
   display: flex;
   align-items: center;
+  justify-content: flex-start;
   gap: 6px;
   padding: 4px;
   overflow-x: auto;
@@ -135,26 +147,37 @@
   background: rgba(255, 255, 255, 0.03);
 }
 
+// Kommandozone/Hand-Kacheln bekommen hier eine feste Pixelhöhe statt height:100% - der Elternblock
+// (.goldfish-bottom-strip) hat jetzt bewusst keine eigene feste Höhe mehr, also gibt es kein "100%"
+// mehr, von dem sie sich ableiten könnten.
+.goldfish-command-col .deck-card-tile,
+.goldfish-hand .deck-card-tile {
+  height: 84px;
+  width: auto;
+  aspect-ratio: 63 / 88;
+  flex-shrink: 0;
+}
+
 .goldfish-actions {
   flex-shrink: 0;
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  grid-auto-rows: 1fr;
   gap: 4px;
-  width: 152px;
+  width: 128px;
 
+  // Überschreibt die globale .glass-chip-Mindesthöhe (40px) - sonst sprengen 3 Reihen jede
+  // vernünftige Höhe, die dieser kompakten Aktionen-Spalte zur Verfügung steht.
   .glass-chip {
-    font-size: 0.72rem;
-    padding: 4px 6px;
+    min-height: 0;
+    font-size: 0.66rem;
+    padding: 3px 5px;
     white-space: nowrap;
   }
 }
 
-/* --- Karten-Kacheln in den kompakten Zeilen (Spielfeld/Hand/Kommandozone) - höhengetrieben statt Grid-gesteuert --- */
+/* --- Spielfeld-Kacheln - höhengetrieben durch die jeweilige Zeile (die hat über goldfish-main eine echte Höhe) --- */
 
-.goldfish-bf-row .deck-card-tile,
-.goldfish-hand .deck-card-tile,
-.goldfish-command-col .deck-card-tile {
+.goldfish-bf-row .deck-card-tile {
   flex-shrink: 0;
   height: 100%;
   width: auto;
