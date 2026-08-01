@@ -187,23 +187,25 @@ export class GoldfishService {
     this.cards.update((all) => all.map((c) => (c.zone === 'battlefield' ? { ...c, tapped: false } : c)));
   }
 
-  /** Vereinfachtes, freies Mulligan: Hand zurück in die Bibliothek, mischen, gleiche Anzahl neu ziehen - kein Bottoming. */
-  mulligan(): void {
-    const handSize = this.hand().length;
-    this.cards.update((all) => all.map((c) => (c.zone === 'hand' ? { ...c, zone: 'library' as const, tapped: false } : c)));
-    this.shuffleLibrary();
-    this.mulliganCount.update((n) => n + 1);
-    this.draw(handSize);
-  }
-
-  /** Alles außer der Kommandozone zurück in die Bibliothek, neue Starthand - bewusst ohne Bestätigungsdialog (Kernloop des Features). */
-  restart(): void {
+  /** Alles außer der Kommandozone (Hand, Spielfeld, Friedhof, Exil) zurück in die Bibliothek, mischen, neue Starthand von 7. */
+  private resetBoardAndDrawOpeningHand(): void {
     this.cards.update((all) =>
       all.map((c) => (c.zone === 'command' ? c : { ...c, zone: 'library' as const, tapped: false }))
     );
     this.shuffleLibrary();
-    this.mulliganCount.set(0);
     this.draw(OPENING_HAND_SIZE);
+  }
+
+  /** Entspricht exakt restart() - einziger Unterschied ist der hochgezählte Mulligan-Zähler statt eines Resets auf 0. */
+  mulligan(): void {
+    this.resetBoardAndDrawOpeningHand();
+    this.mulliganCount.update((n) => n + 1);
+  }
+
+  /** Bewusst ohne Bestätigungsdialog (Kernloop des Features). */
+  restart(): void {
+    this.resetBoardAndDrawOpeningHand();
+    this.mulliganCount.set(0);
   }
 
   openMoveMenu(instanceId: string): void {

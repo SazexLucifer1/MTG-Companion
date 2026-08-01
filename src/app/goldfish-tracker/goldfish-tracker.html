@@ -139,15 +139,7 @@
       <div class="goldfish-zone-detail-body">
         <div class="deck-visual-grid">
           @for (card of goldfish.zoneListCards(); track card.instanceId) {
-            <div
-              class="deck-card-tile"
-              (pointerdown)="startZoneListPress(card.instanceId)"
-              (pointerup)="endZoneListPress(card.instanceId)"
-              (pointerleave)="cancelZoneListPress()"
-              (pointercancel)="cancelZoneListPress()"
-            >
-              <ng-container *ngTemplateOutlet="cardFace; context: { card: card }" />
-            </div>
+            <ng-container *ngTemplateOutlet="plainTile; context: { card: card }" />
           } @empty {
             <p class="hint">{{ i18n.t('goldfish.emptyZone') }}</p>
           }

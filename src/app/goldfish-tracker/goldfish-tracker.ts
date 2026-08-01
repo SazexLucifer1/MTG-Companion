@@ -51,34 +51,6 @@ export class GoldfishTracker {
     this.goldfish.moveCard(card.instanceId, zone);
   }
 
-  // --- Zonen-Liste (Bibliothek/Friedhof/Exil durchsuchen): Tap = direkt auf die Hand, Long-Press = volles Verschiebe-Menü ---
-
-  private zoneListPressTimer: ReturnType<typeof setTimeout> | null = null;
-  private zoneListLongPressFired = false;
-
-  startZoneListPress(instanceId: string): void {
-    this.cancelZoneListPress();
-    this.zoneListLongPressFired = false;
-    this.zoneListPressTimer = setTimeout(() => {
-      this.zoneListLongPressFired = true;
-      this.goldfish.openMoveMenu(instanceId);
-      this.zoneListPressTimer = null;
-    }, 550);
-  }
-
-  endZoneListPress(instanceId: string): void {
-    const longPressFired = this.zoneListLongPressFired;
-    this.cancelZoneListPress();
-    if (!longPressFired) this.goldfish.moveCard(instanceId, 'hand');
-  }
-
-  cancelZoneListPress(): void {
-    if (this.zoneListPressTimer) {
-      clearTimeout(this.zoneListPressTimer);
-      this.zoneListPressTimer = null;
-    }
-  }
-
   // --- Spielfeld: Tap = tappen/enttappen, Long-Press = Verschiebe-Menü (Muster wie startPinLongPress in ingame-tracker.ts) ---
 
   private battlefieldPressTimer: ReturnType<typeof setTimeout> | null = null;
@@ -150,6 +122,5 @@ export class GoldfishTracker {
   ngOnDestroy(): void {
     this.stopAllHolds();
     this.cancelBattlefieldPress();
-    this.cancelZoneListPress();
   }
 }

@@ -74,6 +74,10 @@
   padding: 4px;
   overflow-x: auto;
   overflow-y: hidden;
+  // Nur horizontales Wischen soll der Browser selbst als Scrollen behandeln - sonst nimmt er sich
+  // ein vertikales Ziehen (Karte in eine andere Zeile) manchmal als Seiten-Scroll, bevor Angular
+  // CDK die Geste als Drag erkennen kann.
+  touch-action: pan-x;
   border-radius: 10px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(255, 255, 255, 0.03);
@@ -142,6 +146,7 @@
   padding: 4px;
   overflow-x: auto;
   overflow-y: hidden;
+  touch-action: pan-x;
   border-radius: 10px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(255, 255, 255, 0.03);
@@ -198,7 +203,10 @@
 
 .goldfish-hand-tile {
   cursor: grab;
-  touch-action: manipulation;
+  // "none" statt "manipulation": Angular CDK muss die Zieh-Geste komplett selbst auswerten -
+  // erlaubt der Browser hier noch eigenes Scrollen, gewinnt auf dem Handy oft der native Scroll
+  // und die Karte lässt sich nicht sauber aus der Hand ziehen.
+  touch-action: none;
   -webkit-touch-callout: none;
   user-select: none;
 
