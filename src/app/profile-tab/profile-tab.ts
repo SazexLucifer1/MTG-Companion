@@ -36,6 +36,11 @@ export class ProfileTab {
 
   readonly deckListRef = viewChild<DeckList>('deckListRef');
 
+  /** Ob beim Ansehen eines FREMDEN Profils die Statistiken (Deck-Winrates, Platzierungsverteilung, Commander ohne Deck) wegen einer aktiven Gruppen-Sperre ausgeblendet werden müssen - der Host ist davon ausgenommen. */
+  readonly othersStatsHidden = computed(
+    () => !!this.profileService.viewingUserId() && this.groupService.statsLocked() && !this.groupService.isOwner()
+  );
+
   /** Findet den Spielernamen (mtg.playerUserIds ist name-indiziert) zu einer Account-User-ID, oder null ohne Zuordnung. */
   private playerNameForUserId(userId: string | null): string | null {
     if (!userId) return null;

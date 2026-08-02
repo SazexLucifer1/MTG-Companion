@@ -15,9 +15,11 @@
     (ngModelChange)="setSearchQuery($event)"
   />
   <div class="chip-row sort-toggle">
-    <button class="glass-chip small" [class.active]="sortMode() === 'alpha'" (click)="setSortMode('alpha')">{{ i18n.t('deck.sortAlpha') }}</button>
-    <button class="glass-chip small" [class.active]="sortMode() === 'winRate'" (click)="setSortMode('winRate')">{{ i18n.t('sort.winRate') }}</button>
-    <button class="glass-chip small" [class.active]="sortMode() === 'games'" (click)="setSortMode('games')">{{ i18n.t('profile.sortMostPlayed') }}</button>
+    <button class="glass-chip small" [class.active]="sortMode() === 'alpha' || hideStats()" (click)="setSortMode('alpha')">{{ i18n.t('deck.sortAlpha') }}</button>
+    @if (!hideStats()) {
+      <button class="glass-chip small" [class.active]="sortMode() === 'winRate'" (click)="setSortMode('winRate')">{{ i18n.t('sort.winRate') }}</button>
+      <button class="glass-chip small" [class.active]="sortMode() === 'games'" (click)="setSortMode('games')">{{ i18n.t('profile.sortMostPlayed') }}</button>
+    }
     <button class="glass-chip small" [class.active]="showOutdated()" (click)="toggleShowOutdated()">{{ i18n.t('deck.showOutdated') }}</button>
   </div>
 }
@@ -52,10 +54,12 @@
             @if (deck.isOutdated) {<span [title]="i18n.t('deck.outdatedBadge')">🗄️</span>}
             {{ deck.name }}
           </span>
-          @if (deck.games > 0) {
-            <span class="hint">{{ deck.wins }} / {{ deck.games }} {{ i18n.t('stats.wins') }} · {{ deck.winRate | number: '1.0-0' }}%</span>
-          } @else {
-            <span class="hint">{{ i18n.t('deck.notPlayedYet') }}</span>
+          @if (!hideStats()) {
+            @if (deck.games > 0) {
+              <span class="hint">{{ deck.wins }} / {{ deck.games }} {{ i18n.t('stats.wins') }} · {{ deck.winRate | number: '1.0-0' }}%</span>
+            } @else {
+              <span class="hint">{{ i18n.t('deck.notPlayedYet') }}</span>
+            }
           }
           <div class="deck-actions">
             <button class="glass-button small" (click)="openDeckDetail(deck)">{{ i18n.t('deck.view') }}</button>

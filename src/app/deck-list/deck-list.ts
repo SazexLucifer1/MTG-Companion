@@ -37,6 +37,8 @@ export class DeckList {
   readonly userId = input.required<string>();
   /** Wenn true, sind Import/Bearbeiten/Löschen ausgeblendet - reine Ansicht fremder Decks. */
   readonly readonlyMode = input(false);
+  /** Wenn true, werden Winrate/Spiele-Hinweis und die entsprechenden Sortier-Chips ausgeblendet (z.B. während einer aktiven Gruppen-Stats-Sperre). */
+  readonly hideStats = input(false);
 
   private readonly deckService = inject(DeckService);
   readonly viewer = inject(DeckViewerService);
@@ -183,7 +185,9 @@ export class DeckList {
       list = list.filter((d) => d.name.toLowerCase().includes(query));
     }
 
-    const mode = this.sortMode();
+    // Bei ausgeblendeten Stats zählt nur noch alphabetisch - sonst würde die reine Sortier-Reihenfolge
+    // schon verraten, welches Deck besser abschneidet, auch ohne die Zahlen selbst anzuzeigen.
+    const mode = this.hideStats() ? 'alpha' : this.sortMode();
     list = [...list];
     if (mode === 'alpha') {
       list.sort((a, b) => a.name.localeCompare(b.name));

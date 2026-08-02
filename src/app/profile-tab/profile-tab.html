@@ -27,11 +27,17 @@
   @if (profileService.viewingUserId(); as userId) {
     <section class="glass-card">
       <h2>{{ i18n.t('profile.decks') }}</h2>
-      <app-deck-list [userId]="userId" [readonlyMode]="true" />
+      <app-deck-list [userId]="userId" [readonlyMode]="true" [hideStats]="othersStatsHidden()" />
     </section>
   }
 
-  @if (viewingUnassignedCommanderStats().length > 0) {
+  @if (othersStatsHidden()) {
+    <section class="glass-card">
+      <p class="hint">{{ i18n.t('profile.statsLockedHint') }}</p>
+    </section>
+  }
+
+  @if (!othersStatsHidden() && viewingUnassignedCommanderStats().length > 0) {
     <section class="glass-card">
       <h2>{{ i18n.t('profile.commanderStats') }}</h2>
       <p class="hint">
@@ -79,7 +85,7 @@
     </section>
   }
 
-  @if (placementDistribution().length > 0) {
+  @if (!othersStatsHidden() && placementDistribution().length > 0) {
     <section class="glass-card">
       <h2>{{ i18n.t('profile.placementDistribution') }}</h2>
       <p class="hint">{{ i18n.t('profile.placementDistributionHint') }}</p>

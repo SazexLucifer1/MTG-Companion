@@ -353,6 +353,7 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
 
     'profile.placementDistribution': '🏁 Platzierungen',
     'profile.placementDistributionHint': 'Wie oft welcher Platz erreicht wurde - nur Matches mit eingetragener Platzierung zählen mit.',
+    'profile.statsLockedHint': '🔒 Die Statistiken sind gerade von der veranstaltenden Person gesperrt.',
     'profile.myDecks': 'Meine Decks',
     'profile.autoRepairAria': 'Commander automatisch überprüfen und mit Decks verlinken',
     'profile.manualLinkAria': 'Manuell verlinken/entlinken',
@@ -1418,6 +1419,7 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
 
     'profile.placementDistribution': '🏁 Placements',
     'profile.placementDistributionHint': 'How often each place was reached - only matches with a recorded placement count.',
+    'profile.statsLockedHint': '🔒 Stats are currently locked by the organizer.',
     'profile.myDecks': 'My Decks',
     'profile.autoRepairAria': 'Automatically check commanders and link them to decks',
     'profile.manualLinkAria': 'Link/unlink manually',
