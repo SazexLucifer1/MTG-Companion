@@ -106,7 +106,11 @@ export class ProfileTab {
     });
 
     effect(() => {
-      const names = this.profileService.profile()?.favoriteCommanders ?? [];
+      // Lädt Bilder sowohl für die eigenen als auch für die eines gerade angesehenen fremden Profils -
+      // die Karte ist nach Namen (nicht nach Nutzer) geschlüsselt, ein gemeinsamer Cache reicht also.
+      const ownNames = this.profileService.profile()?.favoriteCommanders ?? [];
+      const viewedNames = this.profileService.viewingProfile()?.favoriteCommanders ?? [];
+      const names = [...new Set([...ownNames, ...viewedNames])];
       if (names.length === 0) {
         this.favoriteCommanderImages.set({});
         return;

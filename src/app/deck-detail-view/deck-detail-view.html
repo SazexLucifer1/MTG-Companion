@@ -60,7 +60,9 @@
         <p class="hint">{{ viewer.i18n.t('deckView.cardsCount', { count: viewer.viewingTotalCards() }) }}</p>
       }
 
-      @if (viewer.viewingDeckGameStats(); as gameStats) {
+      @if (viewer.hideViewingDeckStats()) {
+        <p class="hint">{{ viewer.i18n.t('profile.statsLockedHint') }}</p>
+      } @else if (viewer.viewingDeckGameStats(); as gameStats) {
         <div class="deck-game-stats">
           <div class="stat-tiles">
             <div class="stat-tile">

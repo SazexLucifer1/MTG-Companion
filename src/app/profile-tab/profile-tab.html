@@ -18,6 +18,23 @@
         </div>
         <button class="glass-button small" (click)="profileService.stopViewingProfile()">{{ i18n.t('profile.backToMyProfile') }}</button>
       </div>
+
+      @if (viewed.favoriteCommanders.length > 0) {
+        <div class="favorite-commanders-col" data-tutorial="profile-favorites">
+          <h3>{{ i18n.t('profile.favoriteCommanders') }}</h3>
+          <div class="favorite-commanders-row">
+            @for (name of viewed.favoriteCommanders; track name) {
+              <div class="favorite-commander-card" [attr.aria-label]="name">
+                @if (favoriteCommanderImages()[name]; as img) {
+                  <img [src]="img" [alt]="name" />
+                } @else {
+                  <span class="favorite-commander-placeholder">{{ name }}</span>
+                }
+              </div>
+            }
+          </div>
+        </div>
+      }
     } @else {
       <p class="hint">{{ i18n.t('profile.couldNotLoad') }}</p>
       <button class="glass-button small" (click)="profileService.stopViewingProfile()">{{ i18n.t('profile.backToMyProfile') }}</button>

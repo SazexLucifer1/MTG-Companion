@@ -9,6 +9,7 @@ import {
 } from './commander-spellbook.service';
 import { EdhrecService, EdhrecCardlist, EdhrecTag } from './edhrec.service';
 import { AuthService } from './auth.service';
+import { GroupService } from './group.service';
 import { I18nService } from './i18n.service';
 
 export interface ManaCurveBucket {
@@ -50,6 +51,7 @@ export class DeckViewerService {
   private readonly commanderSpellbook = inject(CommanderSpellbookService);
   private readonly edhrec = inject(EdhrecService);
   private readonly auth = inject(AuthService);
+  private readonly groupService = inject(GroupService);
   readonly i18n = inject(I18nService);
 
   readonly viewingDeck = signal<Deck | null>(null);
@@ -65,6 +67,12 @@ export class DeckViewerService {
     const deck = this.viewingDeck();
     const uid = this.auth.currentUser()?.id;
     return !!deck && !!uid && deck.userId === uid;
+  });
+
+  /** Ob die Spiel-Statistiken (Gespielt/Siege/Winrate) des gerade angesehenen Decks wegen einer aktiven Gruppen-Sperre ausgeblendet werden müssen - eigene Decks und der Host sind ausgenommen. */
+  readonly hideViewingDeckStats = computed(() => {
+    if (this.canEditViewingDeck()) return false;
+    return this.groupService.statsLocked() && !this.groupService.isOwner();
   });
   readonly viewingDeckCards = signal<DeckCard[]>([]);
   readonly viewingChangeLog = signal<DeckChangeEntry[]>([]);
