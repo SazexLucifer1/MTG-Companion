@@ -5,6 +5,7 @@ import { GroupService } from './group.service';
 import { MtgService } from './mtg.service';
 import { GameSessionService, SelectedDraftSet } from './game-session.service';
 import { GameMode } from './models';
+import { chunk } from './array-utils';
 import {
   ParticipantStatus,
   RoundCountMode,
@@ -858,6 +859,106 @@ export class TournamentService {
     this.closePanel();
     await this.loadForGroup(tournament.groupId);
     return true;
+  }
+
+  /**
+   * Löscht unwiderruflich ALLE Turniere der Gruppe samt aller ihrer Einzelspiele - anders als
+   * cancelTournament() (ein Turnier, Einzelspiele bleiben als normale Matches erhalten) werden
+   * hier auch die matches-Zeilen selbst gelöscht, verschwinden also komplett aus der Statistik.
+   * Für die Aufräum-Aktion nach einem Event (Stats-Tab, Danger Zone, host-only). Löscht bewusst
+   * Tabelle für Tabelle in Abhängigkeitsreihenfolge statt sich auf DB-Cascades zu verlassen.
+   */
+  async deleteAllTournamentsForGroup(groupId: string): Promise<{ success: boolean; error?: string }> {
+    const { data: tournamentRows, error: tournamentsError } = await supabase
+      .from('tournaments')
+      .select('id')
+      .eq('group_id', groupId);
+
+    if (tournamentsError) {
+      console.error('Konnte Turniere nicht laden:', tournamentsError);
+      return { success: false, error: tournamentsError.message };
+    }
+
+    const tournamentIds = (tournamentRows ?? []).map((t) => t.id);
+    if (tournamentIds.length === 0) {
+      this.clear();
+      return { success: true };
+    }
+
+    const { data: tableRows, error: tablesError } = await supabase
+      .from('tournament_matches')
+      .select('id')
+      .in('tournament_id', tournamentIds);
+
+    if (tablesError) {
+      console.error('Konnte Turnier-Tische nicht laden:', tablesError);
+      return { success: false, error: tablesError.message };
+    }
+
+    const tournamentMatchIds = (tableRows ?? []).map((t) => t.id);
+
+    // Einzelspiele (auch aus der allgemeinen Statistik) zuerst löschen - danach die Turnier-Ebene selbst.
+    const matchesDeleted = await this.mtg.deleteMatchesForTournamentMatchIds(tournamentMatchIds);
+    if (!matchesDeleted) {
+      return { success: false, error: 'Konnte die Einzelspiele der Turniere nicht löschen.' };
+    }
+
+    for (const batch of chunk(tournamentMatchIds, 150)) {
+      const { error: sessionsError } = await supabase
+        .from('live_game_sessions')
+        .delete()
+        .in('tournament_match_id', batch);
+      if (sessionsError) console.error('Konnte laufende Sessions nicht löschen:', sessionsError);
+
+      const { error: tmpError } = await supabase
+        .from('tournament_match_players')
+        .delete()
+        .in('tournament_match_id', batch);
+      if (tmpError) {
+        console.error('Konnte Tisch-Teilnehmer nicht löschen:', tmpError);
+        return { success: false, error: tmpError.message };
+      }
+    }
+
+    const { error: matchesTableError } = await supabase
+      .from('tournament_matches')
+      .delete()
+      .in('tournament_id', tournamentIds);
+    if (matchesTableError) {
+      console.error('Konnte Turnier-Tische nicht löschen:', matchesTableError);
+      return { success: false, error: matchesTableError.message };
+    }
+
+    const { error: roundsError } = await supabase
+      .from('tournament_rounds')
+      .delete()
+      .in('tournament_id', tournamentIds);
+    if (roundsError) {
+      console.error('Konnte Turnier-Runden nicht löschen:', roundsError);
+      return { success: false, error: roundsError.message };
+    }
+
+    const { error: participantsError } = await supabase
+      .from('tournament_participants')
+      .delete()
+      .in('tournament_id', tournamentIds);
+    if (participantsError) {
+      console.error('Konnte Turnier-Teilnehmer nicht löschen:', participantsError);
+      return { success: false, error: participantsError.message };
+    }
+
+    const { error: tournamentsDeleteError } = await supabase
+      .from('tournaments')
+      .delete()
+      .in('id', tournamentIds);
+    if (tournamentsDeleteError) {
+      console.error('Konnte Turniere nicht löschen:', tournamentsDeleteError);
+      return { success: false, error: tournamentsDeleteError.message };
+    }
+
+    this.clear();
+    await this.loadForGroup(groupId);
+    return { success: true };
   }
 
   private shuffle<T>(items: T[]): T[] {

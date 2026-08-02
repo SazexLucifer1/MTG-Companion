@@ -817,6 +817,43 @@ export class MtgService {
     return true;
   }
 
+  /** Wie deleteMatchesForTournamentTable(), aber für mehrere Tische auf einmal - für den "Alle Turniere löschen"-Knopf im Stats-Tab (TournamentService.deleteAllTournamentsForGroup). */
+  async deleteMatchesForTournamentMatchIds(tournamentMatchIds: string[]): Promise<boolean> {
+    if (tournamentMatchIds.length === 0) return true;
+
+    const { data: rows, error: fetchError } = await supabase
+      .from('matches')
+      .select('id')
+      .in('tournament_match_id', tournamentMatchIds);
+
+    if (fetchError) {
+      console.error('Konnte Turnier-Spiele nicht laden:', fetchError);
+      return false;
+    }
+
+    const ids = (rows ?? []).map((r) => r.id);
+    if (ids.length === 0) return true;
+
+    for (const batch of chunk(ids, 150)) {
+      const { error: playersError } = await supabase.from('match_players').delete().in('match_id', batch);
+      if (playersError) {
+        console.error('Konnte Turnier-Spiel-Spieler nicht löschen:', playersError);
+        return false;
+      }
+    }
+
+    for (const batch of chunk(ids, 150)) {
+      const { error: matchError } = await supabase.from('matches').delete().in('id', batch);
+      if (matchError) {
+        console.error('Konnte Turnier-Spiele nicht löschen:', matchError);
+        return false;
+      }
+    }
+
+    this.history.update((matches) => matches.filter((m) => !ids.includes(m.id)));
+    return true;
+  }
+
   /** Ändert nachträglich den Gewinner eines gespeicherten Matches (z.B. bei Vertippern). */
   async updateMatchWinner(id: string, winner: string): Promise<void> {
     const groupId = this.groupService.groupId();

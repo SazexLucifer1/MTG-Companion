@@ -636,7 +636,43 @@
   <button class="glass-button danger" (click)="openResetConfirm()">
     {{ i18n.t('stats.resetAll') }}
   </button>
+  <button class="glass-button danger" (click)="openDeleteTournamentsConfirm()">
+    {{ i18n.t('stats.deleteAllTournaments') }}
+  </button>
 </section>
+}
+
+@if (showDeleteTournamentsConfirm()) {
+<div class="options-menu-overlay" (click)="closeDeleteTournamentsConfirm()">
+  <div class="options-menu-sheet" (click)="$event.stopPropagation()">
+    <h3>{{ i18n.t('stats.reallyDeleteAllTournaments') }}</h3>
+    <p class="hint">
+      {{ i18n.t('stats.deleteAllTournamentsHint') }}
+    </p>
+    <p class="hint">
+      {{ i18n.t('stats.deleteConfirmHintPrefix') }} <strong>{{ i18n.t('stats.deleteConfirmWord') }}</strong>
+      {{ i18n.t('stats.deleteConfirmHintSuffix') }}
+    </p>
+    <input
+      class="glass-input"
+      type="text"
+      [placeholder]="i18n.t('stats.deleteConfirmWord')"
+      [value]="deleteTournamentsConfirmText()"
+      (input)="updateDeleteTournamentsConfirmText($any($event.target).value)"
+    />
+    @if (deleteTournamentsError()) {
+      <p class="error">{{ i18n.t('stats.error', { message: deleteTournamentsError() }) }}</p>
+    }
+    <button
+      class="glass-button danger"
+      [disabled]="!canConfirmDeleteTournaments() || deleteTournamentsBusy()"
+      (click)="confirmDeleteTournaments()"
+    >
+      {{ deleteTournamentsBusy() ? i18n.t('stats.deleting') : i18n.t('stats.deleteForever') }}
+    </button>
+    <button class="glass-button" (click)="closeDeleteTournamentsConfirm()">{{ i18n.t('stats.cancel') }}</button>
+  </div>
+</div>
 }
 
 @if (showResetConfirm()) {

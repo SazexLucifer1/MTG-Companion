@@ -23,6 +23,7 @@ import {
 } from '../models';
 import { I18nService } from '../i18n.service';
 import { TournamentHistory } from '../tournament-history/tournament-history';
+import { TournamentService } from '../tournament.service';
 
 export type RankSortMode = 'wins' | 'winRate' | 'games';
 export type StatsViewMode = 'stats' | 'tournaments';
@@ -58,6 +59,7 @@ interface ImportMappingRow {
 export class StatsTab {
   readonly mtg = inject(MtgService);
   readonly groupService = inject(GroupService);
+  private readonly tournament = inject(TournamentService);
   private readonly excelImport = inject(ExcelImportService);
   private readonly scryfall = inject(ScryfallService);
   private readonly deckService = inject(DeckService);
@@ -1083,5 +1085,53 @@ export class StatsTab {
     this.selectedCommanderDetail.set(null);
     this.selectedDeckDetail.set(null);
     this.importMessage.set('');
+  }
+
+  // --- Alle Turniere löschen (Danger Zone) - anders als der Hard-Reset bleiben Spieler/Decks/
+  // normale Matches erhalten, nur Turniere + deren Einzelspiele verschwinden. ---
+
+  readonly showDeleteTournamentsConfirm = signal(false);
+  readonly deleteTournamentsConfirmText = signal('');
+  readonly deleteTournamentsBusy = signal(false);
+  readonly deleteTournamentsError = signal('');
+
+  openDeleteTournamentsConfirm(): void {
+    this.showDeleteTournamentsConfirm.set(true);
+    this.deleteTournamentsConfirmText.set('');
+    this.deleteTournamentsError.set('');
+  }
+
+  closeDeleteTournamentsConfirm(): void {
+    this.showDeleteTournamentsConfirm.set(false);
+    this.deleteTournamentsConfirmText.set('');
+    this.deleteTournamentsError.set('');
+  }
+
+  updateDeleteTournamentsConfirmText(value: string): void {
+    this.deleteTournamentsConfirmText.set(value);
+  }
+
+  readonly canConfirmDeleteTournaments = computed(
+    () => this.deleteTournamentsConfirmText().trim().toUpperCase() === this.i18n.t('stats.deleteConfirmWord')
+  );
+
+  async confirmDeleteTournaments(): Promise<void> {
+    if (!this.canConfirmDeleteTournaments()) return;
+    const groupId = this.groupService.groupId();
+    if (!groupId) return;
+
+    this.deleteTournamentsBusy.set(true);
+    this.deleteTournamentsError.set('');
+
+    const result = await this.tournament.deleteAllTournamentsForGroup(groupId);
+
+    this.deleteTournamentsBusy.set(false);
+
+    if (!result.success) {
+      this.deleteTournamentsError.set(result.error ?? this.i18n.t('stats.msg.unknownDeleteError'));
+      return;
+    }
+
+    this.closeDeleteTournamentsConfirm();
   }
 }
