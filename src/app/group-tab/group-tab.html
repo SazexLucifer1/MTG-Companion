@@ -47,6 +47,9 @@
               @if (group.role === 'owner') {
                 <button class="glass-button small" (click)="openVisibilityDialog(group.id)">{{ i18n.t('group.visibility') }}</button>
                 <button class="glass-button small" (click)="openQualificationDialog(group.id)">{{ i18n.t('group.qualification') }}</button>
+                <button class="glass-button small" [class.active]="group.statsLocked" (click)="toggleStatsLock(group.id, group.statsLocked)">
+                  {{ group.statsLocked ? i18n.t('group.unlockStats') : i18n.t('group.lockStats') }}
+                </button>
                 <button class="icon-button" (click)="startRenameGroup(group.id, group.name)" [attr.aria-label]="i18n.t('group.renameGroupAria')">✏️</button>
                 <button class="icon-button" (click)="openDeleteGroupConfirm(group.id, group.name)" [attr.aria-label]="i18n.t('group.deleteGroupAria')">🗑</button>
               } @else {

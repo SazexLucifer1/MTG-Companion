@@ -113,6 +113,13 @@
   <app-tournament-history />
 } @else {
 
+@if (groupService.statsLocked() && !groupService.isOwner()) {
+<section class="glass-card">
+  <h2>{{ i18n.t('stats.title') }}</h2>
+  <p class="hint">{{ i18n.t('stats.lockedHint') }}</p>
+</section>
+} @else {
+
 @if (mtg.history().length === 0) {
 <section class="glass-card">
   <h2>{{ i18n.t('stats.title') }}</h2>
@@ -617,6 +624,7 @@
 </section>
 } }
 } } }
+}
 <!-- NEU: ganz am Ende der Datei anfügen -->
 
 @if (groupService.isOwner()) {

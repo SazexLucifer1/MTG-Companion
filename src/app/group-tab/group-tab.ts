@@ -496,6 +496,11 @@ export class GroupTab {
     this.mtg.allPlayers().filter((name) => this.isPlayerLinked(name)),
   );
 
+  /** Sperrt/entsperrt den Stats-Tab der Gruppe für alle außer dem Host (z.B. für eine Jahresend-Enthüllung). */
+  async toggleStatsLock(groupId: string, currentlyLocked: boolean): Promise<void> {
+    await this.groupService.setStatsLocked(groupId, !currentlyLocked);
+  }
+
   openVisibilityDialog(groupId: string): void {
     // Sichtbarkeit hängt an den Daten der AKTIVEN Gruppe (mtg.allPlayers()/statVisibility) -
     // falls der Button in einer anderen als der gerade aktiven Gruppe geklickt wird, erst

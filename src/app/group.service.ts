@@ -7,6 +7,8 @@ export interface MyGroup {
   id: string;
   name: string;
   role: string;
+  /** Nur der Host sieht bei aktiver Sperre den Stats-Tab noch normal - für alle anderen zeigt er stattdessen einen Hinweis (siehe stats-tab.html). Für z.B. eine Jahresend-Enthüllung gedacht. */
+  statsLocked: boolean;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -21,6 +23,11 @@ export class GroupService {
   /** Ob der eingeloggte User in der aktuell aktiven Gruppe die Host-Rolle ("owner") hat. */
   readonly isOwner = computed(
     () => this.myGroups().find((g) => g.id === this.groupId())?.role === 'owner'
+  );
+
+  /** Ob der Stats-Tab der aktuell aktiven Gruppe für alle außer dem Host gesperrt ist. */
+  readonly statsLocked = computed(
+    () => this.myGroups().find((g) => g.id === this.groupId())?.statsLocked ?? false
   );
 
   constructor() {
@@ -41,7 +48,7 @@ export class GroupService {
 
     const { data, error } = await supabase
       .from('group_members')
-      .select('role, groups ( id, name )')
+      .select('role, groups ( id, name, stats_locked )')
       .eq('user_id', userId);
 
     if (error) {
@@ -57,6 +64,7 @@ export class GroupService {
         id: row.groups.id,
         name: row.groups.name,
         role: row.role,
+        statsLocked: row.groups.stats_locked ?? false,
       }));
 
     this.myGroups.set(groups);
@@ -331,6 +339,17 @@ export class GroupService {
       role: row.role,
       avatarUrl: row.profiles?.avatar_url ?? null,
     }));
+  }
+
+  /** Sperrt/entsperrt den Stats-Tab für alle außer dem Host - z.B. für eine Jahresend-Enthüllung. */
+  async setStatsLocked(groupId: string, locked: boolean): Promise<boolean> {
+    const { error } = await supabase.from('groups').update({ stats_locked: locked }).eq('id', groupId);
+    if (error) {
+      console.error('Konnte Stats-Sperre nicht ändern:', error);
+      return false;
+    }
+    this.myGroups.update((groups) => groups.map((g) => (g.id === groupId ? { ...g, statsLocked: locked } : g)));
+    return true;
   }
 
   async renameGroup(groupId: string, name: string): Promise<boolean> {
