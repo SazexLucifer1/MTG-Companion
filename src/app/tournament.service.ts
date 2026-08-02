@@ -881,39 +881,10 @@ export class TournamentService {
   }
 
   /**
-   * Löscht unwiderruflich ALLE Turniere der Gruppe samt aller ihrer Einzelspiele - für die
-   * Aufräum-Aktion nach einem Event (Stats-Tab, Danger Zone, host-only).
-   */
-  async deleteAllTournamentsForGroup(groupId: string): Promise<{ success: boolean; error?: string }> {
-    const { data: tournamentRows, error: tournamentsError } = await supabase
-      .from('tournaments')
-      .select('id')
-      .eq('group_id', groupId);
-
-    if (tournamentsError) {
-      console.error('Konnte Turniere nicht laden:', tournamentsError);
-      return { success: false, error: tournamentsError.message };
-    }
-
-    const tournamentIds = (tournamentRows ?? []).map((t) => t.id);
-    if (tournamentIds.length === 0) {
-      this.clear();
-      return { success: true };
-    }
-
-    const result = await this.deleteTournamentRows(tournamentIds);
-    if (!result.success) return result;
-
-    this.clear();
-    await this.loadForGroup(groupId);
-    return { success: true };
-  }
-
-  /**
    * Löscht Tabelle für Tabelle in Abhängigkeitsreihenfolge (statt sich auf DB-Cascades zu
-   * verlassen) für die übergebenen Turnier-IDs - gemeinsamer Kern von deleteTournament() und
-   * deleteAllTournamentsForGroup(). Löscht bewusst auch die matches-Zeilen selbst (anders als
-   * cancelTournament(), das sie nur entkoppelt), sie verschwinden also aus der Statistik.
+   * verlassen) für die übergebenen Turnier-IDs - genutzt von deleteTournament(). Löscht bewusst
+   * auch die matches-Zeilen selbst (anders als cancelTournament(), das sie nur entkoppelt), sie
+   * verschwinden also aus der Statistik.
    */
   private async deleteTournamentRows(tournamentIds: string[]): Promise<{ success: boolean; error?: string }> {
     if (tournamentIds.length === 0) return { success: true };
