@@ -229,6 +229,64 @@
         }
       </div>
 
+      @if (selectedGameMode() === 'Cube') {
+        <h4>{{ i18n.t('match.chooseCube') }}</h4>
+        @if (mtg.cubes().length === 0) {
+          <p class="hint">{{ i18n.t('match.noCubesYet') }}</p>
+        } @else {
+          <div>
+            <select class="glass-input" [ngModel]="wizardCubeId()" (ngModelChange)="wizardCubeId.set($event)">
+              <option [ngValue]="null">{{ i18n.t('match.chooseCubePlaceholder') }}</option>
+              @for (c of mtg.cubes(); track c.id) {
+                <option [value]="c.id">{{ c.name }}</option>
+              }
+            </select>
+          </div>
+          <ul class="player-list">
+            @for (c of mtg.cubes(); track c.id) {
+              <li>
+                <span class="player-name">{{ c.name }}</span>
+                @if (c.isCommander) {
+                  <span class="hint">{{ i18n.t('match.commander') }}</span>
+                }
+                <button class="icon-button" (click)="deleteCube(c.id, c.name)" [attr.aria-label]="i18n.t('match.deleteCube')">🗑</button>
+              </li>
+            }
+          </ul>
+        }
+        <h5>{{ i18n.t('match.addNewCube') }}</h5>
+        <div class="cube-form">
+          <input class="glass-input" type="text" [placeholder]="i18n.t('match.cubeNamePlaceholder')" [ngModel]="newCubeName()" (ngModelChange)="newCubeName.set($event)" />
+          <label class="checkbox-inline">
+            <input type="checkbox" [ngModel]="newCubeIsCommander()" (ngModelChange)="newCubeIsCommander.set($event)" /> {{ i18n.t('match.commanderCube') }}
+          </label>
+          <button class="glass-button" (click)="addNewCube()">{{ i18n.t('match.addCube') }}</button>
+        </div>
+      }
+
+      @if (selectedGameMode() === 'Draft') {
+        <h4>{{ i18n.t('match.chooseDraftSet') }}</h4>
+        <div class="draft-search">
+          <input class="glass-input" type="text" [placeholder]="i18n.t('match.searchSetPlaceholder')" [ngModel]="draftSearchQuery()" (ngModelChange)="onDraftSearchInput($event)" />
+          <input class="glass-input small" type="number" [placeholder]="i18n.t('match.yearPlaceholder')" [ngModel]="draftYear()" (ngModelChange)="filterDraftsByYear($event)" />
+        </div>
+        @if (draftSuggestions().length > 0) {
+          <ul class="suggestions">
+            @for (s of draftSuggestions(); track s.id) {
+              <li>
+                <button class="glass-chip small" (click)="selectDraftSet(s)">
+                  {{ s.name }} @if (s.released_at) { ({{ s.released_at }}) }
+                </button>
+              </li>
+            }
+          </ul>
+        }
+        @if (wizardDraftSet(); as set) {
+          <p>{{ i18n.t('match.selectedSet') }} <strong>{{ set.name }}</strong>@if (set.releasedAt) { – {{ set.releasedAt }} }</p>
+          <button class="glass-button small" (click)="selectDraftSet(null)">{{ i18n.t('match.removeSelection') }}</button>
+        }
+      }
+
       <h4>{{ i18n.t('tournament.tableSizeHeading') }}</h4>
       <div class="chip-row">
         <button class="glass-chip" [class.active]="selectedTableSize() === 2" (click)="selectedTableSize.set(2)">
@@ -257,6 +315,12 @@
           (ngModelChange)="setManualRoundCount($event)"
         />
       }
+
+      <label class="checkbox-inline">
+        <input type="checkbox" [ngModel]="countInGeneralStats()" (ngModelChange)="countInGeneralStats.set($event)" />
+        {{ i18n.t('tournament.countInGeneralStats') }}
+      </label>
+      <p class="hint">{{ i18n.t('tournament.countInGeneralStatsHint') }}</p>
 
       <h4>{{ i18n.t('tournament.pickPlayersHeading') }}</h4>
       <div class="chip-row">

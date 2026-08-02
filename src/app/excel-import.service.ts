@@ -229,7 +229,7 @@ export class ExcelImportService {
     importDate: string,
     assignCube?: { id: string; name: string; isCommander: boolean },
     onProgress?: (done: number, total: number) => void
-  ): Promise<Omit<Match, 'id'>[]> {
+  ): Promise<Omit<Match, 'id' | 'countsInGeneralStats'>[]> {
     if (!this.workbook) return [];
 
     const rowsBySheet = new Map<string, DeckRow[]>();
@@ -239,7 +239,7 @@ export class ExcelImportService {
 
     const commanderNames = await this.resolveCommanderNames(rowsBySheet, onProgress);
 
-    const result: Omit<Match, 'id'>[] = [];
+    const result: Omit<Match, 'id' | 'countsInGeneralStats'>[] = [];
 
     for (const { sheetName, player } of mapping) {
       const trimmedPlayer = player.trim();
@@ -343,8 +343,8 @@ export class ExcelImportService {
     commander: string | undefined,
     stats: { played: number; wins: number },
     date: string,
-  ): Omit<Match, 'id'>[] {
-    const matches: Omit<Match, 'id'>[] = [];
+  ): Omit<Match, 'id' | 'countsInGeneralStats'>[] {
+    const matches: Omit<Match, 'id' | 'countsInGeneralStats'>[] = [];
     const losses = Math.max(0, stats.played - stats.wins);
 
     for (let i = 0; i < stats.wins; i++) {
@@ -363,7 +363,7 @@ export class ExcelImportService {
     stats: { played: number; wins: number },
     date: string,
     assignCube?: { id: string; name: string; isCommander: boolean },
-  ): Omit<Match, 'id'>[] {
+  ): Omit<Match, 'id' | 'countsInGeneralStats'>[] {
     const matches = this.buildSimpleMode('Cube', player, commander, stats, date);
     if (!assignCube) return matches;
     return matches.map((m) => ({ ...m, cube: assignCube }));
@@ -374,8 +374,8 @@ export class ExcelImportService {
     commander: string,
     stats: { played: number; wins: number },
     date: string,
-  ): Omit<Match, 'id'>[] {
-    const matches: Omit<Match, 'id'>[] = [];
+  ): Omit<Match, 'id' | 'countsInGeneralStats'>[] {
+    const matches: Omit<Match, 'id' | 'countsInGeneralStats'>[] = [];
     const losses = Math.max(0, stats.played - stats.wins);
 
     for (let i = 0; i < stats.wins; i++) {
@@ -394,8 +394,8 @@ export class ExcelImportService {
     commander: string,
     stats: { played: number; wins: number },
     date: string,
-  ): Omit<Match, 'id'>[] {
-    const matches: Omit<Match, 'id'>[] = [];
+  ): Omit<Match, 'id' | 'countsInGeneralStats'>[] {
+    const matches: Omit<Match, 'id' | 'countsInGeneralStats'>[] = [];
     const losses = Math.max(0, stats.played - stats.wins);
 
     for (let i = 0; i < stats.wins; i++) {
@@ -412,8 +412,8 @@ export class ExcelImportService {
     commander: string,
     stats: { played: number; wins: number },
     date: string,
-  ): Omit<Match, 'id'>[] {
-    const matches: Omit<Match, 'id'>[] = [];
+  ): Omit<Match, 'id' | 'countsInGeneralStats'>[] {
+    const matches: Omit<Match, 'id' | 'countsInGeneralStats'>[] = [];
     const losses = Math.max(0, stats.played - stats.wins);
 
     for (let i = 0; i < stats.wins; i++) {
@@ -427,7 +427,7 @@ export class ExcelImportService {
     return matches;
   }
 
-  private makeMatch(mode: GameMode, date: string, players: MatchPlayer[], winner: string): Omit<Match, 'id'> {
+  private makeMatch(mode: GameMode, date: string, players: MatchPlayer[], winner: string): Omit<Match, 'id' | 'countsInGeneralStats'> {
     return { mode, date, players, winner };
   }
 }

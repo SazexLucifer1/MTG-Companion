@@ -1,4 +1,5 @@
 import { GameMode } from './models';
+import type { SelectedDraftSet } from './game-session.service';
 
 export type TournamentStatus = 'setup' | 'active' | 'completed';
 export type RoundCountMode = 'auto' | 'manual';
@@ -23,6 +24,12 @@ export interface Tournament {
   inviteCode: string | null;
   createdBy: string;
   createdAt: string;
+  /** Gemeinsames Set für alle Tische - nur bei gameMode 'Draft' relevant, sonst null. */
+  draftSet: SelectedDraftSet | null;
+  /** Gemeinsamer Cube für alle Tische - nur bei gameMode 'Cube' relevant, sonst null. */
+  cubeId: string | null;
+  /** Ob die Matches dieses Turniers zusätzlich in die allgemeine Statistik (Stats-Tab, Deck-/Commander-Stats) einfließen - unabhängig davon zählen sie immer in die Turnier-Standings. */
+  countInGeneralStats: boolean;
 }
 
 export interface TournamentParticipant {

@@ -55,6 +55,7 @@ export class ProfileTab {
 
     const counts = new Map<number, number>();
     for (const match of this.mtg.history()) {
+      if (match.countsInGeneralStats === false) continue;
       const placement = match.players.find((p) => p.name === name)?.placement;
       if (placement != null) counts.set(placement, (counts.get(placement) ?? 0) + 1);
     }

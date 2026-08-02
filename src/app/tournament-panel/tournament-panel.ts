@@ -1,9 +1,10 @@
 import { Component, computed, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { TournamentService } from '../tournament.service';
-import { GameSessionService } from '../game-session.service';
+import { GameSessionService, SelectedDraftSet } from '../game-session.service';
 import { MtgService } from '../mtg.service';
 import { GroupService } from '../group.service';
+import { ScryfallService, ScryfallSet } from '../scryfall.service';
 import { I18nService } from '../i18n.service';
 import { DialogService } from '../dialog.service';
 import { TournamentMatch, TableSize } from '../tournament.models';
@@ -30,6 +31,7 @@ export class TournamentPanel {
   readonly session = inject(GameSessionService);
   readonly mtg = inject(MtgService);
   private readonly groupService = inject(GroupService);
+  private readonly scryfall = inject(ScryfallService);
   private readonly dialog = inject(DialogService);
   readonly i18n = inject(I18nService);
 
@@ -43,6 +45,76 @@ export class TournamentPanel {
   readonly manualRoundCount = signal<number>(4);
   readonly selectedPlayerNames = signal<Set<string>>(new Set());
   readonly creating = signal(false);
+
+  /** Ob die Matches dieses Turniers zusätzlich in die allgemeine Statistik einfließen sollen (Default: ja, wie bisher). */
+  readonly countInGeneralStats = signal(true);
+
+  // --- Wizard: Cube (nur bei Modus 'Cube') - gemeinsamer Cube fürs ganze Turnier, gleiches Muster wie match-tab.ts ---
+  readonly wizardCubeId = signal<string | null>(null);
+  readonly newCubeName = signal('');
+  readonly newCubeIsCommander = signal(false);
+
+  async addNewCube(): Promise<void> {
+    const name = this.newCubeName().trim();
+    if (!name) return;
+    const created = await this.mtg.addCube(name, this.newCubeIsCommander());
+    if (created) {
+      this.wizardCubeId.set(created.id);
+      this.newCubeName.set('');
+      this.newCubeIsCommander.set(false);
+    }
+  }
+
+  async deleteCube(id: string, name: string): Promise<void> {
+    if (await this.dialog.confirm(this.i18n.t('match.msg.confirmDeleteCube', { name }))) {
+      if (this.wizardCubeId() === id) this.wizardCubeId.set(null);
+      await this.mtg.deleteCube(id);
+    }
+  }
+
+  // --- Wizard: Draft-Set (nur bei Modus 'Draft') - gemeinsames Set fürs ganze Turnier, gleiches Muster wie match-tab.ts ---
+  readonly wizardDraftSet = signal<SelectedDraftSet | null>(null);
+  readonly draftSearchQuery = signal('');
+  readonly draftSuggestions = signal<ScryfallSet[]>([]);
+  readonly draftYear = signal<number | null>(null);
+  private draftTimer: ReturnType<typeof setTimeout> | null = null;
+
+  onDraftSearchInput(value: string): void {
+    this.draftSearchQuery.set(value);
+    if (this.draftTimer) clearTimeout(this.draftTimer);
+    this.draftTimer = setTimeout(() => this.updateDraftSuggestions(), 250);
+  }
+
+  async filterDraftsByYear(yearParam: string | number | null): Promise<void> {
+    const year = yearParam === null || yearParam === '' ? null : Number(yearParam);
+    if (yearParam !== null && yearParam !== '' && Number.isNaN(year)) return;
+    this.draftYear.set(year);
+    await this.updateDraftSuggestions();
+  }
+
+  private async updateDraftSuggestions(): Promise<void> {
+    const query = this.draftSearchQuery().trim();
+    const year = this.draftYear();
+    if (!query && year === null) {
+      this.draftSuggestions.set([]);
+      return;
+    }
+    this.draftSuggestions.set(await this.scryfall.searchSets(query, year));
+  }
+
+  selectDraftSet(set: ScryfallSet | null): void {
+    if (!set) {
+      this.wizardDraftSet.set(null);
+      return;
+    }
+    this.wizardDraftSet.set({
+      id: set.id,
+      code: set.code,
+      name: set.name,
+      releasedAt: set.released_at,
+      set_type: set.set_type,
+    });
+  }
 
   // --- "Sieger festlegen"-Auswahl pro Tisch ---
   readonly winnerPickerFor = signal<string | null>(null);
@@ -96,13 +168,22 @@ export class TournamentPanel {
       this.selectedTableSize(),
       this.roundCountMode(),
       this.roundCountMode() === 'manual' ? this.manualRoundCount() : null,
-      [...this.selectedPlayerNames()]
+      [...this.selectedPlayerNames()],
+      this.wizardDraftSet(),
+      this.wizardCubeId(),
+      this.countInGeneralStats()
     );
     this.creating.set(false);
 
     if (id) {
       this.newName.set('');
       this.selectedPlayerNames.set(new Set());
+      this.wizardDraftSet.set(null);
+      this.wizardCubeId.set(null);
+      this.countInGeneralStats.set(true);
+      this.draftSearchQuery.set('');
+      this.draftSuggestions.set([]);
+      this.draftYear.set(null);
     }
   }
 

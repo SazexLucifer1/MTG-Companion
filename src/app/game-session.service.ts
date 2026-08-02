@@ -121,6 +121,8 @@ export class GameSessionService {
 
   /** Gesetzt, wenn das aktuelle Spiel Teil eines Turnier-Tisches ist - siehe TournamentService.startGameForMatch(). */
   readonly activeTournamentMatchId = signal<string | null>(null);
+  /** Ob das aktuelle (Turnier-)Spiel beim Speichern in die allgemeine Statistik einfließen soll - vom Turnier vererbt, sonst immer true (normale Spiele zählen immer). */
+  readonly activeTournamentCountsInStats = signal<boolean>(true);
 
   // --- Geräteübergreifender Live-Sync (live_game_sessions, Supabase Realtime) ---
 
@@ -914,6 +916,7 @@ export class GameSessionService {
               }
             : undefined,
         tournamentMatchId,
+        countsInGeneralStats: this.activeTournamentCountsInStats(),
       });
 
       if (matchId) {
@@ -962,6 +965,7 @@ export class GameSessionService {
     this.pinnedBottomKey.set(null);
     this.manualOrder.set(null); // NEU // NEU
     this.activeTournamentMatchId.set(null);
+    this.activeTournamentCountsInStats.set(true);
   }
 
   // --- Setup-Mutationen (Spieler, Commander, Team, Archenemy) ---

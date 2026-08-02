@@ -61,6 +61,13 @@ export interface Match {
   tournamentMatchId?: string;
   /** Laufende Spielnummer innerhalb des Turnier-Tisches (1., 2., 3. Spiel einer BO3) - für die Gruppierung im Verlauf. */
   tournamentGameNumber?: number;
+  /**
+   * Default true (normale Matches zählen immer). Bei Turnier-Spielen vom Turnier vererbt (siehe
+   * Tournament.countInGeneralStats) - false blendet das Match aus allen Statistik-Aggregaten aus
+   * (Stats-Tab, Deck-/Commander-Statistiken, Platzierungsverteilung), bleibt aber im normalen
+   * Match-Verlauf sichtbar, da es ja wirklich gespielt wurde.
+   */
+  countsInGeneralStats: boolean;
 }
 
 export interface Cube {

@@ -3,7 +3,7 @@ import { supabase } from './supabase.client';
 import { AuthService } from './auth.service';
 import { GroupService } from './group.service';
 import { MtgService } from './mtg.service';
-import { GameSessionService } from './game-session.service';
+import { GameSessionService, SelectedDraftSet } from './game-session.service';
 import { GameMode } from './models';
 import {
   ParticipantStatus,
@@ -493,6 +493,9 @@ export class TournamentService {
       inviteCode: row.invite_code,
       createdBy: row.created_by,
       createdAt: row.created_at,
+      draftSet: row.draft_set ?? null,
+      cubeId: row.cube_id ?? null,
+      countInGeneralStats: row.count_in_general_stats ?? true,
     };
   }
 
@@ -512,7 +515,10 @@ export class TournamentService {
     tableSize: TableSize,
     roundCountMode: RoundCountMode,
     manualRoundCount: number | null,
-    initialPlayerNames: string[]
+    initialPlayerNames: string[],
+    draftSet: SelectedDraftSet | null,
+    cubeId: string | null,
+    countInGeneralStats: boolean
   ): Promise<string | null> {
     const user = this.auth.currentUser();
     const trimmedName = name.trim();
@@ -532,6 +538,9 @@ export class TournamentService {
           manual_round_count: roundCountMode === 'manual' ? manualRoundCount : null,
           invite_code: code,
           created_by: user.id,
+          draft_set: gameMode === 'Draft' ? draftSet : null,
+          cube_id: gameMode === 'Cube' ? cubeId : null,
+          count_in_general_stats: countInGeneralStats,
         })
         .select('id')
         .single();
@@ -1076,14 +1085,16 @@ export class TournamentService {
     if (findError) console.error('Konnte laufende Session für diesen Tisch nicht prüfen:', findError);
     const existingSession = existingSessions?.[0] ?? null;
 
+    const tournament = this.activeTournament();
     this.session.activeTournamentMatchId.set(match.id);
+    this.session.activeTournamentCountsInStats.set(tournament?.countInGeneralStats ?? true);
 
     if (existingSession) {
       await this.session.joinLiveSession(existingSession.id);
     } else {
-      const tournament = this.activeTournament();
       this.session.mode.set(tournament?.gameMode ?? 'Commander');
-      this.session.selectedDraftSet.set(null);
+      this.session.selectedDraftSet.set(tournament?.draftSet ?? null);
+      this.session.selectedCubeId.set(tournament?.cubeId ?? null);
       this.session.selectedPlayers.set(match.participants.map((p) => ({ name: p.playerName })));
       this.session.startGame();
     }
@@ -1396,6 +1407,7 @@ export class TournamentService {
         players: match.participants.map((p) => ({ name: p.playerName })),
         winner: thisWinnerName,
         tournamentMatchId: match.id,
+        countsInGeneralStats: this.activeTournament()?.countInGeneralStats ?? true,
       });
       if (matchRowId) {
         const { error } = await supabase.from('matches').update({ tournament_game_number: i + 1 }).eq('id', matchRowId);
@@ -1436,6 +1448,7 @@ export class TournamentService {
       players: match.participants.map((p) => ({ name: p.playerName })),
       winner: winnerName,
       tournamentMatchId: match.id,
+      countsInGeneralStats: this.activeTournament()?.countInGeneralStats ?? true,
     });
     if (!matchRowId) return;
 

@@ -294,6 +294,7 @@ export class GroupTab {
   readonly gamesPerPlayer = computed(() => {
     const counts = new Map<string, number>();
     for (const match of this.mtg.history()) {
+      if (match.countsInGeneralStats === false) continue;
       for (const p of match.players) {
         counts.set(p.name, (counts.get(p.name) ?? 0) + 1);
       }

@@ -191,9 +191,10 @@ export class StatsTab {
 
   private readonly yearFilteredMatches = computed<Match[]>(() => {
     const year = this.selectedYear();
-    return year === 'Alle'
-      ? this.mtg.history()
-      : this.mtg.history().filter((m) => new Date(m.date).getFullYear() === year);
+    // countsInGeneralStats=false (Turnier-Einstellung) blendet ein Match hier aus allen Stats-Tab-
+    // Aggregaten aus - im normalen Match-Verlauf (match-tab.ts visibleHistory) bleibt es trotzdem sichtbar.
+    const base = this.mtg.history().filter((m) => m.countsInGeneralStats !== false);
+    return year === 'Alle' ? base : base.filter((m) => new Date(m.date).getFullYear() === year);
   });
 
   // --- Modus-Filter (Mehrfachauswahl: eigene Kombination aus mehreren Modi möglich) ---

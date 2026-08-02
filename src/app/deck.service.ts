@@ -713,7 +713,7 @@ export class DeckService {
   async getDeckStats(deckId: string): Promise<DeckGameStats> {
     const { data, error } = await supabase
       .from('match_players')
-      .select('team, is_archenemy, players ( display_name ), matches ( game_mode, winner_name )')
+      .select('team, is_archenemy, players ( display_name ), matches ( game_mode, winner_name, counts_in_general_stats )')
       .eq('deck_id', deckId);
 
     if (error || !data) {
@@ -721,17 +721,18 @@ export class DeckService {
       return { games: 0, wins: 0, winRate: 0 };
     }
 
+    let games = 0;
     let wins = 0;
     for (const row of data as any[]) {
       const match = row.matches;
       const playerName = row.players?.display_name;
-      if (!match || !playerName) continue;
+      if (!match || !playerName || match.counts_in_general_stats === false) continue;
+      games++;
       if (isPlayerWinner(match.game_mode, match.winner_name, playerName, row.team, row.is_archenemy)) {
         wins++;
       }
     }
 
-    const games = data.length;
     return { games, wins, winRate: games > 0 ? (wins / games) * 100 : 0 };
   }
 
@@ -746,7 +747,7 @@ export class DeckService {
     const { data, error } = await supabase
       .from('match_players')
       .select(
-        'deck_id, commander_name, team, is_archenemy, players ( display_name ), matches ( game_mode, winner_name )'
+        'deck_id, commander_name, team, is_archenemy, players ( display_name ), matches ( game_mode, winner_name, counts_in_general_stats )'
       )
       .in('deck_id', deckIds);
 
@@ -760,7 +761,7 @@ export class DeckService {
       const deckId = row.deck_id as string | null;
       const match = row.matches;
       const playerName = row.players?.display_name;
-      if (!deckId || !match || !playerName) continue;
+      if (!deckId || !match || !playerName || match.counts_in_general_stats === false) continue;
 
       const entry = raw.get(deckId) ?? { games: 0, wins: 0 };
       entry.games++;
@@ -824,7 +825,9 @@ export class DeckService {
 
     const { data, error } = await supabase
       .from('match_players')
-      .select('commander_name, team, is_archenemy, players ( display_name ), matches ( game_mode, winner_name )')
+      .select(
+        'commander_name, team, is_archenemy, players ( display_name ), matches ( game_mode, winner_name, counts_in_general_stats )'
+      )
       .in('player_id', playerIds)
       .is('deck_id', null)
       .not('commander_name', 'is', null);
@@ -839,7 +842,7 @@ export class DeckService {
       const match = row.matches;
       const playerName = row.players?.display_name;
       const commander = row.commander_name as string | null;
-      if (!match || !playerName || !commander) continue;
+      if (!match || !playerName || !commander || match.counts_in_general_stats === false) continue;
 
       const entry = stats.get(commander) ?? { games: 0, wins: 0 };
       entry.games++;

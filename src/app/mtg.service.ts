@@ -523,6 +523,7 @@ export class MtgService {
         draft_set_released_at,
         tournament_match_id,
         tournament_game_number,
+        counts_in_general_stats,
         cubes ( id, name, is_commander ),
         match_players (
           player_name,
@@ -557,6 +558,7 @@ export class MtgService {
       winner: row.winner_name,
       tournamentMatchId: row.tournament_match_id ?? undefined,
       tournamentGameNumber: row.tournament_game_number ?? undefined,
+      countsInGeneralStats: row.counts_in_general_stats ?? true,
       players: (row.match_players ?? []).map((mp: any) => ({
         name: mp.player_name ?? mp.players?.display_name ?? '',
         commander: mp.commander_name ?? undefined,
@@ -623,7 +625,13 @@ export class MtgService {
   }
 
   /** Legt ein Match an und liefert dessen ID zurück (z.B. um danach optional Platzierungen nachzutragen) - null bei Fehler. */
-  async addMatch(match: Omit<Match, 'id' | 'date'> & { tournamentMatchId?: string }): Promise<string | null> {
+  async addMatch(
+    match: Omit<Match, 'id' | 'date' | 'countsInGeneralStats'> & {
+      tournamentMatchId?: string;
+      /** Default true (normale Matches zählen immer) - siehe Match.countsInGeneralStats. */
+      countsInGeneralStats?: boolean;
+    }
+  ): Promise<string | null> {
     const groupId = this.groupService.groupId();
     if (!groupId) return null;
 
@@ -642,6 +650,7 @@ export class MtgService {
         draft_set_name: match.draftSet?.name ?? null,
         draft_set_released_at: match.draftSet?.releasedAt ?? null,
         tournament_match_id: match.tournamentMatchId ?? null,
+        counts_in_general_stats: match.countsInGeneralStats ?? true,
       })
       .select('id, played_at')
       .single();
@@ -692,6 +701,7 @@ export class MtgService {
       ...match,
       id: matchRow.id,
       date: matchRow.played_at,
+      countsInGeneralStats: match.countsInGeneralStats ?? true,
       players: players.map((p) => ({
         ...p,
         deckName: p.deckId ? deckNames[p.deckId] : undefined,
@@ -891,8 +901,8 @@ export class MtgService {
 
     return { success: true };
   }
-  /** Fügt Bulk-importierte Matches an (Datum wird mitgegeben statt automatisch gesetzt). */
-  async importMatches(newMatches: Omit<Match, 'id'>[]): Promise<void> {
+  /** Fügt Bulk-importierte Matches an (Datum wird mitgegeben statt automatisch gesetzt). Zählen immer in die allgemeine Statistik (kein Turnier-Bezug beim Import). */
+  async importMatches(newMatches: (Omit<Match, 'id' | 'countsInGeneralStats'> & { countsInGeneralStats?: boolean })[]): Promise<void> {
     if (newMatches.length === 0) return;
 
     const groupId = this.groupService.groupId();
@@ -1000,6 +1010,7 @@ export class MtgService {
         id: matchRow.id,
         date: matchRow.played_at,
         players: resolvedPlayers,
+        countsInGeneralStats: match.countsInGeneralStats ?? true,
       });
     }
 
