@@ -3,6 +3,7 @@ import { DatePipe } from '@angular/common';
 import { TournamentService } from '../tournament.service';
 import { GroupService } from '../group.service';
 import { I18nService } from '../i18n.service';
+import { DialogService } from '../dialog.service';
 import { StandingsRow, Tournament, TournamentMatch } from '../tournament.models';
 
 /**
@@ -19,8 +20,9 @@ import { StandingsRow, Tournament, TournamentMatch } from '../tournament.models'
 })
 export class TournamentHistory {
   private readonly tournament = inject(TournamentService);
-  private readonly groupService = inject(GroupService);
+  readonly groupService = inject(GroupService);
   readonly i18n = inject(I18nService);
+  private readonly dialog = inject(DialogService);
 
   readonly tournaments = this.tournament.tournamentHistory;
   readonly aggregateStandings = this.tournament.aggregateStandings;
@@ -61,5 +63,25 @@ export class TournamentHistory {
   winnerNameFor(match: TournamentMatch): string | null {
     if (!match.winnerPlayerId) return null;
     return match.participants.find((p) => p.playerId === match.winnerPlayerId)?.playerName ?? null;
+  }
+
+  readonly deletingTournamentId = signal<string | null>(null);
+
+  /** Löscht gezielt EIN Turnier samt seiner Einzelspiele (host-only, siehe TournamentService.deleteTournament). */
+  async deleteTournament(t: Tournament, event: Event): Promise<void> {
+    event.stopPropagation();
+    const groupId = this.groupService.groupId();
+    if (!groupId || this.deletingTournamentId()) return;
+    if (!(await this.dialog.confirm(this.i18n.t('tournamentHistory.confirmDelete', { name: t.name })))) return;
+
+    this.deletingTournamentId.set(t.id);
+    const result = await this.tournament.deleteTournament(t.id, groupId);
+    this.deletingTournamentId.set(null);
+
+    if (!result.success) {
+      await this.dialog.alert(this.i18n.t('tournamentHistory.deleteFailed'));
+      return;
+    }
+    if (this.selectedTournament()?.id === t.id) this.closeTournament();
   }
 }
