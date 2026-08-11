@@ -22,18 +22,24 @@
           <div class="podium-place place-2">
             <span class="medal">🥈</span>
             <span class="podium-name">{{ second.playerName }}</span>
+            <span class="podium-stats">{{ i18n.t('tournament.pointsLabel', { points: second.points, wins: second.wins, losses: second.losses }) }}</span>
+            <span class="podium-stats">{{ i18n.t('tournament.tiebreakerLabel', { omw: pct(second.omwPercent), gw: pct(second.gwPercent), ogw: pct(second.ogwPercent) }) }}</span>
           </div>
         }
         @if (tournament.standings()[0]; as first) {
           <div class="podium-place place-1">
             <span class="medal">🥇</span>
             <span class="podium-name">{{ first.playerName }}</span>
+            <span class="podium-stats">{{ i18n.t('tournament.pointsLabel', { points: first.points, wins: first.wins, losses: first.losses }) }}</span>
+            <span class="podium-stats">{{ i18n.t('tournament.tiebreakerLabel', { omw: pct(first.omwPercent), gw: pct(first.gwPercent), ogw: pct(first.ogwPercent) }) }}</span>
           </div>
         }
         @if (tournament.standings()[2]; as third) {
           <div class="podium-place place-3">
             <span class="medal">🥉</span>
             <span class="podium-name">{{ third.playerName }}</span>
+            <span class="podium-stats">{{ i18n.t('tournament.pointsLabel', { points: third.points, wins: third.wins, losses: third.losses }) }}</span>
+            <span class="podium-stats">{{ i18n.t('tournament.tiebreakerLabel', { omw: pct(third.omwPercent), gw: pct(third.gwPercent), ogw: pct(third.ogwPercent) }) }}</span>
           </div>
         }
       </div>
