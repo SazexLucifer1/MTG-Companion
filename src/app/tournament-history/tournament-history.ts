@@ -31,6 +31,11 @@ export class TournamentHistory {
   readonly selectedStandings = signal<StandingsRow[]>([]);
   readonly selectedMatches = signal<TournamentMatch[]>([]);
   readonly loadingDetail = signal(false);
+  readonly showStandingsInfo = signal(false);
+
+  toggleStandingsInfo(): void {
+    this.showStandingsInfo.update((v) => !v);
+  }
 
   constructor() {
     effect(() => {
@@ -54,6 +59,7 @@ export class TournamentHistory {
     this.selectedTournament.set(null);
     this.selectedStandings.set([]);
     this.selectedMatches.set([]);
+    this.showStandingsInfo.set(false);
   }
 
   participantNamesFor(match: TournamentMatch): string {
