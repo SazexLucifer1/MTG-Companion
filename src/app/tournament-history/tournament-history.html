@@ -14,7 +14,15 @@
     @if (loadingDetail()) {
       <p class="hint">{{ i18n.t('tournamentHistory.loading') }}</p>
     } @else {
-      <h4>{{ i18n.t('tournament.standingsHeading') }}</h4>
+      <div class="standings-heading-row">
+        <h4>{{ i18n.t('tournament.standingsHeading') }}</h4>
+        <button class="icon-button standings-info-toggle" (click)="toggleStandingsInfo()" [attr.aria-label]="i18n.t('tournamentHistory.standingsInfoAria')">
+          ⓘ
+        </button>
+      </div>
+      @if (showStandingsInfo()) {
+        <p class="hint standings-info-hint">{{ i18n.t('tournamentHistory.standingsInfoHint') }}</p>
+      }
       <ol class="tournament-history-list">
         @for (s of selectedStandings(); track s.playerId; let i = $index) {
           <li>
