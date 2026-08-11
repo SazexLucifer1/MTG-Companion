@@ -44,7 +44,7 @@ export class TournamentHistory {
   async openTournament(t: Tournament): Promise<void> {
     this.selectedTournament.set(t);
     this.loadingDetail.set(true);
-    const detail = await this.tournament.loadTournamentDetail(t.id);
+    const detail = await this.tournament.loadTournamentDetail(t.id, t.tableSize);
     this.selectedStandings.set(detail.standings);
     this.selectedMatches.set(detail.matches);
     this.loadingDetail.set(false);
@@ -58,6 +58,11 @@ export class TournamentHistory {
 
   participantNamesFor(match: TournamentMatch): string {
     return match.participants.map((p) => p.playerName).join(', ');
+  }
+
+  /** Rundet einen Quotienten (0..1) auf einen ganzzahligen Prozentwert für die Standings-Anzeige. */
+  pct(value: number): number {
+    return Math.round(value * 100);
   }
 
   winnerNameFor(match: TournamentMatch): string | null {
