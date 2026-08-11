@@ -416,11 +416,12 @@ export class TournamentService {
 
   /** Kader, Paarungen und Endstand eines beliebigen (auch abgeschlossenen) Turniers - unabhängig vom "aktiven" Turnier des Live-Panels. */
   async loadTournamentDetail(
-    tournamentId: string
+    tournamentId: string,
+    tableSize: TableSize
   ): Promise<{ participants: TournamentParticipant[]; matches: TournamentMatch[]; standings: StandingsRow[] }> {
     const participants = await this.fetchParticipants(tournamentId);
     const { matches } = await this.fetchRoundsAndMatches(tournamentId);
-    return { participants, matches, standings: this.computeStandingsFor(participants, matches) };
+    return { participants, matches, standings: this.computeStandingsFor(participants, matches, tableSize) };
   }
 
   /** Aggregierte Rangliste über alle abgeschlossenen Turniere der Gruppe hinweg (Gesamtpunkte, Siege, durchschnittliche Platzierung). */
@@ -431,7 +432,7 @@ export class TournamentService {
   async loadAggregateStandings(groupId: string): Promise<void> {
     const { data: tournamentRows, error } = await supabase
       .from('tournaments')
-      .select('id')
+      .select('id, table_size')
       .eq('group_id', groupId)
       .eq('status', 'completed');
 
@@ -447,7 +448,7 @@ export class TournamentService {
     >();
 
     for (const row of tournamentRows ?? []) {
-      const { standings } = await this.loadTournamentDetail(row.id);
+      const { standings } = await this.loadTournamentDetail(row.id, row.table_size as TableSize);
       standings.forEach((s, index) => {
         const entry = acc.get(s.playerId) ?? {
           playerName: s.playerName,
@@ -1086,48 +1087,124 @@ export class TournamentService {
   }
 
   private computeStandings(): StandingsRow[] {
-    return this.computeStandingsFor(this.participants(), this.matches());
+    const tableSize = this.activeTournament()?.tableSize ?? 2;
+    return this.computeStandingsFor(this.participants(), this.matches(), tableSize);
   }
 
-  private computeStandingsFor(participants: TournamentParticipant[], matches: TournamentMatch[]): StandingsRow[] {
+  /**
+   * Mindestwert für die eigene Match-/Spiel-Sieg-Quote, bevor sie in die Quote ANDERER Personen
+   * einfließt (offizielle Turnierregel) - verhindert, dass eine einzelne frühe Klatsche (z.B. 0
+   * Siege aus Runde 1) die OMW%/OGW% der eigenen späteren Gegner den Rest des Turniers über
+   * unverhältnismäßig nach unten zieht.
+   */
+  private static readonly TIEBREAKER_FLOOR = 1 / 3;
+
+  private computeStandingsFor(
+    participants: TournamentParticipant[],
+    matches: TournamentMatch[],
+    tableSize: TableSize
+  ): StandingsRow[] {
     const wins = new Map<string, number>();
     const losses = new Map<string, number>();
     const byes = new Map<string, number>();
+    const matchesPlayed = new Map<string, number>();
+    const gamesWon = new Map<string, number>();
+    const gamesPlayed = new Map<string, number>();
+    /** Echte Gegner je entschiedener Runde (Freilose ausgenommen) - bei Pods alle Mitspieler am Tisch, ggf. mit Wiederholungen. */
+    const opponents = new Map<string, string[]>();
+
+    const bump = (map: Map<string, number>, id: string, by = 1) => map.set(id, (map.get(id) ?? 0) + by);
 
     for (const p of participants) {
       wins.set(p.playerId, 0);
       losses.set(p.playerId, 0);
       byes.set(p.playerId, 0);
+      matchesPlayed.set(p.playerId, 0);
+      gamesWon.set(p.playerId, 0);
+      gamesPlayed.set(p.playerId, 0);
+      opponents.set(p.playerId, []);
     }
 
     for (const m of matches) {
       if (m.isBye) {
         const byePlayerId = m.participants[0]?.playerId;
         if (byePlayerId) {
-          byes.set(byePlayerId, (byes.get(byePlayerId) ?? 0) + 1);
-          wins.set(byePlayerId, (wins.get(byePlayerId) ?? 0) + 1);
+          bump(byes, byePlayerId);
+          bump(wins, byePlayerId);
+          bump(matchesPlayed, byePlayerId);
+          // Offizielle Konvention: ein Freilos zählt für die eigene Spiel-Sieg-Quote wie ein volles
+          // gewonnenes Match (Best-of-3: 2:0, Pod-Einzelspiel: 1:0), statt gar keine Spiele beizusteuern.
+          const byeGames = tableSize === 2 ? 2 : 1;
+          bump(gamesWon, byePlayerId, byeGames);
+          bump(gamesPlayed, byePlayerId, byeGames);
         }
         continue;
       }
-      if (!m.winnerPlayerId) continue; // noch offen oder unentschieden -> niemand bekommt Punkte
-      wins.set(m.winnerPlayerId, (wins.get(m.winnerPlayerId) ?? 0) + 1);
-      for (const participant of m.participants) {
-        if (participant.playerId !== m.winnerPlayerId) {
-          losses.set(participant.playerId, (losses.get(participant.playerId) ?? 0) + 1);
-        }
+      if (!m.completedAt) continue; // Tisch noch offen -> fließt in keine Quote ein
+
+      const ids = m.participants.map((participant) => participant.playerId);
+      for (const id of ids) {
+        bump(matchesPlayed, id);
+        opponents.get(id)?.push(...ids.filter((otherId) => otherId !== id));
+      }
+
+      if (m.participants.length === 2) {
+        const [a, b] = m.participants;
+        const gamesAtTable = a.gamesWon + b.gamesWon;
+        bump(gamesWon, a.playerId, a.gamesWon);
+        bump(gamesWon, b.playerId, b.gamesWon);
+        bump(gamesPlayed, a.playerId, gamesAtTable);
+        bump(gamesPlayed, b.playerId, gamesAtTable);
+      } else {
+        // Pod: ein Tisch = ein Einzelspiel (kein Best-of-3), Unentschieden zählt als von niemandem gewonnenes Spiel.
+        for (const id of ids) bump(gamesPlayed, id);
+        if (m.winnerPlayerId) bump(gamesWon, m.winnerPlayerId);
+      }
+
+      if (!m.winnerPlayerId) continue; // Unentschieden -> niemand bekommt Punkte
+      bump(wins, m.winnerPlayerId);
+      for (const id of ids) {
+        if (id !== m.winnerPlayerId) bump(losses, id);
       }
     }
 
+    const floor = TournamentService.TIEBREAKER_FLOOR;
+    const matchWinPercent = (playerId: string): number => {
+      const played = matchesPlayed.get(playerId) ?? 0;
+      if (played === 0) return floor;
+      return Math.max(floor, (wins.get(playerId) ?? 0) / played);
+    };
+    const gameWinPercent = (playerId: string): number => {
+      const played = gamesPlayed.get(playerId) ?? 0;
+      if (played === 0) return floor;
+      return Math.max(floor, (gamesWon.get(playerId) ?? 0) / played);
+    };
+
     return participants
-      .map((p) => ({
-        playerId: p.playerId,
-        playerName: p.playerName,
-        points: (wins.get(p.playerId) ?? 0) * 3,
-        wins: wins.get(p.playerId) ?? 0,
-        losses: losses.get(p.playerId) ?? 0,
-        byes: byes.get(p.playerId) ?? 0,
-      }))
-      .sort((a, b) => b.points - a.points || b.wins - a.wins);
+      .map((p) => {
+        const opponentIds = opponents.get(p.playerId) ?? [];
+        const omwPercent = opponentIds.length
+          ? opponentIds.reduce((sum, id) => sum + matchWinPercent(id), 0) / opponentIds.length
+          : 0;
+        const ogwPercent = opponentIds.length
+          ? opponentIds.reduce((sum, id) => sum + gameWinPercent(id), 0) / opponentIds.length
+          : 0;
+        return {
+          playerId: p.playerId,
+          playerName: p.playerName,
+          points: (wins.get(p.playerId) ?? 0) * 3,
+          wins: wins.get(p.playerId) ?? 0,
+          losses: losses.get(p.playerId) ?? 0,
+          byes: byes.get(p.playerId) ?? 0,
+          omwPercent,
+          gwPercent: gameWinPercent(p.playerId),
+          ogwPercent,
+        };
+      })
+      .sort(
+        (a, b) =>
+          b.points - a.points || b.omwPercent - a.omwPercent || b.gwPercent - a.gwPercent || b.ogwPercent - a.ogwPercent
+      );
   }
 
   // --- Spiel-Integration ---

@@ -84,4 +84,10 @@ export interface StandingsRow {
   wins: number;
   losses: number;
   byes: number;
+  /** Opponents' Match-Win % - offizieller Swiss-Tiebreaker 1 (Ø Match-Sieg-Quote der eigenen Gegner, je Antritt gewichtet, Floor 1/3). */
+  omwPercent: number;
+  /** Game-Win % - offizieller Swiss-Tiebreaker 2 (eigene Spiel-Sieg-Quote, Floor 1/3). */
+  gwPercent: number;
+  /** Opponents' Game-Win % - offizieller Swiss-Tiebreaker 3 (Ø Spiel-Sieg-Quote der eigenen Gegner, Floor 1/3). */
+  ogwPercent: number;
 }

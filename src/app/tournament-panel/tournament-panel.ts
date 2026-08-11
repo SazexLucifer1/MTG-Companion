@@ -277,6 +277,11 @@ export class TournamentPanel {
     return match.participants.map((p) => p.playerName).join(', ');
   }
 
+  /** Rundet einen Quotienten (0..1) auf einen ganzzahligen Prozentwert für die Standings-Anzeige. */
+  pct(value: number): number {
+    return Math.round(value * 100);
+  }
+
   /** Organizer oder eine der tatsächlich am Tisch spielenden Personen dürfen das Spiel starten/den Sieger festlegen - so kann die veranstaltende Person das auch stellvertretend für accountlose Personen tun. */
   canManageMatch(match: TournamentMatch): boolean {
     const myName = this.mtg.myPlayerName();

@@ -21,6 +21,7 @@
             <span class="rank">{{ i + 1 }}.</span>
             <span class="player-name">{{ s.playerName }}</span>
             <span class="hint">{{ i18n.t('tournament.pointsLabel', { points: s.points, wins: s.wins, losses: s.losses }) }}</span>
+            <span class="hint">{{ i18n.t('tournament.tiebreakerLabel', { omw: pct(s.omwPercent), gw: pct(s.gwPercent), ogw: pct(s.ogwPercent) }) }}</span>
           </li>
         }
       </ol>
