@@ -7,6 +7,11 @@
       <button class="glass-button danger" [disabled]="deletingTournamentId() === t.id" (click)="deleteTournament(t, $event)">
         {{ i18n.t('tournamentHistory.deleteButton') }}
       </button>
+      @if (!t.countInGeneralStats) {
+        <button class="glass-button" [disabled]="repairingCountsId() === t.id" (click)="repairCounts(t, $event)">
+          {{ i18n.t('tournamentHistory.repairCountsButton') }}
+        </button>
+      }
     }
     <h3>{{ t.name }}</h3>
     <p class="hint">{{ t.createdAt | date: 'dd.MM.yyyy' }} · {{ t.gameMode }}</p>

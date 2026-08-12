@@ -868,6 +868,27 @@ export class TournamentService {
   }
 
   /**
+   * Korrigiert nachträglich alle Einzelspiele eines Turniers mit deaktiviertem "Auch in der
+   * allgemeinen Statistik zählen" (host-only, siehe TournamentHistory) - erzwingt
+   * counts_in_general_stats=false für ALLE Matches dieses Turniers, unabhängig vom aktuell
+   * gespeicherten Wert. Behebt Altlasten eines früheren Bugs (siehe
+   * GameSessionService.activeTournamentCountsInStats/handleRemoteSessionEnded), bei dem einzelne
+   * BO3-Spiele trotz deaktivierter Option fälschlich in der allgemeinen Statistik mitzählten.
+   */
+  async repairCountsInGeneralStats(tournamentId: string): Promise<boolean> {
+    const { data: tableRows, error } = await supabase
+      .from('tournament_matches')
+      .select('id')
+      .eq('tournament_id', tournamentId);
+    if (error) {
+      console.error('Konnte Turnier-Tische nicht laden:', error);
+      return false;
+    }
+    const tournamentMatchIds = (tableRows ?? []).map((t) => t.id);
+    return this.mtg.setCountsInGeneralStatsForTournamentMatchIds(tournamentMatchIds, false);
+  }
+
+  /**
    * Löscht unwiderruflich EIN Turnier samt aller seiner Einzelspiele - anders als cancelTournament()
    * (nur für das eigene, gerade aktive Turnier gedacht; Einzelspiele bleiben als normale Matches
    * erhalten) funktioniert das für JEDES Turnier der Gruppe (host-only, siehe TournamentHistory) und
