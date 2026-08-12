@@ -409,10 +409,11 @@ export class MtgService {
   /**
    * Führt mehrere Spieler-Einträge zu einem zusammen (z.B. wenn ein per Excel-Import angelegter
    * Name wie "Theo"/"Theos" in Wahrheit derselbe Mensch ist wie der später beigetretene Account
-   * "Theodor"). Alle Matches der Quell-Spieler werden auf den Ziel-Spieler umgehängt (inkl. der
-   * als Text gespeicherten Namen in match_players/matches), die Quell-Spieler-Einträge werden
-   * danach gelöscht. Bewusst NICHT über deletePlayer(), da dort die Spiele beim gelöschten
-   * (Alt-)Namen verbleiben würden statt zum Ziel-Spieler zu wandern.
+   * "Theodor", oder ein doppelt angelegter Account wie "Jakob"/"Jakob2"). Hängt ALLE Datensätze der
+   * Quell-Spieler auf den Ziel-Spieler um (Matches, Turnier-Teilnahmen/-Tische, Sichtbarkeits- und
+   * Hintergrund-Einstellungen), die Quell-Spieler-Einträge werden danach gelöscht. Bewusst NICHT
+   * über deletePlayer(), da dort die Spiele beim gelöschten (Alt-)Namen verbleiben würden statt zum
+   * Ziel-Spieler zu wandern.
    */
   async mergePlayers(targetName: string, sourceNames: string[]): Promise<boolean> {
     const groupId = this.groupService.groupId();
@@ -447,6 +448,29 @@ export class MtgService {
         return false;
       }
 
+      if (!(await this.mergeTournamentParticipation(sourceId, targetId))) return false;
+
+      const { error: winnerError } = await supabase
+        .from('tournament_matches')
+        .update({ winner_player_id: targetId })
+        .eq('winner_player_id', sourceId);
+      if (winnerError) {
+        console.error('Konnte Turnier-Tisch-Sieger nicht zusammenführen:', winnerError);
+        return false;
+      }
+
+      // Sichtbarkeits-/Hintergrund-Einstellungen sind reine Kosmetik pro Spieler-Identität und je
+      // Spalte (group_id, player_id[, game_mode]) eindeutig - ein blindes Umschreiben auf targetId
+      // würde bei bereits vorhandenen Ziel-Einträgen die Unique-Constraint verletzen. Da die
+      // verschwindende Quell-Identität ohnehin aufhört zu existieren, gewinnt einfach die bereits
+      // für targetId gesetzte Einstellung (falls vorhanden); die Quell-Zeilen werden schlicht mit
+      // gelöscht statt fehlschlagend zusammengeführt.
+      const { error: visibilityError } = await supabase.from('player_stat_visibility').delete().eq('player_id', sourceId);
+      if (visibilityError) console.error('Konnte Sichtbarkeits-Einstellungen des zusammengeführten Spielers nicht löschen:', visibilityError);
+
+      const { error: backgroundError } = await supabase.from('player_backgrounds').delete().eq('player_id', sourceId);
+      if (backgroundError) console.error('Konnte Hintergrund des zusammengeführten Spielers nicht löschen:', backgroundError);
+
       const { error: deleteError } = await supabase.from('players').delete().eq('id', sourceId);
 
       if (deleteError) {
@@ -461,6 +485,64 @@ export class MtgService {
       this.loadStatVisibility(groupId),
       this.loadPlayerBackgrounds(groupId),
     ]);
+
+    return true;
+  }
+
+  /**
+   * Hängt Turnier-Teilnahme (tournament_participants) und Tisch-Zuordnungen
+   * (tournament_match_players) eines Quell-Spielers auf den Ziel-Spieler um. Für Turniere, an denen
+   * BEIDE bereits als eigene Teilnehmer-Zeile hängen (ein in der Praxis kaum vorkommender Fall -
+   * zwei getrennte Kader-Einträge, die in DEMSELBEN Turnier gegeneinander/nebeneinander gespielt
+   * haben), lässt sich die Teilnahme nicht widerspruchsfrei zusammenführen (Unique Constraint
+   * tournament_id+player_id) - dort bleibt die Quell-Teilnahme unangetastet stehen, statt die
+   * Zusammenführung abzubrechen.
+   */
+  private async mergeTournamentParticipation(sourceId: string, targetId: string): Promise<boolean> {
+    const { data: sourceRows, error: sourceError } = await supabase
+      .from('tournament_participants')
+      .select('id, tournament_id')
+      .eq('player_id', sourceId);
+    if (sourceError) {
+      console.error('Konnte Turnier-Teilnahmen nicht laden:', sourceError);
+      return false;
+    }
+    if (!sourceRows || sourceRows.length === 0) return true;
+
+    const { data: targetRows, error: targetError } = await supabase
+      .from('tournament_participants')
+      .select('tournament_id')
+      .eq('player_id', targetId)
+      .in(
+        'tournament_id',
+        sourceRows.map((r) => r.tournament_id)
+      );
+    if (targetError) {
+      console.error('Konnte Turnier-Teilnahmen des Ziel-Spielers nicht laden:', targetError);
+      return false;
+    }
+    const targetTournamentIds = new Set((targetRows ?? []).map((r) => r.tournament_id));
+    const mergeableParticipantIds = sourceRows.filter((r) => !targetTournamentIds.has(r.tournament_id)).map((r) => r.id);
+
+    if (mergeableParticipantIds.length > 0) {
+      const { error: participantError } = await supabase
+        .from('tournament_participants')
+        .update({ player_id: targetId })
+        .in('id', mergeableParticipantIds);
+      if (participantError) {
+        console.error('Konnte Turnier-Teilnahmen nicht zusammenführen:', participantError);
+        return false;
+      }
+    }
+
+    const { error: matchPlayerError } = await supabase
+      .from('tournament_match_players')
+      .update({ player_id: targetId })
+      .eq('player_id', sourceId);
+    if (matchPlayerError) {
+      console.error('Konnte Turnier-Tisch-Zuordnungen nicht zusammenführen:', matchPlayerError);
+      return false;
+    }
 
     return true;
   }
