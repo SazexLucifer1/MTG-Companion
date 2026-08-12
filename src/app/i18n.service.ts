@@ -350,6 +350,7 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
 
     'profile.favCommanderTitle': '⭐ Meine Lieblingscommander',
     'profile.favCommanderHint': 'Bis zu 3 Stück.',
+    'profile.autofillFavoriteCommanders': '🔁 Meistgespielte automatisch übernehmen',
     'profile.removeAria': 'Entfernen',
     'profile.searchCardPlaceholder': 'Kartenname suchen …',
     'profile.close': 'Schließen',
@@ -1429,6 +1430,7 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
 
     'profile.favCommanderTitle': '⭐ My Favorite Commanders',
     'profile.favCommanderHint': 'Up to 3.',
+    'profile.autofillFavoriteCommanders': '🔁 Auto-fill most played',
     'profile.removeAria': 'Remove',
     'profile.searchCardPlaceholder': 'Search card name …',
     'profile.close': 'Close',
