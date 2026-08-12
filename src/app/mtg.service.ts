@@ -817,6 +817,33 @@ export class MtgService {
     return true;
   }
 
+  /**
+   * Setzt counts_in_general_stats für ALLE Einzelspiele der übergebenen Turnier-Tische auf `value` -
+   * genutzt, um nachträglich Matches zu korrigieren, die trotz deaktiviertem "Auch in der
+   * allgemeinen Statistik zählen" fälschlich mitgezählt wurden (siehe
+   * TournamentService.repairCountsInGeneralStats, betraf Tische, deren Session ein Gerät nur passiv
+   * per Realtime-Bridge übernommen hat statt sie selbst zu starten).
+   */
+  async setCountsInGeneralStatsForTournamentMatchIds(tournamentMatchIds: string[], value: boolean): Promise<boolean> {
+    if (tournamentMatchIds.length === 0) return true;
+
+    for (const batch of chunk(tournamentMatchIds, 150)) {
+      const { error } = await supabase
+        .from('matches')
+        .update({ counts_in_general_stats: value })
+        .in('tournament_match_id', batch);
+      if (error) {
+        console.error('Konnte counts_in_general_stats nicht korrigieren:', error);
+        return false;
+      }
+    }
+
+    this.history.update((matches) =>
+      matches.map((m) => (m.tournamentMatchId && tournamentMatchIds.includes(m.tournamentMatchId) ? { ...m, countsInGeneralStats: value } : m))
+    );
+    return true;
+  }
+
   /** Wie deleteMatchesForTournamentTable(), aber für mehrere Tische auf einmal - für den "Alle Turniere löschen"-Knopf im Stats-Tab (TournamentService.deleteAllTournamentsForGroup). */
   async deleteMatchesForTournamentMatchIds(tournamentMatchIds: string[]): Promise<boolean> {
     if (tournamentMatchIds.length === 0) return true;

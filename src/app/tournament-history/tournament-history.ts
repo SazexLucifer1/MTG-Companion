@@ -95,4 +95,25 @@ export class TournamentHistory {
     }
     if (this.selectedTournament()?.id === t.id) this.closeTournament();
   }
+
+  readonly repairingCountsId = signal<string | null>(null);
+
+  /**
+   * Korrigiert nachträglich Einzelspiele dieses Turniers, die durch einen früheren Bug trotz
+   * deaktiviertem "Auch in der allgemeinen Statistik zählen" fälschlich mitgezählt wurden
+   * (host-only, siehe TournamentService.repairCountsInGeneralStats).
+   */
+  async repairCounts(t: Tournament, event: Event): Promise<void> {
+    event.stopPropagation();
+    if (this.repairingCountsId()) return;
+    if (!(await this.dialog.confirm(this.i18n.t('tournamentHistory.confirmRepairCounts', { name: t.name })))) return;
+
+    this.repairingCountsId.set(t.id);
+    const success = await this.tournament.repairCountsInGeneralStats(t.id);
+    this.repairingCountsId.set(null);
+
+    await this.dialog.alert(
+      this.i18n.t(success ? 'tournamentHistory.repairCountsSuccess' : 'tournamentHistory.repairCountsFailed')
+    );
+  }
 }
