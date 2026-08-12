@@ -235,6 +235,12 @@
       <h3>{{ i18n.t(mtg.myPlayerName() === 'Adrian' ? 'profile.myFavoriteGliederAdrian' : 'profile.favCommanderTitle') }}</h3>
       <p class="hint">{{ i18n.t('profile.favCommanderHint') }}</p>
 
+      @if (canAutofillFavoriteCommanders()) {
+        <button class="glass-chip small" [disabled]="favoriteCommanderBusy()" (click)="autofillFavoriteCommanders()">
+          {{ i18n.t('profile.autofillFavoriteCommanders') }}
+        </button>
+      }
+
       @if ((profileService.profile()?.favoriteCommanders ?? []).length > 0) {
         <ul class="player-list compact-list">
           @for (name of profileService.profile()?.favoriteCommanders ?? []; track name) {

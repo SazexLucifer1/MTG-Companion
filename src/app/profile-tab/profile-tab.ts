@@ -213,6 +213,43 @@ export class ProfileTab {
     this.favoriteCommanderBusy.set(false);
   }
 
+  /** Meistgespielte Commander (Hauptcommander, Partner zählt nicht mit) dieser Person, absteigend - respektiert countsInGeneralStats wie der Rest der Statistik. */
+  private topPlayedCommanders(playerName: string, limit: number): string[] {
+    const counts = new Map<string, number>();
+    for (const match of this.mtg.history()) {
+      if (match.countsInGeneralStats === false) continue;
+      const commander = match.players.find((p) => p.name === playerName)?.commander;
+      if (commander) counts.set(commander, (counts.get(commander) ?? 0) + 1);
+    }
+    return [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([name]) => name).slice(0, limit);
+  }
+
+  readonly canAutofillFavoriteCommanders = computed(() => {
+    const name = this.mtg.myPlayerName();
+    const current = this.profileService.profile()?.favoriteCommanders ?? [];
+    if (!name || current.length >= 3) return false;
+    return this.topPlayedCommanders(name, 3).some((c) => !current.includes(c));
+  });
+
+  /** Füllt die restlichen freien Lieblings-Commander-Plätze mit den meistgespielten Commandern dieser Person auf - für alle, die die Liste nicht von Hand befüllen wollen. */
+  async autofillFavoriteCommanders(): Promise<void> {
+    const name = this.mtg.myPlayerName();
+    if (!name || this.favoriteCommanderBusy()) return;
+
+    const current = this.profileService.profile()?.favoriteCommanders ?? [];
+    const remaining = 3 - current.length;
+    if (remaining <= 0) return;
+
+    const additions = this.topPlayedCommanders(name, current.length + remaining)
+      .filter((c) => !current.includes(c))
+      .slice(0, remaining);
+    if (additions.length === 0) return;
+
+    this.favoriteCommanderBusy.set(true);
+    await this.profileService.updateFavoriteCommanders([...current, ...additions]);
+    this.favoriteCommanderBusy.set(false);
+  }
+
   // --- Suche/Sortierung/Seiten für "Commander ohne Deck" ---
 
   private static readonly PAGE_SIZE = 10;
