@@ -7,14 +7,20 @@
       <button class="glass-button danger" [disabled]="deletingTournamentId() === t.id" (click)="deleteTournament(t, $event)">
         {{ i18n.t('tournamentHistory.deleteButton') }}
       </button>
-      @if (!t.countInGeneralStats) {
-        <button class="glass-button" [disabled]="repairingCountsId() === t.id" (click)="repairCounts(t, $event)">
-          {{ i18n.t('tournamentHistory.repairCountsButton') }}
-        </button>
-      }
     }
     <h3>{{ t.name }}</h3>
     <p class="hint">{{ t.createdAt | date: 'dd.MM.yyyy' }} · {{ t.gameMode }}</p>
+    @if (groupService.isOwner()) {
+      <label class="checkbox-inline">
+        <input
+          type="checkbox"
+          [checked]="t.countInGeneralStats"
+          [disabled]="togglingCountsId() === t.id"
+          (change)="toggleCountInGeneralStats(t, $event)"
+        />
+        {{ i18n.t('tournament.countInGeneralStats') }}
+      </label>
+    }
 
     @if (loadingDetail()) {
       <p class="hint">{{ i18n.t('tournamentHistory.loading') }}</p>

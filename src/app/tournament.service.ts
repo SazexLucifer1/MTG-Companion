@@ -868,14 +868,23 @@ export class TournamentService {
   }
 
   /**
-   * Korrigiert nachträglich alle Einzelspiele eines Turniers mit deaktiviertem "Auch in der
-   * allgemeinen Statistik zählen" (host-only, siehe TournamentHistory) - erzwingt
-   * counts_in_general_stats=false für ALLE Matches dieses Turniers, unabhängig vom aktuell
-   * gespeicherten Wert. Behebt Altlasten eines früheren Bugs (siehe
-   * GameSessionService.activeTournamentCountsInStats/handleRemoteSessionEnded), bei dem einzelne
-   * BO3-Spiele trotz deaktivierter Option fälschlich in der allgemeinen Statistik mitzählten.
+   * Ändert nachträglich, ob die Einzelspiele eines (auch bereits abgeschlossenen) Turniers in die
+   * allgemeine Statistik einfließen (host-only, siehe TournamentHistory) - für den Fall, dass die
+   * Checkbox beim Erstellen versehentlich falsch gesetzt war, oder um Altlasten eines früheren Bugs
+   * zu korrigieren (siehe GameSessionService.activeTournamentCountsInStats/handleRemoteSessionEnded).
+   * Aktualisiert sowohl das Turnier selbst als auch ALLE bereits gespeicherten Einzelspiele auf den
+   * neuen Wert.
    */
-  async repairCountsInGeneralStats(tournamentId: string): Promise<boolean> {
+  async setCountInGeneralStats(tournamentId: string, value: boolean): Promise<boolean> {
+    const { error: tournamentError } = await supabase
+      .from('tournaments')
+      .update({ count_in_general_stats: value })
+      .eq('id', tournamentId);
+    if (tournamentError) {
+      console.error('Konnte Turnier-Statistik-Einstellung nicht speichern:', tournamentError);
+      return false;
+    }
+
     const { data: tableRows, error } = await supabase
       .from('tournament_matches')
       .select('id')
@@ -885,7 +894,16 @@ export class TournamentService {
       return false;
     }
     const tournamentMatchIds = (tableRows ?? []).map((t) => t.id);
-    return this.mtg.setCountsInGeneralStatsForTournamentMatchIds(tournamentMatchIds, false);
+    const matchesUpdated = await this.mtg.setCountsInGeneralStatsForTournamentMatchIds(tournamentMatchIds, value);
+    if (!matchesUpdated) return false;
+
+    this.tournamentHistory.update((list) =>
+      list.map((t) => (t.id === tournamentId ? { ...t, countInGeneralStats: value } : t))
+    );
+    if (this.activeTournament()?.id === tournamentId) {
+      this.activeTournament.update((t) => (t ? { ...t, countInGeneralStats: value } : t));
+    }
+    return true;
   }
 
   /**
