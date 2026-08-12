@@ -212,6 +212,11 @@ export class TournamentService {
       if (data && data.length > 0) {
         await this.session.joinLiveSession(data[0].id);
         this.session.activeTournamentMatchId.set(tournamentMatchId);
+        // Ohne das würde dieses Gerät (das die neue Session nur passiv per Realtime-Bridge
+        // übernimmt statt selbst startGameForMatch() aufzurufen) beim Speichern immer mit dem
+        // Default true zählen - egal was für dieses Turnier eingestellt ist. Betrifft z.B. Spiel 2/3
+        // eines BO3-Tisches, wenn nicht dieselbe Person/dasselbe Gerät jedes Einzelspiel speichert.
+        this.session.activeTournamentCountsInStats.set(this.activeTournament()?.countInGeneralStats ?? true);
         return;
       }
 
