@@ -96,24 +96,38 @@ export class TournamentHistory {
     if (this.selectedTournament()?.id === t.id) this.closeTournament();
   }
 
-  readonly repairingCountsId = signal<string | null>(null);
+  readonly togglingCountsId = signal<string | null>(null);
 
   /**
-   * Korrigiert nachträglich Einzelspiele dieses Turniers, die durch einen früheren Bug trotz
-   * deaktiviertem "Auch in der allgemeinen Statistik zählen" fälschlich mitgezählt wurden
-   * (host-only, siehe TournamentService.repairCountsInGeneralStats).
+   * Schaltet nachträglich um, ob die Einzelspiele dieses Turniers in die allgemeine Statistik
+   * einfließen (host-only, siehe TournamentService.setCountInGeneralStats) - z.B. wenn die Checkbox
+   * beim Erstellen versehentlich falsch gesetzt war. Setzt die Checkbox bei Abbruch/Fehler bewusst
+   * per input.checked zurück, statt sich auf Change Detection zu verlassen.
    */
-  async repairCounts(t: Tournament, event: Event): Promise<void> {
-    event.stopPropagation();
-    if (this.repairingCountsId()) return;
-    if (!(await this.dialog.confirm(this.i18n.t('tournamentHistory.confirmRepairCounts', { name: t.name })))) return;
+  async toggleCountInGeneralStats(t: Tournament, event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    const nextValue = input.checked;
 
-    this.repairingCountsId.set(t.id);
-    const success = await this.tournament.repairCountsInGeneralStats(t.id);
-    this.repairingCountsId.set(null);
+    if (this.togglingCountsId()) {
+      input.checked = t.countInGeneralStats;
+      return;
+    }
 
-    await this.dialog.alert(
-      this.i18n.t(success ? 'tournamentHistory.repairCountsSuccess' : 'tournamentHistory.repairCountsFailed')
-    );
+    const confirmKey = nextValue ? 'tournamentHistory.confirmIncludeInStats' : 'tournamentHistory.confirmExcludeFromStats';
+    if (!(await this.dialog.confirm(this.i18n.t(confirmKey, { name: t.name })))) {
+      input.checked = t.countInGeneralStats;
+      return;
+    }
+
+    this.togglingCountsId.set(t.id);
+    const success = await this.tournament.setCountInGeneralStats(t.id, nextValue);
+    this.togglingCountsId.set(null);
+
+    if (!success) {
+      input.checked = t.countInGeneralStats;
+      await this.dialog.alert(this.i18n.t('tournamentHistory.toggleCountsFailed'));
+      return;
+    }
+    this.selectedTournament.set({ ...t, countInGeneralStats: nextValue });
   }
 }
