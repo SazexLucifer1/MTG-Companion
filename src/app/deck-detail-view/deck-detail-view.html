@@ -276,6 +276,14 @@
               }
             </select>
           </div>
+          <div class="chip-row">
+            <button class="glass-chip small" [class.active]="viewer.addCardSortMode() === 'name'" (click)="viewer.setAddCardSortMode('name')">
+              {{ viewer.i18n.t('deckView.sortByName') }}
+            </button>
+            <button class="glass-chip small" [class.active]="viewer.addCardSortMode() === 'cmc'" (click)="viewer.setAddCardSortMode('cmc')">
+              {{ viewer.i18n.t('deckView.sortByCmc') }}
+            </button>
+          </div>
           }
 
           @if (viewer.addCardMode() === 'edhrec') {
