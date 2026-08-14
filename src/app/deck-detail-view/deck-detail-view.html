@@ -417,7 +417,7 @@
                     <div class="card-pick-tile">
                       <div class="card-pick-image">
                         @if (viewer.edhrecCardImage(card.name); as img) {
-                          <img [src]="img" [alt]="card.name" loading="lazy" />
+                          <app-card-image [imageUrl]="img" [backImageUrl]="viewer.edhrecCardBackImage(card.name)" [alt]="card.name" />
                         } @else {
                           <div class="deck-card-placeholder">{{ card.name }}</div>
                         }

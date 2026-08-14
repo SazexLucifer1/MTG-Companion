@@ -9,15 +9,16 @@ import { DeckList } from '../deck-list/deck-list';
 import { DeckService, CommanderGameStats, Deck } from '../deck.service';
 import { AuthService } from '../auth.service';
 import { BackgroundService } from '../background.service';
-import { ScryfallService } from '../scryfall.service';
+import { ScryfallCard, ScryfallService } from '../scryfall.service';
 import { I18nService } from '../i18n.service';
 import { TutorialService } from '../tutorial.service';
 import { FeedbackService } from '../feedback.service';
 import { DialogService } from '../dialog.service';
+import { CardImage } from '../card-image/card-image';
 
 @Component({
   selector: 'app-profile-tab',
-  imports: [FormsModule, DecimalPipe, DatePipe, DeckList],
+  imports: [FormsModule, DecimalPipe, DatePipe, DeckList, CardImage],
   templateUrl: './profile-tab.html',
   styleUrl: './profile-tab.scss',
 })
@@ -112,13 +113,11 @@ export class ProfileTab {
       const viewedNames = this.profileService.viewingProfile()?.favoriteCommanders ?? [];
       const names = [...new Set([...ownNames, ...viewedNames])];
       if (names.length === 0) {
-        this.favoriteCommanderImages.set({});
+        this.favoriteCommanderCards.set({});
         return;
       }
-      Promise.all(
-        names.map((n) => this.scryfall.findCard(n).then((card) => [n, card?.imageUrl ?? null] as const))
-      ).then((entries) => {
-        this.favoriteCommanderImages.set(Object.fromEntries(entries));
+      Promise.all(names.map((n) => this.scryfall.findCard(n).then((card) => [n, card] as const))).then((entries) => {
+        this.favoriteCommanderCards.set(Object.fromEntries(entries));
       });
     });
 
@@ -127,15 +126,15 @@ export class ProfileTab {
         ...this.pagedCommanderStats().map((c) => c.commander),
         ...this.viewingUnassignedCommanderStats().map((c) => c.commander),
       ];
-      const cache = this.commanderCardImages();
+      const cache = this.commanderCards();
       const missing = [...new Set(names)].filter((n) => !(n.toLowerCase() in cache));
       if (missing.length === 0) return;
 
       this.scryfall.findCardsBulk(missing).then((found) => {
-        this.commanderCardImages.update((current) => {
+        this.commanderCards.update((current) => {
           const next = { ...current };
           for (const name of missing) {
-            next[name.toLowerCase()] = found.get(name.toLowerCase())?.imageUrl ?? null;
+            next[name.toLowerCase()] = found.get(name.toLowerCase()) ?? null;
           }
           return next;
         });
@@ -151,12 +150,17 @@ export class ProfileTab {
     });
   }
 
-  /** Kartenname (lowercase) -> Bild-URL oder null (nicht gefunden), für die "Commander ohne Deck"-Liste. */
-  private readonly commanderCardImages = signal<Record<string, string | null>>({});
+  /** Kartenname (lowercase) -> Scryfall-Daten oder null (nicht gefunden), für die "Commander ohne Deck"-Liste. */
+  private readonly commanderCards = signal<Record<string, ScryfallCard | null>>({});
 
   commanderImage(name: string | undefined): string | null {
     if (!name) return null;
-    return this.commanderCardImages()[name.toLowerCase()] ?? null;
+    return this.commanderCards()[name.toLowerCase()]?.imageUrl ?? null;
+  }
+
+  commanderBackImage(name: string | undefined): string | null {
+    if (!name) return null;
+    return this.commanderCards()[name.toLowerCase()]?.backImageUrl ?? null;
   }
 
   /** Feedback-Einträge für die Admin-Ansicht - "erledigt" standardmäßig ausgeblendet. */
@@ -168,7 +172,7 @@ export class ProfileTab {
 
   // --- Top-3-Lieblings-Commander (füllt den sonst leeren Bereich neben Avatar/Gruppen) ---
 
-  readonly favoriteCommanderImages = signal<Record<string, string | null>>({});
+  readonly favoriteCommanderCards = signal<Record<string, ScryfallCard | null>>({});
 
   readonly showFavoriteCommanderDialog = signal(false);
   readonly favoriteCommanderQuery = signal('');

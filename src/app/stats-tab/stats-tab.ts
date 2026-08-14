@@ -5,8 +5,9 @@ import { FormsModule } from '@angular/forms';
 import { MtgService } from '../mtg.service';
 import { GroupService } from '../group.service';
 import { PlayerAvatar } from '../player-avatar/player-avatar';
-import { ScryfallService } from '../scryfall.service';
+import { ScryfallCard, ScryfallService } from '../scryfall.service';
 import { DeckService } from '../deck.service';
+import { CardImage } from '../card-image/card-image';
 import {
   ExcelImportService,
   IMPORT_LOSS_PLACEHOLDER,
@@ -51,7 +52,7 @@ interface ImportMappingRow {
 
 @Component({
   selector: 'app-stats-tab',
-  imports: [DecimalPipe, PlayerAvatar, FormsModule, TournamentHistory],
+  imports: [DecimalPipe, PlayerAvatar, FormsModule, TournamentHistory, CardImage],
   templateUrl: './stats-tab.html',
   styleUrl: './stats-tab.scss',
 })
@@ -68,8 +69,8 @@ export class StatsTab {
 
   // --- Kartenbilder (Commander/Erfolgreichste Commander & Decks) ---
 
-  /** Kartenname (lowercase) -> Bild-URL oder null (nicht gefunden). Nur für aktuell sichtbare Einträge geladen. */
-  private readonly cardImages = signal<Record<string, string | null>>({});
+  /** Kartenname (lowercase) -> Scryfall-Daten oder null (nicht gefunden). Nur für aktuell sichtbare Einträge geladen. */
+  private readonly cardDetails = signal<Record<string, ScryfallCard | null>>({});
   /**
    * Deck-ID -> im Deck selbst hinterlegter Commander + Bild (deck_cards.is_commander/image_url) -
    * hat Vorrang vor dem in Partien hinterlegten Namen (siehe deckStats()), da der markierte
@@ -109,15 +110,15 @@ export class StatsTab {
       for (const c of this.h2hCommanderStatsB()) {
         names.add(c.commander);
       }
-      const cache = this.cardImages();
+      const cache = this.cardDetails();
       const missing = [...names].filter((n) => !(n.toLowerCase() in cache));
       if (missing.length === 0) return;
 
       this.scryfall.findCardsBulk(missing).then((found) => {
-        this.cardImages.update((current) => {
+        this.cardDetails.update((current) => {
           const next = { ...current };
           for (const name of missing) {
-            next[name.toLowerCase()] = found.get(name.toLowerCase())?.imageUrl ?? null;
+            next[name.toLowerCase()] = found.get(name.toLowerCase()) ?? null;
           }
           return next;
         });
@@ -129,7 +130,13 @@ export class StatsTab {
   commanderImage(name: string | undefined, storedImageUrl?: string | null): string | null {
     if (storedImageUrl) return storedImageUrl;
     if (!name) return null;
-    return this.cardImages()[name.toLowerCase()] ?? null;
+    return this.cardDetails()[name.toLowerCase()]?.imageUrl ?? null;
+  }
+
+  /** Rückseite bei Doppelkarten - kommt immer aus der Namenssuche, nie aus einem im Deck hinterlegten Bild (das speichert nie eine Rückseite). */
+  commanderBackImage(name: string | undefined): string | null {
+    if (!name) return null;
+    return this.cardDetails()[name.toLowerCase()]?.backImageUrl ?? null;
   }
 
   // --- Sortierung der Ranglisten: nach Siegen, Winrate oder Spielanzahl umschaltbar ---

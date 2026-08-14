@@ -1431,6 +1431,10 @@ export class DeckViewerService {
     return this.edhrecCardDetails().get(cardName.toLowerCase())?.imageUrl ?? null;
   }
 
+  edhrecCardBackImage(cardName: string): string | null {
+    return this.edhrecCardDetails().get(cardName.toLowerCase())?.backImageUrl ?? null;
+  }
+
   isCardInDeck(cardName: string): boolean {
     const target = DeckViewerService.frontFaceKey(cardName);
     return this.editedDeckCards().some((c) => DeckViewerService.frontFaceKey(c.cardName) === target);

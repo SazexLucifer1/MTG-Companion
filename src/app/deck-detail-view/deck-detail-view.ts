@@ -6,10 +6,11 @@ import { DeckService, DeckCard } from '../deck.service';
 import { DeckImportService } from '../deck-import.service';
 import { DeckPdfService } from '../deck-pdf.service';
 import { EdhrecCardlist } from '../edhrec.service';
+import { CardImage } from '../card-image/card-image';
 
 @Component({
   selector: 'app-deck-detail-view',
-  imports: [DatePipe, DecimalPipe, PercentPipe, FormsModule],
+  imports: [DatePipe, DecimalPipe, PercentPipe, FormsModule, CardImage],
   templateUrl: './deck-detail-view.html',
   styleUrl: './deck-detail-view.scss',
 })
