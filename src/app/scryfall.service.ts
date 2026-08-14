@@ -323,7 +323,7 @@ export class ScryfallService {
 
     const parts = ['legal:commander'];
     if (trimmed) parts.push(`name:"${trimmed.replace(/"/g, '')}"`);
-    if (filters.type) parts.push(`type:${filters.type}`);
+    if (filters.type) parts.push(`type:"${filters.type}"`);
     if (creatureType) parts.push(`type:"${creatureType.replace(/"/g, '')}"`);
     if (filters.cmc != null) parts.push(filters.cmc >= 7 ? 'cmc>=7' : `cmc:${filters.cmc}`);
     if (filters.color) parts.push(filters.color === 'C' ? 'id:c' : `id:${filters.color}`);
