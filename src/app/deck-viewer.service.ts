@@ -289,6 +289,27 @@ export class DeckViewerService {
   }
 
   /**
+   * True bei Doppelkarten (Transform/Modal-DFC), deren VORDERSEITE woanders einsortiert wird (meist
+   * Spontanzauber/Hexerei bei den "ZNR-Pathway"-artigen MDFCs), deren RÜCKSEITE aber ein Land ist -
+   * typeLine ist bei Scryfall für solche Karten immer "Vorderseite // Rückseite" kombiniert. Die
+   * Einsortierung selbst bleibt bewusst bei der Vorderseite (categoryFor prüft der Reihe nach, Land
+   * steht dort zuletzt), sonst würde z.B. eine hauptsächlich als Spontanzauber gespielte Karte in der
+   * Land-Sektion landen - nur die Land-ANZAHL soll diese verstecken Länder trotzdem mitzählen.
+   */
+  private isHiddenMdfcLand(card: DeckCard): boolean {
+    if (this.categoryFor(card) === 'Land') return false;
+    const backType = (card.typeLine ?? '').split(' // ')[1];
+    return !!backType?.includes('Land');
+  }
+
+  /** Anzahl Karten, die zwar nicht in der Land-Sektion stehen, aber auf ihrer Rückseite ein Land sind (siehe isHiddenMdfcLand) - für den "+X"-Zusatz an der Land-Sektionsüberschrift. */
+  readonly hiddenMdfcLandCount = computed(() =>
+    this.editedDeckCards()
+      .filter((c) => !c.isCommander && this.isHiddenMdfcLand(c))
+      .reduce((sum, c) => sum + c.quantity, 0)
+  );
+
+  /**
    * Übersetzt einen internen Sektions-/Typ-Label-Schlüssel (z.B. "Kreatur", "Sonstiges", "Ohne
    * Tag") für die Anzeige - die Labels selbst bleiben intern immer deutsch, da sie zugleich als
    * Gruppierungs-/Filter-Schlüssel dienen (categoryFor, typeFilterValue, TYPE_TO_SCRYFALL). Nur
