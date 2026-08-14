@@ -305,6 +305,8 @@ export class ScryfallService {
       effectQuery?: string;
       /** Fähigkeits-Keyword wie "lifelink" oder "first strike" (native Scryfall-Abfrage, kein Tagger-Tag). */
       keyword?: string;
+      /** Sortierung der Ergebnisliste - Default 'name' (alphabetisch), 'cmc' sortiert nach Manawert aufsteigend. */
+      order?: 'name' | 'cmc';
     }
   ): Promise<ScryfallCard[]> {
     const trimmed = query.trim();
@@ -334,7 +336,7 @@ export class ScryfallService {
     }
 
     const q = encodeURIComponent(parts.join(' '));
-    const res = await this.fetchWithRetry(`${API}/cards/search?q=${q}&unique=cards&order=name`);
+    const res = await this.fetchWithRetry(`${API}/cards/search?q=${q}&unique=cards&order=${filters.order ?? 'name'}`);
     if (!res?.ok) return [];
     const data = await res.json();
     // Scryfall liefert pro Seite ohnehin maximal 175 Treffer - keine zusätzliche Begrenzung nötig,

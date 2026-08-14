@@ -532,6 +532,8 @@ export class DeckViewerService {
   readonly addCardCmcFilter = signal<'all' | number>('all');
   readonly addCardEffectFilter = signal('all');
   readonly addCardKeywordFilter = signal('all');
+  /** Sortierung der Suchergebnisse - Default alphabetisch, 'cmc' sortiert nach Manawert aufsteigend. */
+  readonly addCardSortMode = signal<'name' | 'cmc'>('name');
   readonly addCardResults = signal<ScryfallCard[]>([]);
   readonly addCardBusy = signal(false);
   readonly addCardMessage = signal('');
@@ -964,6 +966,7 @@ export class DeckViewerService {
     this.addCardCmcFilter.set('all');
     this.addCardEffectFilter.set('all');
     this.addCardKeywordFilter.set('all');
+    this.addCardSortMode.set('name');
     this.addCardResults.set([]);
     this.addCardResultsPage.set(0);
     this.addCardMessage.set('');
@@ -1181,6 +1184,11 @@ export class DeckViewerService {
     this.triggerAddCardSearch();
   }
 
+  setAddCardSortMode(value: 'name' | 'cmc'): void {
+    this.addCardSortMode.set(value);
+    this.triggerAddCardSearch();
+  }
+
   private triggerAddCardSearch(): void {
     if (this.addCardSearchTimer) clearTimeout(this.addCardSearchTimer);
     const query = this.addCardQuery();
@@ -1215,6 +1223,7 @@ export class DeckViewerService {
         effectQuery: effect === 'all' ? undefined : this.effectFilters.find((f) => f.value === effect)?.query,
         keyword: keyword === 'all' ? undefined : keyword,
         colorIdentitySubset: this.deckColorIdentitySubset(),
+        order: this.addCardSortMode(),
       });
       this.addCardResults.set(results);
       this.addCardResultsPage.set(0);
