@@ -696,10 +696,21 @@
           <div class="deck-visual-grid">
             @for (card of section.cards; track card.cardName) {
               <div class="deck-card-tile" data-tutorial="deck-card-edit-controls">
-                @if (viewer.resolvedCardImage(card); as img) {
+                @if (viewer.isDeckCardFlipped(card.cardName) && viewer.resolvedCardBackImage(card); as img) {
+                  <img [src]="img" [alt]="card.cardName" loading="lazy" />
+                } @else if (viewer.resolvedCardImage(card); as img) {
                   <img [src]="img" [alt]="card.cardName" loading="lazy" />
                 } @else {
                   <div class="deck-card-placeholder">{{ card.cardName }}</div>
+                }
+                @if (viewer.resolvedCardBackImage(card)) {
+                  <button
+                    class="deck-card-flip-toggle"
+                    (click)="$event.stopPropagation(); viewer.toggleDeckCardFlip(card.cardName)"
+                    [attr.aria-label]="viewer.i18n.t('deckView.flipAria')"
+                  >
+                    🔄
+                  </button>
                 }
                 @if (viewer.editMode() && viewer.showCommanderToggle() && (card.isCommander || viewer.isCommanderEligible(card))) {
                   <button
