@@ -1022,6 +1022,28 @@ export class DeckViewerService {
     return DeckViewerService.frontFaceKey(state.key) === DeckViewerService.frontFaceKey(cardName);
   }
 
+  /**
+   * Zeigt für Doppelkarten (Transform/Modal-DFC) im "Karte hinzufügen"-Suchergebnis wahlweise die
+   * Rückseite (siehe ScryfallCard.backImageUrl) - rein lokaler Anzeige-Zustand, nichts wird
+   * gespeichert. Betrifft nur die Suchergebnis-Vorschau vor dem Hinzufügen; einmal im Deck landet
+   * ohnehin nur ein einzelnes Bild in deck_cards.image_url.
+   */
+  private readonly flippedAddCardKeys = signal<Set<string>>(new Set());
+
+  isAddCardFlipped(cardName: string): boolean {
+    return this.flippedAddCardKeys().has(DeckViewerService.frontFaceKey(cardName));
+  }
+
+  toggleAddCardFlip(cardName: string): void {
+    const key = DeckViewerService.frontFaceKey(cardName);
+    this.flippedAddCardKeys.update((set) => {
+      const next = new Set(set);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
+
   /** card.quantity ist hier bereits der aktuell angezeigte (ggf. schon angepasste) Stand aus editedDeckCards(). */
   incrementCard(card: DeckCard): void {
     this.setPendingQuantity(card, card.quantity + 1);
