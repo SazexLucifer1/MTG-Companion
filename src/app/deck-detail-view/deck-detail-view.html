@@ -352,14 +352,18 @@
                         🔄
                       </button>
                     }
-                    <button
-                      class="card-pick-add-button"
-                      [class.flash-add]="viewer.isFlashing(card.name, 'add')"
-                      (click)="viewer.addCard(card)"
-                      [attr.aria-label]="viewer.i18n.t('deckView.addAria')"
-                    >
-                      ➕
-                    </button>
+                    @if (viewer.isCardInDeck(card.name)) {
+                      <span class="card-pick-in-deck-badge" [attr.aria-label]="viewer.i18n.t('deckView.alreadyInDeckAria')">✓</span>
+                    } @else {
+                      <button
+                        class="card-pick-add-button"
+                        [class.flash-add]="viewer.isFlashing(card.name, 'add')"
+                        (click)="viewer.addCard(card)"
+                        [attr.aria-label]="viewer.i18n.t('deckView.addAria')"
+                      >
+                        ➕
+                      </button>
+                    }
                   </div>
                 </div>
               }
