@@ -42,7 +42,7 @@
       <li>
         <div class="deck-thumb">
           @if (commanderImage(deck); as img) {
-            <img [src]="img" [alt]="deck.commander" />
+            <app-card-image [imageUrl]="img" [backImageUrl]="commanderBackImage(deck)" [alt]="deck.commander" />
           } @else {
             <div class="deck-thumb-placeholder">{{ deck.name }}</div>
           }

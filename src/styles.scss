@@ -166,11 +166,12 @@ h3 {
 }
 
 .card-thumb {
+  position: relative;
+  display: block;
+  overflow: hidden;
   width: 48px;
   height: 67px;
   border-radius: 6px;
-  object-fit: cover;
-  object-position: top;
   flex-shrink: 0;
 
   &.small {

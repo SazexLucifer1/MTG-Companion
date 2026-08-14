@@ -199,7 +199,12 @@
                 <li>
                   <div class="deck-thumb">
                     @if (deckPickerThumb(option); as img) {
-                      <img [src]="img" [alt]="option.commanderName ?? option.deckName" />
+                      <app-card-image
+                        [compact]="true"
+                        [imageUrl]="img"
+                        [backImageUrl]="deckPickerBackImage(option)"
+                        [alt]="option.commanderName ?? option.deckName"
+                      />
                     } @else {
                       <div class="deck-thumb-placeholder">{{ option.deckName }}</div>
                     }

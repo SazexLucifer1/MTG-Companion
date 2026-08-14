@@ -3,7 +3,7 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { DatePipe, NgTemplateOutlet } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MtgService } from '../mtg.service';
-import { ScryfallService, ScryfallSet } from '../scryfall.service';
+import { ScryfallCard, ScryfallService, ScryfallSet } from '../scryfall.service';
 import { GeminiService } from '../gemini.service';
 import { GameSessionService } from '../game-session.service';
 import { GroupService } from '../group.service';
@@ -13,6 +13,7 @@ import { I18nService } from '../i18n.service';
 import { TournamentService } from '../tournament.service';
 import { DialogService } from '../dialog.service';
 import { GAME_MODES, TEAM_OPTIONS, Match, LIVE_TRACKING_START_DATE } from '../models';
+import { CardImage } from '../card-image/card-image';
 
 /** Ein einzelnes Spiel oder eine zu einer Karte zusammengefasste BO3-Turnierpartie (2-3 Einzelspiele) im Verlauf. */
 export type HistoryRow =
@@ -29,7 +30,7 @@ export type HistoryRow =
 
 @Component({
   selector: 'app-match-tab',
-  imports: [FormsModule, DatePipe, NgTemplateOutlet, PlayerAvatar],
+  imports: [FormsModule, DatePipe, NgTemplateOutlet, PlayerAvatar, CardImage],
   templateUrl: './match-tab.html',
   styleUrl: './match-tab.scss',
 })
@@ -189,8 +190,8 @@ export class MatchTab {
   >([]);
   readonly deckPickerBusy = signal(false);
   readonly deckPickerMessage = signal('');
-  /** Kartenname (lowercase) -> Bild-URL oder null (nicht gefunden) - Fallback fürs Vorschaubild, wenn das Deck kein individuell gewähltes Artwork hinterlegt hat. */
-  readonly deckPickerImages = signal<Record<string, string | null>>({});
+  /** Kartenname (lowercase) -> Scryfall-Daten oder null (nicht gefunden) - Fallback fürs Vorschaubild, wenn das Deck kein individuell gewähltes Artwork hinterlegt hat. */
+  readonly deckPickerCards = signal<Record<string, ScryfallCard | null>>({});
   /** true = "Deck ausleihen"-Fluss, in dem zuerst die leihgebende Person und erst danach deren Decks gewählt werden. */
   readonly deckPickerBorrowMode = signal(false);
   /** Andere mitspielende Personen mit eigenem Account, von denen geliehen werden kann - Zwischenschritt vor der eigentlichen Deck-Liste. */
@@ -207,7 +208,7 @@ export class MatchTab {
     this.borrowFromOwner.set(null);
     this.deckPickerMessage.set('');
     this.deckPickerBusy.set(true);
-    this.deckPickerImages.set({});
+    this.deckPickerCards.set({});
 
     const decks = await this.deckService.loadDecksForUser(userId);
     const options = decks.map((d) => ({ deckId: d.id, deckName: d.name, isPrecon: d.isPrecon }));
@@ -241,7 +242,7 @@ export class MatchTab {
     this.borrowFromOwner.set(owner);
     this.deckPickerMessage.set('');
     this.deckPickerBusy.set(true);
-    this.deckPickerImages.set({});
+    this.deckPickerCards.set({});
 
     const userId = this.mtg.playerUserIds()[owner]!;
     const decks = await this.deckService.loadDecksForUser(userId);
@@ -258,7 +259,7 @@ export class MatchTab {
     this.borrowFromOwner.set(null);
     this.deckPickerOptions.set([]);
     this.deckPickerMessage.set('');
-    this.deckPickerImages.set({});
+    this.deckPickerCards.set({});
   }
 
   /** Lädt den hinterlegten Commander je Deck (inkl. individuell gewähltem Artwork) und lädt fehlende Bilder per Scryfall nach, damit die Deck-Auswahl Vorschaubilder statt nur Namen zeigt. */
@@ -275,20 +276,23 @@ export class MatchTab {
       })
     );
 
+    // Anders als früher NICHT mehr auf "ohne bereits hinterlegtes Artwork" gefiltert - das
+    // DB-Feld deck_cards.image_url speichert nie eine Rückseite, die kommt für Doppelkarten immer
+    // erst aus dieser Namenssuche, auch wenn die Vorderseite schon aus der DB bekannt ist.
     const missing = [
       ...new Set(
         this.deckPickerOptions()
-          .filter((o) => !o.commanderImageUrl && o.commanderName)
+          .filter((o) => o.commanderName)
           .map((o) => o.commanderName!)
       ),
     ];
     if (missing.length === 0) return;
 
     const found = await this.scryfall.findCardsBulk(missing);
-    this.deckPickerImages.update((current) => {
+    this.deckPickerCards.update((current) => {
       const next = { ...current };
       for (const name of missing) {
-        next[name.toLowerCase()] = found.get(name.toLowerCase())?.imageUrl ?? null;
+        next[name.toLowerCase()] = found.get(name.toLowerCase()) ?? null;
       }
       return next;
     });
@@ -298,14 +302,20 @@ export class MatchTab {
   deckPickerThumb(option: { commanderName?: string; commanderImageUrl?: string | null }): string | null {
     if (option.commanderImageUrl) return option.commanderImageUrl;
     if (!option.commanderName) return null;
-    return this.deckPickerImages()[option.commanderName.toLowerCase()] ?? null;
+    return this.deckPickerCards()[option.commanderName.toLowerCase()]?.imageUrl ?? null;
+  }
+
+  /** Rückseite bei Doppelkarten - kommt immer aus der Namenssuche, nie aus einem im Deck hinterlegten Bild (das speichert nie eine Rückseite). */
+  deckPickerBackImage(option: { commanderName?: string }): string | null {
+    if (!option.commanderName) return null;
+    return this.deckPickerCards()[option.commanderName.toLowerCase()]?.backImageUrl ?? null;
   }
 
   closeDeckPicker(): void {
     this.deckPickerTarget.set(null);
     this.deckPickerOptions.set([]);
     this.deckPickerMessage.set('');
-    this.deckPickerImages.set({});
+    this.deckPickerCards.set({});
     this.deckPickerBorrowMode.set(false);
     this.borrowFromOwner.set(null);
     this.borrowOwnerOptions.set([]);

@@ -4,10 +4,11 @@ import { FormsModule } from '@angular/forms';
 import { DeckService, Deck, DeckGameStats } from '../deck.service';
 import { DeckViewerService } from '../deck-viewer.service';
 import { DeckImportService } from '../deck-import.service';
-import { ScryfallService } from '../scryfall.service';
+import { ScryfallCard, ScryfallService } from '../scryfall.service';
 import { I18nService } from '../i18n.service';
 import { DialogService } from '../dialog.service';
 import { GoldfishService } from '../goldfish.service';
+import { CardImage } from '../card-image/card-image';
 
 export type DeckSortMode = 'alpha' | 'winRate' | 'games';
 
@@ -29,7 +30,7 @@ const GRID_BREAKPOINT_QUERY = '(min-width: 640px)';
 
 @Component({
   selector: 'app-deck-list',
-  imports: [DecimalPipe, FormsModule],
+  imports: [DecimalPipe, FormsModule, CardImage],
   templateUrl: './deck-list.html',
   styleUrl: './deck-list.scss',
 })
@@ -75,8 +76,8 @@ export class DeckList {
     return Math.max(cols, Math.floor(PAGE_SIZE_CAP / cols) * cols);
   });
 
-  /** Kartenname (lowercase) -> Bild-URL oder null (nicht gefunden). Nur für aktuell sichtbare Einträge geladen. */
-  private readonly cardImages = signal<Record<string, string | null>>({});
+  /** Kartenname (lowercase) -> Scryfall-Daten oder null (nicht gefunden). Nur für aktuell sichtbare Einträge geladen. */
+  private readonly cardDetails = signal<Record<string, ScryfallCard | null>>({});
 
   constructor() {
     effect(() => {
@@ -97,20 +98,21 @@ export class DeckList {
     });
 
     effect(() => {
-      // Nur Namen ohne bereits hinterlegtes Artwork nachladen (commanderImageUrl hat Vorrang, siehe commanderImage()).
+      // Anders als früher NICHT mehr auf "ohne bereits hinterlegtes Artwork" gefiltert - das
+      // DB-Feld deck_cards.image_url speichert nie eine Rückseite, die kommt für Doppelkarten immer
+      // erst aus dieser Namenssuche, auch wenn die Vorderseite schon aus der DB bekannt ist.
       const names = this.pagedDecks()
-        .filter((d) => !d.commanderImageUrl)
         .map((d) => d.commander)
         .filter((n): n is string => !!n);
-      const cache = this.cardImages();
+      const cache = this.cardDetails();
       const missing = [...new Set(names)].filter((n) => !(n.toLowerCase() in cache));
       if (missing.length === 0) return;
 
       this.scryfall.findCardsBulk(missing).then((found) => {
-        this.cardImages.update((current) => {
+        this.cardDetails.update((current) => {
           const next = { ...current };
           for (const name of missing) {
-            next[name.toLowerCase()] = found.get(name.toLowerCase())?.imageUrl ?? null;
+            next[name.toLowerCase()] = found.get(name.toLowerCase()) ?? null;
           }
           return next;
         });
@@ -158,7 +160,13 @@ export class DeckList {
   commanderImage(deck: DeckWithStats): string | null {
     if (deck.commanderImageUrl) return deck.commanderImageUrl;
     if (!deck.commander) return null;
-    return this.cardImages()[deck.commander.toLowerCase()] ?? null;
+    return this.cardDetails()[deck.commander.toLowerCase()]?.imageUrl ?? null;
+  }
+
+  /** Rückseite bei Doppelkarten - kommt immer aus der Namenssuche, nie aus deck_cards.image_url (das speichert nie eine Rückseite). */
+  commanderBackImage(deck: DeckWithStats): string | null {
+    if (!deck.commander) return null;
+    return this.cardDetails()[deck.commander.toLowerCase()]?.backImageUrl ?? null;
   }
 
   private readonly decksWithStats = computed<DeckWithStats[]>(() =>

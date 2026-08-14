@@ -1,0 +1,15 @@
+<img
+  [src]="showingBack() && backImageUrl() ? backImageUrl() : imageUrl()"
+  [alt]="alt()"
+  loading="lazy"
+/>
+@if (backImageUrl()) {
+  <button
+    type="button"
+    class="card-image-flip-button"
+    (click)="toggleFlip($event)"
+    [attr.aria-label]="i18n.t('cardImage.flipAria')"
+  >
+    🔄
+  </button>
+}

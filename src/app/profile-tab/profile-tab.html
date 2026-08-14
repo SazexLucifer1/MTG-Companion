@@ -25,8 +25,8 @@
           <div class="favorite-commanders-row">
             @for (name of viewed.favoriteCommanders; track name) {
               <div class="favorite-commander-card" [attr.aria-label]="name">
-                @if (favoriteCommanderImages()[name]; as img) {
-                  <img [src]="img" [alt]="name" />
+                @if (favoriteCommanderCards()[name]?.imageUrl; as img) {
+                  <app-card-image [imageUrl]="img" [backImageUrl]="favoriteCommanderCards()[name]?.backImageUrl" [alt]="name" />
                 } @else {
                   <span class="favorite-commander-placeholder">{{ name }}</span>
                 }
@@ -82,7 +82,9 @@
             <li>
               <span class="player-name card-name-cell">
                 @if (commanderImage(c.commander); as img) {
-                <img class="card-thumb" [src]="img" [alt]="c.commander" />
+                <span class="card-thumb">
+                  <app-card-image [compact]="true" [imageUrl]="img" [backImageUrl]="commanderBackImage(c.commander)" [alt]="c.commander" />
+                </span>
                 }
                 <span class="card-name-text">{{ c.commander }}</span>
               </span>
@@ -204,13 +206,21 @@
         <h3>{{ i18n.t(mtg.myPlayerName() === 'Adrian' ? 'profile.myFavoriteGliederAdrian' : 'profile.myFavoriteCommanders') }}</h3>
         <div class="favorite-commanders-row">
           @for (name of profileService.profile()?.favoriteCommanders ?? []; track name) {
-            <button class="favorite-commander-card" (click)="openFavoriteCommanderDialog()" [attr.aria-label]="name">
-              @if (favoriteCommanderImages()[name]; as img) {
-                <img [src]="img" [alt]="name" />
+            <div
+              class="favorite-commander-card"
+              role="button"
+              tabindex="0"
+              (click)="openFavoriteCommanderDialog()"
+              (keydown.enter)="openFavoriteCommanderDialog()"
+              (keydown.space)="$event.preventDefault(); openFavoriteCommanderDialog()"
+              [attr.aria-label]="name"
+            >
+              @if (favoriteCommanderCards()[name]?.imageUrl; as img) {
+                <app-card-image [imageUrl]="img" [backImageUrl]="favoriteCommanderCards()[name]?.backImageUrl" [alt]="name" />
               } @else {
                 <span class="favorite-commander-placeholder">{{ name }}</span>
               }
-            </button>
+            </div>
           }
           @if ((profileService.profile()?.favoriteCommanders ?? []).length < 3) {
             <button class="favorite-commander-card empty" (click)="openFavoriteCommanderDialog()" [attr.aria-label]="i18n.t('profile.addFavoriteCommanderAria')">
@@ -426,7 +436,9 @@
             <li>
               <span class="player-name card-name-cell">
                 @if (commanderImage(c.commander); as img) {
-                <img class="card-thumb" [src]="img" [alt]="c.commander" />
+                <span class="card-thumb">
+                  <app-card-image [compact]="true" [imageUrl]="img" [backImageUrl]="commanderBackImage(c.commander)" [alt]="c.commander" />
+                </span>
                 }
                 <span class="card-name-text">{{ c.commander }}</span>
               </span>

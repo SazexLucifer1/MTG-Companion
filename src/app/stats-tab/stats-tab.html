@@ -265,7 +265,9 @@
       <span class="rank">{{ medal(i) }}</span>
       <span class="name card-name-cell">
         @if (commanderImage(d.commander, d.commanderImageUrl); as img) {
-          <img class="card-thumb" [src]="img" [alt]="d.commander" />
+          <span class="card-thumb">
+            <app-card-image [compact]="true" [imageUrl]="img" [backImageUrl]="commanderBackImage(d.commander)" [alt]="d.commander" />
+          </span>
         }
         <span class="card-name-text">
           @if (d.isPrecon) {<span title="Precon">📦</span>}
@@ -318,7 +320,9 @@
       <span class="rank">{{ medal(i) }}</span>
       <span class="name card-name-cell">
         @if (commanderImage(c.commander); as img) {
-          <img class="card-thumb" [src]="img" [alt]="c.commander" />
+          <span class="card-thumb">
+            <app-card-image [compact]="true" [imageUrl]="img" [backImageUrl]="commanderBackImage(c.commander)" [alt]="c.commander" />
+          </span>
         }
         <span class="card-name-text">{{ c.commander }}</span>
         @if (isSingleMode() === null) {
@@ -511,7 +515,9 @@
       <span class="rank">{{ medal(i) }}</span>
       <span class="name card-name-cell">
         @if (commanderImage(c.commander); as img) {
-          <img class="card-thumb" [src]="img" [alt]="c.commander" />
+          <span class="card-thumb">
+            <app-card-image [compact]="true" [imageUrl]="img" [backImageUrl]="commanderBackImage(c.commander)" [alt]="c.commander" />
+          </span>
         }
         <span class="card-name-text">{{ c.commander }}</span>
       </span>
@@ -532,7 +538,9 @@
       <span class="rank">{{ medal(i) }}</span>
       <span class="name card-name-cell">
         @if (commanderImage(c.commander); as img) {
-          <img class="card-thumb" [src]="img" [alt]="c.commander" />
+          <span class="card-thumb">
+            <app-card-image [compact]="true" [imageUrl]="img" [backImageUrl]="commanderBackImage(c.commander)" [alt]="c.commander" />
+          </span>
         }
         <span class="card-name-text">{{ c.commander }}</span>
       </span>
@@ -569,7 +577,9 @@
       <span class="rank">{{ medal(combinedEffectivePage() * 10 + i) }}</span>
       <span class="name card-name-cell">
         @if (commanderImage(e.cardName, e.cardImageUrl); as img) {
-        <img class="card-thumb" [src]="img" [alt]="e.cardName" />
+        <span class="card-thumb">
+          <app-card-image [compact]="true" [imageUrl]="img" [backImageUrl]="commanderBackImage(e.cardName)" [alt]="e.cardName" />
+        </span>
         }
         <span class="card-name-text">{{ e.name }}</span>
       </span>
@@ -604,7 +614,9 @@
     <li>
       <span class="name card-name-cell">
         @if (commanderImage(e.cardName, e.cardImageUrl); as img) {
-        <img class="card-thumb" [src]="img" [alt]="e.cardName" />
+        <span class="card-thumb">
+          <app-card-image [compact]="true" [imageUrl]="img" [backImageUrl]="commanderBackImage(e.cardName)" [alt]="e.cardName" />
+        </span>
         }
         <span class="card-name-text">{{ e.name }}</span>
       </span>
