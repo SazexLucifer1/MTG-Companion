@@ -704,7 +704,9 @@
       }
 
       @for (section of viewer.filteredGroupedDeckCards(); track section.label) {
-        <h4 class="deck-section-title">{{ viewer.translateLabel(section.label) }} ({{ sectionCardCount(section.cards) }})</h4>
+        <h4 class="deck-section-title">
+          {{ viewer.translateLabel(section.label) }} ({{ sectionCardCount(section.cards) }}@if (section.label === 'Land' && viewer.hiddenMdfcLandCount() > 0) { + {{ viewer.hiddenMdfcLandCount() }} {{ viewer.i18n.t('deckView.mdfcLandSuffix') }}})
+        </h4>
         @if (viewer.viewMode() === 'visual') {
           <div class="deck-visual-grid">
             @for (card of section.cards; track card.cardName) {
