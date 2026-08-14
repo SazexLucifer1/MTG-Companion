@@ -1044,6 +1044,29 @@ export class DeckViewerService {
     });
   }
 
+  /**
+   * Wie flippedAddCardKeys, aber für Karten, die bereits im geöffneten Deck stecken (eigenes,
+   * unabhängiges Signal - ein Flip im Suchergebnis soll die Anzeige im Deck selbst nicht
+   * beeinflussen und umgekehrt). Wird beim Öffnen/Schließen eines Decks zurückgesetzt (siehe
+   * open()/close()), sonst bliebe ein Flip-Zustand fälschlich bestehen, falls ein anderes Deck
+   * zufällig eine gleichnamige Karte enthält.
+   */
+  private readonly flippedDeckCardKeys = signal<Set<string>>(new Set());
+
+  isDeckCardFlipped(cardName: string): boolean {
+    return this.flippedDeckCardKeys().has(DeckViewerService.frontFaceKey(cardName));
+  }
+
+  toggleDeckCardFlip(cardName: string): void {
+    const key = DeckViewerService.frontFaceKey(cardName);
+    this.flippedDeckCardKeys.update((set) => {
+      const next = new Set(set);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
+
   /** card.quantity ist hier bereits der aktuell angezeigte (ggf. schon angepasste) Stand aus editedDeckCards(). */
   incrementCard(card: DeckCard): void {
     this.setPendingQuantity(card, card.quantity + 1);
@@ -1411,6 +1434,15 @@ export class DeckViewerService {
     return card.imageUrl ?? this.viewingCardDetails().get(card.cardName.toLowerCase())?.imageUrl ?? null;
   }
 
+  /**
+   * Rückseite einer Doppelkarte (Transform/Modal-DFC), die schon im Deck steckt - deck_cards
+   * speichert nur ein einziges Bild, die Rückseite kommt deshalb ausschließlich aus den ohnehin
+   * geladenen Scryfall-Zusatzdaten (viewingCardDetails), nie aus der DB.
+   */
+  resolvedCardBackImage(card: DeckCard): string | null {
+    return this.viewingCardDetails().get(card.cardName.toLowerCase())?.backImageUrl ?? null;
+  }
+
   /** Löst den EDHREC-Kartennamen zu vollen Scryfall-Daten auf (EDHREC selbst liefert nur Name+Statistik) und staged ihn wie addCard(). */
   async addEdhrecCard(cardName: string): Promise<void> {
     this.addCardBusy.set(true);
@@ -1473,6 +1505,7 @@ export class DeckViewerService {
     this.edhrecFailed.set(false);
     this.showDeckAnalysisInfo.set(false);
     this.viewingCardDetails.set(new Map());
+    this.flippedDeckCardKeys.set(new Set());
     this.bracketEstimate.set(null);
     this.bracketEstimateFailed.set(false);
     this.bracketEstimateErrorDetail.set(null);
@@ -1529,6 +1562,7 @@ export class DeckViewerService {
     this.viewingChangeLog.set([]);
     this.viewingDeckGameStats.set(null);
     this.viewingCardDetails.set(new Map());
+    this.flippedDeckCardKeys.set(new Set());
     this.bracketEstimate.set(null);
     this.bracketEstimateBusy.set(false);
     this.bracketEstimateFailed.set(false);
