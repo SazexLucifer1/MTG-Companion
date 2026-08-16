@@ -39,7 +39,10 @@ export class DeckDetailView {
   openPdfExport(): void {
     const deck = this.viewer.viewingDeck();
     if (!deck) return;
-    this.pdfService.open(deck.name, this.viewer.viewingDeckCards());
+    this.pdfService.open(
+      deck.name,
+      this.viewer.viewingDeckCards().filter((c) => !c.isMaybeboard)
+    );
   }
 
   async onCustomArtworkSelected(event: Event): Promise<void> {

@@ -137,13 +137,19 @@ export class DeckViewerService {
   readonly viewingCardDetails = signal<Map<string, ScryfallCard>>(new Map());
   readonly analysisBusy = signal(false);
 
+  /** Zählt bewusst KEINE Maybeboard-Karten mit - die stehen nur in der engeren Auswahl, nicht im Deck. */
   readonly viewingTotalCards = computed(() =>
-    this.editedDeckCards().reduce((sum, c) => sum + c.quantity, 0)
+    this.editedDeckCards()
+      .filter((c) => !c.isMaybeboard)
+      .reduce((sum, c) => sum + c.quantity, 0)
   );
+
+  /** Gespeicherte Deck-Karten ohne Maybeboard - Basis für sämtliche Deck-Analysen (Kurve, Pips, Game-Changer, Tutoren, Bracket-Schätzung). */
+  private readonly analysisDeckCards = computed(() => this.viewingDeckCards().filter((c) => !c.isMaybeboard));
 
   /** Nicht-Land-Karten - Basis für Manakurve, Pip-Verteilung und Game-Changer-Auswertung. */
   private readonly nonLandCards = computed(() =>
-    this.viewingDeckCards().filter((c) => !(c.typeLine ?? '').includes('Land'))
+    this.analysisDeckCards().filter((c) => !(c.typeLine ?? '').includes('Land'))
   );
 
   readonly manaCurve = computed<ManaCurveBucket[]>(() => {
@@ -190,7 +196,7 @@ export class DeckViewerService {
 
   readonly gameChangerCards = computed<GameChangerEntry[]>(() => {
     const details = this.viewingCardDetails();
-    return this.viewingDeckCards()
+    return this.analysisDeckCards()
       .filter((c) => details.get(c.cardName.toLowerCase())?.gameChanger === true)
       .map((c) => ({ cardName: c.cardName, quantity: c.quantity }));
   });
@@ -229,7 +235,7 @@ export class DeckViewerService {
    */
   readonly tutorCards = computed<GameChangerEntry[]>(() => {
     const details = this.viewingCardDetails();
-    return this.viewingDeckCards()
+    return this.analysisDeckCards()
       .filter((c) => {
         const text = details.get(c.cardName.toLowerCase())?.oracleText ?? '';
         return DeckViewerService.TUTOR_RE.test(text) && !DeckViewerService.LAND_TUTOR_RE.test(text);
@@ -305,7 +311,7 @@ export class DeckViewerService {
   /** Anzahl Karten, die zwar nicht in der Land-Sektion stehen, aber auf ihrer Rückseite ein Land sind (siehe isHiddenMdfcLand) - für den "+X"-Zusatz an der Land-Sektionsüberschrift. */
   readonly hiddenMdfcLandCount = computed(() =>
     this.editedDeckCards()
-      .filter((c) => !c.isCommander && this.isHiddenMdfcLand(c))
+      .filter((c) => !c.isCommander && !c.isMaybeboard && this.isHiddenMdfcLand(c))
       .reduce((sum, c) => sum + c.quantity, 0)
   );
 
@@ -328,6 +334,7 @@ export class DeckViewerService {
     Commander: 'deckViewer.type.Commander',
     Sonstiges: 'deckViewer.type.Sonstiges',
     'Ohne Tag': 'deckViewer.type.OhneTag',
+    Maybeboard: 'deckViewer.type.Maybeboard',
   };
 
   translateLabel(label: string): string {
@@ -342,7 +349,8 @@ export class DeckViewerService {
   /** Karten gruppiert nach Commander -> Typ, innerhalb jeder Gruppe nach Manawert sortiert. */
   readonly groupedDeckCards = computed(() => {
     const commander = this.editedDeckCards().filter((c) => c.isCommander);
-    const rest = this.editedDeckCards().filter((c) => !c.isCommander);
+    const rest = this.editedDeckCards().filter((c) => !c.isCommander && !c.isMaybeboard);
+    const maybe = this.editedDeckCards().filter((c) => !c.isCommander && c.isMaybeboard);
 
     const groups = new Map<string, DeckCard[]>();
     for (const card of rest) {
@@ -363,6 +371,9 @@ export class DeckViewerService {
     const other = groups.get('Sonstiges');
     if (other?.length) {
       sections.push({ label: 'Sonstiges', cards: [...other].sort(DeckViewerService.sortByCmc) });
+    }
+    if (maybe.length > 0) {
+      sections.push({ label: 'Maybeboard', cards: [...maybe].sort(DeckViewerService.sortByCmc) });
     }
 
     return sections;
@@ -391,7 +402,8 @@ export class DeckViewerService {
    */
   readonly groupedDeckCardsByTag = computed(() => {
     const commander = this.editedDeckCards().filter((c) => c.isCommander);
-    const rest = this.editedDeckCards().filter((c) => !c.isCommander);
+    const rest = this.editedDeckCards().filter((c) => !c.isCommander && !c.isMaybeboard);
+    const maybe = this.editedDeckCards().filter((c) => !c.isCommander && c.isMaybeboard);
 
     const groups = new Map<string, DeckCard[]>();
     const untagged: DeckCard[] = [];
@@ -416,6 +428,9 @@ export class DeckViewerService {
     }
     if (untagged.length > 0) {
       sections.push({ label: 'Ohne Tag', cards: untagged.sort(DeckViewerService.sortByCmc) });
+    }
+    if (maybe.length > 0) {
+      sections.push({ label: 'Maybeboard', cards: [...maybe].sort(DeckViewerService.sortByCmc) });
     }
     return sections;
   });
@@ -680,6 +695,8 @@ export class DeckViewerService {
   readonly pendingChanges = signal<Map<string, PendingCardChange>>(new Map());
   /** Kartenname (lowercase) -> neuer Commander-Status, ebenfalls nur lokal bis saveEdits(). */
   readonly pendingCommanderChanges = signal<Map<string, boolean>>(new Map());
+  /** Kartenname (lowercase) -> neuer Maybeboard-Status, ebenfalls nur lokal bis saveEdits(). */
+  readonly pendingMaybeboardChanges = signal<Map<string, boolean>>(new Map());
   readonly editSaveBusy = signal(false);
 
   /** Kartenname (lowercase) -> gespeicherte Anzahl, als schnelle Nachschlagehilfe für Diff-Berechnungen. */
@@ -696,21 +713,34 @@ export class DeckViewerService {
     return map;
   });
 
+  /** Kartenname (lowercase) -> gespeicherter Maybeboard-Status, analog savedQuantityByKey. */
+  private readonly savedMaybeboardByKey = computed(() => {
+    const map = new Map<string, boolean>();
+    for (const c of this.viewingDeckCards()) map.set(c.cardName.toLowerCase(), c.isMaybeboard);
+    return map;
+  });
+
   /** viewingDeckCards, überlagert von den noch ungespeicherten Änderungen - das, was während des Bearbeitens angezeigt wird. */
   readonly editedDeckCards = computed<DeckCard[]>(() => {
     if (!this.editMode()) return this.viewingDeckCards();
 
     const pending = this.pendingChanges();
     const commanderChanges = this.pendingCommanderChanges();
+    const maybeboardChanges = this.pendingMaybeboardChanges();
     const result: DeckCard[] = [];
     for (const card of this.viewingDeckCards()) {
       const key = card.cardName.toLowerCase();
       const change = pending.get(key);
       const isCommander = commanderChanges.get(key) ?? card.isCommander;
+      const isMaybeboard = maybeboardChanges.get(key) ?? card.isMaybeboard;
       if (!change) {
-        result.push(isCommander === card.isCommander ? card : { ...card, isCommander });
+        result.push(
+          isCommander === card.isCommander && isMaybeboard === card.isMaybeboard
+            ? card
+            : { ...card, isCommander, isMaybeboard }
+        );
       } else if (change.quantity > 0) {
-        result.push({ ...card, quantity: change.quantity, isCommander });
+        result.push({ ...card, quantity: change.quantity, isCommander, isMaybeboard });
       }
     }
     const savedKeys = this.savedQuantityByKey();
@@ -723,6 +753,7 @@ export class DeckViewerService {
           typeLine: change.typeLine,
           cmc: change.cmc,
           isCommander: commanderChanges.get(change.cardName.toLowerCase()) ?? false,
+          isMaybeboard: maybeboardChanges.get(change.cardName.toLowerCase()) ?? false,
           customTags: [],
         });
       }
@@ -738,6 +769,10 @@ export class DeckViewerService {
     const savedCommanders = this.savedCommanderByKey();
     for (const [key, isCommander] of this.pendingCommanderChanges()) {
       if (isCommander !== (savedCommanders.get(key) ?? false)) return true;
+    }
+    const savedMaybeboard = this.savedMaybeboardByKey();
+    for (const [key, isMaybeboard] of this.pendingMaybeboardChanges()) {
+      if (isMaybeboard !== (savedMaybeboard.get(key) ?? false)) return true;
     }
     return false;
   });
@@ -770,6 +805,26 @@ export class DeckViewerService {
     }
     return changed;
   });
+
+  /** Karten, deren Maybeboard-Status sich geändert hat (noch ungespeichert) - für die Anzeige vor dem Speichern. */
+  readonly pendingMaybeboardChangeDetails = computed(() => {
+    const saved = this.savedMaybeboardByKey();
+    const changed: { cardName: string; isMaybeboard: boolean }[] = [];
+    for (const [key, isMaybeboard] of this.pendingMaybeboardChanges()) {
+      if (isMaybeboard !== (saved.get(key) ?? false)) {
+        const cardName =
+          this.editedDeckCards().find((c) => c.cardName.toLowerCase() === key)?.cardName ?? key;
+        changed.push({ cardName, isMaybeboard });
+      }
+    }
+    return changed;
+  });
+
+  /** Verschiebt eine Karte im Bearbeitungsmodus zwischen Hauptdeck und Maybeboard - nur lokal, bis saveEdits(). */
+  toggleCardMaybeboard(card: DeckCard): void {
+    if (!this.canEditViewingDeck()) return;
+    this.pendingMaybeboardChanges.update((map) => new Map(map).set(card.cardName.toLowerCase(), !card.isMaybeboard));
+  }
 
   readonly commanderMarkError = signal<string | null>(null);
 
@@ -979,6 +1034,7 @@ export class DeckViewerService {
     this.tagEditorNewTag.set('');
     this.pendingChanges.set(new Map());
     this.pendingCommanderChanges.set(new Map());
+    this.pendingMaybeboardChanges.set(new Map());
     this.commanderMarkError.set(null);
     this.addCardQuery.set('');
     this.addCardTypeFilter.set('all');
@@ -988,6 +1044,7 @@ export class DeckViewerService {
     this.addCardEffectFilter.set('all');
     this.addCardKeywordFilter.set('all');
     this.addCardSortMode.set('name');
+    this.addCardToMaybeboard.set(false);
     this.addCardResults.set([]);
     this.addCardResultsPage.set(0);
     this.addCardMessage.set('');
@@ -1110,8 +1167,10 @@ export class DeckViewerService {
     this.editSaveBusy.set(true);
 
     const saved = this.savedQuantityByKey();
+    const maybeboardChanges = this.pendingMaybeboardChanges();
     for (const change of this.pendingChanges().values()) {
-      const savedQty = saved.get(change.cardName.toLowerCase()) ?? 0;
+      const key = change.cardName.toLowerCase();
+      const savedQty = saved.get(key) ?? 0;
       const diff = change.quantity - savedQty;
       if (diff === 0) continue;
 
@@ -1124,7 +1183,8 @@ export class DeckViewerService {
             typeLine: change.typeLine ?? undefined,
             cmc: change.cmc,
           },
-          diff
+          diff,
+          maybeboardChanges.get(key) ?? false
         );
       } else {
         await this.deckService.removeCardFromDeck(deck.id, change.cardName, -diff);
@@ -1139,8 +1199,21 @@ export class DeckViewerService {
       await this.deckService.setCardCommanderFlag(deck.id, cardName, isCommander);
     }
 
+    // Für Karten, die im selben Speichervorgang brandneu hinzugefügt wurden, wurde der
+    // Maybeboard-Status oben schon beim Insert gesetzt (addCardToDeck) - dieser Lauf setzt ihn hier
+    // nochmal auf denselben Wert (harmlos) und deckt zusätzlich bereits vorhandene Karten ab, die
+    // nur verschoben wurden, ohne dass sich ihre Menge geändert hat (kein Eintrag in pendingChanges).
+    const savedMaybeboard = this.savedMaybeboardByKey();
+    for (const [key, isMaybeboard] of maybeboardChanges) {
+      if (isMaybeboard === (savedMaybeboard.get(key) ?? false)) continue;
+      const cardName =
+        this.editedDeckCards().find((c) => c.cardName.toLowerCase() === key)?.cardName ?? key;
+      await this.deckService.setCardMaybeboardFlag(deck.id, cardName, isMaybeboard);
+    }
+
     this.pendingChanges.set(new Map());
     this.pendingCommanderChanges.set(new Map());
+    this.pendingMaybeboardChanges.set(new Map());
     this.commanderMarkError.set(null);
     this.editMode.set(false);
     this.showCommanderToggle.set(false);
@@ -1156,6 +1229,7 @@ export class DeckViewerService {
   cancelEdits(): void {
     this.pendingChanges.set(new Map());
     this.pendingCommanderChanges.set(new Map());
+    this.pendingMaybeboardChanges.set(new Map());
     this.commanderMarkError.set(null);
     this.editMode.set(false);
     this.showCommanderToggle.set(false);
@@ -1252,7 +1326,19 @@ export class DeckViewerService {
     }, 300);
   }
 
-  /** Fügt eine Karte aus den Suchergebnissen nur lokal zu pendingChanges hinzu - noch nicht gespeichert. */
+  /** Ziel für die nächste per addCard()/addEdhrecCard() hinzugefügte Karte - Deck oder Maybeboard, umschaltbar über den Chip im "Karte hinzufügen"-Panel. */
+  readonly addCardToMaybeboard = signal(false);
+
+  toggleAddCardToMaybeboard(toMaybeboard: boolean): void {
+    this.addCardToMaybeboard.set(toMaybeboard);
+  }
+
+  /**
+   * Fügt eine Karte aus den Suchergebnissen/EDHREC-Vorschlägen nur lokal zu pendingChanges hinzu -
+   * noch nicht gespeichert. addCardToMaybeboard() entscheidet nur bei komplett NEUEN Karten, ob sie
+   * ins Maybeboard statt direkt ins Deck wandern - bei bereits vorhandenen Karten (nur Menge erhöht)
+   * bleibt ihr bisheriger Maybeboard-Status unangetastet.
+   */
   addCard(card: ScryfallCard): void {
     if (!this.canEditViewingDeck()) return;
     const key = card.name.toLowerCase();
@@ -1271,6 +1357,9 @@ export class DeckViewerService {
       });
       return next;
     });
+    if (!existingInDeck) {
+      this.pendingMaybeboardChanges.update((map) => new Map(map).set(key, this.addCardToMaybeboard()));
+    }
     // Direkt mit in viewingCardDetails übernehmen, damit z.B. die Partner-Prüfung beim
     // Commander-Markieren auch für gerade erst (noch ungespeichert) hinzugefügte Karten
     // funktioniert, ohne auf den nächsten vollen Reload zu warten.
@@ -1523,6 +1612,7 @@ export class DeckViewerService {
     this.tagEditorNewTag.set('');
     this.pendingChanges.set(new Map());
     this.pendingCommanderChanges.set(new Map());
+    this.pendingMaybeboardChanges.set(new Map());
     this.commanderMarkError.set(null);
     this.flashState.set(null);
     this.addCardResults.set([]);
@@ -1611,6 +1701,7 @@ export class DeckViewerService {
     this.tagEditorNewTag.set('');
     this.pendingChanges.set(new Map());
     this.pendingCommanderChanges.set(new Map());
+    this.pendingMaybeboardChanges.set(new Map());
     this.commanderMarkError.set(null);
     this.flashState.set(null);
     this.addCardResults.set([]);
