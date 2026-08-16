@@ -43,6 +43,8 @@ export interface DeckCard {
   isCommander: boolean;
   /** Frei vergebene eigene Sortier-Tags (z.B. "Removal", "Wincon") - eine Karte kann mehrere haben. */
   customTags: string[];
+  /** Steht in der engeren Auswahl (Maybeboard) statt wirklich im Deck - zählt nicht zur Deckgröße/Analyse. */
+  isMaybeboard: boolean;
 }
 
 export interface DeckChangeEntry {
@@ -90,7 +92,7 @@ export class DeckService {
   async loadDeckCards(deckId: string): Promise<DeckCard[]> {
     const { data, error } = await supabase
       .from('deck_cards')
-      .select('card_name, quantity, image_url, type_line, cmc, is_commander, custom_tags')
+      .select('card_name, quantity, image_url, type_line, cmc, is_commander, custom_tags, is_maybeboard')
       .eq('deck_id', deckId)
       .order('card_name', { ascending: true });
 
@@ -107,6 +109,7 @@ export class DeckService {
       cmc: row.cmc ?? 0,
       isCommander: row.is_commander,
       customTags: row.custom_tags ?? [],
+      isMaybeboard: row.is_maybeboard ?? false,
     }));
   }
 
@@ -514,7 +517,7 @@ export class DeckService {
    * Anzahl, falls die Karte schon drin ist, statt eine zweite Zeile anzulegen. `card` kommt direkt
    * aus der Scryfall-Suche der Add-Karten-UI, damit kein zusätzlicher Lookup nötig ist.
    */
-  async addCardToDeck(deckId: string, card: ScryfallCard, quantity = 1): Promise<boolean> {
+  async addCardToDeck(deckId: string, card: ScryfallCard, quantity = 1, isMaybeboard = false): Promise<boolean> {
     const { data: existing, error: lookupError } = await supabase
       .from('deck_cards')
       .select('id, quantity')
@@ -528,6 +531,9 @@ export class DeckService {
     }
 
     if (existing) {
+      // Menge einer bereits vorhandenen Karte erhöhen lässt ihren aktuellen Maybeboard-Status
+      // bewusst unangetastet - das Verschieben zwischen Deck/Maybeboard läuft separat über
+      // setCardMaybeboardFlag(), nicht über erneutes Hinzufügen.
       const { error } = await supabase
         .from('deck_cards')
         .update({ quantity: existing.quantity + quantity })
@@ -545,6 +551,7 @@ export class DeckService {
         type_line: card.typeLine ?? null,
         cmc: card.cmc ?? 0,
         is_commander: false,
+        is_maybeboard: isMaybeboard,
       });
       if (error) {
         console.error('Konnte Karte nicht hinzufügen:', error);
@@ -649,6 +656,21 @@ export class DeckService {
 
     if (error) {
       console.error('Konnte Commander-Markierung nicht ändern:', error);
+      return false;
+    }
+    return true;
+  }
+
+  /** Verschiebt eine bereits im Deck vorhandene Karte zwischen Hauptdeck und Maybeboard. */
+  async setCardMaybeboardFlag(deckId: string, cardName: string, isMaybeboard: boolean): Promise<boolean> {
+    const { error } = await supabase
+      .from('deck_cards')
+      .update({ is_maybeboard: isMaybeboard })
+      .eq('deck_id', deckId)
+      .ilike('card_name', cardName);
+
+    if (error) {
+      console.error('Konnte Maybeboard-Status nicht ändern:', error);
       return false;
     }
     return true;
