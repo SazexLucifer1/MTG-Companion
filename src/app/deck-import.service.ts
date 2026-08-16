@@ -46,7 +46,7 @@ export class DeckImportService {
     if (!commanderName) return;
 
     this.commanderTagsBusy.set(true);
-    const tags = await this.edhrec.getCommanderTags(commanderName);
+    const tags = await this.edhrec.getCommanderTags([commanderName]);
     this.commanderTagsBusy.set(false);
 
     let list = tags ?? [];

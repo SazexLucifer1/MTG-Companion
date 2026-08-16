@@ -1376,12 +1376,21 @@ export class DeckViewerService {
   /** Kartenname (lowercase) -> Scryfall-Daten (Bild, Typenzeile) für alle EDHREC-Vorschläge, damit man die Karte ansehen kann. */
   readonly edhrecCardDetails = signal<Map<string, ScryfallCard>>(new Map());
   /**
-   * Nur der erste/Haupt-Commander - EDHRECs Slug-Schema für Partner-/Background-Paare liess sich
-   * nicht zuverlässig ermitteln. Liest bewusst aus editedDeckCards() (nicht viewingDeckCards()),
-   * damit eine noch ungespeicherte Krone-Markierung im Bearbeitungsmodus sofort neue
-   * Vorschläge/Tags nachlädt, ohne erst Speichern + neu öffnen zu erfordern.
+   * Alle markierten Commander (0-2, z.B. Partner- oder Background-Paar). Liest bewusst aus
+   * editedDeckCards() (nicht viewingDeckCards()), damit eine noch ungespeicherte Krone-Markierung
+   * im Bearbeitungsmodus sofort neue Vorschläge/Tags nachlädt, ohne erst Speichern + neu öffnen
+   * zu erfordern.
    */
-  readonly edhrecCommanderName = computed(() => this.editedDeckCards().find((c) => c.isCommander)?.cardName ?? null);
+  readonly edhrecCommanderNames = computed(() =>
+    this.editedDeckCards()
+      .filter((c) => c.isCommander)
+      .map((c) => c.cardName)
+  );
+  /** Anzeige-Name für die EDHREC-Hinweistexte - bei einem Paar beide Namen kombiniert. */
+  readonly edhrecCommanderName = computed(() => {
+    const names = this.edhrecCommanderNames();
+    return names.length ? names.join(' & ') : null;
+  });
   /** Beim Deck-Anlegen gewählter EDHREC-Theme-Tag (z.B. "ramp") - kombiniert die Vorschläge mit dem Commander statt nur Commander allein. */
   readonly edhrecTagSlug = computed(() => this.viewingDeck()?.edhrecTag ?? null);
 
@@ -1430,14 +1439,14 @@ export class DeckViewerService {
    */
   private readonly edhrecListsAutoLoad = effect(() => {
     const mode = this.addCardMode();
-    const commander = this.edhrecCommanderName();
+    const commanders = this.edhrecCommanderNames();
     this.edhrecRefreshTick();
     if (mode !== 'edhrec') return;
     this.edhrecLists.set(null);
     this.edhrecFailed.set(false);
     this.edhrecBrowseTagActive.set(false);
     this.edhrecBrowseTag.set(null);
-    if (!commander) {
+    if (commanders.length === 0) {
       this.edhrecFailed.set(true);
       return;
     }
@@ -1449,11 +1458,11 @@ export class DeckViewerService {
    * wird auch für die immer sichtbare Tag-Auswahl im Kopfbereich der Detailansicht gebraucht.
    */
   private readonly edhrecTagsAutoLoad = effect(() => {
-    const commander = this.edhrecCommanderName();
+    const commanders = this.edhrecCommanderNames();
     this.edhrecRefreshTick();
     this.edhrecAvailableTags.set([]);
-    if (!commander) return;
-    this.loadEdhrecAvailableTags(commander);
+    if (commanders.length === 0) return;
+    this.loadEdhrecAvailableTags(commanders);
   });
 
   /** Wechselt die angezeigten Vorschläge testweise auf einen anderen Tag - nur für diese Sitzung, nicht gespeichert. */
@@ -1475,9 +1484,9 @@ export class DeckViewerService {
     this.loadEdhrecRecommendations();
   }
 
-  private async loadEdhrecAvailableTags(commander: string): Promise<void> {
+  private async loadEdhrecAvailableTags(commanders: string[]): Promise<void> {
     this.edhrecTagsBusy.set(true);
-    const tags = await this.edhrec.getCommanderTags(commander);
+    const tags = await this.edhrec.getCommanderTags(commanders);
     this.edhrecTagsBusy.set(false);
 
     let list = tags ?? [];
@@ -1492,19 +1501,27 @@ export class DeckViewerService {
   }
 
   private async loadEdhrecRecommendations(): Promise<void> {
-    const commander = this.edhrecCommanderName();
-    if (!commander) {
+    const commanders = this.edhrecCommanderNames();
+    if (commanders.length === 0) {
       this.edhrecFailed.set(true);
       return;
     }
     this.edhrecBusy.set(true);
     this.edhrecFailed.set(false);
     const tag = this.effectiveEdhrecTag();
-    let lists = await this.edhrec.getCommanderRecommendations(commander, tag);
+    let lists = await this.edhrec.getCommanderRecommendations(commanders, tag);
     if (lists === null && tag) {
-      // Commander+Tag-Kombo evtl. nicht verfügbar (zu seltene Kombination) - auf reine
+      // Commander(-Paar)+Tag-Kombo evtl. nicht verfügbar (zu seltene Kombination) - auf reine
       // Commander-Vorschläge zurückfallen statt gar nichts anzuzeigen.
-      lists = await this.edhrec.getCommanderRecommendations(commander);
+      lists = await this.edhrec.getCommanderRecommendations(commanders);
+    }
+    if (lists === null && commanders.length > 1) {
+      // EDHREC hat evtl. keine eigene Seite für diese konkrete Partner-/Background-Kombi - auf den
+      // ersten Commander allein zurückfallen statt gar nichts anzuzeigen.
+      lists = await this.edhrec.getCommanderRecommendations([commanders[0]], tag);
+      if (lists === null && tag) {
+        lists = await this.edhrec.getCommanderRecommendations([commanders[0]]);
+      }
     }
     this.edhrecLists.set(lists);
     this.edhrecFailed.set(lists === null);
