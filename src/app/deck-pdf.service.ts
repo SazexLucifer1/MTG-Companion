@@ -105,6 +105,42 @@ export class DeckPdfService {
     }
   }
 
+  /**
+   * Zeichnet ein geladenes Bild sofort auf ein Offscreen-Canvas in exakt der im PDF benötigten
+   * Pixelgröße (300 DPI bei Kartengröße - entspricht ungefähr Scryfalls nativer "png"-Auflösung,
+   * also kein wahrnehmbarer Qualitätsverlust) und kodiert es als komprimiertes JPEG neu. Grund:
+   * Scryfalls "png"-Druckvariante ist unkomprimiert mit Alphakanal und dadurch um ein Vielfaches
+   * größer als nötig - bei größeren Decks mit Vorder+Rückseiten hat das den Speicher mobiler
+   * Browser-Tabs gesprengt und die App zum Abstürzen/Neuladen gebracht. Ein data:-URL als Bildquelle
+   * gilt für <canvas> immer als same-origin, es gibt also kein CORS-Problem.
+   */
+  private async recompressForPrint(dataUrl: string): Promise<string> {
+    try {
+      const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+        const el = new Image();
+        el.onload = () => resolve(el);
+        el.onerror = () => reject(new Error('image load failed'));
+        el.src = dataUrl;
+      });
+      const targetW = Math.round((CARD_WIDTH_MM / 25.4) * 300);
+      const targetH = Math.round((CARD_HEIGHT_MM / 25.4) * 300);
+      const canvas = document.createElement('canvas');
+      canvas.width = targetW;
+      canvas.height = targetH;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return dataUrl;
+      // Weißer Hintergrund statt Transparenz - die png-Variante hat abgerundete Ecken mit Alpha,
+      // die beim Drucken auf weißem Papier ohnehin weiß erscheinen sollen.
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, targetW, targetH);
+      ctx.drawImage(img, 0, 0, targetW, targetH);
+      return canvas.toDataURL('image/jpeg', 0.9);
+    } catch {
+      // Im Zweifel lieber das Original verwenden als das Bild ganz zu verlieren.
+      return dataUrl;
+    }
+  }
+
   async generatePdf(): Promise<void> {
     const selected = this.entries().filter((e) => e.selected && e.imageUrl);
     if (selected.length === 0) {
@@ -130,7 +166,8 @@ export class DeckPdfService {
     this.progress.set({ done: 0, total: uniqueUrls.length });
 
     for (const url of uniqueUrls) {
-      imagesByUrl.set(url, await this.fetchImageAsDataUrl(url));
+      const raw = await this.fetchImageAsDataUrl(url);
+      imagesByUrl.set(url, raw ? await this.recompressForPrint(raw) : null);
       this.progress.update((p) => (p ? { ...p, done: p.done + 1 } : p));
     }
 
