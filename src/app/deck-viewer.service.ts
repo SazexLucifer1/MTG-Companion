@@ -990,7 +990,7 @@ export class DeckViewerService {
     this.artworkOptions.set([]);
     this.artworkPickerError.set(null);
     this.artworkPickerBusy.set(true);
-    const printings = await this.scryfall.getPrintings(card.cardName);
+    const printings = await this.scryfall.getPrintings(card.cardName, card.isToken);
     this.artworkPickerBusy.set(false);
     if (printings.length === 0) {
       this.artworkPickerError.set(this.i18n.t('deckViewer.msg.noMoreEditionsFound'));
