@@ -20,9 +20,15 @@ export interface ScryfallCard {
    */
   backImageUrl?: string;
   backTypeLine?: string;
-  /** Hochauflösende Druckvariante (Scryfall "png", ~300 DPI bei Kartengröße statt ~195 bei "normal") - nur für den PDF-Export, die normale App-Anzeige nutzt weiterhin imageUrl. */
-  pngUrl?: string;
-  backPngUrl?: string;
+  /**
+   * Hochauflösende Druckvariante (Scryfall "png", ~300 DPI bei Kartengröße statt ~195 bei
+   * "normal") - nur für den PDF-Export, die normale App-Anzeige nutzt weiterhin imageUrl. Die
+   * Speicherbegrenzung für den Export passiert bewusst NICHT hier über eine kleinere Bildquelle,
+   * sondern in deck-pdf.service.ts durch sofortiges Neukodieren auf Druckgröße (siehe dort) - so
+   * bleibt die tatsächlich genutzte Bildqualität die bestmögliche, die Scryfall anbietet.
+   */
+  hqImageUrl?: string;
+  backHqImageUrl?: string;
   /** Von Scryfall mitgelieferte verwandte Karten (u.a. Marken, die diese Karte erzeugt) - component "token" ist der für den Marken-Scan relevante Fall. */
   allParts?: { id: string; component: string; name: string; typeLine?: string }[];
   /**
@@ -474,8 +480,8 @@ export class ScryfallService {
       keywords: data.keywords as string[] | undefined,
       backImageUrl: hasFlippableBack ? (backFace.image_uris?.normal as string) : undefined,
       backTypeLine: hasFlippableBack ? (backFace.type_line as string | undefined) : undefined,
-      pngUrl: (data.image_uris?.png ?? data.card_faces?.[0]?.image_uris?.png) as string | undefined,
-      backPngUrl: hasFlippableBack ? (backFace.image_uris?.png as string | undefined) : undefined,
+      hqImageUrl: (data.image_uris?.png ?? data.card_faces?.[0]?.image_uris?.png) as string | undefined,
+      backHqImageUrl: hasFlippableBack ? (backFace.image_uris?.png as string | undefined) : undefined,
       allParts: (data.all_parts as any[] | undefined)?.map((p) => ({
         id: p.id as string,
         component: p.component as string,
