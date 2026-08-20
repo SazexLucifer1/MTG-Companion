@@ -104,7 +104,7 @@
         <button class="glass-chip small" [class.active]="viewer.showChangeLog()" (click)="viewer.toggleChangeLog()">
           {{ viewer.i18n.t('deckView.history') }}
         </button>
-        <button class="glass-chip small" (click)="openPdfExport()">{{ viewer.i18n.t('deckView.asPdf') }}</button>
+        <button class="glass-chip small" [disabled]="viewer.analysisBusy()" (click)="openPdfExport()">{{ viewer.i18n.t('deckView.asPdf') }}</button>
         @if (viewer.canEditViewingDeck()) {
           <button class="glass-chip small" (click)="reimportDecklist()">{{ viewer.i18n.t('deckView.reimportList') }}</button>
           <button

@@ -45,18 +45,17 @@ export class DeckPdfService {
 
   readonly selectedCount = computed(() => this.entries().filter((e) => e.selected).length);
 
+  /** Reihenfolge kommt unverändert vom Aufrufer (Deck-Gruppierung wie beim Deckbauen) - hier bewusst NICHT alphabetisch sortieren. */
   open(deckName: string, cards: PdfSourceCard[]): void {
     this.deckName.set(deckName);
     this.entries.set(
-      [...cards]
-        .sort((a, b) => a.cardName.localeCompare(b.cardName))
-        .map((c) => ({
-          cardName: c.cardName,
-          quantity: c.quantity,
-          imageUrl: c.imageUrl,
-          backImageUrl: c.backImageUrl,
-          selected: true,
-        }))
+      cards.map((c) => ({
+        cardName: c.cardName,
+        quantity: c.quantity,
+        imageUrl: c.imageUrl,
+        backImageUrl: c.backImageUrl,
+        selected: true,
+      }))
     );
     this.copiesMode.set('one');
     this.busy.set(false);
