@@ -1693,14 +1693,32 @@ export class DeckViewerService {
     return this.viewingCardDetails().get(card.cardName.toLowerCase())?.backImageUrl ?? null;
   }
 
-  /** Hochauflösende Druckvariante (Scryfall "png") für den PDF-Export - fällt auf resolvedCardImage() zurück, falls keine png-Variante vorliegt (z.B. eigenes hochgeladenes Artwork). */
+  /**
+   * Hebt eine Scryfall-gehostete Bild-URL auf die hochauflösende "png"-Variante DESSELBEN Drucks
+   * an (der Auflösungs-Schlüssel steht bei Scryfall direkt als erstes Pfadsegment in der URL,
+   * z.B. .../normal/front/... -> .../png/front/...) - passt also immer zur tatsächlich
+   * ausgewählten Edition/Artwork, statt separat über den Kartennamen eine (womöglich andere)
+   * Standard-Edition nachzuschlagen. Eigene hochgeladene Custom-Artworks (nicht cards.scryfall.io)
+   * und URLs ohne erkennbares Auflösungs-Segment bleiben unverändert.
+   */
+  private upgradeToPrintQuality(url: string | null): string | null {
+    if (!url) return null;
+    try {
+      if (new URL(url, window.location.href).hostname !== 'cards.scryfall.io') return url;
+    } catch {
+      return url;
+    }
+    return url.replace(/\/(normal|large|small)\//, '/png/');
+  }
+
+  /** Hochauflösende Druckvariante für den PDF-Export - nutzt IMMER das für die Karte tatsächlich hinterlegte/ausgewählte Artwork (resolvedCardImage()), nur die Auflösung wird angehoben. */
   resolvedCardPrintImage(card: DeckCard): string | null {
-    return this.viewingCardDetails().get(card.cardName.toLowerCase())?.hqImageUrl ?? this.resolvedCardImage(card);
+    return this.upgradeToPrintQuality(this.resolvedCardImage(card));
   }
 
   /** Hochauflösende Rückseiten-Druckvariante, siehe resolvedCardPrintImage(). */
   resolvedCardBackPrintImage(card: DeckCard): string | null {
-    return this.viewingCardDetails().get(card.cardName.toLowerCase())?.backHqImageUrl ?? this.resolvedCardBackImage(card);
+    return this.upgradeToPrintQuality(this.resolvedCardBackImage(card));
   }
 
   /** Löst den EDHREC-Kartennamen zu vollen Scryfall-Daten auf (EDHREC selbst liefert nur Name+Statistik) und staged ihn wie addCard(). */
