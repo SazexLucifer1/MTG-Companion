@@ -47,6 +47,13 @@ export interface DeckCard {
   isMaybeboard: boolean;
   /** Marke (Token), die eine andere Karte im Deck erzeugt - kein eigener Deckeintrag, zählt nicht zur Deckgröße/Analyse. */
   isToken: boolean;
+  /**
+   * Scryfalls "gleiche Karte über alle Drucke hinweg"-ID - nur bei Marken gesetzt (siehe
+   * ScryfallService.getPrintings()). Nötig, weil viele VERSCHIEDENE Marken sich denselben
+   * schlichten Namen teilen (z.B. rote/blaue/schwarze "Wizard"-Marken mit unterschiedlichen
+   * Werten), Namensgleichheit allein also nicht "gleiche Marke" bedeutet.
+   */
+  scryfallOracleId: string | null;
 }
 
 export interface DeckChangeEntry {
@@ -94,7 +101,9 @@ export class DeckService {
   async loadDeckCards(deckId: string): Promise<DeckCard[]> {
     const { data, error } = await supabase
       .from('deck_cards')
-      .select('card_name, quantity, image_url, type_line, cmc, is_commander, custom_tags, is_maybeboard, is_token')
+      .select(
+        'card_name, quantity, image_url, type_line, cmc, is_commander, custom_tags, is_maybeboard, is_token, scryfall_oracle_id'
+      )
       .eq('deck_id', deckId)
       .order('card_name', { ascending: true });
 
@@ -113,6 +122,7 @@ export class DeckService {
       customTags: row.custom_tags ?? [],
       isMaybeboard: row.is_maybeboard ?? false,
       isToken: row.is_token ?? false,
+      scryfallOracleId: row.scryfall_oracle_id ?? null,
     }));
   }
 
@@ -682,7 +692,7 @@ export class DeckService {
   /** Fügt eine per Scan gefundene Marke neu hinzu - kein Zusammenführen mit gleichnamigen Karten (das übernimmt scanForTokens() vorher), kein Eintrag im Änderungsverlauf (automatisch erkannt, kein manueller Deck-Edit). */
   async addTokenToDeck(
     deckId: string,
-    token: { name: string; imageUrl?: string | null; typeLine?: string | null },
+    token: { name: string; imageUrl?: string | null; typeLine?: string | null; oracleId?: string | null },
     quantity = 1
   ): Promise<boolean> {
     const { error } = await supabase.from('deck_cards').insert({
@@ -694,12 +704,34 @@ export class DeckService {
       cmc: 0,
       is_commander: false,
       is_token: true,
+      scryfall_oracle_id: token.oracleId ?? null,
     });
     if (error) {
       console.error('Konnte Marke nicht hinzufügen:', error);
       return false;
     }
     await supabase.from('decks').update({ updated_at: new Date().toISOString() }).eq('id', deckId);
+    return true;
+  }
+
+  /**
+   * Trägt bei einer bereits vorhandenen Marke ohne oracleId (vor Einführung dieses Felds gescannt)
+   * die oracleId nachträglich ein, statt beim erneuten Scan eine doppelte Zeile für dieselbe Marke
+   * anzulegen. Matched zusätzlich über image_url, da mehrere Marken denselben Namen aber
+   * unterschiedliche Bilder haben können (z.B. verschiedenfarbige "Wizard"-Marken).
+   */
+  async backfillTokenOracleId(deckId: string, cardName: string, imageUrl: string, oracleId: string): Promise<boolean> {
+    const { error } = await supabase
+      .from('deck_cards')
+      .update({ scryfall_oracle_id: oracleId })
+      .eq('deck_id', deckId)
+      .ilike('card_name', cardName)
+      .eq('image_url', imageUrl)
+      .is('scryfall_oracle_id', null);
+    if (error) {
+      console.error('Konnte Marken-ID nicht nachtragen:', error);
+      return false;
+    }
     return true;
   }
 
