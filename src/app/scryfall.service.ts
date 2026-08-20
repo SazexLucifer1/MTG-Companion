@@ -22,6 +22,14 @@ export interface ScryfallCard {
   backTypeLine?: string;
   /** Von Scryfall mitgelieferte verwandte Karten (u.a. Marken, die diese Karte erzeugt) - component "token" ist der für den Marken-Scan relevante Fall. */
   allParts?: { id: string; component: string; name: string; typeLine?: string }[];
+  /**
+   * Scryfalls "gleiche Karte über alle Drucke hinweg"-ID - bei Marken essenziell, da viele
+   * VERSCHIEDENE Marken denselben schlichten Namen teilen (z.B. "Wizard" oder "Zombie" in
+   * unterschiedlichen Farben/Werten/Fähigkeiten je nach erzeugender Karte). Nur über diese ID
+   * lässt sich zuverlässig zwischen "andere Edition derselben Marke" und "andere Marke mit
+   * zufällig gleichem Namen" unterscheiden.
+   */
+  oracleId?: string;
 }
 
 export interface ScryfallPrinting {
@@ -405,17 +413,29 @@ export class ScryfallService {
 
   // NEU
   /**
-   * Alle Editionen/Artworks einer Karte (exakter Name), neueste zuerst - für die Artwork-Auswahl im
+   * Alle Editionen/Artworks einer Karte, neueste zuerst - für die Artwork-Auswahl im
    * Bearbeiten-Modus. include:extras ist nötig, weil Scryfalls Suche Marken/Tokens standardmäßig
    * NICHT durchsucht (genau wie Pläne, Embleme, Art-Series-Karten, ...) - ohne dieses Flag liefert
-   * die Suche für einen Markennamen (z.B. "Spirit") praktisch immer null Treffer. Bei Marken
-   * zusätzlich t:token, sonst mischt eine exakte Namensgleichheit mit einer ECHTEN Karte gleichen
-   * Namens (es gibt z.B. eine uralte Aura namens "Illusion") deren Drucke mit in die Liste.
+   * die Suche für einen Markennamen (z.B. "Spirit") praktisch immer null Treffer.
+   *
+   * Bei Marken wird bevorzugt über oracleId gesucht statt über den Namen: viele VERSCHIEDENE
+   * Marken teilen sich denselben schlichten Namen (z.B. gibt es rote, blaue und schwarze "Wizard"-
+   * Marken mit komplett unterschiedlichen Werten/Fähigkeiten je nach erzeugender Karte) - eine
+   * reine Namenssuche würde all diese Varianten wild durcheinanderwürfeln. oracleId identifiziert
+   * dagegen genau EINE bestimmte Markenvariante über alle ihre Drucke hinweg. Nur wenn keine
+   * oracleId bekannt ist (ältere, vor diesem Fix gescannte Marken), fällt die Suche auf
+   * Name+t:token zurück - besser als gar nichts, kann aber bei mehrdeutigen Markennamen weiterhin
+   * andere Varianten mit anzeigen.
    */
-  async getPrintings(cardName: string, isToken = false): Promise<ScryfallPrinting[]> {
-    const safeName = cardName.replace(/"/g, '');
-    const typeClause = isToken ? ' t:token' : '';
-    const q = encodeURIComponent(`!"${safeName}" lang:en -is:digital include:extras${typeClause}`);
+  async getPrintings(cardName: string, options?: { isToken?: boolean; oracleId?: string | null }): Promise<ScryfallPrinting[]> {
+    const query = options?.oracleId
+      ? `oracleid:${options.oracleId} lang:en -is:digital include:extras`
+      : (() => {
+          const safeName = cardName.replace(/"/g, '');
+          const typeClause = options?.isToken ? ' t:token' : '';
+          return `!"${safeName}" lang:en -is:digital include:extras${typeClause}`;
+        })();
+    const q = encodeURIComponent(query);
     const res = await this.fetchWithRetry(`${API}/cards/search?q=${q}&unique=prints&order=released&dir=desc`);
     if (!res?.ok) return [];
     const data = await res.json();
@@ -457,6 +477,7 @@ export class ScryfallService {
         name: p.name as string,
         typeLine: p.type_line as string | undefined,
       })),
+      oracleId: data.oracle_id as string | undefined,
     };
   }
 }

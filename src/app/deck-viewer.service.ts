@@ -766,6 +766,7 @@ export class DeckViewerService {
           isCommander: commanderChanges.get(change.cardName.toLowerCase()) ?? false,
           isMaybeboard: maybeboardChanges.get(change.cardName.toLowerCase()) ?? false,
           isToken: false,
+          scryfallOracleId: null,
           customTags: [],
         });
       }
@@ -843,11 +844,13 @@ export class DeckViewerService {
 
   /**
    * Durchsucht alle "echten" Deckkarten (kein Maybeboard, keine bereits vorhandenen Marken) nach
-   * Scryfalls all_parts-Feld auf component "token", holt die Bilddaten der neu gefundenen Marken
-   * (dedupliziert nach Namen - mehrere Karten, die z.B. beide einen "Treasure"-Token erzeugen,
-   * sollen nur eine gemeinsame Zeile ergeben) und legt sie als neue Marken-Zeilen im Deck an.
-   * Schreibt direkt (nicht über pendingChanges), da es eine eigenständige Aktion ist statt einer
-   * einzelnen Karten-Bearbeitung.
+   * Scryfalls all_parts-Feld auf component "token" und legt neu gefundene Marken als eigene Zeilen
+   * im Deck an. Dedupliziert bewusst NICHT nach Namen, sondern nach Scryfalls oracleId (erst nach
+   * dem Nachladen der vollen Kartendaten bekannt) - viele VERSCHIEDENE Marken teilen sich denselben
+   * schlichten Namen (z.B. rote/blaue/schwarze "Wizard"-Marken mit unterschiedlichen Werten je nach
+   * erzeugender Karte), eine Namens-Dedupe würde diese fälschlich zu einer einzigen Zeile
+   * zusammenwerfen. Schreibt direkt (nicht über pendingChanges), da es eine eigenständige Aktion
+   * ist statt einer einzelnen Karten-Bearbeitung.
    */
   async scanForTokens(): Promise<void> {
     const deck = this.viewingDeck();
@@ -857,38 +860,56 @@ export class DeckViewerService {
     this.tokenScanMessage.set(null);
 
     const details = this.viewingCardDetails();
-    const existingTokenNames = new Set(
-      this.viewingDeckCards()
-        .filter((c) => c.isToken)
-        .map((c) => c.cardName.toLowerCase())
+    const existingTokens = this.viewingDeckCards().filter((c) => c.isToken);
+    const existingTokenOracleIds = new Set(
+      existingTokens.filter((c) => c.scryfallOracleId).map((c) => c.scryfallOracleId!)
     );
+    // Vor diesem Fix gescannte Marken haben noch keine oracleId - über Name+Bild lassen sie sich
+    // trotzdem der richtigen neu gefundenen Marke zuordnen, um sie nachträglich zu befüllen statt
+    // eine doppelte Zeile für dieselbe Marke anzulegen.
+    const legacyTokensByNameAndImage = new Map<string, DeckCard>();
+    for (const t of existingTokens) {
+      if (t.scryfallOracleId) continue;
+      legacyTokensByNameAndImage.set(`${t.cardName.toLowerCase()}|${t.imageUrl ?? ''}`, t);
+    }
 
-    const foundByName = new Map<string, { id: string; name: string }>();
+    const candidateIds = new Set<string>();
     for (const card of this.viewingDeckCards()) {
       if (card.isMaybeboard || card.isToken) continue;
       const parts = details.get(card.cardName.toLowerCase())?.allParts ?? [];
       for (const part of parts) {
-        if (part.component !== 'token') continue;
-        const key = part.name.toLowerCase();
-        if (existingTokenNames.has(key) || foundByName.has(key)) continue;
-        foundByName.set(key, { id: part.id, name: part.name });
+        if (part.component === 'token') candidateIds.add(part.id);
       }
     }
 
-    if (foundByName.size === 0) {
+    if (candidateIds.size === 0) {
       this.tokenScanBusy.set(false);
       this.tokenScanMessage.set(this.i18n.t('deckView.noNewTokensFound'));
       return;
     }
 
-    const tokenCards = await this.scryfall.findCardsByIds([...foundByName.values()].map((t) => t.id));
+    const tokenCards = await this.scryfall.findCardsByIds([...candidateIds]);
+    const newByOracleId = new Map<string, ScryfallCard>();
+    for (const data of tokenCards.values()) {
+      const oracleId = data.oracleId;
+      if (!oracleId || existingTokenOracleIds.has(oracleId) || newByOracleId.has(oracleId)) continue;
+      newByOracleId.set(oracleId, data);
+    }
+
     let added = 0;
-    for (const { id, name } of foundByName.values()) {
-      const data = tokenCards.get(id);
+    let backfilled = 0;
+    for (const [oracleId, data] of newByOracleId) {
+      const legacy = legacyTokensByNameAndImage.get(`${data.name.toLowerCase()}|${data.imageUrl ?? ''}`);
+      if (legacy) {
+        const ok = await this.deckService.backfillTokenOracleId(deck.id, legacy.cardName, legacy.imageUrl ?? '', oracleId);
+        if (ok) backfilled++;
+        continue;
+      }
       const ok = await this.deckService.addTokenToDeck(deck.id, {
-        name,
-        imageUrl: data?.imageUrl ?? null,
-        typeLine: data?.typeLine ?? null,
+        name: data.name,
+        imageUrl: data.imageUrl ?? null,
+        typeLine: data.typeLine ?? null,
+        oracleId,
       });
       if (ok) added++;
     }
@@ -897,7 +918,9 @@ export class DeckViewerService {
     this.tokenScanMessage.set(
       added > 0
         ? this.i18n.t('deckView.tokensFound', { count: String(added) })
-        : this.i18n.t('deckView.noNewTokensFound')
+        : backfilled > 0
+          ? this.i18n.t('deckView.tokensBackfilled', { count: String(backfilled) })
+          : this.i18n.t('deckView.noNewTokensFound')
     );
     await this.reloadDeckCards();
   }
@@ -990,7 +1013,10 @@ export class DeckViewerService {
     this.artworkOptions.set([]);
     this.artworkPickerError.set(null);
     this.artworkPickerBusy.set(true);
-    const printings = await this.scryfall.getPrintings(card.cardName, card.isToken);
+    const printings = await this.scryfall.getPrintings(card.cardName, {
+      isToken: card.isToken,
+      oracleId: card.scryfallOracleId,
+    });
     this.artworkPickerBusy.set(false);
     if (printings.length === 0) {
       this.artworkPickerError.set(this.i18n.t('deckViewer.msg.noMoreEditionsFound'));
