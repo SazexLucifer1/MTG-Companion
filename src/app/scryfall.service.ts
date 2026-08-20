@@ -404,10 +404,18 @@ export class ScryfallService {
   }
 
   // NEU
-  /** Alle Editionen/Artworks einer Karte (exakter Name), neueste zuerst - für die Artwork-Auswahl im Bearbeiten-Modus. */
-  async getPrintings(cardName: string): Promise<ScryfallPrinting[]> {
+  /**
+   * Alle Editionen/Artworks einer Karte (exakter Name), neueste zuerst - für die Artwork-Auswahl im
+   * Bearbeiten-Modus. include:extras ist nötig, weil Scryfalls Suche Marken/Tokens standardmäßig
+   * NICHT durchsucht (genau wie Pläne, Embleme, Art-Series-Karten, ...) - ohne dieses Flag liefert
+   * die Suche für einen Markennamen (z.B. "Spirit") praktisch immer null Treffer. Bei Marken
+   * zusätzlich t:token, sonst mischt eine exakte Namensgleichheit mit einer ECHTEN Karte gleichen
+   * Namens (es gibt z.B. eine uralte Aura namens "Illusion") deren Drucke mit in die Liste.
+   */
+  async getPrintings(cardName: string, isToken = false): Promise<ScryfallPrinting[]> {
     const safeName = cardName.replace(/"/g, '');
-    const q = encodeURIComponent(`!"${safeName}" lang:en -is:digital`);
+    const typeClause = isToken ? ' t:token' : '';
+    const q = encodeURIComponent(`!"${safeName}" lang:en -is:digital include:extras${typeClause}`);
     const res = await this.fetchWithRetry(`${API}/cards/search?q=${q}&unique=prints&order=released&dir=desc`);
     if (!res?.ok) return [];
     const data = await res.json();
