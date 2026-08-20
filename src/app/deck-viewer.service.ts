@@ -137,15 +137,17 @@ export class DeckViewerService {
   readonly viewingCardDetails = signal<Map<string, ScryfallCard>>(new Map());
   readonly analysisBusy = signal(false);
 
-  /** Zählt bewusst KEINE Maybeboard-Karten mit - die stehen nur in der engeren Auswahl, nicht im Deck. */
+  /** Zählt bewusst KEINE Maybeboard-Karten und keine Marken mit - die stehen nur in der engeren Auswahl bzw. sind gar keine echten Deckkarten. */
   readonly viewingTotalCards = computed(() =>
     this.editedDeckCards()
-      .filter((c) => !c.isMaybeboard)
+      .filter((c) => !c.isMaybeboard && !c.isToken)
       .reduce((sum, c) => sum + c.quantity, 0)
   );
 
-  /** Gespeicherte Deck-Karten ohne Maybeboard - Basis für sämtliche Deck-Analysen (Kurve, Pips, Game-Changer, Tutoren, Bracket-Schätzung). */
-  private readonly analysisDeckCards = computed(() => this.viewingDeckCards().filter((c) => !c.isMaybeboard));
+  /** Gespeicherte Deck-Karten ohne Maybeboard/Marken - Basis für sämtliche Deck-Analysen (Kurve, Pips, Game-Changer, Tutoren, Bracket-Schätzung). */
+  private readonly analysisDeckCards = computed(() =>
+    this.viewingDeckCards().filter((c) => !c.isMaybeboard && !c.isToken)
+  );
 
   /** Nicht-Land-Karten - Basis für Manakurve, Pip-Verteilung und Game-Changer-Auswertung. */
   private readonly nonLandCards = computed(() =>
@@ -311,7 +313,7 @@ export class DeckViewerService {
   /** Anzahl Karten, die zwar nicht in der Land-Sektion stehen, aber auf ihrer Rückseite ein Land sind (siehe isHiddenMdfcLand) - für den "+X"-Zusatz an der Land-Sektionsüberschrift. */
   readonly hiddenMdfcLandCount = computed(() =>
     this.editedDeckCards()
-      .filter((c) => !c.isCommander && !c.isMaybeboard && this.isHiddenMdfcLand(c))
+      .filter((c) => !c.isCommander && !c.isMaybeboard && !c.isToken && this.isHiddenMdfcLand(c))
       .reduce((sum, c) => sum + c.quantity, 0)
   );
 
@@ -335,6 +337,7 @@ export class DeckViewerService {
     Sonstiges: 'deckViewer.type.Sonstiges',
     'Ohne Tag': 'deckViewer.type.OhneTag',
     Maybeboard: 'deckViewer.type.Maybeboard',
+    Tokens: 'deckViewer.type.Tokens',
   };
 
   translateLabel(label: string): string {
@@ -349,8 +352,9 @@ export class DeckViewerService {
   /** Karten gruppiert nach Commander -> Typ, innerhalb jeder Gruppe nach Manawert sortiert. */
   readonly groupedDeckCards = computed(() => {
     const commander = this.editedDeckCards().filter((c) => c.isCommander);
-    const rest = this.editedDeckCards().filter((c) => !c.isCommander && !c.isMaybeboard);
+    const rest = this.editedDeckCards().filter((c) => !c.isCommander && !c.isMaybeboard && !c.isToken);
     const maybe = this.editedDeckCards().filter((c) => !c.isCommander && c.isMaybeboard);
+    const tokens = this.editedDeckCards().filter((c) => c.isToken);
 
     const groups = new Map<string, DeckCard[]>();
     for (const card of rest) {
@@ -374,6 +378,9 @@ export class DeckViewerService {
     }
     if (maybe.length > 0) {
       sections.push({ label: 'Maybeboard', cards: [...maybe].sort(DeckViewerService.sortByCmc) });
+    }
+    if (tokens.length > 0) {
+      sections.push({ label: 'Tokens', cards: [...tokens].sort(DeckViewerService.sortByCmc) });
     }
 
     return sections;
@@ -402,8 +409,9 @@ export class DeckViewerService {
    */
   readonly groupedDeckCardsByTag = computed(() => {
     const commander = this.editedDeckCards().filter((c) => c.isCommander);
-    const rest = this.editedDeckCards().filter((c) => !c.isCommander && !c.isMaybeboard);
+    const rest = this.editedDeckCards().filter((c) => !c.isCommander && !c.isMaybeboard && !c.isToken);
     const maybe = this.editedDeckCards().filter((c) => !c.isCommander && c.isMaybeboard);
+    const tokens = this.editedDeckCards().filter((c) => c.isToken);
 
     const groups = new Map<string, DeckCard[]>();
     const untagged: DeckCard[] = [];
@@ -431,6 +439,9 @@ export class DeckViewerService {
     }
     if (maybe.length > 0) {
       sections.push({ label: 'Maybeboard', cards: [...maybe].sort(DeckViewerService.sortByCmc) });
+    }
+    if (tokens.length > 0) {
+      sections.push({ label: 'Tokens', cards: [...tokens].sort(DeckViewerService.sortByCmc) });
     }
     return sections;
   });
@@ -754,6 +765,7 @@ export class DeckViewerService {
           cmc: change.cmc,
           isCommander: commanderChanges.get(change.cardName.toLowerCase()) ?? false,
           isMaybeboard: maybeboardChanges.get(change.cardName.toLowerCase()) ?? false,
+          isToken: false,
           customTags: [],
         });
       }
@@ -824,6 +836,70 @@ export class DeckViewerService {
   toggleCardMaybeboard(card: DeckCard): void {
     if (!this.canEditViewingDeck()) return;
     this.pendingMaybeboardChanges.update((map) => new Map(map).set(card.cardName.toLowerCase(), !card.isMaybeboard));
+  }
+
+  readonly tokenScanBusy = signal(false);
+  readonly tokenScanMessage = signal<string | null>(null);
+
+  /**
+   * Durchsucht alle "echten" Deckkarten (kein Maybeboard, keine bereits vorhandenen Marken) nach
+   * Scryfalls all_parts-Feld auf component "token", holt die Bilddaten der neu gefundenen Marken
+   * (dedupliziert nach Namen - mehrere Karten, die z.B. beide einen "Treasure"-Token erzeugen,
+   * sollen nur eine gemeinsame Zeile ergeben) und legt sie als neue Marken-Zeilen im Deck an.
+   * Schreibt direkt (nicht über pendingChanges), da es eine eigenständige Aktion ist statt einer
+   * einzelnen Karten-Bearbeitung.
+   */
+  async scanForTokens(): Promise<void> {
+    const deck = this.viewingDeck();
+    if (!deck || !this.canEditViewingDeck()) return;
+
+    this.tokenScanBusy.set(true);
+    this.tokenScanMessage.set(null);
+
+    const details = this.viewingCardDetails();
+    const existingTokenNames = new Set(
+      this.viewingDeckCards()
+        .filter((c) => c.isToken)
+        .map((c) => c.cardName.toLowerCase())
+    );
+
+    const foundByName = new Map<string, { id: string; name: string }>();
+    for (const card of this.viewingDeckCards()) {
+      if (card.isMaybeboard || card.isToken) continue;
+      const parts = details.get(card.cardName.toLowerCase())?.allParts ?? [];
+      for (const part of parts) {
+        if (part.component !== 'token') continue;
+        const key = part.name.toLowerCase();
+        if (existingTokenNames.has(key) || foundByName.has(key)) continue;
+        foundByName.set(key, { id: part.id, name: part.name });
+      }
+    }
+
+    if (foundByName.size === 0) {
+      this.tokenScanBusy.set(false);
+      this.tokenScanMessage.set(this.i18n.t('deckView.noNewTokensFound'));
+      return;
+    }
+
+    const tokenCards = await this.scryfall.findCardsByIds([...foundByName.values()].map((t) => t.id));
+    let added = 0;
+    for (const { id, name } of foundByName.values()) {
+      const data = tokenCards.get(id);
+      const ok = await this.deckService.addTokenToDeck(deck.id, {
+        name,
+        imageUrl: data?.imageUrl ?? null,
+        typeLine: data?.typeLine ?? null,
+      });
+      if (ok) added++;
+    }
+
+    this.tokenScanBusy.set(false);
+    this.tokenScanMessage.set(
+      added > 0
+        ? this.i18n.t('deckView.tokensFound', { count: String(added) })
+        : this.i18n.t('deckView.noNewTokensFound')
+    );
+    await this.reloadDeckCards();
   }
 
   readonly commanderMarkError = signal<string | null>(null);
@@ -1036,6 +1112,8 @@ export class DeckViewerService {
     this.pendingCommanderChanges.set(new Map());
     this.pendingMaybeboardChanges.set(new Map());
     this.commanderMarkError.set(null);
+    this.tokenScanMessage.set(null);
+    this.tokenScanBusy.set(false);
     this.addCardQuery.set('');
     this.addCardTypeFilter.set('all');
     this.addCardCreatureTypeFilter.set('');
@@ -1215,6 +1293,8 @@ export class DeckViewerService {
     this.pendingCommanderChanges.set(new Map());
     this.pendingMaybeboardChanges.set(new Map());
     this.commanderMarkError.set(null);
+    this.tokenScanMessage.set(null);
+    this.tokenScanBusy.set(false);
     this.editMode.set(false);
     this.showCommanderToggle.set(false);
     this.artworkPickerCard.set(null);
@@ -1231,6 +1311,8 @@ export class DeckViewerService {
     this.pendingCommanderChanges.set(new Map());
     this.pendingMaybeboardChanges.set(new Map());
     this.commanderMarkError.set(null);
+    this.tokenScanMessage.set(null);
+    this.tokenScanBusy.set(false);
     this.editMode.set(false);
     this.showCommanderToggle.set(false);
     this.artworkPickerCard.set(null);
@@ -1631,6 +1713,8 @@ export class DeckViewerService {
     this.pendingCommanderChanges.set(new Map());
     this.pendingMaybeboardChanges.set(new Map());
     this.commanderMarkError.set(null);
+    this.tokenScanMessage.set(null);
+    this.tokenScanBusy.set(false);
     this.flashState.set(null);
     this.addCardResults.set([]);
     this.addCardResultsPage.set(0);
@@ -1682,12 +1766,9 @@ export class DeckViewerService {
   /** Lädt Mass-Land-Denial/Extra-Turn/Combo-Auswertung von Commander Spellbook nach (siehe bracketEstimate). */
   private async loadBracketEstimate(cards: DeckCard[]): Promise<void> {
     this.bracketEstimateBusy.set(true);
-    const commanders = cards
-      .filter((c) => c.isCommander)
-      .map((c) => ({ card: c.cardName, quantity: c.quantity }));
-    const main = cards
-      .filter((c) => !c.isCommander)
-      .map((c) => ({ card: c.cardName, quantity: c.quantity }));
+    const real = cards.filter((c) => !c.isMaybeboard && !c.isToken);
+    const commanders = real.filter((c) => c.isCommander).map((c) => ({ card: c.cardName, quantity: c.quantity }));
+    const main = real.filter((c) => !c.isCommander).map((c) => ({ card: c.cardName, quantity: c.quantity }));
 
     const { estimate, errorDetail } = await this.commanderSpellbook.estimateBracket(commanders, main);
     this.bracketEstimate.set(estimate);
@@ -1720,6 +1801,8 @@ export class DeckViewerService {
     this.pendingCommanderChanges.set(new Map());
     this.pendingMaybeboardChanges.set(new Map());
     this.commanderMarkError.set(null);
+    this.tokenScanMessage.set(null);
+    this.tokenScanBusy.set(false);
     this.flashState.set(null);
     this.addCardResults.set([]);
     this.addCardResultsPage.set(0);
