@@ -36,13 +36,20 @@ export class DeckDetailView {
     });
   }
 
-  openPdfExport(): void {
+  async openPdfExport(): Promise<void> {
     const deck = this.viewer.viewingDeck();
     if (!deck) return;
-    const cards = this.viewer.viewingDeckCards().filter((c) => !c.isMaybeboard);
+    // Ohne dieses Warten könnten die Scryfall-Zusatzdaten (u.a. Rückseiten-Bilder) noch nicht
+    // geladen sein, wenn direkt nach dem Öffnen eines Decks exportiert wird - Rückseiten würden
+    // dann im PDF fehlen, obwohl die Karte im Deck korrekt doppelseitig ist.
+    await this.viewer.ensureCardDetailsLoaded();
+    const orderedCards = this.viewer
+      .groupedDeckCards()
+      .filter((section) => section.label !== 'Maybeboard')
+      .flatMap((section) => section.cards);
     this.pdfService.open(
       deck.name,
-      cards.map((c) => ({
+      orderedCards.map((c) => ({
         cardName: c.cardName,
         quantity: c.quantity,
         imageUrl: this.viewer.resolvedCardPrintImage(c),

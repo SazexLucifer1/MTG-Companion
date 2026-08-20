@@ -1724,7 +1724,7 @@ export class DeckViewerService {
     ]);
     this.viewingDeckCards.set(cards);
     this.viewingChangeLog.set(log);
-    this.loadCardDetails(cards);
+    this.cardDetailsPromise = this.loadCardDetails(cards);
     this.loadBracketEstimate(cards);
   }
 
@@ -1786,9 +1786,12 @@ export class DeckViewerService {
     this.viewingDeckGameStats.set(gameStats);
     this.detailBusy.set(false);
 
-    this.loadCardDetails(cards);
+    this.cardDetailsPromise = this.loadCardDetails(cards);
     this.loadBracketEstimate(cards);
   }
+
+  /** Laufender loadCardDetails()-Aufruf, falls einer läuft - siehe ensureCardDetailsLoaded(). */
+  private cardDetailsPromise: Promise<void> | null = null;
 
   /** Lädt Manakosten/Farbidentität/Game-Changer-Flag/Oracle-Text nach - unabhängig vom Kartenbild-Laden, da für die Deck-Analyse (Kurve/Pips/Tutoren) benötigt. */
   private async loadCardDetails(cards: DeckCard[]): Promise<void> {
@@ -1797,6 +1800,15 @@ export class DeckViewerService {
     const found = await this.scryfall.findCardsBulk(names);
     this.viewingCardDetails.set(found);
     this.analysisBusy.set(false);
+  }
+
+  /**
+   * Wartet, falls gerade noch Scryfall-Zusatzdaten (u.a. Rückseiten-Bilder) nachgeladen werden -
+   * für den PDF-Export, der sonst Rückseiten verpassen würde, wenn direkt nach dem Öffnen eines
+   * Decks exportiert wird, bevor loadCardDetails() im Hintergrund fertig ist.
+   */
+  async ensureCardDetailsLoaded(): Promise<void> {
+    if (this.cardDetailsPromise) await this.cardDetailsPromise;
   }
 
   /** Lädt Mass-Land-Denial/Extra-Turn/Combo-Auswertung von Commander Spellbook nach (siehe bracketEstimate). */
