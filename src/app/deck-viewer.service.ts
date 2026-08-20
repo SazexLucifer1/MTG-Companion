@@ -1693,6 +1693,16 @@ export class DeckViewerService {
     return this.viewingCardDetails().get(card.cardName.toLowerCase())?.backImageUrl ?? null;
   }
 
+  /** Hochauflösende Druckvariante (Scryfall "png") für den PDF-Export - fällt auf resolvedCardImage() zurück, falls keine png-Variante vorliegt (z.B. eigenes hochgeladenes Artwork). */
+  resolvedCardPrintImage(card: DeckCard): string | null {
+    return this.viewingCardDetails().get(card.cardName.toLowerCase())?.pngUrl ?? this.resolvedCardImage(card);
+  }
+
+  /** Hochauflösende Rückseiten-Druckvariante, siehe resolvedCardPrintImage(). */
+  resolvedCardBackPrintImage(card: DeckCard): string | null {
+    return this.viewingCardDetails().get(card.cardName.toLowerCase())?.backPngUrl ?? this.resolvedCardBackImage(card);
+  }
+
   /** Löst den EDHREC-Kartennamen zu vollen Scryfall-Daten auf (EDHREC selbst liefert nur Name+Statistik) und staged ihn wie addCard(). */
   async addEdhrecCard(cardName: string): Promise<void> {
     this.addCardBusy.set(true);

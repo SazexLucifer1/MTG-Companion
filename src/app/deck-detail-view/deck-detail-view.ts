@@ -39,9 +39,15 @@ export class DeckDetailView {
   openPdfExport(): void {
     const deck = this.viewer.viewingDeck();
     if (!deck) return;
+    const cards = this.viewer.viewingDeckCards().filter((c) => !c.isMaybeboard);
     this.pdfService.open(
       deck.name,
-      this.viewer.viewingDeckCards().filter((c) => !c.isMaybeboard)
+      cards.map((c) => ({
+        cardName: c.cardName,
+        quantity: c.quantity,
+        imageUrl: this.viewer.resolvedCardPrintImage(c),
+        backImageUrl: this.viewer.resolvedCardBackPrintImage(c),
+      }))
     );
   }
 
