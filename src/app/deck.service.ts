@@ -45,6 +45,8 @@ export interface DeckCard {
   customTags: string[];
   /** Steht in der engeren Auswahl (Maybeboard) statt wirklich im Deck - zählt nicht zur Deckgröße/Analyse. */
   isMaybeboard: boolean;
+  /** Marke (Token), die eine andere Karte im Deck erzeugt - kein eigener Deckeintrag, zählt nicht zur Deckgröße/Analyse. */
+  isToken: boolean;
 }
 
 export interface DeckChangeEntry {
@@ -92,7 +94,7 @@ export class DeckService {
   async loadDeckCards(deckId: string): Promise<DeckCard[]> {
     const { data, error } = await supabase
       .from('deck_cards')
-      .select('card_name, quantity, image_url, type_line, cmc, is_commander, custom_tags, is_maybeboard')
+      .select('card_name, quantity, image_url, type_line, cmc, is_commander, custom_tags, is_maybeboard, is_token')
       .eq('deck_id', deckId)
       .order('card_name', { ascending: true });
 
@@ -110,6 +112,7 @@ export class DeckService {
       isCommander: row.is_commander,
       customTags: row.custom_tags ?? [],
       isMaybeboard: row.is_maybeboard ?? false,
+      isToken: row.is_token ?? false,
     }));
   }
 
@@ -673,6 +676,30 @@ export class DeckService {
       console.error('Konnte Maybeboard-Status nicht ändern:', error);
       return false;
     }
+    return true;
+  }
+
+  /** Fügt eine per Scan gefundene Marke neu hinzu - kein Zusammenführen mit gleichnamigen Karten (das übernimmt scanForTokens() vorher), kein Eintrag im Änderungsverlauf (automatisch erkannt, kein manueller Deck-Edit). */
+  async addTokenToDeck(
+    deckId: string,
+    token: { name: string; imageUrl?: string | null; typeLine?: string | null },
+    quantity = 1
+  ): Promise<boolean> {
+    const { error } = await supabase.from('deck_cards').insert({
+      deck_id: deckId,
+      card_name: token.name,
+      quantity,
+      image_url: token.imageUrl ?? null,
+      type_line: token.typeLine ?? null,
+      cmc: 0,
+      is_commander: false,
+      is_token: true,
+    });
+    if (error) {
+      console.error('Konnte Marke nicht hinzufügen:', error);
+      return false;
+    }
+    await supabase.from('decks').update({ updated_at: new Date().toISOString() }).eq('id', deckId);
     return true;
   }
 

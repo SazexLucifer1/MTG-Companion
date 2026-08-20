@@ -179,7 +179,13 @@
             >
               {{ viewer.i18n.t('deckView.markCommander') }}
             </button>
+            <button class="glass-chip small" [disabled]="viewer.tokenScanBusy()" (click)="viewer.scanForTokens()">
+              {{ viewer.tokenScanBusy() ? viewer.i18n.t('deckView.scanningTokens') : viewer.i18n.t('deckView.scanTokens') }}
+            </button>
           </div>
+          @if (viewer.tokenScanMessage()) {
+            <p class="hint">{{ viewer.tokenScanMessage() }}</p>
+          }
         </div>
 
         <div class="add-card-panel">
@@ -778,7 +784,7 @@
                 } @else if (card.quantity > 1) {
                   <span class="deck-card-qty">{{ card.quantity }}×</span>
                 }
-                @if (viewer.editMode() && !card.isCommander) {
+                @if (viewer.editMode() && !card.isCommander && !card.isToken) {
                   <button
                     class="deck-card-maybeboard-toggle"
                     (click)="viewer.toggleCardMaybeboard(card)"
@@ -832,7 +838,7 @@
                     </button>
                   </div>
                 }
-                @if (viewer.editMode() && !card.isCommander) {
+                @if (viewer.editMode() && !card.isCommander && !card.isToken) {
                   <button
                     class="icon-button"
                     (click)="viewer.toggleCardMaybeboard(card)"

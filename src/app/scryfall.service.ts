@@ -20,6 +20,8 @@ export interface ScryfallCard {
    */
   backImageUrl?: string;
   backTypeLine?: string;
+  /** Von Scryfall mitgelieferte verwandte Karten (u.a. Marken, die diese Karte erzeugt) - component "token" ist der für den Marken-Scan relevante Fall. */
+  allParts?: { id: string; component: string; name: string; typeLine?: string }[];
 }
 
 export interface ScryfallPrinting {
@@ -288,6 +290,38 @@ export class ScryfallService {
 
   // NEU
   /**
+   * Lädt Kartendaten für viele Scryfall-IDs auf einmal (z.B. Marken aus all_parts) - Namenssuche
+   * wäre hier mehrdeutig (mehrere Karten teilen sich oft denselben Markennamen wie "Zombie"),
+   * die ID identifiziert dagegen eindeutig genau diesen einen Marken-Druck. Gleiches
+   * Chunking-/Parallelitätsmuster wie findCardsBulk().
+   */
+  async findCardsByIds(ids: string[]): Promise<Map<string, ScryfallCard>> {
+    const unique = [...new Set(ids.filter(Boolean))];
+    const result = new Map<string, ScryfallCard>();
+
+    const chunks: string[][] = [];
+    for (let i = 0; i < unique.length; i += 75) chunks.push(unique.slice(i, i + 75));
+
+    await Promise.all(
+      chunks.map(async (chunk) => {
+        const res = await this.fetchWithRetry(`${API}/cards/collection`, 2, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ identifiers: chunk.map((id) => ({ id })) }),
+        });
+        if (!res?.ok) return;
+        const data = await res.json();
+        for (const card of (data.data as any[]) ?? []) {
+          result.set(card.id as string, this.toCard(card));
+        }
+      })
+    );
+
+    return result;
+  }
+
+  // NEU
+  /**
    * Kartensuche zum Hinzufügen einzelner Karten zu einem Deck. Beschränkt sich bewusst auf
    * Commander-legale Karten (legal:commander) und optional auf eine Farbidentität
    * (id<=<Farben> - Teilmenge, damit das Ergebnis wirklich in ein Deck mit dieser
@@ -409,6 +443,12 @@ export class ScryfallService {
       keywords: data.keywords as string[] | undefined,
       backImageUrl: hasFlippableBack ? (backFace.image_uris?.normal as string) : undefined,
       backTypeLine: hasFlippableBack ? (backFace.type_line as string | undefined) : undefined,
+      allParts: (data.all_parts as any[] | undefined)?.map((p) => ({
+        id: p.id as string,
+        component: p.component as string,
+        name: p.name as string,
+        typeLine: p.type_line as string | undefined,
+      })),
     };
   }
 }
