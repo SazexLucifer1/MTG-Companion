@@ -1,17 +1,24 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
-import { DeckCard } from './deck.service';
 import { I18nService } from './i18n.service';
+
+export interface PdfSourceCard {
+  cardName: string;
+  quantity: number;
+  imageUrl: string | null;
+  backImageUrl: string | null;
+}
 
 export interface PdfCardEntry {
   cardName: string;
   quantity: number;
   imageUrl: string | null;
+  backImageUrl: string | null;
   selected: boolean;
 }
 
-// Echte Kartengröße (63x88mm) statt verkleinert, damit sich das PDF 1:1 zum Ausschneiden eignet.
-const CARD_WIDTH_MM = 63;
-const CARD_HEIGHT_MM = 88;
+// Echte Kartengröße (63,5x88,9mm / 2,5"x3,5") statt gerundet, damit sich das PDF 1:1 zum Ausschneiden eignet.
+const CARD_WIDTH_MM = 63.5;
+const CARD_HEIGHT_MM = 88.9;
 const COLUMNS = 3;
 const ROWS = 3;
 const PAGE_WIDTH_MM = 210;
@@ -38,7 +45,7 @@ export class DeckPdfService {
 
   readonly selectedCount = computed(() => this.entries().filter((e) => e.selected).length);
 
-  open(deckName: string, cards: DeckCard[]): void {
+  open(deckName: string, cards: PdfSourceCard[]): void {
     this.deckName.set(deckName);
     this.entries.set(
       [...cards]
@@ -47,6 +54,7 @@ export class DeckPdfService {
           cardName: c.cardName,
           quantity: c.quantity,
           imageUrl: c.imageUrl,
+          backImageUrl: c.backImageUrl,
           selected: true,
         }))
     );
@@ -114,7 +122,10 @@ export class DeckPdfService {
     const { jsPDF } = await import('jspdf');
 
     // Jedes Bild nur einmal laden, auch wenn "jede Kopie einzeln" mehrfach dieselbe Karte braucht.
-    const uniqueUrls = [...new Set(selected.map((e) => e.imageUrl!))];
+    // Rückseiten-URLs (doppelseitige Karten) zählen dabei genauso mit wie die Vorderseiten.
+    const uniqueUrls = [
+      ...new Set(selected.flatMap((e) => [e.imageUrl, e.backImageUrl].filter((u): u is string => !!u))),
+    ];
     const imagesByUrl = new Map<string, string | null>();
     this.progress.set({ done: 0, total: uniqueUrls.length });
 
@@ -127,25 +138,34 @@ export class DeckPdfService {
     const pdf = new jsPDF({ unit: 'mm', format: 'a4' });
     let slot = 0;
 
+    const placeCard = (dataUrl: string): void => {
+      if (slot > 0 && slot % (COLUMNS * ROWS) === 0) pdf.addPage();
+      const posInPage = slot % (COLUMNS * ROWS);
+      const col = posInPage % COLUMNS;
+      const row = Math.floor(posInPage / COLUMNS);
+      const x = MARGIN_X_MM + col * CARD_WIDTH_MM;
+      const y = MARGIN_Y_MM + row * CARD_HEIGHT_MM;
+
+      // png-Druckvariante hat echte Transparenz (abgerundete Ecken), normale/eigene Bilder sind JPEG -
+      // das Format muss zum tatsächlichen Inhalt des Daten-URLs passen, sonst stellt jsPDF es falsch dar.
+      const format = dataUrl.startsWith('data:image/png') ? 'PNG' : 'JPEG';
+      pdf.addImage(dataUrl, format, x, y, CARD_WIDTH_MM, CARD_HEIGHT_MM);
+      pdf.setDrawColor(180);
+      pdf.setLineWidth(0.1);
+      pdf.rect(x, y, CARD_WIDTH_MM, CARD_HEIGHT_MM);
+
+      slot++;
+    };
+
     for (const entry of selected) {
       const dataUrl = imagesByUrl.get(entry.imageUrl!);
       if (!dataUrl) continue;
+      const backDataUrl = entry.backImageUrl ? imagesByUrl.get(entry.backImageUrl) : null;
 
       const copies = copiesMode === 'all' ? entry.quantity : 1;
       for (let i = 0; i < copies; i++) {
-        if (slot > 0 && slot % (COLUMNS * ROWS) === 0) pdf.addPage();
-        const posInPage = slot % (COLUMNS * ROWS);
-        const col = posInPage % COLUMNS;
-        const row = Math.floor(posInPage / COLUMNS);
-        const x = MARGIN_X_MM + col * CARD_WIDTH_MM;
-        const y = MARGIN_Y_MM + row * CARD_HEIGHT_MM;
-
-        pdf.addImage(dataUrl, 'JPEG', x, y, CARD_WIDTH_MM, CARD_HEIGHT_MM);
-        pdf.setDrawColor(180);
-        pdf.setLineWidth(0.1);
-        pdf.rect(x, y, CARD_WIDTH_MM, CARD_HEIGHT_MM);
-
-        slot++;
+        placeCard(dataUrl);
+        if (backDataUrl) placeCard(backDataUrl);
       }
     }
 
