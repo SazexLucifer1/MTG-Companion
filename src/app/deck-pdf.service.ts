@@ -82,7 +82,7 @@ export class DeckPdfService {
     this.copiesMode.set(mode);
   }
 
-  private async fetchImageAsDataUrlOnce(url: string): Promise<string | null> {
+  private async fetchImageAsDataUrl(url: string): Promise<string | null> {
     try {
       // Der Proxy lässt aus Sicherheitsgründen nur cards.scryfall.io durch (siehe
       // functions/api/proxy-image.ts) - eigene, selbst hochgeladene Artworks liegen im
@@ -102,21 +102,6 @@ export class DeckPdfService {
     } catch {
       return null;
     }
-  }
-
-  /**
-   * Wie fetchImageAsDataUrlOnce(), aber mit Rückfall auf die normale Auflösung, falls die
-   * hochauflösende "png"-Variante fehlschlägt - manche seltene Drucke (alte Karten, Promos,
-   * Sonderformate) haben bei Scryfall keine png-Variante. Ohne diesen Rückfall würde die Karte
-   * sonst komplett aus dem PDF fehlen statt nur weniger scharf zu sein.
-   */
-  private async fetchImageAsDataUrl(url: string): Promise<string | null> {
-    const dataUrl = await this.fetchImageAsDataUrlOnce(url);
-    if (dataUrl) return dataUrl;
-    if (url.includes('cards.scryfall.io') && url.includes('/png/')) {
-      return this.fetchImageAsDataUrlOnce(url.replace('/png/', '/normal/'));
-    }
-    return null;
   }
 
   /**
