@@ -1694,31 +1694,24 @@ export class DeckViewerService {
   }
 
   /**
-   * Hebt eine Scryfall-gehostete Bild-URL auf die hochauflösende "png"-Variante DESSELBEN Drucks
-   * an (der Auflösungs-Schlüssel steht bei Scryfall direkt als erstes Pfadsegment in der URL,
-   * z.B. .../normal/front/... -> .../png/front/...) - passt also immer zur tatsächlich
-   * ausgewählten Edition/Artwork, statt separat über den Kartennamen eine (womöglich andere)
-   * Standard-Edition nachzuschlagen. Eigene hochgeladene Custom-Artworks (nicht cards.scryfall.io)
-   * und URLs ohne erkennbares Auflösungs-Segment bleiben unverändert.
+   * Druckvariante für den PDF-Export - nutzt IMMER das für die Karte tatsächlich
+   * hinterlegte/ausgewählte Artwork (resolvedCardImage()), unverändert. Ein früherer Versuch,
+   * die URL selbst auf eine höher aufgelöste Scryfall-Variante umzuschreiben (Pfadsegment
+   * .../normal/... -> .../png/...), beruhte auf einer nicht verifizierten Annahme über Scryfalls
+   * CDN-URL-Struktur und hat in der Praxis dazu geführt, dass ALLE Kartenbilder beim Export
+   * fehlschlugen (vermutlich weil die geratene png-URL nicht existierte und der anschließende
+   * Rückfall-Versuch die Anfragenzahl verdoppelt und offenbar ein Rate-Limit ausgelöst hat) -
+   * deshalb bewusst wieder auf die normale, zuverlässig funktionierende Auflösung zurückgestuft.
+   * recompressForPrint() (deck-pdf.service.ts) sorgt trotzdem für eine für den Druck passend
+   * zugeschnittene, gleichmäßige Bildgröße.
    */
-  private upgradeToPrintQuality(url: string | null): string | null {
-    if (!url) return null;
-    try {
-      if (new URL(url, window.location.href).hostname !== 'cards.scryfall.io') return url;
-    } catch {
-      return url;
-    }
-    return url.replace(/\/(normal|large|small)\//, '/png/');
-  }
-
-  /** Hochauflösende Druckvariante für den PDF-Export - nutzt IMMER das für die Karte tatsächlich hinterlegte/ausgewählte Artwork (resolvedCardImage()), nur die Auflösung wird angehoben. */
   resolvedCardPrintImage(card: DeckCard): string | null {
-    return this.upgradeToPrintQuality(this.resolvedCardImage(card));
+    return this.resolvedCardImage(card);
   }
 
-  /** Hochauflösende Rückseiten-Druckvariante, siehe resolvedCardPrintImage(). */
+  /** Rückseiten-Druckvariante, siehe resolvedCardPrintImage(). */
   resolvedCardBackPrintImage(card: DeckCard): string | null {
-    return this.upgradeToPrintQuality(this.resolvedCardBackImage(card));
+    return this.resolvedCardBackImage(card);
   }
 
   /** Löst den EDHREC-Kartennamen zu vollen Scryfall-Daten auf (EDHREC selbst liefert nur Name+Statistik) und staged ihn wie addCard(). */
