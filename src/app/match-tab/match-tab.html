@@ -121,7 +121,7 @@
           } @else {
             <div class="chip-row">
               <button class="glass-chip small" (click)="openSearch(p.name)">{{ i18n.t('match.searchCommander') }}</button>
-              @if (mtg.playerUserIds()[p.name]) {
+              @if (mtg.playerUserIds()[p.name] || mtg.playerIdFor(p.name)) {
                 <button class="glass-chip small" (click)="openOwnDeckPicker(p.name)">{{ i18n.t('match.chooseDeck') }}</button>
               }
               <button class="glass-chip small" (click)="openBorrowDeckPicker(p.name)">{{ i18n.t('match.borrowDeck') }}</button>
@@ -420,7 +420,7 @@
         @if (p.isArchenemy) {<em> – Archenemy</em>}
         @if (p.commander) {<em> – {{ p.commander }}</em>}
         @if (p.deckId) {<span class="deck-badge" title="Aus importiertem Deck">📚 {{ p.deckName }}</span>}
-        @if (isBorrowedDeck(p)) {<span class="borrowed-badge">🤝 {{ i18n.t('match.from', { name: deckOwnerName(p.deckOwnerId) ?? '' }) }}</span>}
+        @if (isBorrowedDeck(p)) {<span class="borrowed-badge">🤝 {{ i18n.t('match.from', { name: deckOwnerName(p.deckOwnerId, p.deckOwnerPlayerId) ?? '' }) }}</span>}
       </span>
     } @else {
       <span class="history-player" [class.is-winner]="p.name === match.winner">
@@ -429,7 +429,7 @@
         @if (match.mode === 'Two-Headed Giant' && p.team) {<em> – Team {{ p.team }}</em>}
         @if (p.commander) {<em> – {{ p.commander }}</em>}
         @if (p.deckId) {<span class="deck-badge" title="Aus importiertem Deck">📚 {{ p.deckName }}</span>}
-        @if (isBorrowedDeck(p)) {<span class="borrowed-badge">🤝 {{ i18n.t('match.from', { name: deckOwnerName(p.deckOwnerId) ?? '' }) }}</span>}
+        @if (isBorrowedDeck(p)) {<span class="borrowed-badge">🤝 {{ i18n.t('match.from', { name: deckOwnerName(p.deckOwnerId, p.deckOwnerPlayerId) ?? '' }) }}</span>}
         @if (p.placement) {<em class="placement-badge"> · {{ i18n.t('placement.badge', { placement: p.placement }) }}</em>}
       </span>
     }

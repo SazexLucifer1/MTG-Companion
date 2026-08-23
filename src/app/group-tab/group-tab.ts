@@ -4,6 +4,8 @@ import { GroupService } from '../group.service';
 import { MtgService } from '../mtg.service';
 import { ProfileService } from '../profile.service';
 import { DeckService } from '../deck.service';
+import { ManualDeckLinkService } from '../manual-deck-link.service';
+import { DeckList } from '../deck-list/deck-list';
 import { NavigationService } from '../navigation.service';
 import { PlayerAvatar } from '../player-avatar/player-avatar';
 import { I18nService } from '../i18n.service';
@@ -12,7 +14,7 @@ import { GAME_MODES, GameMode } from '../models';
 
 @Component({
   selector: 'app-group-tab',
-  imports: [FormsModule, PlayerAvatar],
+  imports: [FormsModule, PlayerAvatar, DeckList],
   templateUrl: './group-tab.html',
   styleUrl: './group-tab.scss',
 })
@@ -21,6 +23,7 @@ export class GroupTab {
   readonly mtg = inject(MtgService);
   private readonly profileService = inject(ProfileService);
   private readonly deckService = inject(DeckService);
+  readonly manualDeckLink = inject(ManualDeckLinkService);
   private readonly navigation = inject(NavigationService);
   readonly i18n = inject(I18nService);
   private readonly dialog = inject(DialogService);
@@ -336,10 +339,23 @@ export class GroupTab {
 
   async deletePlayer(name: string): Promise<void> {
     const games = this.gamesPerPlayer().get(name) ?? 0;
-    const warning =
-      games > 0
-        ? this.i18n.t('group.msg.confirmDeletePlayerWithGames', { name, games })
-        : this.i18n.t('group.msg.confirmDeletePlayer', { name });
+    // Wegen der ON DELETE CASCADE auf decks.player_id löscht das Entfernen des Spielers automatisch
+    // auch alle Decks, die ihm direkt gehören (siehe openPlayerDeckDialog) - der Admin muss das vorher wissen.
+    const playerId = this.mtg.playerIdFor(name);
+    const deckCount = playerId
+      ? (await this.deckService.loadDecksForOwner({ kind: 'player', playerId })).length
+      : 0;
+
+    let warning: string;
+    if (games > 0 && deckCount > 0) {
+      warning = this.i18n.t('group.msg.confirmDeletePlayerWithGamesAndDecks', { name, games, decks: deckCount });
+    } else if (deckCount > 0) {
+      warning = this.i18n.t('group.msg.confirmDeletePlayerWithDecks', { name, decks: deckCount });
+    } else if (games > 0) {
+      warning = this.i18n.t('group.msg.confirmDeletePlayerWithGames', { name, games });
+    } else {
+      warning = this.i18n.t('group.msg.confirmDeletePlayer', { name });
+    }
     if (await this.dialog.confirm(warning)) {
       await this.mtg.deletePlayer(name);
     }
@@ -347,6 +363,29 @@ export class GroupTab {
 
   isPlayerLinked(name: string): boolean {
     return !!this.mtg.playerUserIds()[name];
+  }
+
+  // --- Decks eines virtuellen Spielers (ohne Account) verwalten - nur Host ---
+
+  readonly deckManagePlayerName = signal<string | null>(null);
+  readonly deckManagePlayerId = signal<string | null>(null);
+
+  openPlayerDeckDialog(playerName: string): void {
+    const playerId = this.mtg.playerIdFor(playerName);
+    if (!playerId) return;
+    this.deckManagePlayerName.set(playerName);
+    this.deckManagePlayerId.set(playerId);
+  }
+
+  closePlayerDeckDialog(): void {
+    this.deckManagePlayerName.set(null);
+    this.deckManagePlayerId.set(null);
+  }
+
+  openManualLinkForPlayer(): void {
+    const playerId = this.deckManagePlayerId();
+    if (!playerId) return;
+    this.manualDeckLink.open({ kind: 'player', playerId });
   }
 
   // --- Spieler zusammenführen (Duplikate wie "Theo"/"Theos"/"Theodor" zu einem machen) ---

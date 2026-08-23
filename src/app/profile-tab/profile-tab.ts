@@ -6,7 +6,8 @@ import { ProfileService } from '../profile.service';
 import { MtgService } from '../mtg.service';
 import { GroupService } from '../group.service';
 import { DeckList } from '../deck-list/deck-list';
-import { DeckService, CommanderGameStats, Deck } from '../deck.service';
+import { DeckService, CommanderGameStats, DeckOwner } from '../deck.service';
+import { ManualDeckLinkService } from '../manual-deck-link.service';
 import { AuthService } from '../auth.service';
 import { BackgroundService } from '../background.service';
 import { ScryfallCard, ScryfallService } from '../scryfall.service';
@@ -27,6 +28,7 @@ export class ProfileTab {
   readonly mtg = inject(MtgService);
   readonly groupService = inject(GroupService);
   private readonly deckService = inject(DeckService);
+  readonly manualDeckLink = inject(ManualDeckLinkService);
   private readonly auth = inject(AuthService);
   readonly backgrounds = inject(BackgroundService);
   private readonly scryfall = inject(ScryfallService);
@@ -75,7 +77,9 @@ export class ProfileTab {
   private async refreshUnassignedAndDecks(): Promise<void> {
     const userId = this.profileService.profile()?.id;
     if (!userId) return;
-    this.unassignedCommanderStats.set(await this.deckService.getUnassignedCommanderStats(userId));
+    this.unassignedCommanderStats.set(
+      await this.deckService.getUnassignedCommanderStats({ kind: 'user', userId })
+    );
     await this.deckListRef()?.refreshDecks();
   }
 
@@ -86,7 +90,7 @@ export class ProfileTab {
         this.unassignedCommanderStats.set([]);
         return;
       }
-      this.deckService.getUnassignedCommanderStats(userId).then((stats) => {
+      this.deckService.getUnassignedCommanderStats({ kind: 'user', userId }).then((stats) => {
         this.unassignedCommanderStats.set(stats);
         this.commanderPage.set(0);
       });
@@ -98,7 +102,7 @@ export class ProfileTab {
         this.viewingUnassignedCommanderStats.set([]);
         return;
       }
-      this.deckService.getUnassignedCommanderStats(userId).then((stats) => {
+      this.deckService.getUnassignedCommanderStats({ kind: 'user', userId }).then((stats) => {
         this.viewingUnassignedCommanderStats.set(stats);
         this.viewingCommanderSearchQuery.set('');
         this.viewingCommanderSortMode.set('alpha');
@@ -488,7 +492,7 @@ export class ProfileTab {
     this.repairMessage.set('');
     this.repairProgress.set({ done: 0, total: 0 });
 
-    const result = await this.deckService.repairCommanderNames(userId, (done, total) =>
+    const result = await this.deckService.repairCommanderNames({ kind: 'user', userId }, (done, total) =>
       this.repairProgress.set({ done, total })
     );
 
@@ -506,79 +510,20 @@ export class ProfileTab {
     await this.refreshUnassignedAndDecks();
   }
 
-  // --- Manuell Commander <-> Deck verlinken/entlinken ---
-
-  readonly showManualLinkDialog = signal(false);
-  readonly myDecksForLinking = signal<Deck[]>([]);
-
-  readonly linkCommanderChoice = signal('');
-  readonly linkDeckChoice = signal('');
-  readonly linkBusy = signal(false);
-  readonly linkMessage = signal('');
-
-  readonly unlinkDeckChoice = signal('');
-  readonly unlinkBusy = signal(false);
-  readonly unlinkMessage = signal('');
+  // --- Manuell Commander <-> Deck verlinken/entlinken (Dialog + Logik in ManualDeckLinkService) ---
 
   async openManualLinkDialog(): Promise<void> {
     const userId = this.profileService.profile()?.id;
     if (!userId) return;
-
-    this.linkCommanderChoice.set('');
-    this.linkDeckChoice.set('');
-    this.linkMessage.set('');
-    this.unlinkDeckChoice.set('');
-    this.unlinkMessage.set('');
-    this.myDecksForLinking.set(await this.deckService.loadDecksForUser(userId));
-    this.showManualLinkDialog.set(true);
+    await this.manualDeckLink.open({ kind: 'user', userId }, () => this.refreshUnassignedAndDecks());
   }
 
-  closeManualLinkDialog(): void {
-    this.showManualLinkDialog.set(false);
-  }
-
-  async confirmManualLink(): Promise<void> {
-    const userId = this.profileService.profile()?.id;
-    const commander = this.linkCommanderChoice();
-    const deckId = this.linkDeckChoice();
-    if (!userId || !commander || !deckId) return;
-
-    this.linkBusy.set(true);
-    this.linkMessage.set('');
-
-    const ok = await this.deckService.linkCommanderToDeck(userId, commander, deckId);
-
-    this.linkBusy.set(false);
-
-    if (ok) {
-      this.linkMessage.set(this.i18n.t('profile.msg.linked'));
-      this.linkCommanderChoice.set('');
-      this.linkDeckChoice.set('');
-      await this.refreshUnassignedAndDecks();
-    } else {
-      this.linkMessage.set(this.i18n.t('profile.msg.linkFailed'));
-    }
-  }
-
-  async confirmManualUnlink(): Promise<void> {
-    const userId = this.profileService.profile()?.id;
-    const deckId = this.unlinkDeckChoice();
-    if (!userId || !deckId) return;
-
-    this.unlinkBusy.set(true);
-    this.unlinkMessage.set('');
-
-    const ok = await this.deckService.unlinkDeckMatches(userId, deckId);
-
-    this.unlinkBusy.set(false);
-
-    if (ok) {
-      this.unlinkMessage.set(this.i18n.t('profile.msg.unlinked'));
-      this.unlinkDeckChoice.set('');
-      await this.refreshUnassignedAndDecks();
-    } else {
-      this.unlinkMessage.set(this.i18n.t('profile.msg.unlinkFailed'));
-    }
+  /** Für den Admin, der beim Ansehen eines FREMDEN Profils Alt-Spiele dieser Person nachträglich verlinkt. */
+  async openManualLinkDialogFor(viewingUserId: string): Promise<void> {
+    const owner: DeckOwner = { kind: 'user', userId: viewingUserId };
+    await this.manualDeckLink.open(owner, async () => {
+      this.viewingUnassignedCommanderStats.set(await this.deckService.getUnassignedCommanderStats(owner));
+    });
   }
 
   // --- Hintergrundbilder ---

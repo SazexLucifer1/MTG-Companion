@@ -8,7 +8,7 @@ import { GeminiService } from '../gemini.service';
 import { GameSessionService } from '../game-session.service';
 import { GroupService } from '../group.service';
 import { PlayerAvatar } from '../player-avatar/player-avatar';
-import { DeckService } from '../deck.service';
+import { DeckService, DeckOwner } from '../deck.service';
 import { I18nService } from '../i18n.service';
 import { TournamentService } from '../tournament.service';
 import { DialogService } from '../dialog.service';
@@ -201,7 +201,9 @@ export class MatchTab {
 
   async openOwnDeckPicker(playerName: string): Promise<void> {
     const userId = this.mtg.playerUserIds()[playerName];
-    if (!userId) return;
+    const playerId = this.mtg.playerIdFor(playerName);
+    if (!userId && !playerId) return;
+    const owner: DeckOwner = userId ? { kind: 'user', userId } : { kind: 'player', playerId: playerId! };
 
     this.deckPickerTarget.set(playerName);
     this.deckPickerBorrowMode.set(false);
@@ -210,7 +212,7 @@ export class MatchTab {
     this.deckPickerBusy.set(true);
     this.deckPickerCards.set({});
 
-    const decks = await this.deckService.loadDecksForUser(userId);
+    const decks = await this.deckService.loadDecksForOwner(owner);
     const options = decks.map((d) => ({ deckId: d.id, deckName: d.name, isPrecon: d.isPrecon }));
     this.deckPickerOptions.set(options);
     if (decks.length === 0) {
@@ -230,7 +232,7 @@ export class MatchTab {
     const others = this.session
       .selectedPlayers()
       .map((p) => p.name)
-      .filter((name) => name !== playerName && this.mtg.playerUserIds()[name]);
+      .filter((name) => name !== playerName && (this.mtg.playerUserIds()[name] || this.mtg.playerIdFor(name)));
 
     this.borrowOwnerOptions.set(others);
     if (others.length === 0) {
@@ -244,8 +246,10 @@ export class MatchTab {
     this.deckPickerBusy.set(true);
     this.deckPickerCards.set({});
 
-    const userId = this.mtg.playerUserIds()[owner]!;
-    const decks = await this.deckService.loadDecksForUser(userId);
+    const userId = this.mtg.playerUserIds()[owner];
+    const playerId = this.mtg.playerIdFor(owner);
+    const deckOwner: DeckOwner = userId ? { kind: 'user', userId } : { kind: 'player', playerId: playerId! };
+    const decks = await this.deckService.loadDecksForOwner(deckOwner);
     const options = decks.map((d) => ({ deckId: d.id, deckName: d.name, isPrecon: d.isPrecon, ownerName: owner }));
     this.deckPickerOptions.set(options);
     if (decks.length === 0) {
@@ -473,15 +477,17 @@ export class MatchTab {
     Math.min((this.historyPage() + 1) * this.historyPageSize, this.historyRows().length)
   );
 
-  /** Findet zu einer Account-User-ID den Spielernamen in der aktuellen Gruppe (für "ausgeliehen von X" im Verlauf). */
-  deckOwnerName(ownerId: string | undefined): string | null {
+  /** Findet zu einer Account-User-ID/players.id den Spielernamen in der aktuellen Gruppe (für "ausgeliehen von X" im Verlauf). */
+  deckOwnerName(ownerId: string | undefined, ownerPlayerId?: string): string | null {
+    if (ownerPlayerId) return this.mtg.playerNameForId(ownerPlayerId);
     if (!ownerId) return null;
     const entry = Object.entries(this.mtg.playerUserIds()).find(([, uid]) => uid === ownerId);
     return entry?.[0] ?? null;
   }
 
-  /** true, wenn das im Verlauf gezeigte Deck nicht dem Account der spielenden Person gehört (also geliehen wurde). */
-  isBorrowedDeck(player: { name: string; deckOwnerId?: string }): boolean {
+  /** true, wenn das im Verlauf gezeigte Deck nicht der spielenden Person selbst gehört (also geliehen wurde). */
+  isBorrowedDeck(player: { name: string; deckOwnerId?: string; deckOwnerPlayerId?: string }): boolean {
+    if (player.deckOwnerPlayerId) return this.mtg.playerIdFor(player.name) !== player.deckOwnerPlayerId;
     if (!player.deckOwnerId) return false;
     return this.mtg.playerUserIds()[player.name] !== player.deckOwnerId;
   }

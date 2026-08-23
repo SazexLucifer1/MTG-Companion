@@ -1,0 +1,73 @@
+@if (linkService.showDialog()) {
+  <div class="options-menu-overlay" (click)="linkService.close()">
+    <div class="options-menu-sheet manual-link-sheet" (click)="$event.stopPropagation()">
+      <h3>{{ i18n.t('profile.manualLinkTitle') }}</h3>
+
+      <h4>{{ i18n.t('profile.linkCommanderSectionTitle') }}</h4>
+      <p class="hint">
+        {{ i18n.t('profile.linkCommanderHint') }}
+      </p>
+      @if (linkService.unassignedCommanderStats().length === 0) {
+        <p class="hint">{{ i18n.t('profile.noUnassignedCommander') }}</p>
+      } @else {
+        <select
+          class="glass-input"
+          [ngModel]="linkService.linkCommanderChoice()"
+          (ngModelChange)="linkService.linkCommanderChoice.set($event)"
+        >
+          <option value="">{{ i18n.t('profile.chooseCommanderPlaceholder') }}</option>
+          @for (c of linkService.unassignedCommanderStats(); track c.commander) {
+            <option [value]="c.commander">{{ c.commander }} {{ i18n.t('profile.gamesCountParen', { count: c.games }) }}</option>
+          }
+        </select>
+        <select
+          class="glass-input"
+          [ngModel]="linkService.linkDeckChoice()"
+          (ngModelChange)="linkService.linkDeckChoice.set($event)"
+        >
+          <option value="">{{ i18n.t('profile.chooseDeckPlaceholder') }}</option>
+          @for (d of linkService.decksForLinking(); track d.id) {
+            <option [value]="d.id">{{ d.name }}</option>
+          }
+        </select>
+        @if (linkService.linkMessage()) {
+          <p class="hint">{{ linkService.linkMessage() }}</p>
+        }
+        <button
+          class="glass-button primary"
+          [disabled]="!linkService.linkCommanderChoice() || !linkService.linkDeckChoice() || linkService.linkBusy()"
+          (click)="linkService.confirmLink()"
+        >
+          {{ linkService.linkBusy() ? i18n.t('profile.linking') : i18n.t('group.link') }}
+        </button>
+      }
+
+      <h4>{{ i18n.t('profile.unlinkSectionTitle') }}</h4>
+      <p class="hint">
+        {{ i18n.t('profile.unlinkHint') }}
+      </p>
+      <select
+        class="glass-input"
+        [ngModel]="linkService.unlinkDeckChoice()"
+        (ngModelChange)="linkService.unlinkDeckChoice.set($event)"
+      >
+        <option value="">{{ i18n.t('profile.chooseDeckPlaceholder') }}</option>
+        @for (d of linkService.decksForLinking(); track d.id) {
+          <option [value]="d.id">{{ d.name }}</option>
+        }
+      </select>
+      @if (linkService.unlinkMessage()) {
+        <p class="hint">{{ linkService.unlinkMessage() }}</p>
+      }
+      <button
+        class="glass-button danger"
+        [disabled]="!linkService.unlinkDeckChoice() || linkService.unlinkBusy()"
+        (click)="linkService.confirmUnlink()"
+      >
+        {{ linkService.unlinkBusy() ? i18n.t('profile.unlinking') : i18n.t('profile.unlink') }}
+      </button>
+
+      <button class="glass-button" (click)="linkService.close()">{{ i18n.t('profile.close') }}</button>
+    </div>
+  </div>
+}

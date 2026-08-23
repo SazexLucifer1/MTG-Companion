@@ -57,16 +57,25 @@ export class DeckViewerService {
   readonly viewingDeck = signal<Deck | null>(null);
 
   /**
-   * Ob das gerade angesehene Deck dem eingeloggten User selbst gehört - alle Bearbeiten-Aktionen
+   * Ob das gerade angesehene Deck bearbeitet werden darf - entweder weil es dem eingeloggten User
+   * selbst gehört, oder weil es einem virtuellen Spieler ohne Account gehört UND der eingeloggte
+   * User der Admin ("owner") von GENAU DER GRUPPE ist, in der dieser Spieler steckt (nicht
+   * irgendeiner beliebigen anderen Gruppe, die er zufällig auch leitet). Alle Bearbeiten-Aktionen
    * (Karten hinzufügen/entfernen, Commander markieren, Name/Tag ändern, neu einfügen) sind sonst
    * gesperrt. Wichtig für "Profil ansehen" bei anderen Usern: die Deckliste dort ist zwar
-   * readonlyMode (kein Stift/Löschen-Button), aber "Ansehen" öffnet dieselbe Detailansicht wie bei
-   * eigenen Decks - ohne diesen Check ließe sich darüber trotzdem fremde Decks bearbeiten.
+   * readonlyMode (kein Stift/Löschen-Button) für Nicht-Admins, aber "Ansehen" öffnet dieselbe
+   * Detailansicht wie bei eigenen Decks - ohne diesen Check ließe sich darüber trotzdem fremde
+   * Decks bearbeiten.
    */
   readonly canEditViewingDeck = computed(() => {
     const deck = this.viewingDeck();
+    if (!deck) return false;
     const uid = this.auth.currentUser()?.id;
-    return !!deck && !!uid && deck.userId === uid;
+    if (deck.userId && uid && deck.userId === uid) return true;
+    if (deck.playerId && deck.groupId && deck.groupId === this.groupService.groupId() && this.groupService.isOwner()) {
+      return true;
+    }
+    return false;
   });
 
   /** Ob die Spiel-Statistiken (Gespielt/Siege/Winrate) des gerade angesehenen Decks wegen einer aktiven Gruppen-Sperre ausgeblendet werden müssen - eigene Decks und der Host sind ausgenommen. */

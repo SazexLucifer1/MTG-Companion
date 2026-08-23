@@ -1,7 +1,7 @@
 import { Component, ElementRef, computed, effect, inject, input, signal, viewChild } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { DeckService, Deck, DeckGameStats } from '../deck.service';
+import { DeckService, Deck, DeckGameStats, DeckOwner } from '../deck.service';
 import { DeckViewerService } from '../deck-viewer.service';
 import { DeckImportService } from '../deck-import.service';
 import { ScryfallCard, ScryfallService } from '../scryfall.service';
@@ -35,7 +35,7 @@ const GRID_BREAKPOINT_QUERY = '(min-width: 640px)';
   styleUrl: './deck-list.scss',
 })
 export class DeckList {
-  readonly userId = input.required<string>();
+  readonly owner = input.required<DeckOwner>();
   /** Wenn true, sind Import/Bearbeiten/Löschen ausgeblendet - reine Ansicht fremder Decks. */
   readonly readonlyMode = input(false);
   /** Wenn true, werden Winrate/Spiele-Hinweis und die entsprechenden Sortier-Chips ausgeblendet (z.B. während einer aktiven Gruppen-Stats-Sperre). */
@@ -81,10 +81,10 @@ export class DeckList {
 
   constructor() {
     effect(() => {
-      const uid = this.userId();
+      const owner = this.owner();
       this.loading.set(true);
       this.page.set(0);
-      this.deckService.loadDecksForUser(uid).then(async (decks) => {
+      this.deckService.loadDecksForOwner(owner).then(async (decks) => {
         this.decks.set(decks);
         const deckIds = decks.map((d) => d.id);
         const [stats, storedCommanders] = await Promise.all([
@@ -243,7 +243,7 @@ export class DeckList {
   }
 
   async refreshDecks(): Promise<void> {
-    const decks = await this.deckService.loadDecksForUser(this.userId());
+    const decks = await this.deckService.loadDecksForOwner(this.owner());
     this.decks.set(decks);
     const deckIds = decks.map((d) => d.id);
     const [stats, storedCommanders] = await Promise.all([
@@ -255,19 +255,23 @@ export class DeckList {
   }
 
   openNewDeckDialog(): void {
-    this.importService.openNewDeckDialog(this.userId(), () => this.refreshDecks());
+    this.importService.openNewDeckDialog(this.owner(), () => this.refreshDecks());
   }
 
   openNewEmptyDeckDialog(): void {
-    this.importService.openNewEmptyDeckDialog(this.userId(), async (deck) => {
+    this.importService.openNewEmptyDeckDialog(this.owner(), async (deck) => {
       await this.refreshDecks();
-      await this.viewer.open(deck);
+      // Frisch angelegtes Deck hat noch kein groupId (nur relevant bei spielerbesitzten Decks,
+      // siehe deck-import.service.ts createEmptyDeck) - die frisch geladene Zeile aus refreshDecks()
+      // verwenden, falls vorhanden, damit canEditViewingDeck() sofort korrekt greift.
+      const fresh = this.decks().find((d) => d.id === deck.id) ?? deck;
+      await this.viewer.open(fresh);
       this.viewer.toggleEditMode();
     });
   }
 
   openPreconDialog(): void {
-    this.importService.openPreconDialog(this.userId(), () => this.refreshDecks());
+    this.importService.openPreconDialog(this.owner(), () => this.refreshDecks());
   }
 
   async deleteDeck(deck: Deck): Promise<void> {
