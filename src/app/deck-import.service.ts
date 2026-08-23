@@ -1,5 +1,5 @@
 import { Injectable, inject, signal } from '@angular/core';
-import { DeckService, Deck } from './deck.service';
+import { DeckService, Deck, DeckOwner } from './deck.service';
 import { PreconService, PreconSummary } from './precon.service';
 import { ScryfallService } from './scryfall.service';
 import { EdhrecService, EdhrecTag } from './edhrec.service';
@@ -22,7 +22,7 @@ export class DeckImportService {
   private readonly edhrec = inject(EdhrecService);
   readonly i18n = inject(I18nService);
 
-  private userId = '';
+  private owner: DeckOwner | null = null;
   private onSaved: (() => void) | null = null;
 
   // --- EDHREC-Theme-Tag - gemeinsam für beide Deck-anlegen-Dialoge (Import + Leeres Deck), da nie
@@ -69,8 +69,8 @@ export class DeckImportService {
   readonly importMessage = signal('');
   private deckTextCommanderTimer: ReturnType<typeof setTimeout> | null = null;
 
-  openNewDeckDialog(userId: string, onSaved: () => void): void {
-    this.userId = userId;
+  openNewDeckDialog(owner: DeckOwner, onSaved: () => void): void {
+    this.owner = owner;
     this.onSaved = onSaved;
     this.editingDeckId.set(null);
     this.deckName.set('');
@@ -82,8 +82,8 @@ export class DeckImportService {
     this.showImportDialog.set(true);
   }
 
-  async openEditDeckDialog(userId: string, deck: Deck, onSaved: () => void): Promise<void> {
-    this.userId = userId;
+  async openEditDeckDialog(owner: DeckOwner, deck: Deck, onSaved: () => void): Promise<void> {
+    this.owner = owner;
     this.onSaved = onSaved;
     this.editingDeckId.set(deck.id);
     this.deckName.set(deck.name);
@@ -112,13 +112,13 @@ export class DeckImportService {
 
   async saveDeck(): Promise<void> {
     const name = this.deckName().trim();
-    if (!name || !this.deckText().trim()) return;
+    if (!name || !this.deckText().trim() || !this.owner) return;
 
     this.importBusy.set(true);
     this.importMessage.set('');
 
     const ok = await this.deckService.saveDeck(
-      this.userId,
+      this.owner,
       name,
       FIXED_FORMAT,
       this.deckText(),
@@ -151,8 +151,8 @@ export class DeckImportService {
   readonly newDeckBusy = signal(false);
   readonly newDeckMessage = signal('');
 
-  openNewEmptyDeckDialog(userId: string, onCreated: (deck: Deck) => void): void {
-    this.userId = userId;
+  openNewEmptyDeckDialog(owner: DeckOwner, onCreated: (deck: Deck) => void): void {
+    this.owner = owner;
     this.onEmptyDeckCreated = onCreated;
     this.newDeckName.set('');
     this.newDeckCommanderQuery.set('');
@@ -188,14 +188,14 @@ export class DeckImportService {
   async createEmptyDeck(): Promise<void> {
     const name = this.newDeckName().trim();
     const commander = this.newDeckCommanderSelected();
-    if (!name || !commander) return;
+    if (!name || !commander || !this.owner) return;
 
     this.newDeckBusy.set(true);
     this.newDeckMessage.set('');
 
     const tag = this.selectedCommanderTag();
     const deckId = await this.deckService.saveDeck(
-      this.userId,
+      this.owner,
       name,
       FIXED_FORMAT,
       `Commander:\n1 ${commander}`,
@@ -210,7 +210,9 @@ export class DeckImportService {
       this.showNewEmptyDeckDialog.set(false);
       this.onEmptyDeckCreated?.({
         id: deckId,
-        userId: this.userId,
+        userId: this.owner.kind === 'user' ? this.owner.userId : null,
+        playerId: this.owner.kind === 'player' ? this.owner.playerId : null,
+        groupId: null,
         name,
         format: FIXED_FORMAT,
         updatedAt: new Date().toISOString(),
@@ -235,8 +237,8 @@ export class DeckImportService {
   readonly preconImportProgress = signal<{ done: number; total: number } | null>(null);
   readonly preconMessage = signal('');
 
-  async openPreconDialog(userId: string, onSaved: () => void): Promise<void> {
-    this.userId = userId;
+  async openPreconDialog(owner: DeckOwner, onSaved: () => void): Promise<void> {
+    this.owner = owner;
     this.onSaved = onSaved;
     this.showPreconDialog.set(true);
     this.preconMessage.set('');
@@ -285,7 +287,7 @@ export class DeckImportService {
 
   async importSelectedPrecons(): Promise<void> {
     const selected = this.preconOptions().filter((p) => this.selectedPreconFileNames().has(p.fileName));
-    if (selected.length === 0) return;
+    if (selected.length === 0 || !this.owner) return;
 
     this.preconImportBusy.set(true);
     this.preconMessage.set('');
@@ -295,8 +297,7 @@ export class DeckImportService {
     for (const precon of selected) {
       const text = await this.preconService.loadPreconAsText(precon.fileName);
       const ok =
-        text !== null &&
-        (await this.deckService.saveDeck(this.userId, precon.name, 'Commander', text, null, true));
+        text !== null && (await this.deckService.saveDeck(this.owner, precon.name, 'Commander', text, null, true));
       if (!ok) failed++;
       this.preconImportProgress.update((p) => (p ? { ...p, done: p.done + 1 } : p));
     }

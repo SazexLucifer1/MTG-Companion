@@ -24,8 +24,10 @@ export interface MatchPlayer {
   deckId?: string;
   /** Nur beim Lesen aus der Historie befüllt (Join), nicht beim Erstellen gesetzt. */
   deckName?: string;
-  /** User-ID des Deck-Besitzers - dient zur Erkennung, ob das Deck hier nur geliehen wurde. */
+  /** User-ID des Deck-Besitzers (nur bei account-gebundenen Decks) - dient zur Erkennung, ob das Deck hier nur geliehen wurde. */
   deckOwnerId?: string;
+  /** players.id des Deck-Besitzers (nur bei einem Deck, das direkt einem accountlosen/virtuellen Spieler gehört). */
+  deckOwnerPlayerId?: string;
   /** Nur beim Lesen aus der Historie befüllt (Join). */
   deckIsPrecon?: boolean;
   /**

@@ -2,7 +2,7 @@ import { Component, effect, inject } from '@angular/core';
 import { DatePipe, DecimalPipe, PercentPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { DeckViewerService } from '../deck-viewer.service';
-import { DeckService, DeckCard } from '../deck.service';
+import { DeckService, DeckCard, DeckOwner } from '../deck.service';
 import { DeckImportService } from '../deck-import.service';
 import { DeckPdfService } from '../deck-pdf.service';
 import { EdhrecCardlist } from '../edhrec.service';
@@ -29,8 +29,11 @@ export class DeckDetailView {
   async reimportDecklist(): Promise<void> {
     const deck = this.viewer.viewingDeck();
     if (!deck || !this.viewer.canEditViewingDeck()) return;
-    await this.importService.openEditDeckDialog(deck.userId, deck, async () => {
-      const decks = await this.deckService.loadDecksForUser(deck.userId);
+    const owner: DeckOwner = deck.playerId
+      ? { kind: 'player', playerId: deck.playerId }
+      : { kind: 'user', userId: deck.userId! };
+    await this.importService.openEditDeckDialog(owner, deck, async () => {
+      const decks = await this.deckService.loadDecksForOwner(owner);
       const fresh = decks.find((d) => d.id === deck.id) ?? deck;
       await this.viewer.open(fresh);
     });

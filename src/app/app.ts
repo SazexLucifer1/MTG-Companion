@@ -8,6 +8,7 @@ import { DeckDetailView } from './deck-detail-view/deck-detail-view';
 import { GoldfishTracker } from './goldfish-tracker/goldfish-tracker';
 import { DeckImportDialogs } from './deck-import-dialogs/deck-import-dialogs';
 import { DeckPdfDialog } from './deck-pdf-dialog/deck-pdf-dialog';
+import { ManualDeckLinkDialog } from './manual-deck-link-dialog/manual-deck-link-dialog';
 import { TutorialOverlay } from './tutorial-overlay/tutorial-overlay';
 import { FeedbackDialog } from './feedback-dialog/feedback-dialog';
 import { PlacementDialog } from './placement-dialog/placement-dialog';
@@ -34,6 +35,7 @@ import { TournamentService } from './tournament.service';
     GoldfishTracker,
     DeckImportDialogs,
     DeckPdfDialog,
+    ManualDeckLinkDialog,
     Login,
     ResetPassword,
     TutorialOverlay,

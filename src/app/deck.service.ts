@@ -6,7 +6,12 @@ import { sleep } from './array-utils';
 
 export interface Deck {
   id: string;
-  userId: string;
+  /** Nur bei einem Deck eines echten Accounts gesetzt - exklusiv zu playerId, siehe DeckOwner. */
+  userId: string | null;
+  /** Nur bei einem Deck eines "virtuellen" Spielers ohne eigenen Login gesetzt - exklusiv zu userId. */
+  playerId: string | null;
+  /** Gruppe des Spielers, falls playerId gesetzt ist - für die Bearbeitungsrechte-Prüfung (nur der Gruppen-Admin darf ein spielerbesitztes Deck bearbeiten). */
+  groupId: string | null;
   name: string;
   format: string | null;
   updatedAt: string;
@@ -18,6 +23,13 @@ export interface Deck {
   /** Als "Outdated" markierte Decks sind standardmäßig in der Deck-Liste ausgeblendet (z.B. für Decks, die nicht mehr gespielt werden, aber nicht gelöscht werden sollen). */
   isOutdated: boolean;
 }
+
+/**
+ * Ein Deck gehört entweder einem echten Account ODER einem virtuellen Spieler ohne eigenen Login -
+ * nie beidem (siehe decks_owner_xor_check-Constraint in der DB). Fast alle deck-bezogenen Methoden
+ * nehmen diesen Typ statt einer nackten userId entgegen, damit dieselbe Logik für beide Fälle gilt.
+ */
+export type DeckOwner = { kind: 'user'; userId: string } | { kind: 'player'; playerId: string };
 
 export interface DeckGameStats {
   games: number;
@@ -73,21 +85,38 @@ const SET_AND_COLLECTOR_NUMBER_SUFFIX = /\s*\([A-Za-z0-9]{2,6}\)\s*[A-Za-z0-9★
 export class DeckService {
   private readonly scryfall = inject(ScryfallService);
 
-  async loadDecksForUser(userId: string): Promise<Deck[]> {
-    const { data, error } = await supabase
+  /**
+   * Löst einen DeckOwner zu den betroffenen players.id auf - bei einem echten Account können das
+   * mehrere sein (eine Spieler-Zeile pro Gruppe), bei einem virtuellen Spieler ist die playerId
+   * bereits selbst die einzige relevante ID, kein Lookup nötig.
+   */
+  private async resolvePlayerIds(owner: DeckOwner): Promise<string[]> {
+    if (owner.kind === 'player') return [owner.playerId];
+    const { data } = await supabase.from('players').select('id').eq('user_id', owner.userId);
+    return (data ?? []).map((p) => p.id);
+  }
+
+  async loadDecksForOwner(owner: DeckOwner): Promise<Deck[]> {
+    let query = supabase
       .from('decks')
-      .select('id, user_id, name, format, updated_at, is_precon, edhrec_tag, is_private, is_outdated')
-      .eq('user_id', userId)
+      .select(
+        'id, user_id, player_id, name, format, updated_at, is_precon, edhrec_tag, is_private, is_outdated, players ( group_id )'
+      )
       .order('updated_at', { ascending: false });
+    query = owner.kind === 'user' ? query.eq('user_id', owner.userId) : query.eq('player_id', owner.playerId);
+
+    const { data, error } = await query;
 
     if (error) {
       console.error('Konnte Decks nicht laden:', error);
       return [];
     }
 
-    return data.map((row) => ({
+    return (data as any[]).map((row) => ({
       id: row.id,
       userId: row.user_id,
+      playerId: row.player_id,
+      groupId: row.players?.group_id ?? null,
       name: row.name,
       format: row.format,
       updatedAt: row.updated_at,
@@ -201,7 +230,7 @@ export class DeckService {
    * Karten-Zeilen gelöscht und durch die neuen ersetzt werden.
    */
   async saveDeck(
-    userId: string,
+    owner: DeckOwner,
     name: string,
     format: string | null,
     rawText: string,
@@ -282,7 +311,14 @@ export class DeckService {
     } else {
       const { data, error } = await supabase
         .from('decks')
-        .insert({ user_id: userId, name, format, is_precon: isPrecon, edhrec_tag: edhrecTag })
+        .insert({
+          user_id: owner.kind === 'user' ? owner.userId : null,
+          player_id: owner.kind === 'player' ? owner.playerId : null,
+          name,
+          format,
+          is_precon: isPrecon,
+          edhrec_tag: edhrecTag,
+        })
         .select('id')
         .single();
 
@@ -317,7 +353,7 @@ export class DeckService {
     if (!existingDeckId) {
       const commanderEntry = parsed.find((p) => p.isCommander);
       if (commanderEntry) {
-        await this.backfillDeckLinks(deckId!, userId, commanderEntry.name);
+        await this.backfillDeckLinks(deckId!, owner, commanderEntry.name);
       }
     }
 
@@ -331,21 +367,14 @@ export class DeckService {
    * NICHT namensbasiert über alle Spieler hinweg, damit ein geliehener Commander in einem alten
    * Match eines anderen Spielers nicht fälschlich diesem Deck zugeschlagen wird.
    */
-  private async backfillDeckLinks(deckId: string, userId: string, commanderName: string): Promise<void> {
-    const { data: playerRows, error: playerError } = await supabase
-      .from('players')
-      .select('id')
-      .eq('user_id', userId);
-
-    if (playerError || !playerRows || playerRows.length === 0) return;
+  private async backfillDeckLinks(deckId: string, owner: DeckOwner, commanderName: string): Promise<void> {
+    const playerIds = await this.resolvePlayerIds(owner);
+    if (playerIds.length === 0) return;
 
     const { error } = await supabase
       .from('match_players')
       .update({ deck_id: deckId })
-      .in(
-        'player_id',
-        playerRows.map((p) => p.id)
-      )
+      .in('player_id', playerIds)
       .is('deck_id', null)
       .ilike('commander_name', commanderName);
 
@@ -359,11 +388,10 @@ export class DeckService {
    * passendem (Haupt-)Commander - fürs automatische Verknüpfen, wenn ein NEUES Match (live erstellt
    * oder importiert) angelegt wird, ohne dass der Nutzer explizit ein Deck ausgewählt hat.
    */
-  async findDeckIdByCommander(userId: string, commanderName: string): Promise<string | null> {
-    const { data: deckRows, error: deckError } = await supabase
-      .from('decks')
-      .select('id')
-      .eq('user_id', userId);
+  async findDeckIdByCommander(owner: DeckOwner, commanderName: string): Promise<string | null> {
+    let deckQuery = supabase.from('decks').select('id');
+    deckQuery = owner.kind === 'user' ? deckQuery.eq('user_id', owner.userId) : deckQuery.eq('player_id', owner.playerId);
+    const { data: deckRows, error: deckError } = await deckQuery;
 
     if (deckError || !deckRows || deckRows.length === 0) return null;
 
@@ -376,9 +404,12 @@ export class DeckService {
         'deck_id',
         deckRows.map((d) => d.id)
       )
-      .limit(1);
+      .limit(2);
 
     if (error || !data || data.length === 0) return null;
+    // Zwei eigene Decks mit demselben Commander -> nicht raten, welches gemeint ist. Lieber
+    // unverknüpft lassen (wie "kein Treffer") als eine potenziell falsche Zuordnung zu setzen.
+    if (data.length > 1 && data[1].deck_id !== data[0].deck_id) return null;
     return data[0].deck_id;
   }
 
@@ -390,12 +421,11 @@ export class DeckService {
    * Speichern nicht rückwirkend von Verbesserungen an der Namens-Erkennung profitiert.
    */
   async repairCommanderNames(
-    userId: string,
+    owner: DeckOwner,
     onProgress?: (done: number, total: number) => void
   ): Promise<{ checked: number; fixed: number; linked: number }> {
-    const { data: playerRows } = await supabase.from('players').select('id').eq('user_id', userId);
-    if (!playerRows || playerRows.length === 0) return { checked: 0, fixed: 0, linked: 0 };
-    const playerIds = playerRows.map((p) => p.id);
+    const playerIds = await this.resolvePlayerIds(owner);
+    if (playerIds.length === 0) return { checked: 0, fixed: 0, linked: 0 };
 
     const { data: rows } = await supabase
       .from('match_players')
@@ -443,7 +473,7 @@ export class DeckService {
     const finalNames = new Set(list.map((n) => resolvedNames.get(n) ?? n));
     let linked = 0;
     for (const name of finalNames) {
-      const deckId = await this.findDeckIdByCommander(userId, name);
+      const deckId = await this.findDeckIdByCommander(owner, name);
       if (!deckId) continue;
 
       const { error: linkError } = await supabase
@@ -899,10 +929,9 @@ export class DeckService {
    * Excel-Importe oder live getrackte Spiele, bei denen kein eigenes Deck ausgewählt wurde) -
    * ergänzt getDeckStats() im Profil, wo sonst nur deck-gebundene Spiele auftauchen würden.
    */
-  async getUnassignedCommanderStats(userId: string): Promise<CommanderGameStats[]> {
-    const { data: playerRows } = await supabase.from('players').select('id').eq('user_id', userId);
-    if (!playerRows || playerRows.length === 0) return [];
-    const playerIds = playerRows.map((p) => p.id);
+  async getUnassignedCommanderStats(owner: DeckOwner): Promise<CommanderGameStats[]> {
+    const playerIds = await this.resolvePlayerIds(owner);
+    if (playerIds.length === 0) return [];
 
     const { data, error } = await supabase
       .from('match_players')
@@ -948,10 +977,9 @@ export class DeckService {
    * mit einem konkreten Deck - für Fälle, wo die automatische Erkennung (findDeckIdByCommander)
    * nichts findet oder der falsche Commander-Name erkannt wurde.
    */
-  async linkCommanderToDeck(userId: string, commander: string, deckId: string): Promise<boolean> {
-    const { data: playerRows } = await supabase.from('players').select('id').eq('user_id', userId);
-    if (!playerRows || playerRows.length === 0) return false;
-    const playerIds = playerRows.map((p) => p.id);
+  async linkCommanderToDeck(owner: DeckOwner, commander: string, deckId: string): Promise<boolean> {
+    const playerIds = await this.resolvePlayerIds(owner);
+    if (playerIds.length === 0) return false;
 
     const { error } = await supabase
       .from('match_players')
@@ -972,10 +1000,9 @@ export class DeckService {
    * z.B. falls eine automatische oder manuelle Verlinkung ein falsches Deck getroffen hat. Die
    * Matches landen danach wieder unter "Commander ohne Deck".
    */
-  async unlinkDeckMatches(userId: string, deckId: string): Promise<boolean> {
-    const { data: playerRows } = await supabase.from('players').select('id').eq('user_id', userId);
-    if (!playerRows || playerRows.length === 0) return false;
-    const playerIds = playerRows.map((p) => p.id);
+  async unlinkDeckMatches(owner: DeckOwner, deckId: string): Promise<boolean> {
+    const playerIds = await this.resolvePlayerIds(owner);
+    if (playerIds.length === 0) return false;
 
     const { error } = await supabase
       .from('match_players')

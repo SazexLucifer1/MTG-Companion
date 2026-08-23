@@ -295,6 +295,7 @@
               <button class="icon-button" (click)="openProfileView(mtg.playerUserIds()[player]!)" [attr.aria-label]="i18n.t('group.viewProfileAria')" [title]="i18n.t('group.viewProfileAria')">👁️</button>
             } @else if (groupService.isOwner()) {
               <button class="icon-button" (click)="openLinkDialog(player)" [attr.aria-label]="i18n.t('group.linkWithMemberAria')">🔗</button>
+              <button class="icon-button" (click)="openPlayerDeckDialog(player)" [attr.aria-label]="i18n.t('group.playerDecksAria')" [title]="i18n.t('group.playerDecksAria')">🃏</button>
             }
             <button class="icon-button" (click)="startEditPlayer(player)" [attr.aria-label]="i18n.t('group.renamePlayerAria')">✏️</button>
             <button class="icon-button" (click)="deletePlayer(player)" [attr.aria-label]="i18n.t('group.deletePlayerAria')">🗑</button>
@@ -335,6 +336,21 @@
       {{ repairGroupBusy() ? i18n.t('group.checking') : i18n.t('group.checkNow') }}
     </button>
     <button class="glass-button" (click)="closeRepairInfoDialog()">{{ i18n.t('group.close') }}</button>
+  </div>
+</div>
+}
+
+@if (deckManagePlayerName(); as playerName) {
+<div class="options-menu-overlay" (click)="closePlayerDeckDialog()">
+  <div class="options-menu-sheet player-deck-sheet" (click)="$event.stopPropagation()">
+    <div class="section-header-row">
+      <h3>{{ i18n.t('group.playerDecksTitle', { name: playerName }) }}</h3>
+      <button class="icon-button" (click)="openManualLinkForPlayer()" [attr.aria-label]="i18n.t('profile.manualLinkAria')" [title]="i18n.t('profile.manualLinkAria')">🔗</button>
+    </div>
+    @if (deckManagePlayerId(); as playerId) {
+      <app-deck-list [owner]="{ kind: 'player', playerId }" />
+    }
+    <button class="glass-button" (click)="closePlayerDeckDialog()">{{ i18n.t('group.close') }}</button>
   </div>
 </div>
 }

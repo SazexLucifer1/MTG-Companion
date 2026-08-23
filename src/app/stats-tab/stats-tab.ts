@@ -412,8 +412,9 @@ export class StatsTab {
 
   // --- Deck-Statistiken ---
 
-  /** Findet zu einer Account-User-ID den Spielernamen in der aktuellen Gruppe (für "ausgeliehen von X"). */
-  private deckOwnerName(ownerId: string | undefined): string | null {
+  /** Findet zu einer Account-User-ID/players.id den Spielernamen in der aktuellen Gruppe (für "ausgeliehen von X"). */
+  private deckOwnerName(ownerId: string | undefined, ownerPlayerId?: string): string | null {
+    if (ownerPlayerId) return this.mtg.playerNameForId(ownerPlayerId);
     if (!ownerId) return null;
     const entry = Object.entries(this.mtg.playerUserIds()).find(([, uid]) => uid === ownerId);
     return entry?.[0] ?? null;
@@ -431,6 +432,7 @@ export class StatsTab {
         deckName: string;
         isPrecon: boolean;
         ownerId?: string;
+        ownerPlayerId?: string;
         games: number;
         wins: number;
         pilots: Set<string>;
@@ -444,6 +446,7 @@ export class StatsTab {
           deckName: p.deckName ?? 'Unbekanntes Deck',
           isPrecon: p.deckIsPrecon ?? false,
           ownerId: p.deckOwnerId,
+          ownerPlayerId: p.deckOwnerPlayerId,
           games: 0,
           wins: 0,
           pilots: new Set<string>(),
@@ -458,7 +461,7 @@ export class StatsTab {
     const stored = this.storedDeckCommanders();
     return [...stats.entries()]
       .map(([deckId, s]) => {
-        const ownerName = this.deckOwnerName(s.ownerId);
+        const ownerName = this.deckOwnerName(s.ownerId, s.ownerPlayerId);
         const storedCommander = stored.get(deckId);
         return {
           deckId,
@@ -713,7 +716,15 @@ export class StatsTab {
 
     const stats = new Map<
       string,
-      { deckName: string; isPrecon: boolean; ownerId?: string; games: number; wins: number; commander?: string }
+      {
+        deckName: string;
+        isPrecon: boolean;
+        ownerId?: string;
+        ownerPlayerId?: string;
+        games: number;
+        wins: number;
+        commander?: string;
+      }
     >();
     for (const match of this.selectedPlayerMatches()) {
       const entry0 = match.players.find((p) => p.name === player);
@@ -722,6 +733,7 @@ export class StatsTab {
         deckName: entry0.deckName ?? 'Unbekanntes Deck',
         isPrecon: entry0.deckIsPrecon ?? false,
         ownerId: entry0.deckOwnerId,
+        ownerPlayerId: entry0.deckOwnerPlayerId,
         games: 0,
         wins: 0,
       };
@@ -734,7 +746,7 @@ export class StatsTab {
     const stored = this.storedDeckCommanders();
     return [...stats.entries()]
       .map(([deckId, s]) => {
-        const ownerName = this.deckOwnerName(s.ownerId);
+        const ownerName = this.deckOwnerName(s.ownerId, s.ownerPlayerId);
         const storedCommander = stored.get(deckId);
         return {
           deckId,

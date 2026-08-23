@@ -54,6 +54,12 @@ export class MtgService {
     return this.playerIdsByName()[name] ?? null;
   }
 
+  /** Umkehrung von playerIdFor: aktueller Spielername zu einer players.id (oder null, falls unbekannt/gelöscht). */
+  playerNameForId(playerId: string): string | null {
+    const entry = Object.entries(this.playerIdsByName()).find(([, id]) => id === playerId);
+    return entry?.[0] ?? null;
+  }
+
   constructor() {
     effect(() => {
       const groupId = this.groupService.groupId();
@@ -471,6 +477,15 @@ export class MtgService {
       const { error: backgroundError } = await supabase.from('player_backgrounds').delete().eq('player_id', sourceId);
       if (backgroundError) console.error('Konnte Hintergrund des zusammengeführten Spielers nicht löschen:', backgroundError);
 
+      // Decks eines virtuellen (accountlosen) Quell-Spielers müssen VOR dem Löschen der
+      // players-Zeile auf den Ziel-Spieler umgehängt werden - decks.player_id hat inzwischen
+      // ON DELETE CASCADE, ohne dieses Umhängen würden sie beim Löschen sonst mit verschwinden.
+      const { error: deckMergeError } = await supabase.from('decks').update({ player_id: targetId }).eq('player_id', sourceId);
+      if (deckMergeError) {
+        console.error('Konnte Decks des zusammengeführten Spielers nicht übertragen:', deckMergeError);
+        return false;
+      }
+
       const { error: deleteError } = await supabase.from('players').delete().eq('id', sourceId);
 
       if (deleteError) {
@@ -570,6 +585,18 @@ export class MtgService {
 
     this.playerUserIds.update((map) => ({ ...map, [playerName]: userId }));
 
+    // Decks, die dieser Spieler bekam, als er noch accountlos war, müssen auf den jetzt
+    // verknüpften Account umgehängt werden - sonst wären sie danach unsichtbar (die Profilseite
+    // liest nur noch user_id-Decks, die player_id-Zeile hat ab jetzt keinen eigenen Ort mehr).
+    const playerId = this.playerIdsByName()[playerName];
+    if (playerId) {
+      const { error: deckMigrateError } = await supabase
+        .from('decks')
+        .update({ user_id: userId, player_id: null })
+        .eq('player_id', playerId);
+      if (deckMigrateError) console.error('Konnte Decks nicht auf den Account übertragen:', deckMigrateError);
+    }
+
     const { data: profile } = await supabase
       .from('profiles')
       .select('avatar_url')
@@ -615,7 +642,7 @@ export class MtgService {
           is_archenemy,
           deck_id,
           placement,
-          decks ( name, user_id, is_precon ),
+          decks ( name, user_id, player_id, is_precon ),
           players ( display_name )
         )
       `
@@ -650,6 +677,7 @@ export class MtgService {
         deckId: mp.deck_id ?? undefined,
         deckName: mp.decks?.name ?? undefined,
         deckOwnerId: mp.decks?.user_id ?? undefined,
+        deckOwnerPlayerId: mp.decks?.player_id ?? undefined,
         deckIsPrecon: mp.decks?.is_precon ?? undefined,
         placement: mp.placement ?? undefined,
       })),
@@ -691,13 +719,17 @@ export class MtgService {
         continue;
       }
       const userId = this.playerUserIds()[p.name];
-      if (!userId) {
+      const playerId = this.playerIdFor(p.name);
+      if (!userId && !playerId) {
         resolved.push(p);
         continue;
       }
-      const cacheKey = `${userId}::${p.commander.toLowerCase()}`;
+      const cacheKey = `${p.name.toLowerCase()}::${p.commander.toLowerCase()}`;
       if (!cache.has(cacheKey)) {
-        cache.set(cacheKey, await this.deckService.findDeckIdByCommander(userId, p.commander));
+        let deckId: string | null = null;
+        if (userId) deckId = await this.deckService.findDeckIdByCommander({ kind: 'user', userId }, p.commander);
+        if (!deckId && playerId) deckId = await this.deckService.findDeckIdByCommander({ kind: 'player', playerId }, p.commander);
+        cache.set(cacheKey, deckId);
       }
       const deckId = cache.get(cacheKey);
       resolved.push(deckId ? { ...p, deckId } : p);
@@ -768,14 +800,16 @@ export class MtgService {
     const deckIds = [...new Set(players.map((p) => p.deckId).filter((id): id is string => !!id))];
     let deckNames: Record<string, string> = {};
     let deckOwners: Record<string, string> = {};
+    let deckOwnerPlayerIds: Record<string, string> = {};
     let deckPrecons: Record<string, boolean> = {};
     if (deckIds.length > 0) {
       const { data: deckRows } = await supabase
         .from('decks')
-        .select('id, name, user_id, is_precon')
+        .select('id, name, user_id, player_id, is_precon')
         .in('id', deckIds);
       deckNames = Object.fromEntries((deckRows ?? []).map((d) => [d.id, d.name]));
       deckOwners = Object.fromEntries((deckRows ?? []).map((d) => [d.id, d.user_id]));
+      deckOwnerPlayerIds = Object.fromEntries((deckRows ?? []).map((d) => [d.id, d.player_id]));
       deckPrecons = Object.fromEntries((deckRows ?? []).map((d) => [d.id, d.is_precon]));
     }
 
@@ -788,6 +822,7 @@ export class MtgService {
         ...p,
         deckName: p.deckId ? deckNames[p.deckId] : undefined,
         deckOwnerId: p.deckId ? deckOwners[p.deckId] : undefined,
+        deckOwnerPlayerId: p.deckId ? deckOwnerPlayerIds[p.deckId] : undefined,
         deckIsPrecon: p.deckId ? deckPrecons[p.deckId] : undefined,
       })),
     };
@@ -1096,10 +1131,14 @@ export class MtgService {
     const resolveDeckId = async (playerName: string, commander: string | undefined): Promise<string | null> => {
       if (!commander) return null;
       const userId = this.playerUserIds()[playerName];
-      if (!userId) return null;
-      const key = `${userId}::${commander.toLowerCase()}`;
+      const playerId = this.playerIdFor(playerName);
+      if (!userId && !playerId) return null;
+      const key = `${playerName.toLowerCase()}::${commander.toLowerCase()}`;
       if (!deckIdCache.has(key)) {
-        deckIdCache.set(key, await this.deckService.findDeckIdByCommander(userId, commander));
+        let deckId: string | null = null;
+        if (userId) deckId = await this.deckService.findDeckIdByCommander({ kind: 'user', userId }, commander);
+        if (!deckId && playerId) deckId = await this.deckService.findDeckIdByCommander({ kind: 'player', playerId }, commander);
+        deckIdCache.set(key, deckId);
       }
       return deckIdCache.get(key) ?? null;
     };
@@ -1170,10 +1209,11 @@ export class MtgService {
     if (deckIds.length > 0) {
       const { data: deckRows } = await supabase
         .from('decks')
-        .select('id, name, user_id, is_precon')
+        .select('id, name, user_id, player_id, is_precon')
         .in('id', deckIds);
       const deckNames = Object.fromEntries((deckRows ?? []).map((d) => [d.id, d.name]));
       const deckOwners = Object.fromEntries((deckRows ?? []).map((d) => [d.id, d.user_id]));
+      const deckOwnerPlayerIds = Object.fromEntries((deckRows ?? []).map((d) => [d.id, d.player_id]));
       const deckPrecons = Object.fromEntries((deckRows ?? []).map((d) => [d.id, d.is_precon]));
 
       for (const m of importedMatches) {
@@ -1183,6 +1223,7 @@ export class MtgService {
                 ...p,
                 deckName: deckNames[p.deckId],
                 deckOwnerId: deckOwners[p.deckId],
+                deckOwnerPlayerId: deckOwnerPlayerIds[p.deckId],
                 deckIsPrecon: deckPrecons[p.deckId],
               }
             : p
