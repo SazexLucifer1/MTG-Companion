@@ -44,6 +44,20 @@ export class ProfileTab {
     () => !!this.profileService.viewingUserId() && this.groupService.statsLocked() && !this.groupService.isOwner()
   );
 
+  /** Als computed() statt eines Inline-Objektliterals im Template gehalten - sonst würde bei jedem
+   * Change-Detection-Durchlauf ein neues Objekt entstehen und der owner-Input von DeckList (ein
+   * Signal-Input) bei jedem Tick als "geändert" gelten, was den internen Lade-Effect dort in eine
+   * Dauerschleife von Deck-Neuladungen schickt. */
+  readonly ownDeckOwner = computed<DeckOwner | null>(() => {
+    const userId = this.profileService.profile()?.id;
+    return userId ? { kind: 'user', userId } : null;
+  });
+
+  readonly viewingDeckOwner = computed<DeckOwner | null>(() => {
+    const userId = this.profileService.viewingUserId();
+    return userId ? { kind: 'user', userId } : null;
+  });
+
   /** Findet den Spielernamen (mtg.playerUserIds ist name-indiziert) zu einer Account-User-ID, oder null ohne Zuordnung. */
   private playerNameForUserId(userId: string | null): string | null {
     if (!userId) return null;

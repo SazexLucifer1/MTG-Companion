@@ -51,7 +51,9 @@
           </div>
         }
       </div>
-      <app-deck-list [owner]="{ kind: 'user', userId }" [readonlyMode]="!groupService.isOwner()" [hideStats]="othersStatsHidden()" />
+      @if (viewingDeckOwner(); as owner) {
+        <app-deck-list [owner]="owner" [readonlyMode]="!groupService.isOwner()" [hideStats]="othersStatsHidden()" />
+      }
     </section>
   }
 
@@ -317,7 +319,9 @@
         <button class="icon-button" (click)="openManualLinkDialog()" [attr.aria-label]="i18n.t('profile.manualLinkAria')" [title]="i18n.t('profile.manualLinkAria')">🔗</button>
       </div>
     </div>
-    <app-deck-list #deckListRef [owner]="{ kind: 'user', userId: profile.id }" />
+    @if (ownDeckOwner(); as owner) {
+      <app-deck-list #deckListRef [owner]="owner" />
+    }
   </section>
 
   @if (showRepairInfoDialog()) {

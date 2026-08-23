@@ -3,7 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { GroupService } from '../group.service';
 import { MtgService } from '../mtg.service';
 import { ProfileService } from '../profile.service';
-import { DeckService } from '../deck.service';
+import { DeckService, DeckOwner } from '../deck.service';
 import { ManualDeckLinkService } from '../manual-deck-link.service';
 import { DeckList } from '../deck-list/deck-list';
 import { NavigationService } from '../navigation.service';
@@ -369,6 +369,14 @@ export class GroupTab {
 
   readonly deckManagePlayerName = signal<string | null>(null);
   readonly deckManagePlayerId = signal<string | null>(null);
+  /** Als computed() statt eines Inline-Objektliterals im Template gehalten - sonst würde bei jedem
+   * Change-Detection-Durchlauf ein neues Objekt entstehen und der owner-Input von DeckList (ein
+   * Signal-Input) bei jedem Tick als "geändert" gelten, was den internen Lade-Effect dort in eine
+   * Dauerschleife von Deck-Neuladungen schickt. */
+  readonly deckManageOwner = computed<DeckOwner | null>(() => {
+    const playerId = this.deckManagePlayerId();
+    return playerId ? { kind: 'player', playerId } : null;
+  });
 
   openPlayerDeckDialog(playerName: string): void {
     const playerId = this.mtg.playerIdFor(playerName);
