@@ -1498,10 +1498,18 @@ export class DeckViewerService {
    * im Bearbeitungsmodus sofort neue Vorschläge/Tags nachlädt, ohne erst Speichern + neu öffnen
    * zu erfordern.
    */
-  readonly edhrecCommanderNames = computed(() =>
-    this.editedDeckCards()
-      .filter((c) => c.isCommander)
-      .map((c) => c.cardName)
+  readonly edhrecCommanderNames = computed(
+    () =>
+      this.editedDeckCards()
+        .filter((c) => c.isCommander)
+        .map((c) => c.cardName),
+    // Ohne inhaltlichen Vergleich liefert .filter()/.map() bei JEDER Änderung von editedDeckCards()
+    // (also auch beim Hinzufügen einer ganz normalen, nicht-Commander-Karte) ein neues Array-Objekt.
+    // edhrecListsAutoLoad() unten reagiert darauf, obwohl sich die Commander gar nicht geändert
+    // haben - setzt dabei edhrecLists() auf null und lädt neu, was die gesamte Vorschlagsliste kurz
+    // kollabieren und wieder aufklappen lässt (sichtbar als Scroll-Sprung beim Karten-Hinzufügen aus
+    // den Vorschlägen, abhängig davon, wie lange der Netzwerk-Reload dauert).
+    { equal: (a, b) => a.length === b.length && a.every((name, i) => name === b[i]) }
   );
   /** Anzeige-Name für die EDHREC-Hinweistexte - bei einem Paar beide Namen kombiniert. */
   readonly edhrecCommanderName = computed(() => {
