@@ -21,6 +21,15 @@ body {
   min-height: 100%;
 }
 
+html {
+  // Wächst stufenlos mit der Fensterbreite statt einer festen Größe - auf Handy-Breiten (~380-430px)
+  // bleibt der Wert praktisch bei 16px (min()-Grenze greift, heutiges Verhalten unverändert), ab
+  // Tablet-/Desktop-Breiten wächst die Schrift weich mit und deckelt bei 19px ab ca. 1440-1600px.
+  // Da fast alle Komponenten rem statt px für Schriftgrößen nutzen, skaliert dadurch der Großteil
+  // der UI automatisch mit, ohne dass einzelne Komponenten angefasst werden müssen.
+  font-size: clamp(16px, 0.25vw + 15px, 19px);
+}
+
 body {
   font-family:
     -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, sans-serif;
