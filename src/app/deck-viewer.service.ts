@@ -256,6 +256,20 @@ export class DeckViewerService {
   readonly effectCategoryCounts = signal<EffectCategoryCounts | null>(null);
   readonly effectCategoryCountsBusy = signal(false);
 
+  /** Die tatsächlichen Karten je Effekt-Kategorie (für das Popup beim Anklicken einer Kachel) - gleiche Reihenfolge/Struktur wie effectCategoryCounts. */
+  readonly effectCategoryCards = signal<Record<keyof EffectCategoryCounts, GameChangerEntry[]> | null>(null);
+
+  /** Aktuell geöffnetes "Karten dieser Kategorie ansehen"-Popup (siehe effectCategoryCards) - null wenn geschlossen. */
+  readonly effectCategoryPopup = signal<{ label: string; cards: GameChangerEntry[] } | null>(null);
+
+  openEffectCategoryPopup(label: string, cards: GameChangerEntry[]): void {
+    this.effectCategoryPopup.set({ label, cards });
+  }
+
+  closeEffectCategoryPopup(): void {
+    this.effectCategoryPopup.set(null);
+  }
+
   private static readonly PIP_COLORS: PipCount['color'][] = ['W', 'U', 'B', 'R', 'G'];
 
   readonly pipDistribution = computed<PipCount[]>(() => {
@@ -1907,6 +1921,8 @@ export class DeckViewerService {
     this.cardSortMode.set('type');
     this.totalDeckPrice.set(null);
     this.effectCategoryCounts.set(null);
+    this.effectCategoryCards.set(null);
+    this.effectCategoryPopup.set(null);
 
     const [cards, log, gameStats] = await Promise.all([
       this.deckService.loadDeckCards(deck.id),
@@ -1989,17 +2005,27 @@ export class DeckViewerService {
     await sleep(300);
     const draw = await this.scryfall.filterNamesByQuery('otag:draw', names);
 
-    const countOf = (matched: Set<string>) =>
+    const entriesOf = (matched: Set<string>): GameChangerEntry[] =>
       cards
         .filter((c) => !c.isMaybeboard && !c.isToken && matched.has(normalizeCardName(c.cardName)))
-        .reduce((sum, c) => sum + c.quantity, 0);
+        .map((c) => ({ cardName: c.cardName, quantity: c.quantity }));
+    const countOf = (entries: GameChangerEntry[]) => entries.reduce((sum, c) => sum + c.quantity, 0);
 
+    const cardsByCategory = {
+      removal: entriesOf(removal),
+      counterspell: entriesOf(counterspell),
+      boardwipe: entriesOf(boardwipe),
+      ramp: entriesOf(ramp),
+      draw: entriesOf(draw),
+    };
+
+    this.effectCategoryCards.set(cardsByCategory);
     this.effectCategoryCounts.set({
-      removal: countOf(removal),
-      counterspell: countOf(counterspell),
-      boardwipe: countOf(boardwipe),
-      ramp: countOf(ramp),
-      draw: countOf(draw),
+      removal: countOf(cardsByCategory.removal),
+      counterspell: countOf(cardsByCategory.counterspell),
+      boardwipe: countOf(cardsByCategory.boardwipe),
+      ramp: countOf(cardsByCategory.ramp),
+      draw: countOf(cardsByCategory.draw),
     });
     this.effectCategoryCountsBusy.set(false);
   }
@@ -2036,6 +2062,8 @@ export class DeckViewerService {
     this.priceBusy.set(false);
     this.effectCategoryCounts.set(null);
     this.effectCategoryCountsBusy.set(false);
+    this.effectCategoryCards.set(null);
+    this.effectCategoryPopup.set(null);
     this.editMode.set(false);
     this.showCommanderToggle.set(false);
     this.artworkPickerCard.set(null);
