@@ -193,8 +193,11 @@
 
 .avatar-circle {
   position: relative;
-  width: 72px;
-  height: 72px;
+  // Wächst wie an anderen Stellen (Root-Schriftgröße, Karten-Vorschaubilder) weich mit der
+  // Fensterbreite mit - auf Handy-Breiten bleibt der Wert praktisch bei 72px (unverändert), auf
+  // Desktop-Breiten wird das Profilbild deutlich größer.
+  width: clamp(72px, 3.3vw + 59px, 112px);
+  height: clamp(72px, 3.3vw + 59px, 112px);
   border-radius: 50%;
   background-color: rgba(255, 255, 255, 0.1);
   background-size: cover;
@@ -212,7 +215,7 @@
   }
 
   .avatar-placeholder {
-    font-size: 1.8rem;
+    font-size: clamp(1.8rem, 0.083vw + 1.47rem, 2.8rem);
     opacity: 0.6;
   }
 
