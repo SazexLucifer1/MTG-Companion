@@ -566,7 +566,7 @@
                   @for (gc of viewer.gameChangerCards(); track gc.cardName) {
                     <li>
                       @if (gc.quantity > 1) {<span class="deck-card-qty-text">{{ gc.quantity }}×</span>}
-                      <span>{{ gc.cardName }}</span>
+                      <button class="card-name-link" (click)="viewer.openCardPreview(gc.cardName)">{{ gc.cardName }}</button>
                     </li>
                   }
                 </ul>
@@ -580,7 +580,7 @@
                   @for (t of viewer.tutorCards(); track t.cardName) {
                     <li>
                       @if (t.quantity > 1) {<span class="deck-card-qty-text">{{ t.quantity }}×</span>}
-                      <span>{{ t.cardName }}</span>
+                      <button class="card-name-link" (click)="viewer.openCardPreview(t.cardName)">{{ t.cardName }}</button>
                     </li>
                   }
                 </ul>
@@ -599,7 +599,7 @@
                   <p class="hint"><strong>{{ viewer.i18n.t('deckView.massLandDenialLabel') }}</strong></p>
                   <ul class="game-changer-list">
                     @for (c of viewer.massLandDenialCards(); track c.cardName) {
-                      <li>{{ c.cardName }}</li>
+                      <li><button class="card-name-link" (click)="viewer.openCardPreview(c.cardName)">{{ c.cardName }}</button></li>
                     }
                   </ul>
                 }
@@ -607,7 +607,7 @@
                   <p class="hint"><strong>{{ viewer.i18n.t('deckView.extraTurnsLabel') }}</strong></p>
                   <ul class="game-changer-list">
                     @for (c of viewer.extraTurnCards(); track c.cardName) {
-                      <li>{{ c.cardName }}</li>
+                      <li><button class="card-name-link" (click)="viewer.openCardPreview(c.cardName)">{{ c.cardName }}</button></li>
                     }
                   </ul>
                 }
@@ -615,7 +615,13 @@
                   <p class="hint"><strong>{{ viewer.i18n.t('deckView.twoCardComboLabel') }}</strong></p>
                   <ul class="game-changer-list">
                     @for (combo of viewer.twoCardCombos(); track combo.cardNames.join('+')) {
-                      <li>{{ combo.cardNames.join(' + ') }} → {{ combo.produces.join(', ') }}</li>
+                      <li>
+                        @for (name of combo.cardNames; track name; let last = $last) {
+                          <button class="card-name-link" (click)="viewer.openCardPreview(name)">{{ name }}</button>
+                          @if (!last) { <span> + </span> }
+                        }
+                        → {{ combo.produces.join(', ') }}
+                      </li>
                     }
                   </ul>
                 }
@@ -974,4 +980,16 @@
       </button>
     </div>
   </div>
+
+  @if (viewer.previewCardName(); as name) {
+    <div class="card-name-preview-overlay" (click)="viewer.closeCardPreview()">
+      @if (viewer.previewCardImageUrl(); as img) {
+        <div class="card-name-preview-img">
+          <app-card-image [imageUrl]="img" [backImageUrl]="viewer.previewCardBackImageUrl()" [alt]="name" />
+        </div>
+      } @else {
+        <div class="card-name-preview-placeholder">{{ name }}</div>
+      }
+    </div>
+  }
 }

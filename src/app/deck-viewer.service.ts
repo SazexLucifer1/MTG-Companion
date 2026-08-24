@@ -1731,6 +1731,35 @@ export class DeckViewerService {
     return this.resolvedCardBackImage(card);
   }
 
+  /**
+   * Kartenname, der gerade groß angezeigt wird - für die Analyse-Listen (Game Changer, Tutoren,
+   * Mass Land Denial, Extra-Turns, Combos), die bislang nur reiner Text ohne Kartenbild waren.
+   * Nur der Name statt eines DeckCard-Objekts, weil Combo-Karten nicht zwingend selbst schon als
+   * DeckCard vorliegen (viewingCardDetails wird trotzdem für das ganze Deck geladen und reicht
+   * als Bildquelle).
+   */
+  readonly previewCardName = signal<string | null>(null);
+
+  openCardPreview(name: string): void {
+    this.previewCardName.set(name);
+  }
+
+  closeCardPreview(): void {
+    this.previewCardName.set(null);
+  }
+
+  previewCardImageUrl(): string | null {
+    const name = this.previewCardName();
+    if (!name) return null;
+    return this.viewingCardDetails().get(name.toLowerCase())?.imageUrl ?? null;
+  }
+
+  previewCardBackImageUrl(): string | null {
+    const name = this.previewCardName();
+    if (!name) return null;
+    return this.viewingCardDetails().get(name.toLowerCase())?.backImageUrl ?? null;
+  }
+
   /** Löst den EDHREC-Kartennamen zu vollen Scryfall-Daten auf (EDHREC selbst liefert nur Name+Statistik) und staged ihn wie addCard(). */
   async addEdhrecCard(cardName: string): Promise<void> {
     this.addCardBusy.set(true);
