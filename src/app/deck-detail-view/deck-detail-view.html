@@ -980,16 +980,16 @@
       </button>
     </div>
   </div>
+}
 
-  @if (viewer.previewCardName(); as name) {
-    <div class="card-name-preview-overlay" (click)="viewer.closeCardPreview()">
-      @if (viewer.previewCardImageUrl(); as img) {
-        <div class="card-name-preview-img">
-          <app-card-image [imageUrl]="img" [backImageUrl]="viewer.previewCardBackImageUrl()" [alt]="name" />
-        </div>
-      } @else {
-        <div class="card-name-preview-placeholder">{{ name }}</div>
-      }
-    </div>
-  }
+@if (viewer.previewCardName(); as name) {
+  <div class="card-name-preview-overlay" (click)="viewer.closeCardPreview()">
+    @if (viewer.previewCardImageUrl(); as img) {
+      <div class="card-name-preview-img">
+        <app-card-image [imageUrl]="img" [backImageUrl]="viewer.previewCardBackImageUrl()" [alt]="name" />
+      </div>
+    } @else {
+      <div class="card-name-preview-placeholder">{{ name }}</div>
+    }
+  </div>
 }
