@@ -403,6 +403,11 @@ export class ScryfallService {
     const unique = [...new Set(cardNames.map((n) => n.trim()).filter(Boolean))];
 
     for (let i = 0; i < unique.length; i += 20) {
+      // Kleine Pause zwischen den eigenen Chunks (nicht vor dem allerersten) - ohne sie feuern bei
+      // größeren Decks mehrere Anfragen praktisch gleichzeitig raus und reißen zusammen mit den
+      // parallel laufenden Effekt-Kategorien (siehe loadEffectCategoryCounts()) Scryfalls Rate-Limit,
+      // was ganze Chunks stillschweigend unter den Tisch fallen lässt (siehe fetchWithRetry()).
+      if (i > 0) await sleep(300);
       const chunk = unique.slice(i, i + 20);
       const nameClause = '(' + chunk.map((n) => `!"${n.replace(/"/g, '')}"`).join(' or ') + ')';
       const q = encodeURIComponent(`${tagQuery} ${nameClause}`);
@@ -472,6 +477,7 @@ export class ScryfallService {
     const unique = [...new Set(cardNames.map((n) => frontFaceName(n.trim())).filter(Boolean))];
 
     for (let i = 0; i < unique.length; i += 20) {
+      if (i > 0) await sleep(300); // siehe filterNamesByQuery() - vermeidet Bursts gegen Scryfalls Rate-Limit
       const chunk = unique.slice(i, i + 20);
       const nameClause = '(' + chunk.map((n) => `!"${n.replace(/"/g, '')}"`).join(' or ') + ')';
       const q = encodeURIComponent(`${nameClause} eur>0 -is:digital unique:cards order:eur dir:asc`);
