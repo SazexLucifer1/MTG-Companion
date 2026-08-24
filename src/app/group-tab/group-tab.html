@@ -289,7 +289,12 @@
             <button class="icon-button" (click)="cancelEditPlayer()" [attr.aria-label]="i18n.t('group.cancelAria')">✕</button>
           } @else {
             <app-player-avatar [url]="mtg.playerAvatars()[player] ?? null" />
-            <span class="player-name">{{ player }}</span>
+            <span
+              class="player-name"
+              [class.clickable]="isPlayerLinked(player)"
+              (click)="isPlayerLinked(player) && openProfileView(mtg.playerUserIds()[player]!)"
+              >{{ player }}</span
+            >
             <span class="player-games">{{ i18n.t('group.gamesCount', { count: gamesPerPlayer().get(player) ?? 0 }) }}</span>
             @if (isPlayerLinked(player)) {
               <button class="icon-button" (click)="openProfileView(mtg.playerUserIds()[player]!)" [attr.aria-label]="i18n.t('group.viewProfileAria')" [title]="i18n.t('group.viewProfileAria')">👁️</button>
