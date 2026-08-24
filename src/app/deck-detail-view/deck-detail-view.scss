@@ -117,6 +117,26 @@
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.15);
 
+  // NEU - Reset für den Fall, dass die Klasse auf einem <button> statt <div> sitzt (Effekt-Kategorie-
+  // Kacheln sind anklickbar, siehe openEffectCategoryPopup()) - Browser-Standardstile für Buttons
+  // (Schriftart, Cursor, teils abweichendes Rendering unter Safari/iOS) würden sonst durchschlagen.
+  &.stat-tile-button {
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
+    -webkit-appearance: none;
+    appearance: none;
+
+    &:hover:not(:disabled) {
+      background: rgba(255, 255, 255, 0.14);
+    }
+
+    &:disabled {
+      cursor: default;
+      opacity: 0.5;
+    }
+  }
+
   .stat-value {
     font-size: 1.6rem;
     font-weight: 700;
