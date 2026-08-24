@@ -386,18 +386,16 @@
                         🔄
                       </button>
                     }
-                    @if (viewer.isCardInDeck(card.name)) {
-                      <span class="card-pick-in-deck-badge" [attr.aria-label]="viewer.i18n.t('deckView.alreadyInDeckAria')">✓</span>
-                    } @else {
-                      <button
-                        class="card-pick-add-button"
-                        [class.flash-add]="viewer.isFlashing(card.name, 'add')"
-                        (click)="viewer.addCard(card)"
-                        [attr.aria-label]="viewer.i18n.t('deckView.addAria')"
-                      >
-                        ➕
-                      </button>
-                    }
+                    <button
+                      class="card-pick-add-button"
+                      [class.in-deck]="viewer.isCardInDeck(card.name)"
+                      [class.flash-add]="viewer.isFlashing(card.name, 'add')"
+                      [disabled]="viewer.isCardInDeck(card.name)"
+                      (click)="viewer.addCard(card)"
+                      [attr.aria-label]="viewer.isCardInDeck(card.name) ? viewer.i18n.t('deckView.alreadyInDeckAria') : viewer.i18n.t('deckView.addAria')"
+                    >
+                      {{ viewer.isCardInDeck(card.name) ? '✓' : '➕' }}
+                    </button>
                   </div>
                 </div>
               }
@@ -447,18 +445,22 @@
                         } @else {
                           <div class="deck-card-placeholder">{{ card.name }}</div>
                         }
-                        @if (viewer.isCardInDeck(card.name)) {
-                          <span class="card-pick-in-deck-badge" [attr.aria-label]="viewer.i18n.t('deckView.alreadyInDeckAria')">✓</span>
-                        } @else {
-                          <button
-                            class="card-pick-add-button"
-                            [class.flash-add]="viewer.isFlashing(card.name, 'add')"
-                            (click)="viewer.addEdhrecCard(card.name)"
-                            [attr.aria-label]="viewer.i18n.t('deckView.addAria')"
-                          >
-                            ➕
-                          </button>
-                        }
+                        <!-- Immer dasselbe <button>-Element statt per @if zwischen <span>/<button> zu wechseln -
+                             sonst wird genau das Element, das gerade angeklickt wurde, im selben Change-
+                             Detection-Durchlauf aus dem DOM entfernt, in dem oberhalb (im eigenen Kartenraster)
+                             gleichzeitig eine neue Zeile eingefügt wird. Diese Kombination lässt den
+                             Browser seinen Scroll-Anker verlieren und auf die Kartenliste hochspringen,
+                             statt die Höhenänderung wie sonst üblich automatisch auszugleichen. -->
+                        <button
+                          class="card-pick-add-button"
+                          [class.in-deck]="viewer.isCardInDeck(card.name)"
+                          [class.flash-add]="viewer.isFlashing(card.name, 'add')"
+                          [disabled]="viewer.isCardInDeck(card.name)"
+                          (click)="viewer.addEdhrecCard(card.name)"
+                          [attr.aria-label]="viewer.isCardInDeck(card.name) ? viewer.i18n.t('deckView.alreadyInDeckAria') : viewer.i18n.t('deckView.addAria')"
+                        >
+                          {{ viewer.isCardInDeck(card.name) ? '✓' : '➕' }}
+                        </button>
                       </div>
                       <span class="card-pick-stats">
                         {{ card.numDecks }}/{{ card.potentialDecks }} · {{ card.synergy | percent: '1.0-1' }}
