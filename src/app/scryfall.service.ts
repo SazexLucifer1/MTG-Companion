@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { sleep } from './array-utils';
+import { sleep, normalizeCardName } from './array-utils';
 
 export interface ScryfallCard {
   name: string;
@@ -265,9 +265,14 @@ export class ScryfallService {
     // "A // B"-Namen, den Decklist-Exporte oft verwenden. Deshalb wird nur vor "//" gesucht,
     // das Ergebnis aber unter dem ursprünglichen (vollen) Namen abgelegt.
     const frontFaceName = (name: string) => name.split(' // ')[0].trim();
+    // normalizeCardName() statt nur .toLowerCase() - Scryfall liefert Kartennamen mit Apostroph (z.B.
+    // "Dovin's Veto") teils mit einer anderen Unicode-Apostroph-Variante zurück als sie in
+    // Decklisten-Importen gespeichert sind. Ohne Normalisierung würde original hier undefined bleiben
+    // und die Karte landete unter Scryfalls statt dem ursprünglichen Namen im Ergebnis - der Lookup
+    // per viewingCardDetails.get(cardName.toLowerCase()) an anderer Stelle würde sie dann nie finden.
     const searchNameToOriginal = new Map<string, string>();
     for (const name of unique) {
-      searchNameToOriginal.set(frontFaceName(name).toLowerCase(), name);
+      searchNameToOriginal.set(normalizeCardName(frontFaceName(name)), name);
     }
     const searchNames = [...new Set(unique.map(frontFaceName))];
 
@@ -286,7 +291,7 @@ export class ScryfallService {
         if (!res?.ok) return; // Chunk übersprungen (auch nach Wiederholungen fehlgeschlagen) - betroffene Karten bleiben einfach ohne Bild.
         const data = await res.json();
         for (const card of (data.data as any[]) ?? []) {
-          const original = searchNameToOriginal.get(frontFaceName(card.name as string).toLowerCase());
+          const original = searchNameToOriginal.get(normalizeCardName(frontFaceName(card.name as string)));
           const key = original?.toLowerCase() ?? (card.name as string).toLowerCase();
           result.set(key, this.toCard(card));
         }
@@ -405,7 +410,7 @@ export class ScryfallService {
       if (!res?.ok) continue;
       const data = await res.json();
       for (const card of (data.data as any[]) ?? []) {
-        matched.add((card.name as string).toLowerCase());
+        matched.add(normalizeCardName(card.name as string));
       }
     }
     return matched;
@@ -474,7 +479,7 @@ export class ScryfallService {
       if (!res?.ok) continue;
       const data = await res.json();
       for (const card of (data.data as any[]) ?? []) {
-        const name = (card.name as string).toLowerCase();
+        const name = normalizeCardName(card.name as string);
         const price = parseFloat(card.prices?.eur);
         if (!result.has(name) && !Number.isNaN(price)) result.set(name, price);
       }

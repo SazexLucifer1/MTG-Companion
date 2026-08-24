@@ -8,6 +8,7 @@ import {
   SPELLBOOK_BRACKET_LABELS,
 } from './commander-spellbook.service';
 import { EdhrecService, EdhrecCardlist, EdhrecTag } from './edhrec.service';
+import { normalizeCardName } from './array-utils';
 import { AuthService } from './auth.service';
 import { GroupService } from './group.service';
 import { I18nService } from './i18n.service';
@@ -1953,7 +1954,7 @@ export class DeckViewerService {
     const prices = await this.scryfall.cheapestPrices(names);
     let total = 0;
     for (const card of realCards) {
-      const price = prices.get(card.cardName.split(' // ')[0].trim().toLowerCase());
+      const price = prices.get(normalizeCardName(card.cardName.split(' // ')[0].trim()));
       if (price != null) total += price * card.quantity;
     }
     this.totalDeckPrice.set(total);
@@ -1975,7 +1976,7 @@ export class DeckViewerService {
 
     const countOf = (matched: Set<string>) =>
       cards
-        .filter((c) => !c.isMaybeboard && !c.isToken && matched.has(c.cardName.toLowerCase()))
+        .filter((c) => !c.isMaybeboard && !c.isToken && matched.has(normalizeCardName(c.cardName)))
         .reduce((sum, c) => sum + c.quantity, 0);
 
     this.effectCategoryCounts.set({
