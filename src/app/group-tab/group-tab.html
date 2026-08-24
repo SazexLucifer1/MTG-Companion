@@ -296,9 +296,7 @@
               >{{ player }}</span
             >
             <span class="player-games">{{ i18n.t('group.gamesCount', { count: gamesPerPlayer().get(player) ?? 0 }) }}</span>
-            @if (isPlayerLinked(player)) {
-              <button class="icon-button" (click)="openProfileView(mtg.playerUserIds()[player]!)" [attr.aria-label]="i18n.t('group.viewProfileAria')" [title]="i18n.t('group.viewProfileAria')">👁️</button>
-            } @else if (groupService.isOwner()) {
+            @if (!isPlayerLinked(player) && groupService.isOwner()) {
               <button class="icon-button" (click)="openLinkDialog(player)" [attr.aria-label]="i18n.t('group.linkWithMemberAria')">🔗</button>
               <button class="icon-button" (click)="openPlayerDeckDialog(player)" [attr.aria-label]="i18n.t('group.playerDecksAria')" [title]="i18n.t('group.playerDecksAria')">🃏</button>
             }
