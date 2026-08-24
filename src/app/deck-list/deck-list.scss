@@ -83,7 +83,9 @@
 .deck-actions {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 6px;
+  row-gap: 6px;
   margin-top: 4px;
 }
 

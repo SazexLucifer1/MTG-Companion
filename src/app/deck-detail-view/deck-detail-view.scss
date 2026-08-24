@@ -29,7 +29,7 @@
   // max-width + auto-margin statt fixer Breite: wirkt sich auf schmalen (Hochformat-)Screens gar
   // nicht aus (dort ist der Viewport ohnehin schmaler), begrenzt den Inhalt im Querformat/Desktop
   // aber auf eine großzügige Breite statt ihn endlos zu strecken.
-  width: min(100%, 1100px);
+  width: min(96vw, var(--content-max-width));
   margin: 0 auto;
   // env(safe-area-inset-*) statt fixer Werte: die Detailansicht ist position:fixed;inset:0 und
   // liegt damit auch unter Statusleiste/Notch. Im Querformat wandert die Notch/Kamera-Aussparung
@@ -78,7 +78,7 @@
 }
 
 .deck-detail-body {
-  width: min(100%, 1100px);
+  width: min(96vw, var(--content-max-width));
   margin: 0 auto;
   padding: 16px calc(env(safe-area-inset-right, 0px) + 12px) calc(20px + env(safe-area-inset-bottom))
     calc(env(safe-area-inset-left, 0px) + 12px);
