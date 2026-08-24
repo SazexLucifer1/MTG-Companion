@@ -43,25 +43,43 @@ export class ProfileService {
     this.viewingProfile.set(null);
   }
 
+  /** Account-ID des zuletzt ERFOLGREICH geladenen Profils - verhindert unnötige Neuladungen. */
+  private loadedUserId: string | null = null;
+  /** Zähler gegen Race Conditions, siehe loadProfile(). */
+  private loadSeq = 0;
+
   constructor() {
     effect(() => {
       const user = this.auth.currentUser();
-      if (user) {
-        this.loadProfile(user.id);
-      } else {
+      if (!user) {
+        this.loadedUserId = null;
         this.profile.set(null);
         this.loading.set(false);
+        return;
       }
+      // Supabase feuert currentUser() während Session-Wiederherstellung/Token-Refresh mehrfach mit
+      // einem NEUEN User-Objekt für denselben eingeloggten Account (INITIAL_SESSION,
+      // TOKEN_REFRESHED, SIGNED_IN, ...) - ohne diese Prüfung würde jedes Mal unnötig neu geladen,
+      // was das Race-Fenster in loadProfile() unnötig vergrößert.
+      if (this.loadedUserId === user.id && this.profile() !== null) return;
+      this.loadProfile(user.id);
     });
   }
 
   private async loadProfile(userId: string): Promise<void> {
+    // Überlappende Aufrufe (siehe Kommentar im Effect oben) sind trotzdem möglich - ohne diese
+    // Sequenznummer könnte eine spät ankommende Antwort einer ÄLTEREN Anfrage ein bereits
+    // erfolgreich geladenes Profil mit einem Fehler überschreiben, obwohl inzwischen eine neuere
+    // Anfrage läuft/schon fertig ist. Nur das Ergebnis der zuletzt gestarteten Anfrage zählt.
+    const seq = ++this.loadSeq;
     this.loading.set(true);
     const { data, error } = await supabase
       .from('profiles')
       .select('id, display_name, avatar_url, favorite_commanders, language, tutorials_seen, is_app_admin')
       .eq('id', userId)
       .single();
+
+    if (seq !== this.loadSeq) return;
 
     if (error) {
       console.error('Konnte Profil nicht laden:', error);
@@ -76,8 +94,15 @@ export class ProfileService {
         tutorialsSeen: data.tutorials_seen ?? [],
         isAppAdmin: data.is_app_admin ?? false,
       });
+      this.loadedUserId = userId;
     }
     this.loading.set(false);
+  }
+
+  /** In-App-Fallback für den Fehlerzustand im Profil-Tab, falls das Laden doch mal fehlschlägt (z.B. echter Netzwerkfehler) - erspart einen kompletten Seiten-Reload. */
+  retryLoadProfile(): void {
+    const user = this.auth.currentUser();
+    if (user) this.loadProfile(user.id);
   }
 
   /** Speichert die bevorzugte Sprache am Account, damit sie geräteübergreifend gilt. */
