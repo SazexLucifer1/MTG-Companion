@@ -17,7 +17,6 @@ import { MtgService } from '../mtg.service';
 import { BackgroundService } from '../background.service';
 import { TournamentService } from '../tournament.service';
 import { DialogService } from '../dialog.service';
-import { TEAM_OPTIONS } from '../models';
 import { I18nService } from '../i18n.service';
 
 const FIVE_MINUTES_MS = 5 * 60_000;
@@ -35,7 +34,6 @@ export class IngameTracker implements AfterViewInit, OnDestroy {
   readonly tournament = inject(TournamentService);
   private readonly dialog = inject(DialogService);
   readonly i18n = inject(I18nService);
-  readonly teamOptions = TEAM_OPTIONS;
 
   // --- Turnier-Rundenzeit (nur sichtbar, wenn dieses Spiel Teil eines Turnier-Tisches ist) ---
   private readonly now = signal(Date.now());

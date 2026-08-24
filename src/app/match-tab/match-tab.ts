@@ -13,6 +13,7 @@ import { I18nService } from '../i18n.service';
 import { TournamentService } from '../tournament.service';
 import { DialogService } from '../dialog.service';
 import { GAME_MODES, TEAM_OPTIONS, Match, LIVE_TRACKING_START_DATE } from '../models';
+import { teamMemberLabel } from '../match-utils';
 import { CardImage } from '../card-image/card-image';
 
 /** Ein einzelnes Spiel oder eine zu einer Karte zusammengefasste BO3-Turnierpartie (2-3 Einzelspiele) im Verlauf. */
@@ -569,7 +570,7 @@ export class MatchTab {
 
     if (match.mode === 'Two-Headed Giant') {
       const teams = [...new Set(match.players.filter((p) => p.team).map((p) => p.team as string))];
-      options.push(...teams.map((t) => ({ value: t, label: t })));
+      options.push(...teams.map((t) => ({ value: t, label: teamMemberLabel(match.players, t) })));
     } else if (match.mode === 'Archenemy') {
       const archenemy = match.players.find((p) => p.isArchenemy);
       if (archenemy) {

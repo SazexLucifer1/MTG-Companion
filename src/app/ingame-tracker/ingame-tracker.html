@@ -291,13 +291,13 @@
       </div>
       } @else if (session.isTwoHeadedGiantMode()) {
       <div class="chip-row">
-        @for (team of teamOptions; track team) {
+        @for (unit of session.ingameUnits(); track unit.key) {
         <button
           class="glass-chip winner"
-          [class.active]="session.winner() === team"
-          (click)="session.winner.set(team)"
+          [class.active]="session.winner() === unit.key"
+          (click)="session.winner.set(unit.key)"
         >
-          🏆 {{ team }}
+          🏆 {{ unit.label }}
         </button>
         }
       </div>

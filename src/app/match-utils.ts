@@ -32,3 +32,13 @@ export function isPlayerWinner(
 
   return playerName === winner;
 }
+
+/**
+ * Baut aus den Mitgliedern eines Teams einen lesbaren Anzeigenamen ("Anna & Ben") statt des rohen,
+ * austauschbaren Team-Bezeichners ("Team 1") - für Stellen, an denen ein Team NACH dem laufenden
+ * Spiel angezeigt wird (z.B. Sieger-Auswahl im Verlauf), wo die live-only ingameUnits-Computed aus
+ * game-session.service.ts nicht zur Verfügung steht.
+ */
+export function teamMemberLabel(players: { name: string; team?: string }[], team: string): string {
+  return players.filter((p) => p.team === team).map((p) => p.name).join(' & ');
+}
