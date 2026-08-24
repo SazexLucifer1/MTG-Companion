@@ -51,6 +51,17 @@
   gap: 8px;
 }
 
+// Springt bei Klick zum Profil des Spielers (nur bei echtem Account, siehe isPlayerLinked()) -
+// betrifft sowohl .player-name-cell (Rangliste/Qualifikation) als auch die einzelnen Namen in der
+// "Gespielt von"-Pilotenliste weiter unten.
+.clickable {
+  cursor: pointer;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
 .sort-toggle {
   margin: 8px 0 10px;
 }

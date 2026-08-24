@@ -4,6 +4,8 @@ import { DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MtgService } from '../mtg.service';
 import { GroupService } from '../group.service';
+import { NavigationService } from '../navigation.service';
+import { ProfileService } from '../profile.service';
 import { PlayerAvatar } from '../player-avatar/player-avatar';
 import { ScryfallCard, ScryfallService } from '../scryfall.service';
 import { DeckService } from '../deck.service';
@@ -62,10 +64,25 @@ export class StatsTab {
   private readonly excelImport = inject(ExcelImportService);
   private readonly scryfall = inject(ScryfallService);
   private readonly deckService = inject(DeckService);
+  private readonly navigation = inject(NavigationService);
+  private readonly profileService = inject(ProfileService);
   readonly i18n = inject(I18nService);
 
   /** Umschalter oben im Stats-Tab zwischen normaler Statistik und der Turnier-Historie. */
   readonly viewMode = signal<StatsViewMode>('stats');
+
+  // --- Von einem angezeigten Spielernamen direkt zu dessen Profil springen (nur bei echtem Account) ---
+
+  isPlayerLinked(name: string): boolean {
+    return !!this.mtg.playerUserIds()[name];
+  }
+
+  async openPlayerProfile(name: string): Promise<void> {
+    const userId = this.mtg.playerUserIds()[name];
+    if (!userId) return;
+    this.navigation.goToTab('profile');
+    await this.profileService.viewProfile(userId);
+  }
 
   // --- Kartenbilder (Commander/Erfolgreichste Commander & Decks) ---
 

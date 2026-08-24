@@ -117,6 +117,16 @@
   .player-name {
     flex: 1;
     font-weight: 600;
+
+    // Springt bei Klick zum Profil des Spielers, wenn er mit einem echten Account verknüpft ist -
+    // dieselbe Aktion wie der 👁️-Button daneben, nur direkter über den Namen selbst erreichbar.
+    &.clickable {
+      cursor: pointer;
+
+      &:hover {
+        text-decoration: underline;
+      }
+    }
   }
 
   .player-games {
