@@ -423,6 +423,99 @@ export class ScryfallService {
 
   // NEU
   /**
+   * Wie filterNamesByQuery(), meldet aber zusätzlich, welche der übergebenen Namen überhaupt
+   * erfolgreich geprüft wurden ("checked") - nötig für classifyCards(), das ein Nein-Ergebnis nur
+   * dann dauerhaft cachen darf, wenn der jeweilige Chunk wirklich erfolgreich beantwortet wurde
+   * (sonst würde ein an Scryfalls Rate-Limit gescheiterter Chunk fälschlich als "nicht getaggt"
+   * gecacht - schlimmer als das ursprüngliche Problem, weil es sich nie mehr korrigiert).
+   */
+  private async filterNamesByQueryChecked(
+    tagQuery: string,
+    cardNames: string[]
+  ): Promise<{ matched: Set<string>; checked: Set<string> }> {
+    const matched = new Set<string>();
+    const checked = new Set<string>();
+    const unique = [...new Set(cardNames.map((n) => n.trim()).filter(Boolean))];
+
+    for (let i = 0; i < unique.length; i += 20) {
+      if (i > 0) await sleep(300); // siehe filterNamesByQuery()
+      const chunk = unique.slice(i, i + 20);
+      const nameClause = '(' + chunk.map((n) => `!"${n.replace(/"/g, '')}"`).join(' or ') + ')';
+      const q = encodeURIComponent(`${tagQuery} ${nameClause}`);
+      const res = await this.fetchWithRetry(`${API}/cards/search?q=${q}&unique=cards`);
+      if (!res?.ok) continue; // Chunk gescheitert - bleibt in "checked" ungelistet, wird beim nächsten Aufruf erneut versucht.
+      for (const name of chunk) checked.add(normalizeCardName(name));
+      const data = await res.json();
+      for (const card of (data.data as any[]) ?? []) {
+        matched.add(normalizeCardName(card.name as string));
+      }
+    }
+    return { matched, checked };
+  }
+
+  // Versionsnummer im Schlüssel MUSS hochgezählt werden, sobald sich eine der Kategorie-Abfragen in
+  // EFFECT_TAG_CATEGORIES (deck-viewer.service.ts) inhaltlich ändert - sonst werden alte, gegen die
+  // VORHERIGE Abfrage ermittelte Ergebnisse fälschlich weiterverwendet, obwohl sie zur neuen Abfrage
+  // nicht mehr passen (z.B. wenn Ramp um zusätzliche Unter-Tags erweitert wird).
+  private static readonly TAG_CACHE_KEY = 'mtg-companion-tag-cache-v2';
+  private tagCache: Record<string, Record<string, boolean>> | null = null;
+
+  private getTagCache(): Record<string, Record<string, boolean>> {
+    if (!this.tagCache) {
+      try {
+        this.tagCache = JSON.parse(localStorage.getItem(ScryfallService.TAG_CACHE_KEY) ?? '{}');
+      } catch {
+        this.tagCache = {};
+      }
+    }
+    return this.tagCache!;
+  }
+
+  private saveTagCache(): void {
+    try {
+      localStorage.setItem(ScryfallService.TAG_CACHE_KEY, JSON.stringify(this.tagCache ?? {}));
+    } catch {
+      // z.B. Speicher voll oder privater Modus - Cache bleibt dann nur für diese Sitzung im Speicher, kein Beinbruch.
+    }
+  }
+
+  // NEU
+  /**
+   * Wie filterNamesByQuery(), aber mit dauerhaftem localStorage-Cache pro (Kategorie, Kartenname) -
+   * Kartentags ändern sich praktisch nie, ein erneutes Abfragen bei jedem Deck-Öffnen ist daher
+   * unnötig und war die Hauptursache für schwankende Ergebnisse beim wiederholten Testen (Scryfalls
+   * Rate-Limit riss bei den vielen parallelen/wiederholten Anfragen). Nur wirklich neue, noch nie
+   * klassifizierte Karten lösen überhaupt eine Netzanfrage aus.
+   */
+  async classifyCards(categoryKey: string, tagQuery: string, cardNames: string[]): Promise<Set<string>> {
+    const cache = this.getTagCache();
+    const unique = [...new Set(cardNames.map((n) => normalizeCardName(n)).filter(Boolean))];
+    const matched = new Set<string>();
+    const uncached: string[] = [];
+
+    for (const name of unique) {
+      const cached = cache[name]?.[categoryKey];
+      if (cached === true) matched.add(name);
+      else if (cached === undefined) uncached.push(name);
+      // cached === false: bewusst weder zu matched hinzufügen noch erneut abfragen.
+    }
+
+    if (uncached.length > 0) {
+      const { matched: freshlyMatched, checked } = await this.filterNamesByQueryChecked(tagQuery, uncached);
+      for (const name of checked) {
+        const isMatch = freshlyMatched.has(name);
+        cache[name] ??= {};
+        cache[name][categoryKey] = isMatch;
+        if (isMatch) matched.add(name);
+      }
+      this.saveTagCache();
+    }
+
+    return matched;
+  }
+
+  // NEU
+  /**
    * Alle Editionen/Artworks einer Karte, neueste zuerst - für die Artwork-Auswahl im
    * Bearbeiten-Modus. include:extras ist nötig, weil Scryfalls Suche Marken/Tokens standardmäßig
    * NICHT durchsucht (genau wie Pläne, Embleme, Art-Series-Karten, ...) - ohne dieses Flag liefert

@@ -608,49 +608,19 @@
               <h4 class="deck-section-title">{{ viewer.i18n.t('deckView.effectCategoriesTitle') }}</h4>
               @if (viewer.effectCategoryCountsBusy()) {
                 <p class="hint">{{ viewer.i18n.t('deckView.loadingEffectCategories') }}</p>
-              } @else if (viewer.effectCategoryCounts(); as counts) {
+              } @else if (viewer.effectCategoryStats(); as stats) {
                 <p class="hint">{{ viewer.i18n.t('deckView.effectCategoriesHint') }}</p>
                 <div class="stat-tiles deck-analysis-tiles">
-                  <button
-                    class="stat-tile stat-tile-button"
-                    [disabled]="counts.removal === 0"
-                    (click)="viewer.openEffectCategoryPopup(viewer.i18n.t('deckView.removalTile'), viewer.effectCategoryCards()?.removal ?? [])"
-                  >
-                    <span class="stat-value">{{ counts.removal }}</span>
-                    <span class="stat-label">{{ viewer.i18n.t('deckView.removalTile') }}</span>
-                  </button>
-                  <button
-                    class="stat-tile stat-tile-button"
-                    [disabled]="counts.counterspell === 0"
-                    (click)="viewer.openEffectCategoryPopup(viewer.i18n.t('deckView.counterspellTile'), viewer.effectCategoryCards()?.counterspell ?? [])"
-                  >
-                    <span class="stat-value">{{ counts.counterspell }}</span>
-                    <span class="stat-label">{{ viewer.i18n.t('deckView.counterspellTile') }}</span>
-                  </button>
-                  <button
-                    class="stat-tile stat-tile-button"
-                    [disabled]="counts.boardwipe === 0"
-                    (click)="viewer.openEffectCategoryPopup(viewer.i18n.t('deckView.boardwipeTile'), viewer.effectCategoryCards()?.boardwipe ?? [])"
-                  >
-                    <span class="stat-value">{{ counts.boardwipe }}</span>
-                    <span class="stat-label">{{ viewer.i18n.t('deckView.boardwipeTile') }}</span>
-                  </button>
-                  <button
-                    class="stat-tile stat-tile-button"
-                    [disabled]="counts.ramp === 0"
-                    (click)="viewer.openEffectCategoryPopup(viewer.i18n.t('deckView.rampTile'), viewer.effectCategoryCards()?.ramp ?? [])"
-                  >
-                    <span class="stat-value">{{ counts.ramp }}</span>
-                    <span class="stat-label">{{ viewer.i18n.t('deckView.rampTile') }}</span>
-                  </button>
-                  <button
-                    class="stat-tile stat-tile-button"
-                    [disabled]="counts.draw === 0"
-                    (click)="viewer.openEffectCategoryPopup(viewer.i18n.t('deckView.drawTile'), viewer.effectCategoryCards()?.draw ?? [])"
-                  >
-                    <span class="stat-value">{{ counts.draw }}</span>
-                    <span class="stat-label">{{ viewer.i18n.t('deckView.drawTile') }}</span>
-                  </button>
+                  @for (stat of stats; track stat.key) {
+                    <button
+                      class="stat-tile stat-tile-button"
+                      [disabled]="stat.count === 0"
+                      (click)="viewer.openEffectCategoryPopup(viewer.i18n.t(stat.labelKey), stat.cards)"
+                    >
+                      <span class="stat-value">{{ stat.count }}</span>
+                      <span class="stat-label">{{ viewer.i18n.t(stat.labelKey) }}</span>
+                    </button>
+                  }
                 </div>
               }
 
