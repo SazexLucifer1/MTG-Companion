@@ -1,0 +1,7 @@
+@if (preview.imageUrl(); as img) {
+  <div class="card-preview-overlay" (click)="preview.close()">
+    <div class="card-preview-img">
+      <app-card-image [imageUrl]="img" [backImageUrl]="preview.backImageUrl()" [alt]="preview.alt()" />
+    </div>
+  </div>
+}

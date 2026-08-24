@@ -6,6 +6,7 @@ import { MtgService } from '../mtg.service';
 import { GroupService } from '../group.service';
 import { NavigationService } from '../navigation.service';
 import { ProfileService } from '../profile.service';
+import { CardPreviewService } from '../card-preview.service';
 import { PlayerAvatar } from '../player-avatar/player-avatar';
 import { ScryfallCard, ScryfallService } from '../scryfall.service';
 import { DeckService } from '../deck.service';
@@ -66,6 +67,7 @@ export class StatsTab {
   private readonly deckService = inject(DeckService);
   private readonly navigation = inject(NavigationService);
   private readonly profileService = inject(ProfileService);
+  readonly cardPreview = inject(CardPreviewService);
   readonly i18n = inject(I18nService);
 
   /** Umschalter oben im Stats-Tab zwischen normaler Statistik und der Turnier-Historie. */

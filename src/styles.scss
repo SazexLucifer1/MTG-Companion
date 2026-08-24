@@ -182,6 +182,15 @@ h3 {
   position: relative;
   display: block;
   overflow: hidden;
+  // Reset, falls als <button> statt <span> eingesetzt (Karte anklickbar zum Vergrößern, siehe
+  // card-preview.service.ts) - bei einem <span> wirkungslos, da Browser dort ohnehin keinen
+  // Rahmen/Hintergrund/Innenabstand vorgeben.
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
   // Wächst wie die Root-Schriftgröße weich mit der Fensterbreite (clamp() statt fixem px-Wert) -
   // auf Handy-Breiten bleibt der Wert praktisch unverändert, auf Desktop-Breiten wird die Karte groß
   // genug, um sie tatsächlich erkennen zu können. aspect-ratio hält dabei das echte Kartenformat

@@ -265,9 +265,9 @@
       <span class="rank">{{ medal(i) }}</span>
       <span class="name card-name-cell">
         @if (commanderImage(d.commander, d.commanderImageUrl); as img) {
-          <span class="card-thumb">
+          <button type="button" class="card-thumb" (click)="$event.stopPropagation(); cardPreview.open(img, commanderBackImage(d.commander), d.commander)">
             <app-card-image [compact]="true" [imageUrl]="img" [backImageUrl]="commanderBackImage(d.commander)" [alt]="d.commander" />
-          </span>
+          </button>
         }
         <span class="card-name-text">
           @if (d.isPrecon) {<span title="Precon">📦</span>}
@@ -320,9 +320,9 @@
       <span class="rank">{{ medal(i) }}</span>
       <span class="name card-name-cell">
         @if (commanderImage(c.commander); as img) {
-          <span class="card-thumb">
+          <button type="button" class="card-thumb" (click)="$event.stopPropagation(); cardPreview.open(img, commanderBackImage(c.commander), c.commander)">
             <app-card-image [compact]="true" [imageUrl]="img" [backImageUrl]="commanderBackImage(c.commander)" [alt]="c.commander" />
-          </span>
+          </button>
         }
         <span class="card-name-text">{{ c.commander }}</span>
         @if (isSingleMode() === null) {
@@ -515,9 +515,9 @@
       <span class="rank">{{ medal(i) }}</span>
       <span class="name card-name-cell">
         @if (commanderImage(c.commander); as img) {
-          <span class="card-thumb">
+          <button type="button" class="card-thumb" (click)="cardPreview.open(img, commanderBackImage(c.commander), c.commander)">
             <app-card-image [compact]="true" [imageUrl]="img" [backImageUrl]="commanderBackImage(c.commander)" [alt]="c.commander" />
-          </span>
+          </button>
         }
         <span class="card-name-text">{{ c.commander }}</span>
       </span>
@@ -538,9 +538,9 @@
       <span class="rank">{{ medal(i) }}</span>
       <span class="name card-name-cell">
         @if (commanderImage(c.commander); as img) {
-          <span class="card-thumb">
+          <button type="button" class="card-thumb" (click)="cardPreview.open(img, commanderBackImage(c.commander), c.commander)">
             <app-card-image [compact]="true" [imageUrl]="img" [backImageUrl]="commanderBackImage(c.commander)" [alt]="c.commander" />
-          </span>
+          </button>
         }
         <span class="card-name-text">{{ c.commander }}</span>
       </span>
@@ -577,9 +577,9 @@
       <span class="rank">{{ medal(combinedEffectivePage() * 10 + i) }}</span>
       <span class="name card-name-cell">
         @if (commanderImage(e.cardName, e.cardImageUrl); as img) {
-        <span class="card-thumb">
+        <button type="button" class="card-thumb" (click)="cardPreview.open(img, commanderBackImage(e.cardName), e.cardName)">
           <app-card-image [compact]="true" [imageUrl]="img" [backImageUrl]="commanderBackImage(e.cardName)" [alt]="e.cardName" />
-        </span>
+        </button>
         }
         <span class="card-name-text">{{ e.name }}</span>
       </span>
@@ -618,9 +618,9 @@
     <li>
       <span class="name card-name-cell">
         @if (commanderImage(e.cardName, e.cardImageUrl); as img) {
-        <span class="card-thumb">
+        <button type="button" class="card-thumb" (click)="cardPreview.open(img, commanderBackImage(e.cardName), e.cardName)">
           <app-card-image [compact]="true" [imageUrl]="img" [backImageUrl]="commanderBackImage(e.cardName)" [alt]="e.cardName" />
-        </span>
+        </button>
         }
         <span class="card-name-text">{{ e.name }}</span>
       </span>
