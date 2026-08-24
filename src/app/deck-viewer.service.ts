@@ -35,12 +35,11 @@ export interface TypeBreakdownEntry {
   count: number;
 }
 
-export interface EffectCategoryCounts {
-  removal: number;
-  counterspell: number;
-  boardwipe: number;
-  ramp: number;
-  draw: number;
+export interface EffectCategoryStat {
+  key: string;
+  labelKey: string;
+  count: number;
+  cards: GameChangerEntry[];
 }
 
 interface PendingCardChange {
@@ -252,14 +251,9 @@ export class DeckViewerService {
   readonly totalDeckPrice = signal<number | null>(null);
   readonly priceBusy = signal(false);
 
-  /** Anzahl Entfernung/Konter/Bretträumung/Rampe/Kartenziehen im Deck - null solange noch nicht geladen. */
-  readonly effectCategoryCounts = signal<EffectCategoryCounts | null>(null);
   readonly effectCategoryCountsBusy = signal(false);
 
-  /** Die tatsächlichen Karten je Effekt-Kategorie (für das Popup beim Anklicken einer Kachel) - gleiche Reihenfolge/Struktur wie effectCategoryCounts. */
-  readonly effectCategoryCards = signal<Record<keyof EffectCategoryCounts, GameChangerEntry[]> | null>(null);
-
-  /** Aktuell geöffnetes "Karten dieser Kategorie ansehen"-Popup (siehe effectCategoryCards) - null wenn geschlossen. */
+  /** Aktuell geöffnetes "Karten dieser Kategorie ansehen"-Popup (siehe effectCategoryStats) - null wenn geschlossen. */
   readonly effectCategoryPopup = signal<{ label: string; cards: GameChangerEntry[] } | null>(null);
 
   openEffectCategoryPopup(label: string, cards: GameChangerEntry[]): void {
@@ -1920,8 +1914,7 @@ export class DeckViewerService {
     this.viewMode.set('visual');
     this.cardSortMode.set('type');
     this.totalDeckPrice.set(null);
-    this.effectCategoryCounts.set(null);
-    this.effectCategoryCards.set(null);
+    this.tagBasedEffectStats.set(null);
     this.effectCategoryPopup.set(null);
 
     const [cards, log, gameStats] = await Promise.all([
@@ -1978,55 +1971,92 @@ export class DeckViewerService {
   }
 
   /**
-   * Zählt Entfernung/Konter/Bretträumung/Rampe/Kartenziehen im Deck via Scryfalls Oracle-Tags nach.
-   * Bewusst NACHEINANDER statt parallel (mit kleiner Pause dazwischen) - fünf gleichzeitige,
-   * jeweils selbst mehrfach-verschickende Anfragen (siehe filterNamesByQuery()) rissen zusammen mit
-   * den anderen beim Deck-Öffnen laufenden Scryfall-Anfragen (Kartendetails, Preise) leicht
-   * Scryfalls Rate-Limit, wodurch ganze Kategorien fälschlich leer/unvollständig blieben.
+   * Die 12 Effekt-Kategorien, die sich nur über eine Scryfall-Tag-/Text-Suche ermitteln lassen (im
+   * Gegensatz zu Tutor/Extra-Runde/Mass Land Denial, die bereits über andere, zuverlässigere Wege
+   * geladen werden - siehe effectCategoryStats). Ramp schließt Länder explizit aus (-t:land), Konter
+   * verknüpft die Oberkategorie mit allen bekannten Unter-Tags (siehe PR zur Konter-Erkennung:
+   * Scryfalls Tagger-System taggt z.B. Dovin's Veto nur als "counterspell-noncreature", nicht als
+   * bloßes "counterspell").
+   */
+  private static readonly EFFECT_TAG_CATEGORIES: { key: string; labelKey: string; query: string }[] = [
+    { key: 'removal', labelKey: 'deckView.removalTile', query: 'otag:removal' },
+    {
+      key: 'counterspell',
+      labelKey: 'deckView.counterspellTile',
+      query:
+        '(otag:counterspell or otag:counterspell-noncreature or otag:counterspell-creature or otag:counterspell-sorcery or otag:counterspell-instant or otag:counterspell-artifact or otag:counterspell-enchantment or otag:counterspell-planeswalker or otag:counterspell-ability or otag:counterspell-reusable or otag:counterspell-exile or otag:counterspell-free)',
+    },
+    { key: 'boardwipe', labelKey: 'deckView.boardwipeTile', query: 'otag:board-wipe' },
+    { key: 'ramp', labelKey: 'deckView.rampTile', query: 'otag:ramp -t:land' },
+    { key: 'draw', labelKey: 'deckView.drawTile', query: 'otag:draw' },
+    { key: 'tokens', labelKey: 'deckView.tokensTile', query: 'o:"create a" o:token' },
+    { key: 'lifegain', labelKey: 'deckView.lifegainTile', query: 'otag:lifegain' },
+    { key: 'counters', labelKey: 'deckView.countersTile', query: 'otag:counters-matter' },
+    { key: 'proliferate', labelKey: 'deckView.proliferateTile', query: 'keyword:proliferate' },
+    { key: 'reanimate', labelKey: 'deckView.reanimateTile', query: 'otag:reanimate' },
+    { key: 'sacrifice', labelKey: 'deckView.sacrificeTile', query: 'otag:sacrifice-outlet' },
+    { key: 'extracombat', labelKey: 'deckView.extraCombatTile', query: 'otag:extra-combat' },
+  ];
+
+  /** Nur die 12 per Scryfall-Tag ermittelten Kategorien (async geladen, gecacht - siehe classifyCards()). */
+  private readonly tagBasedEffectStats = signal<EffectCategoryStat[] | null>(null);
+
+  /**
+   * Alle 15 Effekt-Kategorien für die Anzeige - die 12 Scryfall-Tag-Kategorien plus Tutor/
+   * Extra-Runde/Mass Land Denial, die bereits über zuverlässigere, längst geladene Quellen laufen
+   * (lokale Texterkennung bzw. Commander-Spellbook-Daten, siehe tutorCards()/extraTurnCards()/
+   * massLandDenialCards()). Als computed() statt einmaligem Snapshot, damit sich die drei
+   * wiederverwendeten Kategorien automatisch aktualisieren, sobald ihre - unabhängig ladenden -
+   * Datenquellen fertig sind (die liefen zum Zeitpunkt von loadEffectCategoryCounts() oft noch).
+   */
+  readonly effectCategoryStats = computed<EffectCategoryStat[] | null>(() => {
+    const tagStats = this.tagBasedEffectStats();
+    if (!tagStats) return null;
+    const countOf = (entries: GameChangerEntry[]) => entries.reduce((sum, c) => sum + c.quantity, 0);
+    return [
+      ...tagStats,
+      { key: 'tutor', labelKey: 'deckView.tutorsTitle', count: countOf(this.tutorCards()), cards: this.tutorCards() },
+      {
+        key: 'extraturn',
+        labelKey: 'deckView.extraTurnsLabel',
+        count: countOf(this.extraTurnCards()),
+        cards: this.extraTurnCards(),
+      },
+      {
+        key: 'mld',
+        labelKey: 'deckView.massLandDenialLabel',
+        count: countOf(this.massLandDenialCards()),
+        cards: this.massLandDenialCards(),
+      },
+    ];
+  });
+
+  /**
+   * Klassifiziert das Deck in die 12 Scryfall-Tag-Kategorien nach. Bewusst NACHEINANDER statt
+   * parallel (mit kleiner Pause dazwischen) - vermeidet Bursts gegen Scryfalls Rate-Limit. Dank des
+   * dauerhaften Caches in classifyCards() betrifft das nach dem ersten Laden ohnehin nur noch
+   * Karten, die noch nie klassifiziert wurden.
    */
   private async loadEffectCategoryCounts(cards: DeckCard[]): Promise<void> {
     this.effectCategoryCountsBusy.set(true);
     const names = [...new Set(cards.filter((c) => !c.isMaybeboard && !c.isToken).map((c) => c.cardName))];
 
-    const removal = await this.scryfall.filterNamesByQuery('otag:removal', names);
-    await sleep(300);
-    // Scryfalls Tagger-System kennt "counterspell" als Oberkategorie, tatsächlich getaggt sind
-    // einzelne Karten aber oft nur mit spezifischeren Unter-Tags (z.B. Dovin's Veto als
-    // "counterspell-noncreature" statt direkt "counterspell") - ein reines otag:counterspell
-    // verpasst solche Karten deshalb. Alle bekannten Unter-Tags mit ODER verknüpft.
-    const counterspell = await this.scryfall.filterNamesByQuery(
-      '(otag:counterspell or otag:counterspell-noncreature or otag:counterspell-creature or otag:counterspell-sorcery or otag:counterspell-instant or otag:counterspell-artifact or otag:counterspell-enchantment or otag:counterspell-planeswalker or otag:counterspell-ability or otag:counterspell-reusable or otag:counterspell-exile or otag:counterspell-free)',
-      names
-    );
-    await sleep(300);
-    const boardwipe = await this.scryfall.filterNamesByQuery('otag:board-wipe', names);
-    await sleep(300);
-    const ramp = await this.scryfall.filterNamesByQuery('otag:ramp', names);
-    await sleep(300);
-    const draw = await this.scryfall.filterNamesByQuery('otag:draw', names);
-
-    const entriesOf = (matched: Set<string>): GameChangerEntry[] =>
+    const entriesFromMatched = (matched: Set<string>): GameChangerEntry[] =>
       cards
         .filter((c) => !c.isMaybeboard && !c.isToken && matched.has(normalizeCardName(c.cardName)))
         .map((c) => ({ cardName: c.cardName, quantity: c.quantity }));
     const countOf = (entries: GameChangerEntry[]) => entries.reduce((sum, c) => sum + c.quantity, 0);
 
-    const cardsByCategory = {
-      removal: entriesOf(removal),
-      counterspell: entriesOf(counterspell),
-      boardwipe: entriesOf(boardwipe),
-      ramp: entriesOf(ramp),
-      draw: entriesOf(draw),
-    };
+    const stats: EffectCategoryStat[] = [];
+    for (let i = 0; i < DeckViewerService.EFFECT_TAG_CATEGORIES.length; i++) {
+      if (i > 0) await sleep(300);
+      const category = DeckViewerService.EFFECT_TAG_CATEGORIES[i];
+      const matched = await this.scryfall.classifyCards(category.key, category.query, names);
+      const entries = entriesFromMatched(matched);
+      stats.push({ key: category.key, labelKey: category.labelKey, count: countOf(entries), cards: entries });
+    }
 
-    this.effectCategoryCards.set(cardsByCategory);
-    this.effectCategoryCounts.set({
-      removal: countOf(cardsByCategory.removal),
-      counterspell: countOf(cardsByCategory.counterspell),
-      boardwipe: countOf(cardsByCategory.boardwipe),
-      ramp: countOf(cardsByCategory.ramp),
-      draw: countOf(cardsByCategory.draw),
-    });
+    this.tagBasedEffectStats.set(stats);
     this.effectCategoryCountsBusy.set(false);
   }
 
@@ -2060,9 +2090,8 @@ export class DeckViewerService {
     this.bracketEstimateErrorDetail.set(null);
     this.totalDeckPrice.set(null);
     this.priceBusy.set(false);
-    this.effectCategoryCounts.set(null);
+    this.tagBasedEffectStats.set(null);
     this.effectCategoryCountsBusy.set(false);
-    this.effectCategoryCards.set(null);
     this.effectCategoryPopup.set(null);
     this.editMode.set(false);
     this.showCommanderToggle.set(false);
