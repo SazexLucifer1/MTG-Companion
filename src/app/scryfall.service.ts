@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { sleep } from './array-utils';
+import { sleep, normalizeCardName } from './array-utils';
 
 export interface ScryfallCard {
   name: string;
@@ -265,9 +265,14 @@ export class ScryfallService {
     // "A // B"-Namen, den Decklist-Exporte oft verwenden. Deshalb wird nur vor "//" gesucht,
     // das Ergebnis aber unter dem ursprünglichen (vollen) Namen abgelegt.
     const frontFaceName = (name: string) => name.split(' // ')[0].trim();
+    // normalizeCardName() statt nur .toLowerCase() - Scryfall liefert Kartennamen mit Apostroph (z.B.
+    // "Dovin's Veto") teils mit einer anderen Unicode-Apostroph-Variante zurück als sie in
+    // Decklisten-Importen gespeichert sind. Ohne Normalisierung würde original hier undefined bleiben
+    // und die Karte landete unter Scryfalls statt dem ursprünglichen Namen im Ergebnis - der Lookup
+    // per viewingCardDetails.get(cardName.toLowerCase()) an anderer Stelle würde sie dann nie finden.
     const searchNameToOriginal = new Map<string, string>();
     for (const name of unique) {
-      searchNameToOriginal.set(frontFaceName(name).toLowerCase(), name);
+      searchNameToOriginal.set(normalizeCardName(frontFaceName(name)), name);
     }
     const searchNames = [...new Set(unique.map(frontFaceName))];
 
@@ -286,7 +291,7 @@ export class ScryfallService {
         if (!res?.ok) return; // Chunk übersprungen (auch nach Wiederholungen fehlgeschlagen) - betroffene Karten bleiben einfach ohne Bild.
         const data = await res.json();
         for (const card of (data.data as any[]) ?? []) {
-          const original = searchNameToOriginal.get(frontFaceName(card.name as string).toLowerCase());
+          const original = searchNameToOriginal.get(normalizeCardName(frontFaceName(card.name as string)));
           const key = original?.toLowerCase() ?? (card.name as string).toLowerCase();
           result.set(key, this.toCard(card));
         }
@@ -405,7 +410,7 @@ export class ScryfallService {
       if (!res?.ok) continue;
       const data = await res.json();
       for (const card of (data.data as any[]) ?? []) {
-        matched.add((card.name as string).toLowerCase());
+        matched.add(normalizeCardName(card.name as string));
       }
     }
     return matched;
@@ -452,13 +457,14 @@ export class ScryfallService {
 
   // NEU
   /**
-   * Liefert für jeden übergebenen Kartennamen den USD-Preis der GÜNSTIGSTEN Druckvariante - bewusst
-   * NICHT der Preis des aktuell im Deck ausgewählten Artworks. `usd>0` blendet Drucke ohne
-   * regulären (nicht-Foil-exklusiven) USD-Preis aus, `unique:cards` dedupliziert auf einen Eintrag
-   * pro Kartenname; da explizit nach `order:usd dir:asc` sortiert wird, bleibt dabei jeweils die
-   * günstigste Druckvariante übrig (Karten ohne ermittelbaren Preis fehlen einfach im Ergebnis).
-   * Gleiches Chunking-Muster wie filterNamesByQuery() (Gruppen statt einer Anfrage pro Karte, um bei
-   * größeren Decks nicht an Scryfalls Rate-Limit zu geraten).
+   * Liefert für jeden übergebenen Kartennamen den EUR-Preis (Cardmarket, über Scryfall) der
+   * GÜNSTIGSTEN Druckvariante - bewusst NICHT der Preis des aktuell im Deck ausgewählten Artworks
+   * und keine grobe USD→EUR-Umrechnung, sondern der echte, von Scryfall separat geführte
+   * Cardmarket-Preis. `eur>0` blendet Drucke ohne ermittelbaren EUR-Preis aus, `unique:cards`
+   * dedupliziert auf einen Eintrag pro Kartenname; da explizit nach `order:eur dir:asc` sortiert
+   * wird, bleibt dabei jeweils die günstigste Druckvariante übrig (Karten ohne ermittelbaren Preis
+   * fehlen einfach im Ergebnis). Gleiches Chunking-Muster wie filterNamesByQuery() (Gruppen statt
+   * einer Anfrage pro Karte, um bei größeren Decks nicht an Scryfalls Rate-Limit zu geraten).
    */
   async cheapestPrices(cardNames: string[]): Promise<Map<string, number>> {
     const result = new Map<string, number>();
@@ -468,13 +474,13 @@ export class ScryfallService {
     for (let i = 0; i < unique.length; i += 20) {
       const chunk = unique.slice(i, i + 20);
       const nameClause = '(' + chunk.map((n) => `!"${n.replace(/"/g, '')}"`).join(' or ') + ')';
-      const q = encodeURIComponent(`${nameClause} usd>0 -is:digital unique:cards order:usd dir:asc`);
+      const q = encodeURIComponent(`${nameClause} eur>0 -is:digital unique:cards order:eur dir:asc`);
       const res = await this.fetchWithRetry(`${API}/cards/search?q=${q}`);
       if (!res?.ok) continue;
       const data = await res.json();
       for (const card of (data.data as any[]) ?? []) {
-        const name = (card.name as string).toLowerCase();
-        const price = parseFloat(card.prices?.usd);
+        const name = normalizeCardName(card.name as string);
+        const price = parseFloat(card.prices?.eur);
         if (!result.has(name) && !Number.isNaN(price)) result.set(name, price);
       }
     }

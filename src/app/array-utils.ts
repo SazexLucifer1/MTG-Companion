@@ -16,6 +16,17 @@ export function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+/**
+ * Normalisiert einen Kartennamen für den Vergleich zwischen zwei Quellen (z.B. gespeicherter
+ * Deck-Kartenname vs. von Scryfall zurückgelieferter Name) - vereinheitlicht verschiedene
+ * Apostroph-Zeichen (’ ‘ ´ `) auf ein gerades Apostroph ('). Nötig, weil ein reiner
+ * lowercase-Stringvergleich sonst Karten mit Apostroph im Namen (z.B. "Dovin's Veto") verpassen
+ * kann, falls eine der beiden Quellen eine andere Unicode-Variante verwendet.
+ */
+export function normalizeCardName(name: string): string {
+  return name.toLowerCase().replace(/[’‘´`]/g, "'");
+}
+
 /** Fisher-Yates - liefert eine neu gemischte Kopie, mutiert das Original nicht. */
 export function shuffle<T>(items: T[]): T[] {
   const result = [...items];
