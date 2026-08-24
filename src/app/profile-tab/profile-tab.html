@@ -24,7 +24,14 @@
           <h3>{{ i18n.t(viewed.displayName === 'Adrian' ? 'profile.favoriteGliederAdrian' : 'profile.favoriteCommanders') }}</h3>
           <div class="favorite-commanders-row">
             @for (name of viewed.favoriteCommanders; track name) {
-              <div class="favorite-commander-card" [attr.aria-label]="name">
+              <div
+                class="favorite-commander-card"
+                role="button"
+                tabindex="0"
+                [attr.aria-label]="name"
+                (click)="openFavoriteCommanderPreview(name)"
+                (keydown.enter)="openFavoriteCommanderPreview(name)"
+              >
                 @if (favoriteCommanderCards()[name]?.imageUrl; as img) {
                   <app-card-image [imageUrl]="img" [backImageUrl]="favoriteCommanderCards()[name]?.backImageUrl" [alt]="name" />
                 } @else {
@@ -91,9 +98,9 @@
             <li>
               <span class="player-name card-name-cell">
                 @if (commanderImage(c.commander); as img) {
-                <span class="card-thumb">
+                <button type="button" class="card-thumb" (click)="cardPreview.open(img, commanderBackImage(c.commander), c.commander)">
                   <app-card-image [compact]="true" [imageUrl]="img" [backImageUrl]="commanderBackImage(c.commander)" [alt]="c.commander" />
-                </span>
+                </button>
                 }
                 <span class="card-name-text">{{ c.commander }}</span>
               </span>
@@ -374,9 +381,9 @@
             <li>
               <span class="player-name card-name-cell">
                 @if (commanderImage(c.commander); as img) {
-                <span class="card-thumb">
+                <button type="button" class="card-thumb" (click)="cardPreview.open(img, commanderBackImage(c.commander), c.commander)">
                   <app-card-image [compact]="true" [imageUrl]="img" [backImageUrl]="commanderBackImage(c.commander)" [alt]="c.commander" />
-                </span>
+                </button>
                 }
                 <span class="card-name-text">{{ c.commander }}</span>
               </span>

@@ -8,6 +8,7 @@ import { GroupService } from '../group.service';
 import { DeckList } from '../deck-list/deck-list';
 import { DeckService, CommanderGameStats, DeckOwner } from '../deck.service';
 import { ManualDeckLinkService } from '../manual-deck-link.service';
+import { CardPreviewService } from '../card-preview.service';
 import { AuthService } from '../auth.service';
 import { BackgroundService } from '../background.service';
 import { ScryfallCard, ScryfallService } from '../scryfall.service';
@@ -29,6 +30,7 @@ export class ProfileTab {
   readonly groupService = inject(GroupService);
   private readonly deckService = inject(DeckService);
   readonly manualDeckLink = inject(ManualDeckLinkService);
+  readonly cardPreview = inject(CardPreviewService);
   private readonly auth = inject(AuthService);
   readonly backgrounds = inject(BackgroundService);
   private readonly scryfall = inject(ScryfallService);
@@ -179,6 +181,14 @@ export class ProfileTab {
   commanderBackImage(name: string | undefined): string | null {
     if (!name) return null;
     return this.commanderCards()[name.toLowerCase()]?.backImageUrl ?? null;
+  }
+
+  /** Öffnet die große Kartenvorschau für einen Lieblingscommander (fremdes Profil - beim eigenen
+   * öffnet der Klick stattdessen den Bearbeiten-Dialog, siehe openFavoriteCommanderDialog()). */
+  openFavoriteCommanderPreview(name: string): void {
+    const card = this.favoriteCommanderCards()[name];
+    if (!card?.imageUrl) return;
+    this.cardPreview.open(card.imageUrl, card.backImageUrl, name);
   }
 
   /** Feedback-Einträge für die Admin-Ansicht - "erledigt" standardmäßig ausgeblendet. */
