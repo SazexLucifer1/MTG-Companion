@@ -1987,7 +1987,16 @@ export class DeckViewerService {
         '(otag:counterspell or otag:counterspell-noncreature or otag:counterspell-creature or otag:counterspell-sorcery or otag:counterspell-instant or otag:counterspell-artifact or otag:counterspell-enchantment or otag:counterspell-planeswalker or otag:counterspell-ability or otag:counterspell-reusable or otag:counterspell-exile or otag:counterspell-free)',
     },
     { key: 'boardwipe', labelKey: 'deckView.boardwipeTile', query: 'otag:board-wipe' },
-    { key: 'ramp', labelKey: 'deckView.rampTile', query: 'otag:ramp -t:land' },
+    {
+      key: 'ramp',
+      labelKey: 'deckView.rampTile',
+      // Wie bei Konter: "ramp" ist bei Scryfall eine Oberkategorie, Landsuch-Karten (z.B. Cultivate)
+      // sind oft nur unter dem spezifischeren "land-ramp" getaggt. Zusätzlich "extra-land"/
+      // "play-additional-land" für Karten, die einen zusätzlichen Landspielen pro Runde erlauben
+      // (z.B. Exploration) - auf Nutzerwunsch ebenfalls als Ramp gezählt. -t:land schließt weiterhin
+      // die Länder selbst aus, nur die Karten, die sie ins Spiel bringen/zusätzlich erlauben, zählen.
+      query: '(otag:ramp or otag:land-ramp or otag:extra-land or otag:play-additional-land) -t:land',
+    },
     { key: 'draw', labelKey: 'deckView.drawTile', query: 'otag:draw' },
     { key: 'tokens', labelKey: 'deckView.tokensTile', query: 'o:"create a" o:token' },
     { key: 'lifegain', labelKey: 'deckView.lifegainTile', query: 'otag:lifegain' },

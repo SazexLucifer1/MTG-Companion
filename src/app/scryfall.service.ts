@@ -453,7 +453,11 @@ export class ScryfallService {
     return { matched, checked };
   }
 
-  private static readonly TAG_CACHE_KEY = 'mtg-companion-tag-cache-v1';
+  // Versionsnummer im Schlüssel MUSS hochgezählt werden, sobald sich eine der Kategorie-Abfragen in
+  // EFFECT_TAG_CATEGORIES (deck-viewer.service.ts) inhaltlich ändert - sonst werden alte, gegen die
+  // VORHERIGE Abfrage ermittelte Ergebnisse fälschlich weiterverwendet, obwohl sie zur neuen Abfrage
+  // nicht mehr passen (z.B. wenn Ramp um zusätzliche Unter-Tags erweitert wird).
+  private static readonly TAG_CACHE_KEY = 'mtg-companion-tag-cache-v2';
   private tagCache: Record<string, Record<string, boolean>> | null = null;
 
   private getTagCache(): Record<string, Record<string, boolean>> {
