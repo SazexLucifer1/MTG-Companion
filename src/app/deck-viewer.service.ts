@@ -1974,7 +1974,14 @@ export class DeckViewerService {
 
     const removal = await this.scryfall.filterNamesByQuery('otag:removal', names);
     await sleep(300);
-    const counterspell = await this.scryfall.filterNamesByQuery('otag:counterspell', names);
+    // Scryfalls Tagger-System kennt "counterspell" als Oberkategorie, tatsächlich getaggt sind
+    // einzelne Karten aber oft nur mit spezifischeren Unter-Tags (z.B. Dovin's Veto als
+    // "counterspell-noncreature" statt direkt "counterspell") - ein reines otag:counterspell
+    // verpasst solche Karten deshalb. Alle bekannten Unter-Tags mit ODER verknüpft.
+    const counterspell = await this.scryfall.filterNamesByQuery(
+      '(otag:counterspell or otag:counterspell-noncreature or otag:counterspell-creature or otag:counterspell-sorcery or otag:counterspell-instant or otag:counterspell-artifact or otag:counterspell-enchantment or otag:counterspell-planeswalker or otag:counterspell-ability or otag:counterspell-reusable or otag:counterspell-exile or otag:counterspell-free)',
+      names
+    );
     await sleep(300);
     const boardwipe = await this.scryfall.filterNamesByQuery('otag:board-wipe', names);
     await sleep(300);
