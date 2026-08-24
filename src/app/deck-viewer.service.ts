@@ -28,6 +28,20 @@ export interface GameChangerEntry {
   quantity: number;
 }
 
+export interface TypeBreakdownEntry {
+  type: string;
+  label: string;
+  count: number;
+}
+
+export interface EffectCategoryCounts {
+  removal: number;
+  counterspell: number;
+  boardwipe: number;
+  ramp: number;
+  draw: number;
+}
+
 interface PendingCardChange {
   cardName: string;
   quantity: number;
@@ -181,6 +195,65 @@ export class DeckViewerService {
     const totalCmc = cards.reduce((sum, c) => sum + c.cmc * c.quantity, 0);
     return totalCmc / totalQty;
   });
+
+  /** Land-Karten (inkl. Basisländer) - Basis für Landzahl und Nichtbasis-Land-Anteil. */
+  private readonly landCards = computed(() =>
+    this.analysisDeckCards().filter((c) => (c.typeLine ?? '').includes('Land'))
+  );
+
+  readonly landCount = computed(() => this.landCards().reduce((sum, c) => sum + c.quantity, 0));
+
+  /** Anteil Nichtbasisländer an allen Ländern (0-100), null ohne Länder im Deck. */
+  readonly nonBasicLandPercent = computed<number | null>(() => {
+    const lands = this.landCards();
+    const total = lands.reduce((sum, c) => sum + c.quantity, 0);
+    if (total === 0) return null;
+    const nonBasic = lands
+      .filter((c) => !(c.typeLine ?? '').includes('Basic'))
+      .reduce((sum, c) => sum + c.quantity, 0);
+    return Math.round((nonBasic / total) * 100);
+  });
+
+  /**
+   * Genau eine Kategorie pro Karte (nach fester Priorität, mehrfachtypige Karten wie "Artifact
+   * Creature" landen bei der spielrelevanteren Kategorie) - Summe der Balken ergibt so immer die
+   * Gesamtkartenzahl, anders als eine Mehrfachzählung über alle Typen einer Karte.
+   */
+  private static readonly TYPE_PRIORITY: { type: string; test: RegExp }[] = [
+    { type: 'creature', test: /Creature/ },
+    { type: 'planeswalker', test: /Planeswalker/ },
+    { type: 'battle', test: /Battle/ },
+    { type: 'land', test: /Land/ },
+    { type: 'artifact', test: /Artifact/ },
+    { type: 'enchantment', test: /Enchantment/ },
+    { type: 'instant', test: /Instant/ },
+    { type: 'sorcery', test: /Sorcery/ },
+  ];
+
+  readonly typeBreakdown = computed<TypeBreakdownEntry[]>(() => {
+    const counts: Record<string, number> = {};
+    for (const t of DeckViewerService.TYPE_PRIORITY) counts[t.type] = 0;
+
+    for (const card of this.analysisDeckCards()) {
+      const typeLine = card.typeLine ?? '';
+      const match = DeckViewerService.TYPE_PRIORITY.find((t) => t.test.test(typeLine));
+      if (match) counts[match.type] += card.quantity;
+    }
+
+    return DeckViewerService.TYPE_PRIORITY.map((t) => ({
+      type: t.type,
+      label: this.i18n.t(`deckView.type.${t.type}`),
+      count: counts[t.type],
+    }));
+  });
+
+  /** Gesamtpreis (USD, billigste Druckvariante je Karte) - null solange noch nicht geladen. */
+  readonly totalDeckPrice = signal<number | null>(null);
+  readonly priceBusy = signal(false);
+
+  /** Anzahl Entfernung/Konter/Bretträumung/Rampe/Kartenziehen im Deck - null solange noch nicht geladen. */
+  readonly effectCategoryCounts = signal<EffectCategoryCounts | null>(null);
+  readonly effectCategoryCountsBusy = signal(false);
 
   private static readonly PIP_COLORS: PipCount['color'][] = ['W', 'U', 'B', 'R', 'G'];
 
@@ -1831,6 +1904,8 @@ export class DeckViewerService {
     this.bracketEstimateErrorDetail.set(null);
     this.viewMode.set('visual');
     this.cardSortMode.set('type');
+    this.totalDeckPrice.set(null);
+    this.effectCategoryCounts.set(null);
 
     const [cards, log, gameStats] = await Promise.all([
       this.deckService.loadDeckCards(deck.id),
@@ -1845,6 +1920,8 @@ export class DeckViewerService {
 
     this.cardDetailsPromise = this.loadCardDetails(cards);
     this.loadBracketEstimate(cards);
+    this.loadCardPrices(cards);
+    this.loadEffectCategoryCounts(cards);
   }
 
   /** Laufender loadCardDetails()-Aufruf, falls einer läuft - siehe ensureCardDetailsLoaded(). */
@@ -1866,6 +1943,49 @@ export class DeckViewerService {
    */
   async ensureCardDetailsLoaded(): Promise<void> {
     if (this.cardDetailsPromise) await this.cardDetailsPromise;
+  }
+
+  /** Lädt den Gesamtpreis (billigste Druckvariante je Karte, siehe ScryfallService.cheapestPrices()) nach. */
+  private async loadCardPrices(cards: DeckCard[]): Promise<void> {
+    this.priceBusy.set(true);
+    const realCards = cards.filter((c) => !c.isMaybeboard && !c.isToken);
+    const names = [...new Set(realCards.map((c) => c.cardName))];
+    const prices = await this.scryfall.cheapestPrices(names);
+    let total = 0;
+    for (const card of realCards) {
+      const price = prices.get(card.cardName.split(' // ')[0].trim().toLowerCase());
+      if (price != null) total += price * card.quantity;
+    }
+    this.totalDeckPrice.set(total);
+    this.priceBusy.set(false);
+  }
+
+  /** Zählt Entfernung/Konter/Bretträumung/Rampe/Kartenziehen im Deck via Scryfalls Oracle-Tags nach. */
+  private async loadEffectCategoryCounts(cards: DeckCard[]): Promise<void> {
+    this.effectCategoryCountsBusy.set(true);
+    const names = [...new Set(cards.filter((c) => !c.isMaybeboard && !c.isToken).map((c) => c.cardName))];
+
+    const [removal, counterspell, boardwipe, ramp, draw] = await Promise.all([
+      this.scryfall.filterNamesByQuery('otag:removal', names),
+      this.scryfall.filterNamesByQuery('otag:counterspell', names),
+      this.scryfall.filterNamesByQuery('otag:board-wipe', names),
+      this.scryfall.filterNamesByQuery('otag:ramp', names),
+      this.scryfall.filterNamesByQuery('otag:draw', names),
+    ]);
+
+    const countOf = (matched: Set<string>) =>
+      cards
+        .filter((c) => !c.isMaybeboard && !c.isToken && matched.has(c.cardName.toLowerCase()))
+        .reduce((sum, c) => sum + c.quantity, 0);
+
+    this.effectCategoryCounts.set({
+      removal: countOf(removal),
+      counterspell: countOf(counterspell),
+      boardwipe: countOf(boardwipe),
+      ramp: countOf(ramp),
+      draw: countOf(draw),
+    });
+    this.effectCategoryCountsBusy.set(false);
   }
 
   /** Lädt Mass-Land-Denial/Extra-Turn/Combo-Auswertung von Commander Spellbook nach (siehe bracketEstimate). */
@@ -1896,6 +2016,10 @@ export class DeckViewerService {
     this.bracketEstimateBusy.set(false);
     this.bracketEstimateFailed.set(false);
     this.bracketEstimateErrorDetail.set(null);
+    this.totalDeckPrice.set(null);
+    this.priceBusy.set(false);
+    this.effectCategoryCounts.set(null);
+    this.effectCategoryCountsBusy.set(false);
     this.editMode.set(false);
     this.showCommanderToggle.set(false);
     this.artworkPickerCard.set(null);

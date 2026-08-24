@@ -494,6 +494,15 @@
               <strong>{{ viewer.i18n.t('deckView.pipInfoLabel') }}</strong> {{ viewer.i18n.t('deckView.pipInfoText') }}
             </p>
             <p class="hint">
+              <strong>{{ viewer.i18n.t('deckView.priceInfoLabel') }}</strong> {{ viewer.i18n.t('deckView.priceInfoText') }}
+            </p>
+            <p class="hint">
+              <strong>{{ viewer.i18n.t('deckView.typeBreakdownInfoLabel') }}</strong> {{ viewer.i18n.t('deckView.typeBreakdownInfoText') }}
+            </p>
+            <p class="hint">
+              <strong>{{ viewer.i18n.t('deckView.effectCategoriesInfoLabel') }}</strong> {{ viewer.i18n.t('deckView.effectCategoriesInfoText') }}
+            </p>
+            <p class="hint">
               <strong>{{ viewer.i18n.t('deckView.gameChangerInfoLabel') }}</strong> {{ viewer.i18n.t('deckView.gameChangerInfoText') }}
             </p>
             <p class="hint">
@@ -522,10 +531,32 @@
             @if (viewer.analysisBusy()) {
               <p class="hint">{{ viewer.i18n.t('deckView.loadingAnalysis') }}</p>
             } @else {
+              <div class="stat-tiles deck-analysis-tiles">
+                <div class="stat-tile">
+                  <span class="stat-value">{{ viewer.averageCmc() != null ? ((viewer.averageCmc() | number: '1.1-2')) : '–' }}</span>
+                  <span class="stat-label">{{ viewer.i18n.t('deckView.avgCmcTile') }}</span>
+                </div>
+                <div class="stat-tile">
+                  <span class="stat-value">{{ viewer.landCount() }}</span>
+                  <span class="stat-label">{{ viewer.i18n.t('deckView.landsTile') }}</span>
+                </div>
+                <div class="stat-tile">
+                  <span class="stat-value">{{ viewer.nonBasicLandPercent() != null ? (viewer.nonBasicLandPercent() + '%') : '–' }}</span>
+                  <span class="stat-label">{{ viewer.i18n.t('deckView.nonBasicLandTile') }}</span>
+                </div>
+                <div class="stat-tile">
+                  @if (viewer.priceBusy()) {
+                    <span class="stat-value">…</span>
+                  } @else if (viewer.totalDeckPrice(); as price) {
+                    <span class="stat-value">{{ price | currency: 'USD' }}</span>
+                  } @else {
+                    <span class="stat-value">–</span>
+                  }
+                  <span class="stat-label">{{ viewer.i18n.t('deckView.priceTile') }}</span>
+                </div>
+              </div>
+
               <h4 class="deck-section-title">{{ viewer.i18n.t('deckView.manaCurveTitle') }}</h4>
-              @if (viewer.averageCmc(); as avgCmc) {
-                <p class="hint">{{ viewer.i18n.t('deckView.avgCmc', { value: (avgCmc | number: '1.1-2') ?? '' }) }}</p>
-              }
               <div class="curve-chart">
                 @for (bucket of viewer.manaCurve(); track bucket.label) {
                   <div class="curve-bar-col">
@@ -556,6 +587,49 @@
                       </div>
                     }
                   }
+                </div>
+              }
+
+              <h4 class="deck-section-title">{{ viewer.i18n.t('deckView.typeBreakdownTitle') }}</h4>
+              <div class="pip-chart">
+                @for (t of viewer.typeBreakdown(); track t.type) {
+                  @if (t.count > 0) {
+                    <div class="pip-row">
+                      <span class="pip-label type-label">{{ t.label }}</span>
+                      <div class="pip-bar-track">
+                        <div class="pip-bar-fill type-bar" [style.width.%]="typeBarWidth(t.count)"></div>
+                      </div>
+                      <span class="pip-value">{{ t.count }}</span>
+                    </div>
+                  }
+                }
+              </div>
+
+              <h4 class="deck-section-title">{{ viewer.i18n.t('deckView.effectCategoriesTitle') }}</h4>
+              @if (viewer.effectCategoryCountsBusy()) {
+                <p class="hint">{{ viewer.i18n.t('deckView.loadingEffectCategories') }}</p>
+              } @else if (viewer.effectCategoryCounts(); as counts) {
+                <div class="stat-tiles deck-analysis-tiles">
+                  <div class="stat-tile">
+                    <span class="stat-value">{{ counts.removal }}</span>
+                    <span class="stat-label">{{ viewer.i18n.t('deckView.removalTile') }}</span>
+                  </div>
+                  <div class="stat-tile">
+                    <span class="stat-value">{{ counts.counterspell }}</span>
+                    <span class="stat-label">{{ viewer.i18n.t('deckView.counterspellTile') }}</span>
+                  </div>
+                  <div class="stat-tile">
+                    <span class="stat-value">{{ counts.boardwipe }}</span>
+                    <span class="stat-label">{{ viewer.i18n.t('deckView.boardwipeTile') }}</span>
+                  </div>
+                  <div class="stat-tile">
+                    <span class="stat-value">{{ counts.ramp }}</span>
+                    <span class="stat-label">{{ viewer.i18n.t('deckView.rampTile') }}</span>
+                  </div>
+                  <div class="stat-tile">
+                    <span class="stat-value">{{ counts.draw }}</span>
+                    <span class="stat-label">{{ viewer.i18n.t('deckView.drawTile') }}</span>
+                  </div>
                 </div>
               }
 
