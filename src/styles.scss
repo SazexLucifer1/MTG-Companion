@@ -7,6 +7,10 @@
   --glass-bg: rgba(255, 255, 255, 0.1);
   --glass-border: rgba(255, 255, 255, 0.22);
   --glass-highlight: rgba(255, 255, 255, 0.35);
+  // Obergrenze für die Breite des Hauptinhalts (app.scss, deck-detail-view.scss) - eine einzige
+  // Stelle statt mehrfach desselben Zahlenwerts, damit alle Container im Gleichschritt breiter
+  // werden, wenn dieser Wert sich mal ändert.
+  --content-max-width: 1600px;
 }
 
 * {
