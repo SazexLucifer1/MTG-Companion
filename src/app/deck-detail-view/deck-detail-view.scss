@@ -101,6 +101,13 @@
   gap: 10px;
 }
 
+// NEU - Anzahl der Kacheln variiert (4 Deck-Kennzahlen, 5 Effekt-Kategorien) und passt anders als die
+// feste 3er-Spielstatistik-Reihe oben nicht immer glatt in 3 Spalten - auto-fit vermeidet eine
+// einzelne, unausgewogen wirkende Kachel allein in der letzten Zeile.
+.deck-analysis-tiles {
+  grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+}
+
 .stat-tile {
   display: flex;
   flex-direction: column;
@@ -239,6 +246,14 @@
   font-weight: 600;
   flex: 0 0 24px;
   text-align: right;
+}
+
+.type-label {
+  flex-basis: 110px;
+}
+
+.type-bar {
+  background: var(--accent);
 }
 
 .pip-W {

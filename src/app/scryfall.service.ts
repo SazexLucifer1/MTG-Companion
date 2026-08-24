@@ -450,6 +450,37 @@ export class ScryfallService {
       .filter((p): p is ScryfallPrinting => !!p.imageUrl);
   }
 
+  // NEU
+  /**
+   * Liefert für jeden übergebenen Kartennamen den USD-Preis der GÜNSTIGSTEN Druckvariante - bewusst
+   * NICHT der Preis des aktuell im Deck ausgewählten Artworks. `usd>0` blendet Drucke ohne
+   * regulären (nicht-Foil-exklusiven) USD-Preis aus, `unique:cards` dedupliziert auf einen Eintrag
+   * pro Kartenname; da explizit nach `order:usd dir:asc` sortiert wird, bleibt dabei jeweils die
+   * günstigste Druckvariante übrig (Karten ohne ermittelbaren Preis fehlen einfach im Ergebnis).
+   * Gleiches Chunking-Muster wie filterNamesByQuery() (Gruppen statt einer Anfrage pro Karte, um bei
+   * größeren Decks nicht an Scryfalls Rate-Limit zu geraten).
+   */
+  async cheapestPrices(cardNames: string[]): Promise<Map<string, number>> {
+    const result = new Map<string, number>();
+    const frontFaceName = (name: string) => name.split(' // ')[0].trim();
+    const unique = [...new Set(cardNames.map((n) => frontFaceName(n.trim())).filter(Boolean))];
+
+    for (let i = 0; i < unique.length; i += 20) {
+      const chunk = unique.slice(i, i + 20);
+      const nameClause = '(' + chunk.map((n) => `!"${n.replace(/"/g, '')}"`).join(' or ') + ')';
+      const q = encodeURIComponent(`${nameClause} usd>0 -is:digital unique:cards order:usd dir:asc`);
+      const res = await this.fetchWithRetry(`${API}/cards/search?q=${q}`);
+      if (!res?.ok) continue;
+      const data = await res.json();
+      for (const card of (data.data as any[]) ?? []) {
+        const name = (card.name as string).toLowerCase();
+        const price = parseFloat(card.prices?.usd);
+        if (!result.has(name) && !Number.isNaN(price)) result.set(name, price);
+      }
+    }
+    return result;
+  }
+
   private toCard(data: any): ScryfallCard {
     const backFace = data.card_faces?.[1];
     // image_uris auf Face 2 fehlt bei Adventure/Split (die teilen sich ein Bild) - nur wenn es
