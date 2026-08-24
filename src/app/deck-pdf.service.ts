@@ -174,8 +174,30 @@ export class DeckPdfService {
     const pdf = new jsPDF({ unit: 'mm', format: 'a4' });
     let slot = 0;
 
+    // Durchgehende Schnittlinien bis zum Papierrand statt einzelner Rechtecke pro Karte - da die
+    // Karten im Raster lückenlos aneinander liegen, lässt sich damit mit einem geraden Schnitt
+    // (Lineal/Schneidemaschine) über die komplette Seite schneiden. Wird VOR den Kartenbildern der
+    // jeweiligen Seite gezeichnet, damit die Linien nur in den Rand-/Zwischenbereichen sichtbar
+    // bleiben und nicht über den Kartenmotiven liegen.
+    const drawCutLines = (): void => {
+      pdf.setDrawColor(180);
+      pdf.setLineWidth(0.1);
+      for (let col = 0; col <= COLUMNS; col++) {
+        const x = MARGIN_X_MM + col * CARD_WIDTH_MM;
+        pdf.line(x, 0, x, PAGE_HEIGHT_MM);
+      }
+      for (let row = 0; row <= ROWS; row++) {
+        const y = MARGIN_Y_MM + row * CARD_HEIGHT_MM;
+        pdf.line(0, y, PAGE_WIDTH_MM, y);
+      }
+    };
+    drawCutLines();
+
     const placeCard = (dataUrl: string): void => {
-      if (slot > 0 && slot % (COLUMNS * ROWS) === 0) pdf.addPage();
+      if (slot > 0 && slot % (COLUMNS * ROWS) === 0) {
+        pdf.addPage();
+        drawCutLines();
+      }
       const posInPage = slot % (COLUMNS * ROWS);
       const col = posInPage % COLUMNS;
       const row = Math.floor(posInPage / COLUMNS);
@@ -186,9 +208,6 @@ export class DeckPdfService {
       // das Format muss zum tatsächlichen Inhalt des Daten-URLs passen, sonst stellt jsPDF es falsch dar.
       const format = dataUrl.startsWith('data:image/png') ? 'PNG' : 'JPEG';
       pdf.addImage(dataUrl, format, x, y, CARD_WIDTH_MM, CARD_HEIGHT_MM);
-      pdf.setDrawColor(180);
-      pdf.setLineWidth(0.1);
-      pdf.rect(x, y, CARD_WIDTH_MM, CARD_HEIGHT_MM);
 
       slot++;
     };
