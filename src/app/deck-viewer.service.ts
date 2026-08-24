@@ -8,7 +8,7 @@ import {
   SPELLBOOK_BRACKET_LABELS,
 } from './commander-spellbook.service';
 import { EdhrecService, EdhrecCardlist, EdhrecTag } from './edhrec.service';
-import { normalizeCardName } from './array-utils';
+import { normalizeCardName, sleep } from './array-utils';
 import { AuthService } from './auth.service';
 import { GroupService } from './group.service';
 import { I18nService } from './i18n.service';
@@ -1961,18 +1961,26 @@ export class DeckViewerService {
     this.priceBusy.set(false);
   }
 
-  /** Zählt Entfernung/Konter/Bretträumung/Rampe/Kartenziehen im Deck via Scryfalls Oracle-Tags nach. */
+  /**
+   * Zählt Entfernung/Konter/Bretträumung/Rampe/Kartenziehen im Deck via Scryfalls Oracle-Tags nach.
+   * Bewusst NACHEINANDER statt parallel (mit kleiner Pause dazwischen) - fünf gleichzeitige,
+   * jeweils selbst mehrfach-verschickende Anfragen (siehe filterNamesByQuery()) rissen zusammen mit
+   * den anderen beim Deck-Öffnen laufenden Scryfall-Anfragen (Kartendetails, Preise) leicht
+   * Scryfalls Rate-Limit, wodurch ganze Kategorien fälschlich leer/unvollständig blieben.
+   */
   private async loadEffectCategoryCounts(cards: DeckCard[]): Promise<void> {
     this.effectCategoryCountsBusy.set(true);
     const names = [...new Set(cards.filter((c) => !c.isMaybeboard && !c.isToken).map((c) => c.cardName))];
 
-    const [removal, counterspell, boardwipe, ramp, draw] = await Promise.all([
-      this.scryfall.filterNamesByQuery('otag:removal', names),
-      this.scryfall.filterNamesByQuery('otag:counterspell', names),
-      this.scryfall.filterNamesByQuery('otag:board-wipe', names),
-      this.scryfall.filterNamesByQuery('otag:ramp', names),
-      this.scryfall.filterNamesByQuery('otag:draw', names),
-    ]);
+    const removal = await this.scryfall.filterNamesByQuery('otag:removal', names);
+    await sleep(300);
+    const counterspell = await this.scryfall.filterNamesByQuery('otag:counterspell', names);
+    await sleep(300);
+    const boardwipe = await this.scryfall.filterNamesByQuery('otag:board-wipe', names);
+    await sleep(300);
+    const ramp = await this.scryfall.filterNamesByQuery('otag:ramp', names);
+    await sleep(300);
+    const draw = await this.scryfall.filterNamesByQuery('otag:draw', names);
 
     const countOf = (matched: Set<string>) =>
       cards
