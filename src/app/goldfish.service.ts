@@ -133,7 +133,13 @@ export class GoldfishService {
     this.zoneListSearch.set('');
     this.previewCard.set(null);
 
-    const deckCards = await this.deckService.loadDeckCards(deck.id);
+    // Maybeboard-Karten (in engerer Auswahl, nicht wirklich Teil des Decks) und Marken (kein echtes,
+    // ziehbares Kartenexemplar) dürfen nicht mitgezogen werden - loadDeckCards() liefert bewusst
+    // ungefiltert alles zurück, jeder Aufrufer filtert selbst, was er braucht (siehe z.B.
+    // deck-viewer.service.ts, das denselben Filter an mehreren Stellen nutzt).
+    const deckCards = (await this.deckService.loadDeckCards(deck.id)).filter(
+      (c) => !c.isMaybeboard && !c.isToken
+    );
     // Nur für DFC-Rückseiten nötig (deck_cards speichert nur die Vorderseite) - läuft parallel zum
     // Rendern der Vorderseiten, blockt also nicht, bis die Starthand gezogen werden kann.
     const scryfallByName = await this.scryfall.findCardsBulk(deckCards.map((c) => c.cardName));
