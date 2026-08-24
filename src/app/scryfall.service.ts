@@ -452,13 +452,14 @@ export class ScryfallService {
 
   // NEU
   /**
-   * Liefert für jeden übergebenen Kartennamen den USD-Preis der GÜNSTIGSTEN Druckvariante - bewusst
-   * NICHT der Preis des aktuell im Deck ausgewählten Artworks. `usd>0` blendet Drucke ohne
-   * regulären (nicht-Foil-exklusiven) USD-Preis aus, `unique:cards` dedupliziert auf einen Eintrag
-   * pro Kartenname; da explizit nach `order:usd dir:asc` sortiert wird, bleibt dabei jeweils die
-   * günstigste Druckvariante übrig (Karten ohne ermittelbaren Preis fehlen einfach im Ergebnis).
-   * Gleiches Chunking-Muster wie filterNamesByQuery() (Gruppen statt einer Anfrage pro Karte, um bei
-   * größeren Decks nicht an Scryfalls Rate-Limit zu geraten).
+   * Liefert für jeden übergebenen Kartennamen den EUR-Preis (Cardmarket, über Scryfall) der
+   * GÜNSTIGSTEN Druckvariante - bewusst NICHT der Preis des aktuell im Deck ausgewählten Artworks
+   * und keine grobe USD→EUR-Umrechnung, sondern der echte, von Scryfall separat geführte
+   * Cardmarket-Preis. `eur>0` blendet Drucke ohne ermittelbaren EUR-Preis aus, `unique:cards`
+   * dedupliziert auf einen Eintrag pro Kartenname; da explizit nach `order:eur dir:asc` sortiert
+   * wird, bleibt dabei jeweils die günstigste Druckvariante übrig (Karten ohne ermittelbaren Preis
+   * fehlen einfach im Ergebnis). Gleiches Chunking-Muster wie filterNamesByQuery() (Gruppen statt
+   * einer Anfrage pro Karte, um bei größeren Decks nicht an Scryfalls Rate-Limit zu geraten).
    */
   async cheapestPrices(cardNames: string[]): Promise<Map<string, number>> {
     const result = new Map<string, number>();
@@ -468,13 +469,13 @@ export class ScryfallService {
     for (let i = 0; i < unique.length; i += 20) {
       const chunk = unique.slice(i, i + 20);
       const nameClause = '(' + chunk.map((n) => `!"${n.replace(/"/g, '')}"`).join(' or ') + ')';
-      const q = encodeURIComponent(`${nameClause} usd>0 -is:digital unique:cards order:usd dir:asc`);
+      const q = encodeURIComponent(`${nameClause} eur>0 -is:digital unique:cards order:eur dir:asc`);
       const res = await this.fetchWithRetry(`${API}/cards/search?q=${q}`);
       if (!res?.ok) continue;
       const data = await res.json();
       for (const card of (data.data as any[]) ?? []) {
         const name = (card.name as string).toLowerCase();
-        const price = parseFloat(card.prices?.usd);
+        const price = parseFloat(card.prices?.eur);
         if (!result.has(name) && !Number.isNaN(price)) result.set(name, price);
       }
     }

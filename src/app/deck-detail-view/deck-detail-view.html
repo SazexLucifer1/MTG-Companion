@@ -548,7 +548,7 @@
                   @if (viewer.priceBusy()) {
                     <span class="stat-value">…</span>
                   } @else if (viewer.totalDeckPrice(); as price) {
-                    <span class="stat-value">{{ price | currency: 'USD' }}</span>
+                    <span class="stat-value">{{ price | currency: 'EUR' }}</span>
                   } @else {
                     <span class="stat-value">–</span>
                   }
