@@ -182,14 +182,18 @@ h3 {
   position: relative;
   display: block;
   overflow: hidden;
-  width: 48px;
-  height: 67px;
+  // Wächst wie die Root-Schriftgröße weich mit der Fensterbreite (clamp() statt fixem px-Wert) -
+  // auf Handy-Breiten bleibt der Wert praktisch unverändert, auf Desktop-Breiten wird die Karte groß
+  // genug, um sie tatsächlich erkennen zu können. aspect-ratio hält dabei das echte Kartenformat
+  // (63,5x88,9mm) ohne eine zweite, separat zu pflegende Höhenformel.
+  width: clamp(48px, 3.5vw + 23px, 80px);
+  aspect-ratio: 63.5 / 88.9;
   border-radius: 6px;
   flex-shrink: 0;
 
   &.small {
-    width: 28px;
-    height: 39px;
+    width: clamp(28px, 2vw + 14px, 46px);
+    aspect-ratio: 63.5 / 88.9;
     border-radius: 4px;
   }
 }
