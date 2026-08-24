@@ -137,6 +137,7 @@
           <p class="hint">{{ i18n.t('profile.loadingProfile') }}</p>
         } @else if (!profileService.profile()) {
           <p class="hint">{{ i18n.t('profile.couldNotLoad') }}</p>
+          <button class="glass-button small" (click)="profileService.retryLoadProfile()">{{ i18n.t('profile.retry') }}</button>
         } @else {
           <div class="avatar-row">
             <label
