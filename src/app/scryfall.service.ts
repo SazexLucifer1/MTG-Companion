@@ -463,11 +463,18 @@ export class ScryfallService {
       // 15 Effekt-Kategorien einzeln verifiziert sind.
       console.log(`[Effekt-Kategorie-Check] Anfrage: https://scryfall.com/search?q=${q}`);
       const res = await this.fetchWithRetry(`${API}/cards/search?q=${q}&unique=cards`);
-      if (!res?.ok) {
+      if (!res) {
         console.log('[Effekt-Kategorie-Check] Anfrage fehlgeschlagen (Rate-Limit?), wird beim nächsten Öffnen erneut versucht.');
         continue; // Chunk gescheitert - bleibt in "checked" ungelistet, wird beim nächsten Aufruf erneut versucht.
       }
       for (const name of chunk) checked.add(normalizeCardName(name));
+      // Scryfall antwortet bei null Treffern mit HTTP 404 (kein Fehler, siehe fetchWithRetry()) -
+      // gültiges "keine dieser Karten hat den Tag"-Ergebnis, muss trotzdem als geprüft gecacht werden,
+      // sonst würden diese Karten bei jedem Öffnen erneut abgefragt, obwohl das Ergebnis feststeht.
+      if (res.status === 404) {
+        console.log('[Effekt-Kategorie-Check] Keine Treffer in diesem Chunk.');
+        continue;
+      }
       const data = await res.json();
       const chunkMatches = ((data.data as any[]) ?? []).map((card) => card.name as string);
       console.log(`[Effekt-Kategorie-Check] Treffer in diesem Chunk (${chunkMatches.length}):`, chunkMatches);
