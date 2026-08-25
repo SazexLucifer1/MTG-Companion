@@ -582,6 +582,9 @@
         </button>
         }
         <span class="card-name-text">{{ e.name }}</span>
+        @if (e.deckId) {
+        <button type="button" class="glass-button small" (click)="openDeckFromRanking(e.deckId)">{{ i18n.t('deck.view') }}</button>
+        }
       </span>
       <span class="detail">
         {{ e.wins }} / {{ e.games }} {{ i18n.t('stats.wins') }} · {{ i18n.t('stats.playedBy') }}

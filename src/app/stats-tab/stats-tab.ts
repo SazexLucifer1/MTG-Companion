@@ -10,6 +10,7 @@ import { CardPreviewService } from '../card-preview.service';
 import { PlayerAvatar } from '../player-avatar/player-avatar';
 import { ScryfallCard, ScryfallService } from '../scryfall.service';
 import { DeckService } from '../deck.service';
+import { DeckViewerService } from '../deck-viewer.service';
 import { CardImage } from '../card-image/card-image';
 import {
   ExcelImportService,
@@ -44,6 +45,8 @@ interface CombinedRankEntry {
   wins: number;
   winRate: number;
   playedBy: { name: string; borrowed: boolean }[];
+  /** Nur bei einem eigenständigen Deck gesetzt (nicht bei einer Commander-Sammelzeile aus Precons/unverlinkten Matches) - für den "Ansehen"-Sprung zum Deck. */
+  deckId?: string;
 }
 
 interface ImportMappingRow {
@@ -65,6 +68,7 @@ export class StatsTab {
   private readonly excelImport = inject(ExcelImportService);
   private readonly scryfall = inject(ScryfallService);
   private readonly deckService = inject(DeckService);
+  private readonly viewer = inject(DeckViewerService);
   private readonly navigation = inject(NavigationService);
   private readonly profileService = inject(ProfileService);
   readonly cardPreview = inject(CardPreviewService);
@@ -525,6 +529,7 @@ export class StatsTab {
       wins: d.wins,
       winRate: d.winRate,
       playedBy: d.pilots,
+      deckId: d.deckId,
     })),
     ...this.commanderStats().map((c) => ({
       key: `c:${c.commander}`,
@@ -537,6 +542,12 @@ export class StatsTab {
       playedBy: c.playedBy.map((name) => ({ name, borrowed: false })),
     })),
   ]);
+
+  /** Öffnet ein Deck aus der Rangliste in der Deck-Detailansicht (root-level Overlay, funktioniert von jedem Tab aus). */
+  async openDeckFromRanking(deckId: string): Promise<void> {
+    const deck = await this.deckService.getDeckById(deckId);
+    if (deck) this.viewer.open(deck);
+  }
 
   /**
    * Commander-Name -> im jeweiligen Deck hinterlegtes Bild, aus storedDeckCommanders abgeleitet -
