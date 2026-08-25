@@ -15,6 +15,8 @@ import { FeedbackDialog } from './feedback-dialog/feedback-dialog';
 import { PlacementDialog } from './placement-dialog/placement-dialog';
 import { TournamentPanel } from './tournament-panel/tournament-panel';
 import { Dialog } from './dialog/dialog';
+import { LegalFooter } from './legal-footer/legal-footer';
+import { LegalPageView } from './legal-page-view/legal-page-view';
 import { Login } from './login/login';
 import { ResetPassword } from './reset-password/reset-password';
 import { GameSessionService } from './game-session.service';
@@ -46,6 +48,8 @@ import { APP_VERSION, APP_COMMIT } from './version';
     PlacementDialog,
     TournamentPanel,
     Dialog,
+    LegalFooter,
+    LegalPageView,
   ],
   templateUrl: './app.html',
   styleUrl: './app.scss',
