@@ -1,0 +1,29 @@
+.legal-page-sheet {
+  max-width: 640px;
+  max-height: 80vh;
+  overflow-y: auto;
+  text-align: left;
+
+  h2 {
+    margin-top: 0;
+  }
+
+  h3 {
+    margin-bottom: 0.3rem;
+  }
+
+  p {
+    font-size: 0.9rem;
+    line-height: 1.5;
+    margin-top: 0;
+  }
+}
+
+.legal-page-close {
+  float: right;
+}
+
+.legal-todo-hint {
+  color: #ffcf6e;
+  font-weight: 600;
+}

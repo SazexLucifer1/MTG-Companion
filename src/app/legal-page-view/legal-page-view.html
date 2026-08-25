@@ -1,0 +1,160 @@
+@if (legal.activePage(); as page) {
+<div class="options-menu-overlay" (click)="legal.close()">
+  <div class="options-menu-sheet legal-page-sheet" (click)="$event.stopPropagation()">
+    <button type="button" class="glass-button small legal-page-close" (click)="legal.close()">
+      {{ i18n.t('legal.close') }}
+    </button>
+
+    @switch (page) {
+      @case ('impressum') {
+        <h2>Impressum</h2>
+        <p class="legal-todo-hint">⚠️ TODO vor Live-Gang: alle [PLATZHALTER] unten durch echte Daten ersetzen.</p>
+
+        <h3>Angaben gemäß § 5 DDG</h3>
+        <p>
+          [DEIN VOR- UND NACHNAME]<br />
+          [DEINE STRASSE UND HAUSNUMMER]<br />
+          [DEINE PLZ UND ORT]
+        </p>
+
+        <h3>Kontakt</h3>
+        <p>E-Mail: [DEINE E-MAIL-ADRESSE]</p>
+
+        <h3>Umsatzsteuer-ID</h3>
+        <p>[FALLS VORHANDEN: Umsatzsteuer-Identifikationsnummer gemäß § 27a UStG - sonst diesen Abschnitt entfernen]</p>
+
+        <h3>Verantwortlich für den Inhalt nach § 18 Abs. 2 MStV</h3>
+        <p>
+          [DEIN VOR- UND NACHNAME]<br />
+          [DEINE STRASSE UND HAUSNUMMER]<br />
+          [DEINE PLZ UND ORT]
+        </p>
+
+        <h3>Streitschlichtung</h3>
+        <p>
+          Die Europäische Kommission stellt eine Plattform zur Online-Streitbeilegung (OS) bereit:
+          <a href="https://ec.europa.eu/consumers/odr/" target="_blank" rel="noopener">https://ec.europa.eu/consumers/odr/</a>.
+          Wir sind nicht verpflichtet und nicht bereit, an Streitbeilegungsverfahren vor einer
+          Verbraucherschlichtungsstelle teilzunehmen.
+        </p>
+      }
+      @case ('datenschutz') {
+        <h2>Datenschutzerklärung</h2>
+
+        <h3>1. Verantwortlicher</h3>
+        <p>
+          [DEIN VOR- UND NACHNAME]<br />
+          [DEINE STRASSE UND HAUSNUMMER]<br />
+          [DEINE PLZ UND ORT]<br />
+          E-Mail: [DEINE E-MAIL-ADRESSE]
+        </p>
+
+        <h3>2. Hosting</h3>
+        <p>
+          Diese Anwendung wird über Cloudflare Pages ausgeliefert (Cloudflare, Inc.). Cloudflare
+          verarbeitet dabei technisch notwendige Verbindungsdaten (u.a. IP-Adresse, Zeitpunkt der
+          Anfrage) in Server-Logfiles, um die Auslieferung der Seite und deren Sicherheit (z.B.
+          DDoS-Schutz) zu gewährleisten. Rechtsgrundlage ist Art. 6 Abs. 1 lit. f DSGVO
+          (berechtigtes Interesse an einem sicheren, funktionsfähigen Betrieb).
+        </p>
+
+        <h3>3. Datenbank, Authentifizierung &amp; Speicherung (Supabase)</h3>
+        <p>
+          Nutzerkonten, Deck- und Spieldaten werden bei Supabase gespeichert. [OFFENER PUNKT - VOR
+          LIVE-GANG PRÜFEN: liegt das Supabase-Projekt in der EU-Region (Frankfurt)? Falls nicht,
+          hier ergänzen, dass eine Drittlandübermittlung stattfindet und auf welcher Grundlage
+          (z.B. EU-Standardvertragsklauseln).] Rechtsgrundlage für Konto/Login ist Art. 6 Abs. 1
+          lit. b DSGVO (Vertragserfüllung), für Spielstatistiken/Decks ebenfalls Art. 6 Abs. 1 lit.
+          b bzw. lit. f DSGVO (Bereitstellung der Kernfunktion der Anwendung).
+        </p>
+
+        <h3>4. Externe Kartendaten-Dienste</h3>
+        <p>
+          Beim Anzeigen von Karteninformationen und Empfehlungen ruft dein Browser direkt Daten von
+          folgenden externen Diensten ab, wodurch deine IP-Adresse an diese Anbieter übermittelt
+          wird: <a href="https://scryfall.com" target="_blank" rel="noopener">Scryfall</a>
+          (Kartendaten/-bilder), <a href="https://edhrec.com" target="_blank" rel="noopener">EDHREC</a>
+          (Deck-Empfehlungen), <a href="https://mtgjson.com" target="_blank" rel="noopener">MTGJSON</a>
+          (Precon-Decklisten) und
+          <a href="https://commanderspellbook.com" target="_blank" rel="noopener">Commander Spellbook</a>
+          (Combo-/Bracket-Auswertung, läuft über einen serverseitigen Proxy). Rechtsgrundlage ist
+          Art. 6 Abs. 1 lit. f DSGVO (berechtigtes Interesse an der Kernfunktion der App).
+        </p>
+
+        <h3>5. Optionale KI-Funktion (Google Gemini)</h3>
+        <p>
+          Nur falls du freiwillig einen eigenen Google-Gemini-API-Schlüssel in den Einstellungen
+          hinterlegst, werden von dir ausgewählte Anfragen direkt aus deinem Browser an
+          Google (generativelanguage.googleapis.com) gesendet. Der Schlüssel wird ausschließlich
+          lokal in deinem Browser (localStorage) gespeichert, nicht auf unseren Servern.
+        </p>
+
+        <h3>6. Cookies</h3>
+        <p>
+          Es werden ausschließlich technisch notwendige Cookies/Speicherobjekte für die Anmeldung
+          (Session) verwendet (§ 25 Abs. 2 TDDDG) - kein Tracking, keine Werbe-Cookies, keine
+          Einwilligung erforderlich.
+        </p>
+
+        <h3>7. Deine Rechte</h3>
+        <p>
+          Du hast das Recht auf Auskunft (Art. 15 DSGVO), Berichtigung (Art. 16), Löschung (Art.
+          17), Einschränkung der Verarbeitung (Art. 18) und Datenübertragbarkeit (Art. 20). Deinen
+          Account inkl. aller zugehörigen Daten kannst du jederzeit selbst in den
+          Profil-Einstellungen löschen. Für ein Auskunftsersuchen oder einen Datenexport wende dich
+          an die oben genannte E-Mail-Adresse. Du hast außerdem ein Beschwerderecht bei einer
+          Datenschutz-Aufsichtsbehörde, z.B. dem Landesbeauftragten für den Datenschutz und die
+          Informationsfreiheit Baden-Württemberg (LfDI BW).
+        </p>
+      }
+      @case ('nutzungsbedingungen') {
+        <h2>Nutzungsbedingungen</h2>
+
+        <h3>1. Geltungsbereich</h3>
+        <p>
+          Diese Nutzungsbedingungen gelten für die Nutzung von MTG Companion. Mit der Registrierung
+          erklärst du dich mit ihnen einverstanden.
+        </p>
+
+        <h3>2. Kostenlose Nutzung</h3>
+        <p>
+          MTG Companion ist vollständig kostenlos nutzbar. Es gibt keine kostenpflichtigen
+          Zusatzfunktionen. Freiwillige Unterstützungsbeiträge (falls angeboten) sind rein
+          freiwillig, begründen keinen Anspruch auf eine Gegenleistung und sind keine steuerlich
+          absetzbare Spende.
+        </p>
+
+        <h3>3. Nutzung auf eigene Gefahr</h3>
+        <p>
+          Die Nutzung erfolgt auf eigene Gefahr. Es besteht kein Anspruch auf ständige
+          Verfügbarkeit, Fehlerfreiheit oder Richtigkeit der angezeigten Daten (insbesondere von
+          über externe Dienste wie Scryfall/EDHREC/Commander Spellbook bezogenen Inhalten).
+        </p>
+
+        <h3>4. Sperrung bei Missbrauch</h3>
+        <p>
+          Bei missbräuchlicher Nutzung (z.B. automatisierte Massenanfragen, Beleidigungen
+          gegenüber anderen Nutzern, Versuche die technische Sicherheit zu umgehen) kann der
+          Zugang zum Account ohne Vorankündigung eingeschränkt oder gesperrt werden.
+        </p>
+
+        <h3>5. Haftungsausschluss</h3>
+        <p>
+          Eine Haftung für mittelbare Schäden sowie für leicht fahrlässig verursachte Schäden ist
+          ausgeschlossen, soweit gesetzlich zulässig. Dies gilt nicht für Schäden aus der
+          Verletzung des Lebens, des Körpers oder der Gesundheit.
+        </p>
+
+        <h3>6. Kein Widerrufsrecht</h3>
+        <p>
+          Da die Nutzung vollständig kostenlos ist, besteht kein Widerrufsrecht im Sinne des
+          Fernabsatzrechts.
+        </p>
+
+        <h3>7. Anwendbares Recht</h3>
+        <p>Es gilt deutsches Recht.</p>
+      }
+    }
+  </div>
+</div>
+}

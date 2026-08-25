@@ -732,6 +732,11 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
 
     // --- Feedback / Bugreport ---
     'feedback.openAria': 'Bugreport oder Feedback senden',
+    'legal.dataSourcesLabel': 'Datenquellen:',
+    'legal.impressum': 'Impressum',
+    'legal.datenschutz': 'Datenschutz',
+    'legal.nutzungsbedingungen': 'Nutzungsbedingungen',
+    'legal.close': 'Schließen',
     'feedback.dialogTitle': '🐛 Feedback / Bugreport',
     'feedback.dialogHint': 'Beschreibe kurz, was nicht funktioniert hat oder welche Idee du hast - wird direkt an die Entwicklung geschickt.',
     'feedback.categoryBug': '🐛 Bug',
@@ -1874,6 +1879,11 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
 
     // --- Feedback / bug report ---
     'feedback.openAria': 'Send bug report or feedback',
+    'legal.dataSourcesLabel': 'Data sources:',
+    'legal.impressum': 'Legal Notice',
+    'legal.datenschutz': 'Privacy Policy',
+    'legal.nutzungsbedingungen': 'Terms of Use',
+    'legal.close': 'Close',
     'feedback.dialogTitle': '🐛 Feedback / Bug Report',
     'feedback.dialogHint': "Briefly describe what didn't work or what idea you have - this goes straight to the developer.",
     'feedback.categoryBug': '🐛 Bug',

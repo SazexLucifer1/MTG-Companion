@@ -1,0 +1,22 @@
+<footer class="legal-footer">
+  <p class="fan-content-disclaimer">
+    MTG Companion is unofficial Fan Content permitted under the Fan Content Policy. Not
+    approved/endorsed by Wizards. Portions of the materials used are property of Wizards of the
+    Coast. ©Wizards of the Coast LLC.
+  </p>
+  <p class="data-sources">
+    {{ i18n.t('legal.dataSourcesLabel') }}
+    <a href="https://scryfall.com" target="_blank" rel="noopener">Scryfall</a>
+    ·
+    <a href="https://edhrec.com" target="_blank" rel="noopener">EDHREC</a>
+    ·
+    <a href="https://commanderspellbook.com" target="_blank" rel="noopener">Commander Spellbook</a>
+  </p>
+  <p class="legal-links">
+    <button type="button" (click)="legal.open('impressum')">{{ i18n.t('legal.impressum') }}</button>
+    ·
+    <button type="button" (click)="legal.open('datenschutz')">{{ i18n.t('legal.datenschutz') }}</button>
+    ·
+    <button type="button" (click)="legal.open('nutzungsbedingungen')">{{ i18n.t('legal.nutzungsbedingungen') }}</button>
+  </p>
+</footer>
