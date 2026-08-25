@@ -331,18 +331,24 @@
 
 .focus-self-buttons {
   display: flex;
-  flex-direction: column;
-  gap: 12px;
+  // Nebeneinander statt gestapelt, mit kompakteren Buttons statt der vollen .glass-button-Größe -
+  // steht seit der Selbst-Commander-Schaden-Funktion als Geschwister vor .commander-source-split
+  // (flex:1). Bei seitlich rotierten Panels (90°) ist die Hauptachse von .panel-content nur die
+  // ORIGINALE ZELLBREITE (~195px auf einem normalen Handy) statt der Zellhöhe - zwei gestapelte
+  // volle Buttons (~108px) plus Header ließen dort praktisch keinen Platz mehr für den
+  // Schadensbereich (der eine eigene min-height:64px braucht) und wurden von .player-panel
+  // {overflow:hidden} komplett abgeschnitten.
+  flex-direction: row;
+  gap: 8px;
   width: 100%;
-  max-width: 240px;
-  // Bewusst NICHT mehr flex:1 - steht seit der Selbst-Commander-Schaden-Funktion als Geschwister
-  // neben .commander-source-split (ebenfalls flex:1), die beide gleich groß gemacht hätte und
-  // dabei den viel wichtigeren, interaktiven Schadensbereich auf einen kaum sichtbaren Streifen
-  // gequetscht hat. Die zwei Buttons sind reine Navigation und brauchen nur ihre Eigengröße.
+  max-width: 280px;
   flex: 0 0 auto;
 
   .glass-button {
-    width: 100%;
+    flex: 1;
+    padding: 8px 10px;
+    min-height: 36px;
+    font-size: 0.8rem;
   }
 }
 
