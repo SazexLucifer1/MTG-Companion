@@ -1979,7 +1979,8 @@ export class DeckViewerService {
    */
   // NEU - Verifikationsrunde: nur eine Kategorie gleichzeitig neu aktiv, bis sie über mehrere
   // Wiederholungen hinweg stabil und korrekt ist (siehe Plan), danach die nächste einkommentieren.
-  // Bereits verifiziert: Konter, Rampe, Entfernung, Kartenziehen, Bretträumung. Aktuell in Prüfung: Marken.
+  // Bereits verifiziert: Konter, Rampe, Entfernung, Kartenziehen, Bretträumung, Marken.
+  // Aktuell in Prüfung: Lebenspunkte gewinnen.
   private static readonly EFFECT_TAG_CATEGORIES: { key: string; labelKey: string; query: string }[] = [
     {
       key: 'removal',
@@ -2014,7 +2015,11 @@ export class DeckViewerService {
       // "create X" (mehrere/variable Marken-Anzahl) am Wort "a" vorbei nicht gefunden.
       query: 'o:create o:token',
     },
-    // { key: 'lifegain', labelKey: 'deckView.lifegainTile', query: 'otag:lifegain' },
+    {
+      key: 'lifegain',
+      labelKey: 'deckView.lifegainTile',
+      query: 'otag:lifegain',
+    },
     // { key: 'counters', labelKey: 'deckView.countersTile', query: 'otag:counters-matter' },
     // { key: 'proliferate', labelKey: 'deckView.proliferateTile', query: 'keyword:proliferate' },
     // { key: 'reanimate', labelKey: 'deckView.reanimateTile', query: 'otag:reanimate' },
