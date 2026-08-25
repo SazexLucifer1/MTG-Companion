@@ -2051,9 +2051,11 @@ export class DeckViewerService {
     this.effectCategoryCountsBusy.set(true);
     const names = [...new Set(cards.filter((c) => !c.isMaybeboard && !c.isToken).map((c) => c.cardName))];
 
+    // Vorderseiten-Name für den Abgleich - classifyCards() klassifiziert Doppelkarten unter ihrem
+    // Vorderseiten-Namen (siehe dort), der volle Deck-Kartenname ("A // B") würde hier nie matchen.
     const entriesFromMatched = (matched: Set<string>): GameChangerEntry[] =>
       cards
-        .filter((c) => !c.isMaybeboard && !c.isToken && matched.has(normalizeCardName(c.cardName)))
+        .filter((c) => !c.isMaybeboard && !c.isToken && matched.has(normalizeCardName(c.cardName.split(' // ')[0].trim())))
         .map((c) => ({ cardName: c.cardName, quantity: c.quantity }));
     const countOf = (entries: GameChangerEntry[]) => entries.reduce((sum, c) => sum + c.quantity, 0);
 
