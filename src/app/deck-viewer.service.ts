@@ -597,7 +597,9 @@ export class DeckViewerService {
     const effect = this.effectFilter();
     if (effect !== 'all') {
       const matches = this.effectMatchNames();
-      if (!matches?.has(card.cardName.toLowerCase())) return false;
+      // Vorderseiten-Name + normalisiert - genau wie classifyCards() seine Ergebnis-Keys bildet
+      // (siehe loadEffectMatches()), sonst würden Doppelkarten hier nie matchen.
+      if (!matches?.has(normalizeCardName(card.cardName.split(' // ')[0].trim()))) return false;
     }
 
     return true;
@@ -644,9 +646,29 @@ export class DeckViewerService {
     this.loadEffectMatches();
   }
 
+  /**
+   * Tutor/Extra-Runde/Mass Land Denial haben keine Scryfall-Abfrage in effectFilters (query: '') -
+   * sie laufen wie in effectCategoryStats über die zuverlässigeren, lokal längst vorhandenen Quellen
+   * (Texterkennung bzw. Commander-Spellbook, siehe tutorCards()/extraTurnCards()/
+   * massLandDenialCards()), damit Filter und Analyse-Kacheln für dieselbe Kategorie dieselben Karten
+   * zeigen statt zweier unabhängig ermittelter (und potenziell abweichender) Ergebnisse.
+   */
+  private static readonly LOCAL_EFFECT_FILTERS = new Set(['tutor', 'extraturn', 'mld']);
+
+  private toNormalizedNameSet(entries: GameChangerEntry[]): Set<string> {
+    return new Set(entries.map((e) => normalizeCardName(e.cardName.split(' // ')[0].trim())));
+  }
+
   /** Effekt-Kategorien sind kein Feld auf der Karte, sondern nur über eine Scryfall-Suche abfragbar - deshalb async statt wie die übrigen Filter rein lokal. */
   private async loadEffectMatches(): Promise<void> {
     const effect = this.effectFilter();
+    if (DeckViewerService.LOCAL_EFFECT_FILTERS.has(effect)) {
+      const entries =
+        effect === 'tutor' ? this.tutorCards() : effect === 'extraturn' ? this.extraTurnCards() : this.massLandDenialCards();
+      this.effectMatchNames.set(this.toNormalizedNameSet(entries));
+      this.effectFilterBusy.set(false);
+      return;
+    }
     const tagQuery = this.effectFilters.find((f) => f.value === effect)?.query;
     if (!tagQuery) {
       this.effectMatchNames.set(null);
@@ -654,7 +676,12 @@ export class DeckViewerService {
     }
     this.effectFilterBusy.set(true);
     const names = this.viewingDeckCards().map((c) => c.cardName);
-    const matched = await this.scryfall.filterNamesByQuery(tagQuery, names);
+    // classifyCards() statt der alten filterNamesByQuery() - teilt sich den dauerhaften
+    // localStorage-Cache mit den Analyse-Kacheln (effectCategoryStats, siehe dort) und hat alle
+    // Bugfixes aus der Verifikationsrunde (DFC-Namens-Split, längenbasiertes Chunking, korrekte
+    // 404-Behandlung) - die alte Methode hatte keinen davon und lieferte deshalb bei jedem Öffnen
+    // potenziell andere Ergebnisse als die Analyse.
+    const matched = await this.scryfall.classifyCards(effect, tagQuery, names);
     this.effectMatchNames.set(matched);
     this.effectFilterBusy.set(false);
   }
@@ -713,23 +740,42 @@ export class DeckViewerService {
    * Karte, kein Effekt wie "Lebenspunkte gewinnen" (otag:lifegain, eigene Kategorie). "Marken
    * erzeugen" nutzt mangels passendem Tag eine Oracle-Text-Näherung.
    */
+  // Abfragen 1:1 aus EFFECT_TAG_CATEGORIES übernommen (siehe dort) - dieselben Kategorie-Keys +
+  // Abfragen sorgen dafür, dass sich Filter und Analyse-Kacheln denselben persistenten Cache teilen
+  // und für dieselbe Kategorie immer dieselben Karten zeigen. query: '' = lokale Quelle statt
+  // Scryfall-Abfrage (siehe LOCAL_EFFECT_FILTERS/loadEffectMatches()).
   readonly effectFilters: { value: string; label: string; query: string }[] = [
-    { value: 'tokens', label: 'Marken erzeugen', query: 'o:"create a" o:token' },
+    { value: 'tokens', label: 'Marken erzeugen', query: 'o:create o:token' },
     { value: 'draw', label: 'Kartenziehen', query: 'otag:draw' },
     { value: 'removal', label: 'Entfernung', query: 'otag:removal' },
+    {
+      value: 'counterspell',
+      label: 'Konter',
+      query:
+        '(otag:counterspell or otag:counterspell-noncreature or otag:counterspell-creature or otag:counterspell-sorcery or otag:counterspell-instant or otag:counterspell-artifact or otag:counterspell-enchantment or otag:counterspell-planeswalker or otag:counterspell-ability or otag:counterspell-reusable or otag:counterspell-exile or otag:counterspell-free)',
+    },
     { value: 'boardwipe', label: 'Bretträumung', query: 'otag:board-wipe' },
-    { value: 'ramp', label: 'Rampe', query: 'otag:ramp' },
+    {
+      value: 'ramp',
+      label: 'Rampe',
+      query: '(otag:ramp or otag:land-ramp or otag:extra-land or otag:play-additional-land) -t:land',
+    },
     { value: 'lifegain', label: 'Lebenspunkte gewinnen', query: 'otag:lifegain' },
-    { value: 'counters', label: '+1/+1-Zähler', query: 'otag:counters-matter' },
+    { value: 'counters', label: '+1/+1-Zähler', query: 'otag:gives-1-1-counters' },
     { value: 'proliferate', label: 'Proliferate', query: 'keyword:proliferate' },
     { value: 'protection', label: 'Schutz gewähren', query: 'otag:protection' },
-    { value: 'reanimate', label: 'Wiederbelebung', query: 'otag:reanimate' },
+    {
+      value: 'reanimate',
+      label: 'Wiederbelebung',
+      query:
+        '(otag:reanimate or otag:reanimate-creature or otag:reanimate-artifact or otag:reanimate-enchantment or otag:reanimate-planeswalker or otag:reanimate-permanent)',
+    },
     { value: 'recursion', label: 'Rekursion', query: 'otag:recursion' },
-    { value: 'tutor', label: 'Tutor', query: 'otag:tutor' },
+    { value: 'tutor', label: 'Tutor', query: '' },
     { value: 'sacrifice', label: 'Opfern', query: 'otag:sacrifice-outlet' },
-    { value: 'extraturn', label: 'Extra-Runde', query: 'otag:extra-turn' },
+    { value: 'extraturn', label: 'Extra-Runde', query: '' },
     { value: 'extracombat', label: 'Extra-Kampfphase', query: 'otag:extra-combat' },
-    { value: 'mld', label: 'Mass Land Denial', query: 'otag:mass-land-denial' },
+    { value: 'mld', label: 'Mass Land Denial', query: '' },
   ];
 
   effectFilterLabel(value: string): string {
