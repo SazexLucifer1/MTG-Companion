@@ -437,11 +437,25 @@ export class ScryfallService {
     const checked = new Set<string>();
     const unique = [...new Set(cardNames.map((n) => n.trim()).filter(Boolean))];
 
-    // 30 statt 20 Namen pro Chunk - weniger Anfragen bei großen Decks/kaltem Cache, URL-Länge bleibt
-    // bei üblichen Kartennamenlängen unkritisch (Scryfall unterstützt deutlich längere Query-Strings).
-    for (let i = 0; i < unique.length; i += 30) {
+    // Chunks längenbasiert statt fester Anzahl bilden - eine feste Zahl (z.B. 30) reißt bei
+    // Kategorien mit langer Tag-Abfrage (z.B. Konter mit 12 ODER-verknüpften Unter-Tags, ~450
+    // Zeichen) Scryfalls (nicht dokumentiertes) Query-Längenlimit, was die komplette Anfrage mit
+    // HTTP 400 scheitern lässt - beobachtet bei 30 Namen + Konter-Tag-Abfrage (1063 Zeichen).
+    // MAX_QUERY_LEN liegt bewusst deutlich darunter. Mindestens 1 Name pro Chunk, auch falls schon
+    // dieser eine Name allein (mit der Tag-Abfrage) das Limit reißen würde - sonst Endlosschleife.
+    const MAX_QUERY_LEN = 800;
+    let i = 0;
+    while (i < unique.length) {
       if (i > 0) await sleep(300); // siehe filterNamesByQuery()
-      const chunk = unique.slice(i, i + 30);
+      const chunk: string[] = [];
+      let len = tagQuery.length + 3; // Puffer für umschließende Klammer/Leerzeichen der Namens-Klausel
+      while (i < unique.length) {
+        const clauseLen = `!"${unique[i].replace(/"/g, '')}"`.length + 4; // + " or "
+        if (chunk.length > 0 && len + clauseLen > MAX_QUERY_LEN) break;
+        chunk.push(unique[i]);
+        len += clauseLen;
+        i++;
+      }
       const nameClause = '(' + chunk.map((n) => `!"${n.replace(/"/g, '')}"`).join(' or ') + ')';
       const q = encodeURIComponent(`${tagQuery} ${nameClause}`);
       // NEU - Verifikationsrunde (siehe Plan): macht die exakte Scryfall-Anfrage in der Browser-Konsole
