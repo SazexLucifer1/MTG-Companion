@@ -1980,7 +1980,8 @@ export class DeckViewerService {
   // NEU - Verifikationsrunde: nur eine Kategorie gleichzeitig neu aktiv, bis sie über mehrere
   // Wiederholungen hinweg stabil und korrekt ist (siehe Plan), danach die nächste einkommentieren.
   // Bereits verifiziert: Konter, Rampe, Entfernung, Kartenziehen, Bretträumung, Marken,
-  // Lebenspunkte gewinnen, +1/+1-Zähler, Proliferate, Wiederbelebung. Aktuell in Prüfung: Opferung.
+  // Lebenspunkte gewinnen, +1/+1-Zähler, Proliferate, Wiederbelebung, Opferung.
+  // Aktuell in Prüfung (letzte der 12): Extra-Kampfphase.
   private static readonly EFFECT_TAG_CATEGORIES: { key: string; labelKey: string; query: string }[] = [
     {
       key: 'removal',
@@ -2047,7 +2048,11 @@ export class DeckViewerService {
       labelKey: 'deckView.sacrificeTile',
       query: 'otag:sacrifice-outlet',
     },
-    // { key: 'extracombat', labelKey: 'deckView.extraCombatTile', query: 'otag:extra-combat' },
+    {
+      key: 'extracombat',
+      labelKey: 'deckView.extraCombatTile',
+      query: 'otag:extra-combat',
+    },
   ];
 
   /** Nur die 12 per Scryfall-Tag ermittelten Kategorien (async geladen, gecacht - siehe classifyCards()). */
