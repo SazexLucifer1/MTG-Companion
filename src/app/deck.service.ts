@@ -88,9 +88,10 @@ export class DeckService {
   /**
    * Löst einen DeckOwner zu den betroffenen players.id auf - bei einem echten Account können das
    * mehrere sein (eine Spieler-Zeile pro Gruppe), bei einem virtuellen Spieler ist die playerId
-   * bereits selbst die einzige relevante ID, kein Lookup nötig.
+   * bereits selbst die einzige relevante ID, kein Lookup nötig. Öffentlich, da auch DeckViewerService
+   * das braucht, um "meine Spiele" (Pilot statt Deck-Besitzer) zu filtern - siehe getDeckStats().
    */
-  private async resolvePlayerIds(owner: DeckOwner): Promise<string[]> {
+  async resolvePlayerIds(owner: DeckOwner): Promise<string[]> {
     if (owner.kind === 'player') return [owner.playerId];
     const { data } = await supabase.from('players').select('id').eq('user_id', owner.userId);
     return (data ?? []).map((p) => p.id);
@@ -848,15 +849,22 @@ export class DeckService {
   }
 
   /**
-   * Gesamt-Statistik für ein Deck über ALLE Gruppen hinweg (nicht nur die aktuell aktive) und
-   * unabhängig davon, wer es jeweils gespielt hat (eigener Pilot oder ausgeliehen) - im
-   * Gegensatz zu den gruppen-gebundenen Stats im Stats-Tab, die nur die aktive Gruppe sehen.
+   * Gesamt-Statistik für ein Deck über ALLE Gruppen hinweg (nicht nur die aktuell aktive). Ohne
+   * pilotPlayerIds unabhängig davon, wer es jeweils gespielt hat (eigener Pilot oder ausgeliehen) -
+   * im Gegensatz zu den gruppen-gebundenen Stats im Stats-Tab, die nur die aktive Gruppe sehen. Mit
+   * pilotPlayerIds (siehe DeckViewerService.resolveMyPlayerIds()) nur die Partien, in denen einer
+   * dieser Spieler tatsächlich gespielt hat - für die "Meine Spiele"/"Alle Spiele"-Umschaltung in
+   * der Deck-Detailansicht.
    */
-  async getDeckStats(deckId: string): Promise<DeckGameStats> {
-    const { data, error } = await supabase
+  async getDeckStats(deckId: string, pilotPlayerIds?: string[]): Promise<DeckGameStats> {
+    let query = supabase
       .from('match_players')
       .select('team, is_archenemy, players ( display_name ), matches ( game_mode, winner_name, counts_in_general_stats )')
       .eq('deck_id', deckId);
+    if (pilotPlayerIds && pilotPlayerIds.length > 0) {
+      query = query.in('player_id', pilotPlayerIds);
+    }
+    const { data, error } = await query;
 
     if (error || !data) {
       console.error('Konnte Deck-Statistik nicht laden:', error);

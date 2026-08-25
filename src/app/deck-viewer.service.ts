@@ -100,6 +100,8 @@ export class DeckViewerService {
   readonly viewingDeckCards = signal<DeckCard[]>([]);
   readonly viewingChangeLog = signal<DeckChangeEntry[]>([]);
   readonly viewingDeckGameStats = signal<DeckGameStats | null>(null);
+  /** "mine" = nur Partien, in denen der eingeloggte Nutzer selbst Pilot war (nicht zwingend Deck-Besitzer, siehe resolveMyPlayerIds()). */
+  readonly deckStatsScope = signal<'mine' | 'all'>('mine');
   readonly detailBusy = signal(false);
   readonly viewMode = signal<'text' | 'visual'>('visual');
   readonly showChangeLog = signal(false);
@@ -1913,6 +1915,18 @@ export class DeckViewerService {
     this.loadBracketEstimate(cards);
   }
 
+  /** Cache für resolveMyPlayerIds() - ändert sich innerhalb einer Login-Session praktisch nie. */
+  private myPlayerIds: string[] | null = null;
+
+  /** Löst den eingeloggten Nutzer auf seine players.id über alle Gruppen hinweg auf - für die "Meine Spiele"-Filterung in getDeckStats(). */
+  private async resolveMyPlayerIds(): Promise<string[]> {
+    if (this.myPlayerIds) return this.myPlayerIds;
+    const userId = this.auth.currentUser()?.id;
+    if (!userId) return [];
+    this.myPlayerIds = await this.deckService.resolvePlayerIds({ kind: 'user', userId });
+    return this.myPlayerIds;
+  }
+
   async open(deck: Deck): Promise<void> {
     this.viewingDeck.set(deck);
     this.deckNameDraft.set(deck.name);
@@ -1962,12 +1976,14 @@ export class DeckViewerService {
     this.totalDeckPrice.set(null);
     this.tagBasedEffectStats.set(null);
     this.effectCategoryPopup.set(null);
+    this.deckStatsScope.set('mine');
 
-    const [cards, log, gameStats] = await Promise.all([
+    const [cards, log, myPlayerIds] = await Promise.all([
       this.deckService.loadDeckCards(deck.id),
       this.deckService.loadChangeLog(deck.id),
-      this.deckService.getDeckStats(deck.id),
+      this.resolveMyPlayerIds(),
     ]);
+    const gameStats = await this.deckService.getDeckStats(deck.id, myPlayerIds);
 
     this.viewingDeckCards.set(cards);
     this.viewingChangeLog.set(log);
@@ -1977,6 +1993,15 @@ export class DeckViewerService {
     this.cardDetailsPromise = this.loadCardDetails(cards);
     this.loadBracketEstimate(cards);
     this.analysisExtrasLoaded = false;
+  }
+
+  /** Schaltet die Spiel-Statistik-Kacheln zwischen "nur meine Partien" und "alle Partien mit diesem Deck" um. */
+  async setDeckStatsScope(scope: 'mine' | 'all'): Promise<void> {
+    const deck = this.viewingDeck();
+    if (!deck || this.deckStatsScope() === scope) return;
+    this.deckStatsScope.set(scope);
+    const pilotPlayerIds = scope === 'mine' ? await this.resolveMyPlayerIds() : undefined;
+    this.viewingDeckGameStats.set(await this.deckService.getDeckStats(deck.id, pilotPlayerIds));
   }
 
   /** Laufender loadCardDetails()-Aufruf, falls einer läuft - siehe ensureCardDetailsLoaded(). */
@@ -2193,6 +2218,7 @@ export class DeckViewerService {
     this.viewingDeckCards.set([]);
     this.viewingChangeLog.set([]);
     this.viewingDeckGameStats.set(null);
+    this.deckStatsScope.set('mine');
     this.viewingCardDetails.set(new Map());
     this.flippedDeckCardKeys.set(new Set());
     this.bracketEstimate.set(null);
