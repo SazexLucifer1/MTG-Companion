@@ -413,6 +413,10 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     'profile.save': 'Speichern',
     'profile.keySaved': 'Key gespeichert!',
 
+    'profile.dataExportTitle': 'Eigene Daten herunterladen',
+    'profile.dataExportHint': 'Lädt eine JSON-Datei mit deinen gespeicherten Daten herunter (Profil, Spieler-Zuordnungen, eigene Decks, Match- und Turnier-Teilnahmen).',
+    'profile.dataExportButton': '⬇️ Daten herunterladen',
+    'profile.dataExporting': 'Wird zusammengestellt …',
     'profile.dangerZoneHint': 'Löscht deinen Account unwiderruflich – Profil, Decks, Gruppenmitgliedschaften und eigene Hintergrundbilder gehen dabei verloren. Das kann nicht rückgängig gemacht werden!',
     'profile.deleteAccount': '🗑 Account löschen',
     'profile.deleteAccountTitle': 'Account wirklich löschen?',
@@ -1560,6 +1564,10 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     'profile.save': 'Save',
     'profile.keySaved': 'Key saved!',
 
+    'profile.dataExportTitle': 'Download your data',
+    'profile.dataExportHint': 'Downloads a JSON file with your stored data (profile, player associations, your own decks, match and tournament participations).',
+    'profile.dataExportButton': '⬇️ Download data',
+    'profile.dataExporting': 'Preparing …',
     'profile.dangerZoneHint': 'Permanently deletes your account – profile, decks, group memberships and your own backgrounds are all lost. This cannot be undone!',
     'profile.deleteAccount': '🗑 Delete account',
     'profile.deleteAccountTitle': 'Really delete account?',

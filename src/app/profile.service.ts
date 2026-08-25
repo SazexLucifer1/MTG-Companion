@@ -222,6 +222,60 @@ export class ProfileService {
     return true;
   }
 
+  // NEU
+  /**
+   * Sammelt die eigenen Daten für den Selbstbedienungs-Export (Art. 20 DSGVO) und liefert sie als
+   * einfaches JSON-Objekt - der Aufrufer bietet es zum Download an (siehe profile-tab.ts). Deckt
+   * die Kern-Tabellen ab, bei denen die Zuordnung zum eigenen Account eindeutig ist: eigenes
+   * Profil, eigene Spieler-Zeilen (players.user_id, gruppenübergreifend), selbst besessene Decks
+   * (decks.user_id - Decks virtueller Spieler laufen bewusst NICHT mit, die gehören administrativ
+   * zur Gruppe statt direkt zum Account), zugehörige Kartenlisten/Änderungshistorie,
+   * Match-Teilnahmen inkl. der jeweiligen Match-Daten sowie Turnier-Teilnahmen. RLS sorgt ohnehin
+   * dafür, dass jede Abfrage nur Zeilen liefert, auf die der eingeloggte Account Zugriff hat.
+   */
+  async exportMyData(): Promise<Record<string, unknown>> {
+    const userId = this.auth.currentUser()?.id;
+    if (!userId) return {};
+
+    const [{ data: profileRow }, { data: playerRows }] = await Promise.all([
+      supabase.from('profiles').select('*').eq('id', userId).maybeSingle(),
+      supabase.from('players').select('*').eq('user_id', userId),
+    ]);
+    const playerIds = (playerRows ?? []).map((p: any) => p.id);
+
+    const [{ data: ownedDecks }, { data: matchParticipations }, { data: tournamentParticipations }, { data: tournamentMatchParticipations }] =
+      await Promise.all([
+        supabase.from('decks').select('*').eq('user_id', userId),
+        playerIds.length
+          ? supabase.from('match_players').select('*, matches (*)').in('player_id', playerIds)
+          : Promise.resolve({ data: [] as any[] }),
+        playerIds.length
+          ? supabase.from('tournament_participants').select('*').in('player_id', playerIds)
+          : Promise.resolve({ data: [] as any[] }),
+        playerIds.length
+          ? supabase.from('tournament_match_players').select('*').in('player_id', playerIds)
+          : Promise.resolve({ data: [] as any[] }),
+      ]);
+    const deckIds = (ownedDecks ?? []).map((d: any) => d.id);
+
+    const [{ data: deckCards }, { data: deckChangeLog }] = await Promise.all([
+      deckIds.length ? supabase.from('deck_cards').select('*').in('deck_id', deckIds) : Promise.resolve({ data: [] as any[] }),
+      deckIds.length ? supabase.from('deck_change_log').select('*').in('deck_id', deckIds) : Promise.resolve({ data: [] as any[] }),
+    ]);
+
+    return {
+      exportedAt: new Date().toISOString(),
+      profile: profileRow,
+      players: playerRows,
+      decks: ownedDecks,
+      deckCards,
+      deckChangeLog,
+      matchParticipations,
+      tournamentParticipations,
+      tournamentMatchParticipations,
+    };
+  }
+
   /** Lädt die öffentlich sichtbaren Profildaten eines beliebigen Users (nur lesend, keine Bearbeitung). */
   async loadPublicProfile(
     userId: string

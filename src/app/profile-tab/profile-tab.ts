@@ -614,6 +614,24 @@ export class ProfileTab {
     if (ok) setTimeout(() => this.shareMessage.set(''), 2000);
   }
 
+  // --- Datenexport (Art. 20 DSGVO) ---
+
+  readonly exportBusy = signal(false);
+
+  async downloadMyData(): Promise<void> {
+    this.exportBusy.set(true);
+    const data = await this.profileService.exportMyData();
+    this.exportBusy.set(false);
+
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `mtg-companion-daten-${new Date().toISOString().slice(0, 10)}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
   // --- Account löschen (Danger Zone) ---
 
   readonly showDeleteAccountConfirm = signal(false);

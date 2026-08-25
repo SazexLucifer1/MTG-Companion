@@ -556,6 +556,14 @@
   </section>
   }
 
+  <section class="glass-card">
+    <h2>{{ i18n.t('profile.dataExportTitle') }}</h2>
+    <p class="hint">{{ i18n.t('profile.dataExportHint') }}</p>
+    <button class="glass-button" [disabled]="exportBusy()" (click)="downloadMyData()">
+      {{ exportBusy() ? i18n.t('profile.dataExporting') : i18n.t('profile.dataExportButton') }}
+    </button>
+  </section>
+
   <section class="glass-card danger-zone">
     <h2>{{ i18n.t('stats.dangerZone') }}</h2>
     <p class="hint">
