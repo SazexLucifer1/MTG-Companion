@@ -1979,7 +1979,7 @@ export class DeckViewerService {
    */
   // NEU - Verifikationsrunde: nur eine Kategorie gleichzeitig neu aktiv, bis sie über mehrere
   // Wiederholungen hinweg stabil und korrekt ist (siehe Plan), danach die nächste einkommentieren.
-  // Bereits verifiziert: Konter, Rampe. Aktuell in Prüfung: Entfernung, Kartenziehen. Rest folgt einzeln.
+  // Bereits verifiziert: Konter, Rampe, Entfernung, Kartenziehen. Aktuell in Prüfung: Bretträumung.
   private static readonly EFFECT_TAG_CATEGORIES: { key: string; labelKey: string; query: string }[] = [
     {
       key: 'removal',
@@ -1992,7 +1992,11 @@ export class DeckViewerService {
       query:
         '(otag:counterspell or otag:counterspell-noncreature or otag:counterspell-creature or otag:counterspell-sorcery or otag:counterspell-instant or otag:counterspell-artifact or otag:counterspell-enchantment or otag:counterspell-planeswalker or otag:counterspell-ability or otag:counterspell-reusable or otag:counterspell-exile or otag:counterspell-free)',
     },
-    // { key: 'boardwipe', labelKey: 'deckView.boardwipeTile', query: 'otag:board-wipe' },
+    {
+      key: 'boardwipe',
+      labelKey: 'deckView.boardwipeTile',
+      query: 'otag:board-wipe',
+    },
     {
       key: 'ramp',
       labelKey: 'deckView.rampTile',
