@@ -1980,7 +1980,7 @@ export class DeckViewerService {
   // NEU - Verifikationsrunde: nur eine Kategorie gleichzeitig neu aktiv, bis sie über mehrere
   // Wiederholungen hinweg stabil und korrekt ist (siehe Plan), danach die nächste einkommentieren.
   // Bereits verifiziert: Konter, Rampe, Entfernung, Kartenziehen, Bretträumung, Marken,
-  // Lebenspunkte gewinnen, +1/+1-Zähler. Aktuell in Prüfung: Proliferate.
+  // Lebenspunkte gewinnen, +1/+1-Zähler, Proliferate. Aktuell in Prüfung: Wiederbelebung.
   private static readonly EFFECT_TAG_CATEGORIES: { key: string; labelKey: string; query: string }[] = [
     {
       key: 'removal',
@@ -2033,7 +2033,15 @@ export class DeckViewerService {
       labelKey: 'deckView.proliferateTile',
       query: 'keyword:proliferate',
     },
-    // { key: 'reanimate', labelKey: 'deckView.reanimateTile', query: 'otag:reanimate' },
+    {
+      key: 'reanimate',
+      labelKey: 'deckView.reanimateTile',
+      // Oberkategorie + bekannte Unter-Tags (wie bei Konter) - Scryfalls Tagger rollt Karten, die
+      // nur mit einem spezifischeren Unter-Tag getaggt sind, nicht automatisch in die Oberkategorie
+      // hoch (recherchiert, siehe reanimate-creature/-artifact/-enchantment/-planeswalker).
+      query:
+        '(otag:reanimate or otag:reanimate-creature or otag:reanimate-artifact or otag:reanimate-enchantment or otag:reanimate-planeswalker or otag:reanimate-permanent)',
+    },
     // { key: 'sacrifice', labelKey: 'deckView.sacrificeTile', query: 'otag:sacrifice-outlet' },
     // { key: 'extracombat', labelKey: 'deckView.extraCombatTile', query: 'otag:extra-combat' },
   ];
