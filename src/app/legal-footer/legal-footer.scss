@@ -1,5 +1,13 @@
 .legal-footer {
-  padding: 0.75rem 1rem 1rem;
+  // Die schwebende Tab-Bar (.tab-bar, app.scss) ist position:fixed und überlappt je nach
+  // Scroll-Position alles was im normalen Fluss direkt danach im DOM steht (siehe app.html) -
+  // .content reserviert dafür schon eigenen Puffer (110px), der Footer kommt aber NACH .content
+  // und braucht deshalb selbst genug Platz danach, sonst landet er je nach Tab-Inhaltslänge
+  // teilweise hinter der Tab-Bar und ist nicht zuverlässig klickbar (auf allen Tabs, nicht nur
+  // manchen - reiner Zufall welcher Tab gerade genug Inhalt zum Wegscrollen hat).
+  padding: 0.75rem 1rem calc(env(safe-area-inset-bottom, 0px) + 130px);
+  max-width: var(--content-max-width);
+  margin: 0 auto;
   text-align: center;
   font-size: 0.75rem;
   line-height: 1.4;
