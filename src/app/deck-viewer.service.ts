@@ -1977,12 +1977,15 @@ export class DeckViewerService {
    * Scryfalls Tagger-System taggt z.B. Dovin's Veto nur als "counterspell-noncreature", nicht als
    * bloßes "counterspell").
    */
-  // NEU - Verifikationsrunde: nur eine Kategorie gleichzeitig aktiv, bis sie über mehrere
+  // NEU - Verifikationsrunde: nur eine Kategorie gleichzeitig neu aktiv, bis sie über mehrere
   // Wiederholungen hinweg stabil und korrekt ist (siehe Plan), danach die nächste einkommentieren.
-  // Reihenfolge: Konter (aktuell) -> Tutor/Extra-Runde/MLD (laufen bereits über andere Quellen,
-  // brauchen hier keine Freischaltung) -> die restlichen 11 einzeln.
+  // Bereits verifiziert: Konter, Rampe. Aktuell in Prüfung: Entfernung (Removal). Rest folgt einzeln.
   private static readonly EFFECT_TAG_CATEGORIES: { key: string; labelKey: string; query: string }[] = [
-    // { key: 'removal', labelKey: 'deckView.removalTile', query: 'otag:removal' },
+    {
+      key: 'removal',
+      labelKey: 'deckView.removalTile',
+      query: 'otag:removal',
+    },
     {
       key: 'counterspell',
       labelKey: 'deckView.counterspellTile',
