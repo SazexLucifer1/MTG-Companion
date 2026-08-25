@@ -444,10 +444,19 @@ export class ScryfallService {
       const chunk = unique.slice(i, i + 30);
       const nameClause = '(' + chunk.map((n) => `!"${n.replace(/"/g, '')}"`).join(' or ') + ')';
       const q = encodeURIComponent(`${tagQuery} ${nameClause}`);
+      // NEU - Verifikationsrunde (siehe Plan): macht die exakte Scryfall-Anfrage in der Browser-Konsole
+      // sichtbar, damit sie manuell (F12) nachvollzogen werden kann - wieder entfernen, sobald alle
+      // 15 Effekt-Kategorien einzeln verifiziert sind.
+      console.log(`[Effekt-Kategorie-Check] Anfrage: https://scryfall.com/search?q=${q}`);
       const res = await this.fetchWithRetry(`${API}/cards/search?q=${q}&unique=cards`);
-      if (!res?.ok) continue; // Chunk gescheitert - bleibt in "checked" ungelistet, wird beim nächsten Aufruf erneut versucht.
+      if (!res?.ok) {
+        console.log('[Effekt-Kategorie-Check] Anfrage fehlgeschlagen (Rate-Limit?), wird beim nächsten Öffnen erneut versucht.');
+        continue; // Chunk gescheitert - bleibt in "checked" ungelistet, wird beim nächsten Aufruf erneut versucht.
+      }
       for (const name of chunk) checked.add(normalizeCardName(name));
       const data = await res.json();
+      const chunkMatches = ((data.data as any[]) ?? []).map((card) => card.name as string);
+      console.log(`[Effekt-Kategorie-Check] Treffer in diesem Chunk (${chunkMatches.length}):`, chunkMatches);
       for (const card of (data.data as any[]) ?? []) {
         matched.add(normalizeCardName(card.name as string));
       }
@@ -502,6 +511,11 @@ export class ScryfallService {
       // cached === false: bewusst weder zu matched hinzufügen noch erneut abfragen.
     }
 
+    // NEU - Verifikationsrunde (siehe Plan): zusammenfassender Log pro Kategorie in der Konsole.
+    console.log(
+      `[Effekt-Kategorie-Check] "${categoryKey}": ${unique.length} Karte(n) im Deck, ${uncached.length} davon noch nicht gecacht.`
+    );
+
     if (uncached.length > 0) {
       const { matched: freshlyMatched, checked } = await this.filterNamesByQueryChecked(tagQuery, uncached);
       for (const name of checked) {
@@ -513,6 +527,7 @@ export class ScryfallService {
       this.saveTagCache();
     }
 
+    console.log(`[Effekt-Kategorie-Check] "${categoryKey}" Endergebnis (${matched.size}):`, [...matched]);
     return matched;
   }
 

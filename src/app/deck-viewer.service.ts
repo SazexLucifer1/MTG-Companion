@@ -1977,33 +1977,32 @@ export class DeckViewerService {
    * Scryfalls Tagger-System taggt z.B. Dovin's Veto nur als "counterspell-noncreature", nicht als
    * bloßes "counterspell").
    */
+  // NEU - Verifikationsrunde: nur eine Kategorie gleichzeitig aktiv, bis sie über mehrere
+  // Wiederholungen hinweg stabil und korrekt ist (siehe Plan), danach die nächste einkommentieren.
+  // Reihenfolge: Konter (aktuell) -> Tutor/Extra-Runde/MLD (laufen bereits über andere Quellen,
+  // brauchen hier keine Freischaltung) -> die restlichen 11 einzeln.
   private static readonly EFFECT_TAG_CATEGORIES: { key: string; labelKey: string; query: string }[] = [
-    { key: 'removal', labelKey: 'deckView.removalTile', query: 'otag:removal' },
+    // { key: 'removal', labelKey: 'deckView.removalTile', query: 'otag:removal' },
     {
       key: 'counterspell',
       labelKey: 'deckView.counterspellTile',
       query:
         '(otag:counterspell or otag:counterspell-noncreature or otag:counterspell-creature or otag:counterspell-sorcery or otag:counterspell-instant or otag:counterspell-artifact or otag:counterspell-enchantment or otag:counterspell-planeswalker or otag:counterspell-ability or otag:counterspell-reusable or otag:counterspell-exile or otag:counterspell-free)',
     },
-    { key: 'boardwipe', labelKey: 'deckView.boardwipeTile', query: 'otag:board-wipe' },
-    {
-      key: 'ramp',
-      labelKey: 'deckView.rampTile',
-      // Wie bei Konter: "ramp" ist bei Scryfall eine Oberkategorie, Landsuch-Karten (z.B. Cultivate)
-      // sind oft nur unter dem spezifischeren "land-ramp" getaggt. Zusätzlich "extra-land"/
-      // "play-additional-land" für Karten, die einen zusätzlichen Landspielen pro Runde erlauben
-      // (z.B. Exploration) - auf Nutzerwunsch ebenfalls als Ramp gezählt. -t:land schließt weiterhin
-      // die Länder selbst aus, nur die Karten, die sie ins Spiel bringen/zusätzlich erlauben, zählen.
-      query: '(otag:ramp or otag:land-ramp or otag:extra-land or otag:play-additional-land) -t:land',
-    },
-    { key: 'draw', labelKey: 'deckView.drawTile', query: 'otag:draw' },
-    { key: 'tokens', labelKey: 'deckView.tokensTile', query: 'o:"create a" o:token' },
-    { key: 'lifegain', labelKey: 'deckView.lifegainTile', query: 'otag:lifegain' },
-    { key: 'counters', labelKey: 'deckView.countersTile', query: 'otag:counters-matter' },
-    { key: 'proliferate', labelKey: 'deckView.proliferateTile', query: 'keyword:proliferate' },
-    { key: 'reanimate', labelKey: 'deckView.reanimateTile', query: 'otag:reanimate' },
-    { key: 'sacrifice', labelKey: 'deckView.sacrificeTile', query: 'otag:sacrifice-outlet' },
-    { key: 'extracombat', labelKey: 'deckView.extraCombatTile', query: 'otag:extra-combat' },
+    // { key: 'boardwipe', labelKey: 'deckView.boardwipeTile', query: 'otag:board-wipe' },
+    // {
+    //   key: 'ramp',
+    //   labelKey: 'deckView.rampTile',
+    //   query: '(otag:ramp or otag:land-ramp or otag:extra-land or otag:play-additional-land) -t:land',
+    // },
+    // { key: 'draw', labelKey: 'deckView.drawTile', query: 'otag:draw' },
+    // { key: 'tokens', labelKey: 'deckView.tokensTile', query: 'o:"create a" o:token' },
+    // { key: 'lifegain', labelKey: 'deckView.lifegainTile', query: 'otag:lifegain' },
+    // { key: 'counters', labelKey: 'deckView.countersTile', query: 'otag:counters-matter' },
+    // { key: 'proliferate', labelKey: 'deckView.proliferateTile', query: 'keyword:proliferate' },
+    // { key: 'reanimate', labelKey: 'deckView.reanimateTile', query: 'otag:reanimate' },
+    // { key: 'sacrifice', labelKey: 'deckView.sacrificeTile', query: 'otag:sacrifice-outlet' },
+    // { key: 'extracombat', labelKey: 'deckView.extraCombatTile', query: 'otag:extra-combat' },
   ];
 
   /** Nur die 12 per Scryfall-Tag ermittelten Kategorien (async geladen, gecacht - siehe classifyCards()). */
