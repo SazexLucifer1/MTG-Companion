@@ -2,6 +2,10 @@
 -- Im Supabase-Dashboard unter "SQL Editor" ausführen, Ergebnis der drei Abfragen zurückmelden.
 -- Go-Live-Vorbereitung Abschnitt E: RLS-Lücken, SECURITY DEFINER-Funktionen ohne search_path,
 -- und Storage-Bucket-Policies finden.
+--
+-- Erster Lauf (25.08.2026): alle 22 Tabellen hatten RLS aktiv (keine ungeschützte Tabelle).
+-- Zwei Funktionen ohne search_path und zu offene Storage-Bucket-Limits/Policies gefunden und
+-- behoben - siehe security-fixes-2026-08-25.sql für die angewendeten Fixes.
 
 -- =====================================================================================
 -- 1. RLS-Status pro Tabelle - zeigt sofort, welche der App-Tabellen kein RLS aktiv haben
