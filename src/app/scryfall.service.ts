@@ -468,7 +468,7 @@ export class ScryfallService {
   // EFFECT_TAG_CATEGORIES (deck-viewer.service.ts) inhaltlich ändert - sonst werden alte, gegen die
   // VORHERIGE Abfrage ermittelte Ergebnisse fälschlich weiterverwendet, obwohl sie zur neuen Abfrage
   // nicht mehr passen (z.B. wenn Ramp um zusätzliche Unter-Tags erweitert wird).
-  private static readonly TAG_CACHE_KEY = 'mtg-companion-tag-cache-v2';
+  private static readonly TAG_CACHE_KEY = 'mtg-companion-tag-cache-v3';
   private tagCache: Record<string, Record<string, boolean>> | null = null;
 
   private getTagCache(): Record<string, Record<string, boolean>> {
@@ -500,7 +500,12 @@ export class ScryfallService {
    */
   async classifyCards(categoryKey: string, tagQuery: string, cardNames: string[]): Promise<Set<string>> {
     const cache = this.getTagCache();
-    const unique = [...new Set(cardNames.map((n) => normalizeCardName(n)).filter(Boolean))];
+    // Nur der Vorderseiten-Name - Scryfalls exakter Namens-Filter (!"...") lehnt Anfragen mit "//"
+    // (voller Doppelkarten-Name, z.B. "Sink into Stupor // Soporific Springs") mit HTTP 400 ab, was
+    // den GESAMTEN Chunk (bis zu 30 Karten) zum Scheitern brachte - nicht nur die Doppelkarte selbst.
+    // Gleiches Vorgehen wie findCardsBulk()/cheapestPrices().
+    const frontFaceName = (name: string) => name.split(' // ')[0].trim();
+    const unique = [...new Set(cardNames.map((n) => normalizeCardName(frontFaceName(n))).filter(Boolean))];
     const matched = new Set<string>();
     const uncached: string[] = [];
 
