@@ -968,6 +968,8 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     // --- PDF-Export-Dialog ---
     'pdfDialog.title': '🖨️ Als PDF exportieren',
     'pdfDialog.hint': 'Karten in echter Größe (63×88mm) mit Schnittlinien, 9 pro Seite. Einzelne Karten unten abwählen, um sie wegzulassen.',
+    'pdfDialog.fillCorners': '⬛ Ecken ausfüllen',
+    'pdfDialog.fillCornersHint': 'Füllt die abgerundeten Kartenecken schwarz statt weiß auf - vermeidet kleine weiße Lücken zwischen den Karten. Nur bei schwarz gerahmten Karten sinnvoll.',
     'pdfDialog.copiesLabel': 'Bei mehreren Kopien (z.B. 7× Forest)',
     'pdfDialog.oneImageOnly': 'Nur 1 Bild',
     'pdfDialog.everyCopySeparately': 'Jede Kopie einzeln',
@@ -2126,6 +2128,8 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     // --- PDF export dialog ---
     'pdfDialog.title': '🖨️ Export as PDF',
     'pdfDialog.hint': 'Cards at true size (63×88mm) with cut guides, 9 per page. Deselect individual cards below to leave them out.',
+    'pdfDialog.fillCorners': '⬛ Fill corners',
+    'pdfDialog.fillCornersHint': 'Fills the rounded card corners black instead of white - avoids small white gaps between cards. Only makes sense for black-bordered cards.',
     'pdfDialog.copiesLabel': 'For multiple copies (e.g. 7× Forest)',
     'pdfDialog.oneImageOnly': '1 image only',
     'pdfDialog.everyCopySeparately': 'Every copy separately',
