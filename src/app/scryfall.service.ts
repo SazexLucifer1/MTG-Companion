@@ -479,7 +479,11 @@ export class ScryfallService {
       const chunkMatches = ((data.data as any[]) ?? []).map((card) => card.name as string);
       console.log(`[Effekt-Kategorie-Check] Treffer in diesem Chunk (${chunkMatches.length}):`, chunkMatches);
       for (const card of (data.data as any[]) ?? []) {
-        matched.add(normalizeCardName(card.name as string));
+        // Scryfall liefert bei Doppelkarten den vollen "A // B"-Namen zurück, obwohl nur mit dem
+        // Vorderseiten-Namen gesucht wurde (siehe classifyCards()) - ohne diesen Split würde
+        // z.B. "Ashling, Rekindled // Ashling, Rimebound" hier nie mit dem in "checked" stehenden
+        // reinen "ashling, rekindled" übereinstimmen und fälschlich als "nicht getaggt" gelten.
+        matched.add(normalizeCardName((card.name as string).split(' // ')[0].trim()));
       }
     }
     return { matched, checked };
@@ -489,7 +493,7 @@ export class ScryfallService {
   // EFFECT_TAG_CATEGORIES (deck-viewer.service.ts) inhaltlich ändert - sonst werden alte, gegen die
   // VORHERIGE Abfrage ermittelte Ergebnisse fälschlich weiterverwendet, obwohl sie zur neuen Abfrage
   // nicht mehr passen (z.B. wenn Ramp um zusätzliche Unter-Tags erweitert wird).
-  private static readonly TAG_CACHE_KEY = 'mtg-companion-tag-cache-v3';
+  private static readonly TAG_CACHE_KEY = 'mtg-companion-tag-cache-v4';
   private tagCache: Record<string, Record<string, boolean>> | null = null;
 
   private getTagCache(): Record<string, Record<string, boolean>> {
