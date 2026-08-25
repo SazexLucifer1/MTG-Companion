@@ -6,8 +6,6 @@ import { AuthService } from './auth.service';
 import { DeckService } from './deck.service';
 import { chunk } from './array-utils';
 
-const GEMINI_KEY = 'mtg_gemini_key';
-
 @Injectable({ providedIn: 'root' })
 export class MtgService {
   private readonly groupService = inject(GroupService);
@@ -22,7 +20,6 @@ export class MtgService {
   readonly playerAvatars = signal<Record<string, string | null>>({});
   // ... der Rest bleibt unverändert
   readonly history = signal<Match[]>([]);
-  readonly geminiApiKey = signal<string>(localStorage.getItem(GEMINI_KEY) ?? '');
   readonly cubes = signal<Cube[]>([]);
   /** Spielername -> gewählter Hintergrundbild-Pfad. Persistiert dauerhaft, unabhängig vom Match. */
   readonly playerBackgrounds = signal<Record<string, string>>({});
@@ -74,7 +71,6 @@ export class MtgService {
         this.clearGroupData();
       }
     });
-    effect(() => localStorage.setItem(GEMINI_KEY, this.geminiApiKey()));
   }
 
   /** Setzt alle gruppen-gebundenen Daten zurück, wenn keine Gruppe (mehr) aktiv ist. */
@@ -1017,8 +1013,8 @@ export class MtgService {
     this.history.update((matches) => matches.map((m) => (m.id === id ? { ...m, winner } : m)));
   }
 
-  /** Hard-Reset: löscht Verlauf, alle Spieler und deren Hintergrundbilder unwiderruflich. Cubes/Gemini-Key bleiben erhalten. */
-  /** Hard-Reset: löscht Verlauf, alle Spieler und deren Hintergrundbilder unwiderruflich. Cubes/Gemini-Key bleiben erhalten. */
+  /** Hard-Reset: löscht Verlauf, alle Spieler und deren Hintergrundbilder unwiderruflich. Cubes bleiben erhalten. */
+  /** Hard-Reset: löscht Verlauf, alle Spieler und deren Hintergrundbilder unwiderruflich. Cubes bleiben erhalten. */
   async resetAllData(): Promise<{ success: boolean; error?: string }> {
     const groupId = this.groupService.groupId();
     if (!groupId) return { success: false, error: 'Keine aktive Gruppe.' };
@@ -1311,10 +1307,5 @@ export class MtgService {
     this.history.update((matches) =>
       matches.map((m) => (m.cube?.id === id ? { ...m, cube: undefined } : m))
     );
-  }
-  // --- Gemini-Key ---
-
-  setGeminiApiKey(key: string): void {
-    this.geminiApiKey.set(key.trim());
   }
 }

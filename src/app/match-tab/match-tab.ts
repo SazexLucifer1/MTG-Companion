@@ -4,7 +4,6 @@ import { DatePipe, NgTemplateOutlet } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MtgService } from '../mtg.service';
 import { ScryfallCard, ScryfallService, ScryfallSet } from '../scryfall.service';
-import { GeminiService } from '../gemini.service';
 import { GameSessionService } from '../game-session.service';
 import { GroupService } from '../group.service';
 import { PlayerAvatar } from '../player-avatar/player-avatar';
@@ -40,7 +39,6 @@ export class MatchTab {
   readonly session = inject(GameSessionService);
   readonly groupService = inject(GroupService);
   private readonly scryfall = inject(ScryfallService);
-  private readonly gemini = inject(GeminiService);
   private readonly deckService = inject(DeckService);
   readonly i18n = inject(I18nService);
   readonly tournament = inject(TournamentService);
@@ -63,13 +61,8 @@ export class MatchTab {
   readonly suggestions = signal<string[]>([]);
   private searchTimer: ReturnType<typeof setTimeout> | null = null;
 
-  // Foto-Erkennung
-  readonly recognizing = signal(false);
-  readonly recognizedCards = signal<string[]>([]);
   readonly errorMessage = signal('');
   readonly successMessage = signal('');
-
-  readonly hasGeminiKey = computed(() => this.mtg.geminiApiKey().length > 0);
 
   // Draft sets
   readonly draftSearchQuery = signal('');
@@ -158,7 +151,6 @@ export class MatchTab {
 
   assignCommander(playerName: string, commander: string): void {
     this.session.assignCommander(playerName, commander);
-    this.recognizedCards.update((cards) => cards.filter((c) => c !== commander));
     this.closeSearch();
   }
 
@@ -168,7 +160,6 @@ export class MatchTab {
 
   assignPartnerCommander(playerName: string, commander: string): void {
     this.session.assignPartnerCommander(playerName, commander);
-    this.recognizedCards.update((cards) => cards.filter((c) => c !== commander));
     this.closeSearch();
   }
 
@@ -339,9 +330,6 @@ export class MatchTab {
     }
 
     this.session.assignDeck(playerName, deckId, commanders[0].cardName, commanders[1]?.cardName);
-    this.recognizedCards.update((cards) =>
-      cards.filter((c) => c !== commanders[0].cardName && c !== commanders[1]?.cardName)
-    );
     this.closeDeckPicker();
   }
 
@@ -351,33 +339,6 @@ export class MatchTab {
 
   toggleArchenemy(playerName: string): void {
     this.session.toggleArchenemy(playerName);
-  }
-
-  // --- Foto-Erkennung ---
-
-  async onPhotoSelected(event: Event): Promise<void> {
-    const input = event.target as HTMLInputElement;
-    const file = input.files?.[0];
-    input.value = '';
-    if (!file) return;
-
-    this.errorMessage.set('');
-    this.recognizing.set(true);
-    try {
-      const cards = await this.gemini.recognizeCommanders(file);
-      if (cards.length === 0) {
-        this.errorMessage.set(this.i18n.t('match.msg.noCommandersRecognized'));
-      }
-      this.recognizedCards.set(cards);
-    } catch (err) {
-      this.errorMessage.set(err instanceof Error ? err.message : this.i18n.t('match.msg.photoRecognitionFailed'));
-    } finally {
-      this.recognizing.set(false);
-    }
-  }
-
-  assignRecognizedCard(card: string, playerName: string): void {
-    this.assignCommander(playerName, card);
   }
 
   // --- Cubes ---

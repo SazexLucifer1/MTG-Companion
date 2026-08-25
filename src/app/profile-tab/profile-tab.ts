@@ -401,25 +401,6 @@ export class ProfileTab {
   readonly isEditing = signal(false);
   readonly saveMessage = signal('');
 
-  readonly keyInput = signal(this.mtg.geminiApiKey());
-  readonly keySaved = signal(false);
-  readonly showGeminiSettings = signal(false);
-
-  openGeminiSettings(): void {
-    this.keyInput.set(this.mtg.geminiApiKey());
-    this.showGeminiSettings.set(true);
-  }
-
-  closeGeminiSettings(): void {
-    this.showGeminiSettings.set(false);
-  }
-
-  saveKey(): void {
-    this.mtg.setGeminiApiKey(this.keyInput());
-    this.keySaved.set(true);
-    setTimeout(() => this.keySaved.set(false), 2500);
-  }
-
   startEdit(): void {
     this.editedName.set(this.profileService.profile()?.displayName ?? '');
     this.isEditing.set(true);

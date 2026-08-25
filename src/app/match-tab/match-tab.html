@@ -46,46 +46,8 @@
   @if (session.requiresCommanderSelection() && session.selectedPlayers().length > 0) {
     <h3>{{ i18n.t('match.commander') }}</h3>
 
-    <div class="photo-row">
-      <label class="glass-button photo-button" [class.disabled]="recognizing() || !hasGeminiKey()">
-        @if (recognizing()) {
-          <span class="spinner"></span> {{ i18n.t('match.analyzingPhoto') }}
-        } @else {
-          {{ i18n.t('match.recognizePhoto') }}
-        }
-        <input
-          type="file"
-          accept="image/*"
-          capture="environment"
-          [disabled]="recognizing() || !hasGeminiKey()"
-          (change)="onPhotoSelected($event)"
-        />
-      </label>
-      @if (!hasGeminiKey()) {
-        <p class="hint">{{ i18n.t('match.geminiKeyHint') }}</p>
-      }
-    </div>
-
     @if (errorMessage()) {
       <p class="error">{{ errorMessage() }}</p>
-    }
-
-    @if (recognizedCards().length > 0) {
-      <div class="recognized">
-        <p class="hint">{{ i18n.t('match.recognizedHint') }}</p>
-        @for (card of recognizedCards(); track card) {
-          <div class="recognized-card">
-            <span class="card-name">{{ card }}</span>
-            <div class="chip-row">
-              @for (p of session.selectedPlayers(); track p.name) {
-                <button class="glass-chip small" (click)="assignRecognizedCard(card, p.name)">
-                  → {{ p.name }}
-                </button>
-              }
-            </div>
-          </div>
-        }
-      </div>
     }
 
     <ul class="player-commander-list">
