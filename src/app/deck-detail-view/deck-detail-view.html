@@ -64,6 +64,14 @@
         <p class="hint">{{ viewer.i18n.t('profile.statsLockedHint') }}</p>
       } @else if (viewer.viewingDeckGameStats(); as gameStats) {
         <div class="deck-game-stats">
+          <div class="chip-row">
+            <button class="glass-chip small" [class.active]="viewer.deckStatsScope() === 'mine'" (click)="viewer.setDeckStatsScope('mine')">
+              {{ viewer.i18n.t('deckView.statsScopeMine') }}
+            </button>
+            <button class="glass-chip small" [class.active]="viewer.deckStatsScope() === 'all'" (click)="viewer.setDeckStatsScope('all')">
+              {{ viewer.i18n.t('deckView.statsScopeAll') }}
+            </button>
+          </div>
           <div class="stat-tiles">
             <div class="stat-tile">
               <span class="stat-value">{{ gameStats.games }}</span>
