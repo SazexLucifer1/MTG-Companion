@@ -1980,7 +1980,7 @@ export class DeckViewerService {
   // NEU - Verifikationsrunde: nur eine Kategorie gleichzeitig neu aktiv, bis sie über mehrere
   // Wiederholungen hinweg stabil und korrekt ist (siehe Plan), danach die nächste einkommentieren.
   // Bereits verifiziert: Konter, Rampe, Entfernung, Kartenziehen, Bretträumung, Marken,
-  // Lebenspunkte gewinnen, +1/+1-Zähler, Proliferate. Aktuell in Prüfung: Wiederbelebung.
+  // Lebenspunkte gewinnen, +1/+1-Zähler, Proliferate, Wiederbelebung. Aktuell in Prüfung: Opferung.
   private static readonly EFFECT_TAG_CATEGORIES: { key: string; labelKey: string; query: string }[] = [
     {
       key: 'removal',
@@ -2042,7 +2042,11 @@ export class DeckViewerService {
       query:
         '(otag:reanimate or otag:reanimate-creature or otag:reanimate-artifact or otag:reanimate-enchantment or otag:reanimate-planeswalker or otag:reanimate-permanent)',
     },
-    // { key: 'sacrifice', labelKey: 'deckView.sacrificeTile', query: 'otag:sacrifice-outlet' },
+    {
+      key: 'sacrifice',
+      labelKey: 'deckView.sacrificeTile',
+      query: 'otag:sacrifice-outlet',
+    },
     // { key: 'extracombat', labelKey: 'deckView.extraCombatTile', query: 'otag:extra-combat' },
   ];
 
