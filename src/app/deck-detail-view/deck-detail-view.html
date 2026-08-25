@@ -607,7 +607,11 @@
 
               <h4 class="deck-section-title">{{ viewer.i18n.t('deckView.effectCategoriesTitle') }}</h4>
               @if (viewer.effectCategoryCountsBusy()) {
-                <p class="hint">{{ viewer.i18n.t('deckView.loadingEffectCategories') }}</p>
+                @if (viewer.effectCategoryProgress(); as progress) {
+                  <p class="hint">{{ viewer.i18n.t('deckView.loadingEffectCategoriesProgress', { done: progress.done, total: progress.total }) }}</p>
+                } @else {
+                  <p class="hint">{{ viewer.i18n.t('deckView.loadingEffectCategories') }}</p>
+                }
               } @else if (viewer.effectCategoryStats(); as stats) {
                 <p class="hint">{{ viewer.i18n.t('deckView.effectCategoriesHint') }}</p>
                 <div class="stat-tiles deck-analysis-tiles">

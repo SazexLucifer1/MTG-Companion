@@ -1930,8 +1930,7 @@ export class DeckViewerService {
 
     this.cardDetailsPromise = this.loadCardDetails(cards);
     this.loadBracketEstimate(cards);
-    this.loadCardPrices(cards);
-    this.loadEffectCategoryCounts(cards);
+    this.analysisExtrasLoaded = false;
   }
 
   /** Laufender loadCardDetails()-Aufruf, falls einer läuft - siehe ensureCardDetailsLoaded(). */
@@ -2010,6 +2009,9 @@ export class DeckViewerService {
   /** Nur die 12 per Scryfall-Tag ermittelten Kategorien (async geladen, gecacht - siehe classifyCards()). */
   private readonly tagBasedEffectStats = signal<EffectCategoryStat[] | null>(null);
 
+  /** Fortschritt beim erstmaligen (kalten) Durchlauf der 12 Scryfall-Tag-Kategorien - null wenn nicht am Laden. */
+  readonly effectCategoryProgress = signal<{ done: number; total: number } | null>(null);
+
   /**
    * Alle 15 Effekt-Kategorien für die Anzeige - die 12 Scryfall-Tag-Kategorien plus Tutor/
    * Extra-Runde/Mass Land Denial, die bereits über zuverlässigere, längst geladene Quellen laufen
@@ -2056,17 +2058,20 @@ export class DeckViewerService {
         .map((c) => ({ cardName: c.cardName, quantity: c.quantity }));
     const countOf = (entries: GameChangerEntry[]) => entries.reduce((sum, c) => sum + c.quantity, 0);
 
+    const total = DeckViewerService.EFFECT_TAG_CATEGORIES.length;
     const stats: EffectCategoryStat[] = [];
-    for (let i = 0; i < DeckViewerService.EFFECT_TAG_CATEGORIES.length; i++) {
+    for (let i = 0; i < total; i++) {
       if (i > 0) await sleep(300);
       const category = DeckViewerService.EFFECT_TAG_CATEGORIES[i];
       const matched = await this.scryfall.classifyCards(category.key, category.query, names);
       const entries = entriesFromMatched(matched);
       stats.push({ key: category.key, labelKey: category.labelKey, count: countOf(entries), cards: entries });
+      this.effectCategoryProgress.set({ done: i + 1, total });
     }
 
     this.tagBasedEffectStats.set(stats);
     this.effectCategoryCountsBusy.set(false);
+    this.effectCategoryProgress.set(null);
   }
 
   /** Lädt Mass-Land-Denial/Extra-Turn/Combo-Auswertung von Commander Spellbook nach (siehe bracketEstimate). */
@@ -2101,7 +2106,9 @@ export class DeckViewerService {
     this.priceBusy.set(false);
     this.tagBasedEffectStats.set(null);
     this.effectCategoryCountsBusy.set(false);
+    this.effectCategoryProgress.set(null);
     this.effectCategoryPopup.set(null);
+    this.analysisExtrasLoaded = false;
     this.editMode.set(false);
     this.showCommanderToggle.set(false);
     this.artworkPickerCard.set(null);
@@ -2139,8 +2146,27 @@ export class DeckViewerService {
     this.showDeckStatsInfo.update((v) => !v);
   }
 
+  /**
+   * Ob Preis/Effekt-Kategorien für das aktuell offene Deck schon (angestoßen) geladen wurden - erst
+   * beim ersten Aufklappen der Analyse-Sektion, siehe toggleDeckAnalysis(). Verhindert unnötige
+   * Scryfall-Anfragen für den (häufigen) Fall, dass die Analyse nie aufgeklappt wird, UND vermeidet,
+   * dass diese Anfragen mit den beim Deck-Öffnen ohnehin schon laufenden (Kartendetails, Bracket-
+   * Schätzung) um Scryfalls Rate-Limit konkurrieren.
+   */
+  private analysisExtrasLoaded = false;
+
   toggleDeckAnalysis(): void {
     this.showDeckAnalysis.update((v) => !v);
+    if (this.showDeckAnalysis() && !this.analysisExtrasLoaded) {
+      this.analysisExtrasLoaded = true;
+      const cards = this.viewingDeckCards();
+      // Nacheinander statt parallel - sonst konkurrieren beide direkt beim Aufklappen um Scryfalls
+      // Rate-Limit. Preis zuerst, da meist deutlich schneller fertig als die 12 Effekt-Kategorien.
+      (async () => {
+        await this.loadCardPrices(cards);
+        await this.loadEffectCategoryCounts(cards);
+      })();
+    }
   }
 
   toggleDeckAnalysisInfo(): void {

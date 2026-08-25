@@ -437,9 +437,11 @@ export class ScryfallService {
     const checked = new Set<string>();
     const unique = [...new Set(cardNames.map((n) => n.trim()).filter(Boolean))];
 
-    for (let i = 0; i < unique.length; i += 20) {
+    // 30 statt 20 Namen pro Chunk - weniger Anfragen bei großen Decks/kaltem Cache, URL-Länge bleibt
+    // bei üblichen Kartennamenlängen unkritisch (Scryfall unterstützt deutlich längere Query-Strings).
+    for (let i = 0; i < unique.length; i += 30) {
       if (i > 0) await sleep(300); // siehe filterNamesByQuery()
-      const chunk = unique.slice(i, i + 20);
+      const chunk = unique.slice(i, i + 30);
       const nameClause = '(' + chunk.map((n) => `!"${n.replace(/"/g, '')}"`).join(' or ') + ')';
       const q = encodeURIComponent(`${tagQuery} ${nameClause}`);
       const res = await this.fetchWithRetry(`${API}/cards/search?q=${q}&unique=cards`);
@@ -569,9 +571,9 @@ export class ScryfallService {
     const frontFaceName = (name: string) => name.split(' // ')[0].trim();
     const unique = [...new Set(cardNames.map((n) => frontFaceName(n.trim())).filter(Boolean))];
 
-    for (let i = 0; i < unique.length; i += 20) {
+    for (let i = 0; i < unique.length; i += 30) {
       if (i > 0) await sleep(300); // siehe filterNamesByQuery() - vermeidet Bursts gegen Scryfalls Rate-Limit
-      const chunk = unique.slice(i, i + 20);
+      const chunk = unique.slice(i, i + 30);
       const nameClause = '(' + chunk.map((n) => `!"${n.replace(/"/g, '')}"`).join(' or ') + ')';
       const q = encodeURIComponent(`${nameClause} eur>0 -is:digital unique:cards order:eur dir:asc`);
       const res = await this.fetchWithRetry(`${API}/cards/search?q=${q}`);
