@@ -456,6 +456,10 @@ export class ProfileTab {
       this.avatarError.set(this.i18n.t('profile.msg.pleaseSelectImage'));
       return;
     }
+    if (file.size > 10 * 1024 * 1024) {
+      this.avatarError.set(this.i18n.t('profile.msg.avatarTooLarge'));
+      return;
+    }
 
     this.avatarError.set('');
     this.avatarUploading.set(true);
@@ -666,7 +670,7 @@ export class ProfileTab {
     this.deleteAccountBusy.set(false);
 
     if (!result.success) {
-      this.deleteAccountError.set(result.error ?? this.i18n.t('stats.msg.unknownDeleteError'));
+      this.deleteAccountError.set(this.i18n.t('stats.msg.unknownDeleteError'));
       return;
     }
     // Erfolgreich: auth.currentUser() wird durch das signOut() in deleteAccount() null,
