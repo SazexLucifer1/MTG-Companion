@@ -1980,7 +1980,7 @@ export class DeckViewerService {
   // NEU - Verifikationsrunde: nur eine Kategorie gleichzeitig neu aktiv, bis sie über mehrere
   // Wiederholungen hinweg stabil und korrekt ist (siehe Plan), danach die nächste einkommentieren.
   // Bereits verifiziert: Konter, Rampe, Entfernung, Kartenziehen, Bretträumung, Marken,
-  // Lebenspunkte gewinnen. Aktuell in Prüfung: +1/+1-Zähler.
+  // Lebenspunkte gewinnen, +1/+1-Zähler. Aktuell in Prüfung: Proliferate.
   private static readonly EFFECT_TAG_CATEGORIES: { key: string; labelKey: string; query: string }[] = [
     {
       key: 'removal',
@@ -2028,7 +2028,11 @@ export class DeckViewerService {
       // sie tatsächlich verteilen (recherchiert).
       query: 'otag:gives-1-1-counters',
     },
-    // { key: 'proliferate', labelKey: 'deckView.proliferateTile', query: 'keyword:proliferate' },
+    {
+      key: 'proliferate',
+      labelKey: 'deckView.proliferateTile',
+      query: 'keyword:proliferate',
+    },
     // { key: 'reanimate', labelKey: 'deckView.reanimateTile', query: 'otag:reanimate' },
     // { key: 'sacrifice', labelKey: 'deckView.sacrificeTile', query: 'otag:sacrifice-outlet' },
     // { key: 'extracombat', labelKey: 'deckView.extraCombatTile', query: 'otag:extra-combat' },
