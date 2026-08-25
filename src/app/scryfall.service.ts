@@ -392,39 +392,11 @@ export class ScryfallService {
   }
 
   // NEU
-  /**
-   * Prüft, welche der übergebenen Kartennamen zu einer otag:/keyword:-Abfrage passen - für den
-   * lokalen Deck-Kartenfilter (Effekt-Kategorien sind kein Feld auf der Karte selbst, sondern nur
-   * über eine Scryfall-Suche abfragbar). Fragt in Gruppen ab (URL-Länge), damit auch größere Decks
-   * funktionieren.
-   */
-  async filterNamesByQuery(tagQuery: string, cardNames: string[]): Promise<Set<string>> {
-    const matched = new Set<string>();
-    const unique = [...new Set(cardNames.map((n) => n.trim()).filter(Boolean))];
-
-    for (let i = 0; i < unique.length; i += 20) {
-      // Kleine Pause zwischen den eigenen Chunks (nicht vor dem allerersten) - ohne sie feuern bei
-      // größeren Decks mehrere Anfragen praktisch gleichzeitig raus und reißen zusammen mit den
-      // parallel laufenden Effekt-Kategorien (siehe loadEffectCategoryCounts()) Scryfalls Rate-Limit,
-      // was ganze Chunks stillschweigend unter den Tisch fallen lässt (siehe fetchWithRetry()).
-      if (i > 0) await sleep(300);
-      const chunk = unique.slice(i, i + 20);
-      const nameClause = '(' + chunk.map((n) => `!"${n.replace(/"/g, '')}"`).join(' or ') + ')';
-      const q = encodeURIComponent(`${tagQuery} ${nameClause}`);
-      const res = await this.fetchWithRetry(`${API}/cards/search?q=${q}&unique=cards`);
-      if (!res?.ok) continue;
-      const data = await res.json();
-      for (const card of (data.data as any[]) ?? []) {
-        matched.add(normalizeCardName(card.name as string));
-      }
-    }
-    return matched;
-  }
-
   // NEU
   /**
-   * Wie filterNamesByQuery(), meldet aber zusätzlich, welche der übergebenen Namen überhaupt
-   * erfolgreich geprüft wurden ("checked") - nötig für classifyCards(), das ein Nein-Ergebnis nur
+   * Prüft, welche der übergebenen Kartennamen zu einer otag:/keyword:-Abfrage passen, und meldet
+   * zusätzlich, welche der übergebenen Namen überhaupt erfolgreich geprüft wurden ("checked") -
+   * nötig für classifyCards(), das ein Nein-Ergebnis nur
    * dann dauerhaft cachen darf, wenn der jeweilige Chunk wirklich erfolgreich beantwortet wurde
    * (sonst würde ein an Scryfalls Rate-Limit gescheiterter Chunk fälschlich als "nicht getaggt"
    * gecacht - schlimmer als das ursprüngliche Problem, weil es sich nie mehr korrigiert).
@@ -446,7 +418,7 @@ export class ScryfallService {
     const MAX_QUERY_LEN = 800;
     let i = 0;
     while (i < unique.length) {
-      if (i > 0) await sleep(300); // siehe filterNamesByQuery()
+      if (i > 0) await sleep(300); // Pause zwischen Chunks - vermeidet Bursts gegen Scryfalls Rate-Limit
       const chunk: string[] = [];
       let len = tagQuery.length + 3; // Puffer für umschließende Klammer/Leerzeichen der Namens-Klausel
       while (i < unique.length) {
@@ -517,7 +489,7 @@ export class ScryfallService {
 
   // NEU
   /**
-   * Wie filterNamesByQuery(), aber mit dauerhaftem localStorage-Cache pro (Kategorie, Kartenname) -
+   * Wie filterNamesByQueryChecked(), aber mit dauerhaftem localStorage-Cache pro (Kategorie, Kartenname) -
    * Kartentags ändern sich praktisch nie, ein erneutes Abfragen bei jedem Deck-Öffnen ist daher
    * unnötig und war die Hauptursache für schwankende Ergebnisse beim wiederholten Testen (Scryfalls
    * Rate-Limit riss bei den vielen parallelen/wiederholten Anfragen). Nur wirklich neue, noch nie
@@ -608,7 +580,7 @@ export class ScryfallService {
    * Cardmarket-Preis. `eur>0` blendet Drucke ohne ermittelbaren EUR-Preis aus, `unique:cards`
    * dedupliziert auf einen Eintrag pro Kartenname; da explizit nach `order:eur dir:asc` sortiert
    * wird, bleibt dabei jeweils die günstigste Druckvariante übrig (Karten ohne ermittelbaren Preis
-   * fehlen einfach im Ergebnis). Gleiches Chunking-Muster wie filterNamesByQuery() (Gruppen statt
+   * fehlen einfach im Ergebnis). Gleiches Chunking-Muster wie filterNamesByQueryChecked() (Gruppen statt
    * einer Anfrage pro Karte, um bei größeren Decks nicht an Scryfalls Rate-Limit zu geraten).
    */
   async cheapestPrices(cardNames: string[]): Promise<Map<string, number>> {
@@ -617,7 +589,7 @@ export class ScryfallService {
     const unique = [...new Set(cardNames.map((n) => frontFaceName(n.trim())).filter(Boolean))];
 
     for (let i = 0; i < unique.length; i += 30) {
-      if (i > 0) await sleep(300); // siehe filterNamesByQuery() - vermeidet Bursts gegen Scryfalls Rate-Limit
+      if (i > 0) await sleep(300); // Pause zwischen Chunks - vermeidet Bursts gegen Scryfalls Rate-Limit
       const chunk = unique.slice(i, i + 30);
       const nameClause = '(' + chunk.map((n) => `!"${n.replace(/"/g, '')}"`).join(' or ') + ')';
       const q = encodeURIComponent(`${nameClause} eur>0 -is:digital unique:cards order:eur dir:asc`);
