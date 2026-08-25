@@ -23,8 +23,16 @@ const COLUMNS = 3;
 const ROWS = 3;
 const PAGE_WIDTH_MM = 210;
 const PAGE_HEIGHT_MM = 297;
-const MARGIN_X_MM = (PAGE_WIDTH_MM - COLUMNS * CARD_WIDTH_MM) / 2;
-const MARGIN_Y_MM = (PAGE_HEIGHT_MM - ROWS * CARD_HEIGHT_MM) / 2;
+// Echte, sichtbare Lücke zwischen den Karten statt lückenlos aneinanderliegend - die Lücke selbst
+// (weißes Papier) ist die Schnittlinie. Lückenlos aneinanderliegend hätte bedeutet, dass eine
+// eingezeichnete Linie unter den (immer rechteckigen) Kartenbildern verschwindet und höchstens in
+// den abgerundeten Kartenecken benachbarter Karten ein winziges weißes Dreieck durchscheint -
+// optisch wie ein Darstellungsfehler statt einer absichtlichen Schnittmarkierung.
+const CARD_GAP_MM = 0.5;
+const GRID_WIDTH_MM = COLUMNS * CARD_WIDTH_MM + (COLUMNS - 1) * CARD_GAP_MM;
+const GRID_HEIGHT_MM = ROWS * CARD_HEIGHT_MM + (ROWS - 1) * CARD_GAP_MM;
+const MARGIN_X_MM = (PAGE_WIDTH_MM - GRID_WIDTH_MM) / 2;
+const MARGIN_Y_MM = (PAGE_HEIGHT_MM - GRID_HEIGHT_MM) / 2;
 
 /**
  * Erzeugt ein druckfertiges PDF (echte Kartengröße, Schnittlinien, 3x3 pro A4-Seite) aus einer
@@ -39,6 +47,14 @@ export class DeckPdfService {
   readonly deckName = signal('');
   readonly entries = signal<PdfCardEntry[]>([]);
   readonly copiesMode = signal<'one' | 'all'>('one');
+  /**
+   * Scryfalls "png"-Druckvariante hat abgerundete Ecken mit Transparenz - beim Zusammensetzen im
+   * Raster bleiben an den Kartenecken deshalb winzige weiße Lücken übrig (deutlicher bei manchen
+   * Artworks als bei anderen). Bewusst als Nutzer-Option statt immer an: passt nur für Karten mit
+   * schwarzem Rahmen - bei weiß- oder andersfarbig gerahmten Karten (z.B. manche Sonderdrucke)
+   * würde ein schwarz gefüllter Eckbereich falsch aussehen.
+   */
+  readonly fillCorners = signal(false);
   readonly busy = signal(false);
   readonly progress = signal<{ done: number; total: number } | null>(null);
   readonly errorMessage = signal('');
@@ -58,6 +74,7 @@ export class DeckPdfService {
       }))
     );
     this.copiesMode.set('one');
+    this.fillCorners.set(false);
     this.busy.set(false);
     this.progress.set(null);
     this.errorMessage.set('');
@@ -80,6 +97,10 @@ export class DeckPdfService {
 
   setCopiesMode(mode: 'one' | 'all'): void {
     this.copiesMode.set(mode);
+  }
+
+  setFillCorners(value: boolean): void {
+    this.fillCorners.set(value);
   }
 
   private async fetchImageAsDataUrl(url: string): Promise<string | null> {
@@ -113,7 +134,7 @@ export class DeckPdfService {
    * Browser-Tabs gesprengt und die App zum Abstürzen/Neuladen gebracht. Ein data:-URL als Bildquelle
    * gilt für <canvas> immer als same-origin, es gibt also kein CORS-Problem.
    */
-  private async recompressForPrint(dataUrl: string): Promise<string> {
+  private async recompressForPrint(dataUrl: string, fillCorners: boolean): Promise<string> {
     try {
       const img = await new Promise<HTMLImageElement>((resolve, reject) => {
         const el = new Image();
@@ -128,9 +149,11 @@ export class DeckPdfService {
       canvas.height = targetH;
       const ctx = canvas.getContext('2d');
       if (!ctx) return dataUrl;
-      // Weißer Hintergrund statt Transparenz - die png-Variante hat abgerundete Ecken mit Alpha,
-      // die beim Drucken auf weißem Papier ohnehin weiß erscheinen sollen.
-      ctx.fillStyle = '#ffffff';
+      // Hintergrundfarbe statt Transparenz - die png-Variante hat abgerundete Ecken mit Alpha, die
+      // sonst je nach Motiv als winzige weiße Lücken zwischen den Karten auffallen (siehe
+      // fillCorners-Kommentar oben). Schwarz passt nur bei schwarz gerahmten Karten, deshalb per
+      // Nutzer-Option statt fest.
+      ctx.fillStyle = fillCorners ? '#000000' : '#ffffff';
       ctx.fillRect(0, 0, targetW, targetH);
       ctx.drawImage(img, 0, 0, targetW, targetH);
       return canvas.toDataURL('image/jpeg', 0.9);
@@ -164,9 +187,10 @@ export class DeckPdfService {
     const imagesByUrl = new Map<string, string | null>();
     this.progress.set({ done: 0, total: uniqueUrls.length });
 
+    const fillCorners = this.fillCorners();
     for (const url of uniqueUrls) {
       const raw = await this.fetchImageAsDataUrl(url);
-      imagesByUrl.set(url, raw ? await this.recompressForPrint(raw) : null);
+      imagesByUrl.set(url, raw ? await this.recompressForPrint(raw, fillCorners) : null);
       this.progress.update((p) => (p ? { ...p, done: p.done + 1 } : p));
     }
 
@@ -174,35 +198,52 @@ export class DeckPdfService {
     const pdf = new jsPDF({ unit: 'mm', format: 'a4' });
     let slot = 0;
 
-    // Durchgehende Schnittlinien bis zum Papierrand statt einzelner Rechtecke pro Karte - da die
-    // Karten im Raster lückenlos aneinander liegen, lässt sich damit mit einem geraden Schnitt
-    // (Lineal/Schneidemaschine) über die komplette Seite schneiden. Wird VOR den Kartenbildern der
-    // jeweiligen Seite gezeichnet, damit die Linien nur in den Rand-/Zwischenbereichen sichtbar
-    // bleiben und nicht über den Kartenmotiven liegen.
-    const drawCutLines = (): void => {
-      pdf.setDrawColor(180);
-      pdf.setLineWidth(0.1);
+    // x/y-Position der col-ten/row-ten Schnittlinie: an den äußeren Rasterkanten (col=0/COLUMNS
+    // bzw. row=0/ROWS) direkt an der Kartenkante, dazwischen in der Mitte der jeweiligen
+    // CARD_GAP_MM-Lücke zwischen zwei Karten.
+    const verticalLineX = (col: number): number => {
+      if (col === 0) return MARGIN_X_MM;
+      if (col === COLUMNS) return MARGIN_X_MM + GRID_WIDTH_MM;
+      return MARGIN_X_MM + col * CARD_WIDTH_MM + (col - 0.5) * CARD_GAP_MM;
+    };
+    const horizontalLineY = (row: number): number => {
+      if (row === 0) return MARGIN_Y_MM;
+      if (row === ROWS) return MARGIN_Y_MM + GRID_HEIGHT_MM;
+      return MARGIN_Y_MM + row * CARD_HEIGHT_MM + (row - 0.5) * CARD_GAP_MM;
+    };
+
+    // Schnittmarken NUR im Rand außerhalb des Kartenrasters (nicht durchgehend über die ganze
+    // Seite) - im Raster selbst ist die CARD_GAP_MM-Lücke zwischen den Karten (weißes Papier)
+    // schon selbst die Schnittlinie, eine zusätzlich eingezeichnete Linie dort wäre bei aktiviertem
+    // fillCorners (schwarz gefüllte Kartenecken) kaum noch zu erkennen ("schwarz auf schwarz").
+    // Die Randmarken helfen beim geraden Weiterschneiden über die letzte Kartenreihe/-spalte
+    // hinaus bis zum Papierrand.
+    const drawCropMarks = (): void => {
+      pdf.setDrawColor(0);
+      pdf.setLineWidth(0.15);
       for (let col = 0; col <= COLUMNS; col++) {
-        const x = MARGIN_X_MM + col * CARD_WIDTH_MM;
-        pdf.line(x, 0, x, PAGE_HEIGHT_MM);
+        const x = verticalLineX(col);
+        pdf.line(x, 0, x, MARGIN_Y_MM);
+        pdf.line(x, PAGE_HEIGHT_MM - MARGIN_Y_MM, x, PAGE_HEIGHT_MM);
       }
       for (let row = 0; row <= ROWS; row++) {
-        const y = MARGIN_Y_MM + row * CARD_HEIGHT_MM;
-        pdf.line(0, y, PAGE_WIDTH_MM, y);
+        const y = horizontalLineY(row);
+        pdf.line(0, y, MARGIN_X_MM, y);
+        pdf.line(PAGE_WIDTH_MM - MARGIN_X_MM, y, PAGE_WIDTH_MM, y);
       }
     };
-    drawCutLines();
+    drawCropMarks();
 
     const placeCard = (dataUrl: string): void => {
       if (slot > 0 && slot % (COLUMNS * ROWS) === 0) {
         pdf.addPage();
-        drawCutLines();
+        drawCropMarks();
       }
       const posInPage = slot % (COLUMNS * ROWS);
       const col = posInPage % COLUMNS;
       const row = Math.floor(posInPage / COLUMNS);
-      const x = MARGIN_X_MM + col * CARD_WIDTH_MM;
-      const y = MARGIN_Y_MM + row * CARD_HEIGHT_MM;
+      const x = MARGIN_X_MM + col * (CARD_WIDTH_MM + CARD_GAP_MM);
+      const y = MARGIN_Y_MM + row * (CARD_HEIGHT_MM + CARD_GAP_MM);
 
       // png-Druckvariante hat echte Transparenz (abgerundete Ecken), normale/eigene Bilder sind JPEG -
       // das Format muss zum tatsächlichen Inhalt des Daten-URLs passen, sonst stellt jsPDF es falsch dar.

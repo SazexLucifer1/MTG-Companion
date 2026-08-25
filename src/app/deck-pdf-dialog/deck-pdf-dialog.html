@@ -28,6 +28,20 @@
       </div>
     </div>
 
+    <div class="import-field">
+      <div class="chip-row">
+        <button
+          class="glass-chip small"
+          [class.active]="pdfService.fillCorners()"
+          [disabled]="pdfService.busy()"
+          (click)="pdfService.setFillCorners(!pdfService.fillCorners())"
+        >
+          {{ pdfService.i18n.t('pdfDialog.fillCorners') }}
+        </button>
+      </div>
+      <p class="hint">{{ pdfService.i18n.t('pdfDialog.fillCornersHint') }}</p>
+    </div>
+
     <div class="chip-row">
       <button class="glass-chip small" [disabled]="pdfService.busy()" (click)="pdfService.setAllSelected(true)">{{ pdfService.i18n.t('pdfDialog.selectAll') }}</button>
       <button class="glass-chip small" [disabled]="pdfService.busy()" (click)="pdfService.setAllSelected(false)">{{ pdfService.i18n.t('pdfDialog.deselectAll') }}</button>
