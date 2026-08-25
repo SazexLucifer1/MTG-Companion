@@ -48,12 +48,48 @@ export class EdhrecService {
     return [`${slugs[0]}-${slugs[1]}`, `${slugs[1]}-${slugs[0]}`];
   }
 
+  // NEU - dauerhafter Cache mit 24h-TTL (anders als Scryfalls Tag-Cache, siehe ScryfallService,
+  // ändern sich EDHRECs Empfehlungen mit der Zeit - deshalb TTL statt für immer). Hält die
+  // Zusage aus der Erlaubnis-Anfrage an EDHREC ein ("cache all responses for 24 hours") und
+  // reduziert die Anfragelast deutlich, da dieselbe Commander-Seite bei jedem Deck-Öffnen bzw.
+  // jeder Tag-Auswahl sonst immer wieder frisch abgefragt würde.
+  private static readonly CACHE_KEY = 'mtg-companion-edhrec-cache-v1';
+  private static readonly CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+  private cache: Record<string, { data: any; cachedAt: number }> | null = null;
+
+  private getCache(): Record<string, { data: any; cachedAt: number }> {
+    if (!this.cache) {
+      try {
+        this.cache = JSON.parse(localStorage.getItem(EdhrecService.CACHE_KEY) ?? '{}');
+      } catch {
+        this.cache = {};
+      }
+    }
+    return this.cache!;
+  }
+
+  private saveCache(): void {
+    try {
+      localStorage.setItem(EdhrecService.CACHE_KEY, JSON.stringify(this.cache ?? {}));
+    } catch {
+      // z.B. Speicher voll oder privater Modus - Cache bleibt dann nur für diese Sitzung im Speicher, kein Beinbruch.
+    }
+  }
+
   /** Gemeinsame Fetch-/Fehlerbehandlung für die commanders-JSON-Endpunkte - liefert das rohe JSON oder null. */
   private async fetchCommanderPage(path: string): Promise<any | null> {
+    const cache = this.getCache();
+    const cached = cache[path];
+    if (cached && Date.now() - cached.cachedAt < EdhrecService.CACHE_TTL_MS) {
+      return cached.data;
+    }
     try {
       const res = await fetch(`https://json.edhrec.com/pages/commanders/${path}.json`);
       if (!res.ok) return null;
-      return await res.json();
+      const data = await res.json();
+      cache[path] = { data, cachedAt: Date.now() };
+      this.saveCache();
+      return data;
     } catch {
       return null;
     }
