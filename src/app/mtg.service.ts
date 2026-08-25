@@ -1031,7 +1031,7 @@ export class MtgService {
 
     if (matchesFetchError) {
       console.error('Reset fehlgeschlagen (Matches laden):', matchesFetchError);
-      return { success: false, error: `Matches laden: ${matchesFetchError.message}` };
+      return { success: false };
     }
 
     const matchIds = (matchRows ?? []).map((m) => m.id);
@@ -1043,7 +1043,7 @@ export class MtgService {
 
       if (mpError) {
         console.error('Reset fehlgeschlagen (match_players):', mpError);
-        return { success: false, error: `Match-Spieler löschen: ${mpError.message}` };
+        return { success: false };
       }
     }
 
@@ -1052,7 +1052,7 @@ export class MtgService {
 
     if (matchesError) {
       console.error('Reset fehlgeschlagen (matches):', matchesError);
-      return { success: false, error: `Matches löschen: ${matchesError.message}` };
+      return { success: false };
     }
 
     // Schritt 4: player_backgrounds löschen.
@@ -1063,7 +1063,7 @@ export class MtgService {
 
     if (backgroundsError) {
       console.error('Reset fehlgeschlagen (player_backgrounds):', backgroundsError);
-      return { success: false, error: `Hintergründe löschen: ${backgroundsError.message}` };
+      return { success: false };
     }
 
     // Schritt 5: players selbst löschen.
@@ -1071,7 +1071,7 @@ export class MtgService {
 
     if (playersError) {
       console.error('Reset fehlgeschlagen (players):', playersError);
-      return { success: false, error: `Spieler löschen: ${playersError.message}` };
+      return { success: false };
     }
 
     // Schritt 6: Lokale Signale zurücksetzen.

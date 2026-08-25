@@ -48,6 +48,12 @@ export class ExcelImportService {
 
   /** Liest die Datei ein und liefert alle Tabs, die wie ein Decks-Sheet aussehen. */
   async loadFile(file: File): Promise<DetectedDeckSheet[]> {
+    // Verhindert, dass eine übergroße Datei den Parser (XLSX.read()) unnötig lange blockiert oder
+    // den Speicher sprengt - der Aufrufer (stats-tab.ts) fängt den Fehler bereits ab und zeigt
+    // eine generische Meldung.
+    if (file.size > 10 * 1024 * 1024) {
+      throw new Error('Datei ist zu groß (max. 10 MB).');
+    }
     const buffer = await file.arrayBuffer();
     this.workbook = XLSX.read(buffer, { type: 'array' });
     this.parseYearEndStats();

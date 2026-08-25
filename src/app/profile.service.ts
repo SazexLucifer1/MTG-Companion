@@ -191,6 +191,10 @@ export class ProfileService {
   async uploadAvatar(file: File): Promise<boolean> {
     const current = this.profile();
     if (!current) return false;
+    // Gleiches Limit wie bei uploadCustomCardArt()/uploadBackground() - hier zusätzlich zur
+    // clientseitigen Prüfung in profile-tab.ts (onAvatarSelected), falls diese Methode künftig
+    // von woanders aufgerufen wird.
+    if (!file.type.startsWith('image/') || file.size > 10 * 1024 * 1024) return false;
 
     const ext = file.name.split('.').pop() ?? 'jpg';
     const path = `${current.id}/avatar.${ext}`;
