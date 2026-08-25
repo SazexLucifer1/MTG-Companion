@@ -1,0 +1,43 @@
+name: Daily database backup
+
+# Go-Live-Vorbereitung Abschnitt F: Supabase Free hat KEINE automatischen Backups.
+# Braucht das Repo-Secret SUPABASE_DB_URL (die Postgres-Connection-URI aus dem
+# Supabase-Dashboard: Project Settings -> Database -> Connection string -> URI,
+# "Direct connection" verwenden, nicht den Pooler) - einzutragen unter
+# GitHub-Repo -> Settings -> Secrets and variables -> Actions -> "New repository secret".
+# Ohne dieses Secret schlägt der Lauf mit einer klaren Fehlermeldung fehl, statt still
+# nichts zu tun.
+
+on:
+  schedule:
+    - cron: "0 3 * * *" # täglich 03:00 UTC
+  workflow_dispatch: {} # manuell auslösbar zum Testen
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check that SUPABASE_DB_URL is set
+        run: |
+          if [ -z "${{ secrets.SUPABASE_DB_URL }}" ]; then
+            echo "::error::Secret SUPABASE_DB_URL ist nicht gesetzt - siehe Kommentar oben in dieser Datei. Backup wird übersprungen."
+            exit 1
+          fi
+
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Dump database
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          FILENAME="supabase-backup-$(date +%Y-%m-%d).sql.gz"
+          pg_dump "$SUPABASE_DB_URL" --no-owner --no-privileges | gzip > "$FILENAME"
+          echo "FILENAME=$FILENAME" >> "$GITHUB_ENV"
+
+      - name: Upload backup artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.FILENAME }}
+          path: ${{ env.FILENAME }}
+          retention-days: 30
