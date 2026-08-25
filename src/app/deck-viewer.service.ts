@@ -2173,4 +2173,24 @@ export class DeckViewerService {
   toggleDeckAnalysisInfo(): void {
     this.showDeckAnalysisInfo.update((v) => !v);
   }
+
+  readonly reanalyzeBusy = signal(false);
+
+  /**
+   * Lädt die komplette Deck-Analyse (Kartendetails/Manakurve, Bracket-Schätzung, Preis, Effekt-
+   * Kategorien) für den aktuellen Kartenbestand neu - nötig, weil sich Karten +/- oder ein
+   * Reimport NICHT automatisch auf die Analyse auswirken (die lädt sonst nur einmalig beim
+   * Öffnen des Decks bzw. ersten Aufklappen der Sektion, siehe open()/toggleDeckAnalysis()).
+   */
+  async reanalyzeDeck(): Promise<void> {
+    if (!this.viewingDeck()) return;
+    this.reanalyzeBusy.set(true);
+    const cards = this.viewingDeckCards();
+    this.cardDetailsPromise = this.loadCardDetails(cards);
+    this.loadBracketEstimate(cards);
+    // Nacheinander statt parallel - siehe toggleDeckAnalysis().
+    await this.loadCardPrices(cards);
+    await this.loadEffectCategoryCounts(cards);
+    this.reanalyzeBusy.set(false);
+  }
 }

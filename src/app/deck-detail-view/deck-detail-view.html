@@ -479,6 +479,16 @@
           <button class="glass-chip small" (click)="viewer.toggleDeckAnalysis()">
             {{ viewer.showDeckAnalysis() ? '▾' : '▸' }} {{ viewer.i18n.t('deckView.deckAnalysis') }}
           </button>
+          @if (viewer.showDeckAnalysis()) {
+            <button
+              class="glass-chip small"
+              [disabled]="viewer.reanalyzeBusy()"
+              (click)="viewer.reanalyzeDeck()"
+              [title]="viewer.i18n.t('deckView.reanalyzeHint')"
+            >
+              🔄 {{ viewer.i18n.t('deckView.reanalyze') }}
+            </button>
+          }
           <button class="icon-button" (click)="viewer.toggleDeckAnalysisInfo()" [attr.aria-label]="viewer.i18n.t('deckView.analysisInfoAria')">
             ⓘ
           </button>
