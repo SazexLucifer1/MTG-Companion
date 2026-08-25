@@ -334,3 +334,18 @@ h3 {
     cursor: not-allowed;
   }
 }
+
+// NEU - neben dem "MTG Companion"-Titel (Header und Login-Screen), damit sich auf einen Blick
+// prüfen lässt, ob ein Merge/Deploy schon angekommen ist (siehe scripts/generate-version.js).
+.app-version-badge {
+  display: inline-block;
+  vertical-align: middle;
+  margin-left: 4px;
+  padding: 1px 7px;
+  border-radius: 10px;
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: rgba(255, 255, 255, 0.55);
+  background: rgba(255, 255, 255, 0.08);
+}

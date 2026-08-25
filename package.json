@@ -3,9 +3,10 @@
   "version": "0.0.0",
   "scripts": {
     "ng": "ng",
-    "start": "ng serve",
-    "build": "ng build",
-    "watch": "ng build --watch --configuration development",
+    "version:generate": "node scripts/generate-version.js",
+    "start": "npm run version:generate && ng serve",
+    "build": "npm run version:generate && ng build",
+    "watch": "npm run version:generate && ng build --watch --configuration development",
     "test": "ng test"
   },
   "private": true,

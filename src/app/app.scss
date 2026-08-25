@@ -3,6 +3,8 @@
   min-height: 100dvh;
 }
 
+// .app-version-badge siehe styles.scss (global - wird auch auf dem Login-Screen verwendet, siehe login.scss/login.html).
+
 // max-width + auto-margin auf Kopfbereich/Inhalt: wirkt sich auf einem schmalen Hochformat-Handy
 // gar nicht aus (dort ist der Viewport ohnehin schmaler als das Limit), begrenzt den Inhalt aber
 // im Querformat/Desktop auf eine großzügige, aber nicht endlose Breite - einzelne Bereiche wie die
