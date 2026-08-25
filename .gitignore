@@ -47,5 +47,9 @@ Thumbs.db
 # Lokale Umgebungsvariablen (falls hier je echte Keys reinkommen)
 .env
 
+# Automatisch von scripts/generate-version.js erzeugt (siehe package.json build/start/watch) - ändert
+# sich bei jedem Commit, deshalb nicht eingecheckt.
+src/app/version.ts
+
 # Claude Code Tooling (lokal, nicht Teil des Projekts)
 .claude/

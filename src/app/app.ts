@@ -23,6 +23,7 @@ import { NavigationService, AppTab } from './navigation.service';
 import { I18nService } from './i18n.service';
 import { FeedbackService } from './feedback.service';
 import { TournamentService } from './tournament.service';
+import { APP_VERSION, APP_COMMIT } from './version';
 
 @Component({
   selector: 'app-root',
@@ -56,6 +57,10 @@ export class App {
   readonly i18n = inject(I18nService);
   readonly feedback = inject(FeedbackService);
   readonly tournament = inject(TournamentService);
+
+  /** Bei jedem Build automatisch erzeugt (siehe scripts/generate-version.js) - Anzahl Commits als Versionsnummer + kurzer Commit-Hash, damit im Browser sofort sichtbar ist, ob ein Merge/Deploy schon angekommen ist. */
+  readonly appVersion = APP_VERSION;
+  readonly appCommit = APP_COMMIT;
 
   readonly tabs: { id: AppTab; labelKey: string; icon: string }[] = [
     { id: 'match', labelKey: 'nav.match', icon: '⚔️' },

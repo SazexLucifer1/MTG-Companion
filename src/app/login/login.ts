@@ -1,6 +1,7 @@
 import { Component, inject, signal } from '@angular/core';
 import { AuthService } from '../auth.service';
 import { I18nService } from '../i18n.service';
+import { APP_VERSION, APP_COMMIT } from '../version';
 
 @Component({
   selector: 'app-login',
@@ -11,6 +12,9 @@ import { I18nService } from '../i18n.service';
 export class Login {
   private readonly auth = inject(AuthService);
   readonly i18n = inject(I18nService);
+
+  readonly appVersion = APP_VERSION;
+  readonly appCommit = APP_COMMIT;
 
   readonly mode = signal<'signin' | 'signup'>('signin');
   readonly email = signal('');
