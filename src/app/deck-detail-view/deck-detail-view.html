@@ -316,6 +316,10 @@
             @if (!viewer.edhrecCommanderName()) {
               <p class="hint">{{ viewer.i18n.t('deckView.noCommanderForEdhrec') }}</p>
             } @else {
+              <p class="hint edhrec-credit">
+                {{ viewer.i18n.t('deckView.edhrecCredit') }}
+                <a href="https://edhrec.com" target="_blank" rel="noopener">edhrec.com</a>
+              </p>
               @if (viewer.edhrecAvailableTags().length > 0) {
                 <div class="import-field">
                   <label class="hint" for="edhrec-browse-tag-select">{{ viewer.i18n.t('deckView.browseOtherTag') }}</label>
