@@ -96,7 +96,8 @@
             }
           </div>
 
-          @if (session.commanderDamageFocus(); as focusKey) { @if (focusKey === p.key) {
+          @if (session.commanderDamageFocus(); as focusKey) {
+          @if (focusKey === p.key) {
           <div class="focus-self-buttons">
             <button class="glass-button" (click)="session.exitCommanderDamageFocus()">
               {{ i18n.t('ingame.backToLife') }}
@@ -105,7 +106,7 @@
               {{ i18n.t('ingame.switchToPoison') }}
             </button>
           </div>
-          } @else {
+          }
           <div class="commander-source-split" [class.single]="session.commandersOf(p).length === 1">
             @for (source of session.commandersOf(p); track source.key) {
             <div class="commander-source-half">
@@ -139,7 +140,7 @@
             </div>
             }
           </div>
-          } } @else { @if (!session.isPoisonView(p.key)) {
+          } @else { @if (!session.isPoisonView(p.key)) {
           <div class="life-tap-area" data-tutorial="ingame-life-area">
             <button
               class="life-tap-zone"
