@@ -48,11 +48,13 @@ export class DeckPdfService {
   readonly entries = signal<PdfCardEntry[]>([]);
   readonly copiesMode = signal<'one' | 'all'>('one');
   /**
-   * Scryfalls "png"-Druckvariante hat abgerundete Ecken mit Transparenz - beim Zusammensetzen im
-   * Raster bleiben an den Kartenecken deshalb winzige weiße Lücken übrig (deutlicher bei manchen
-   * Artworks als bei anderen). Bewusst als Nutzer-Option statt immer an: passt nur für Karten mit
-   * schwarzem Rahmen - bei weiß- oder andersfarbig gerahmten Karten (z.B. manche Sonderdrucke)
-   * würde ein schwarz gefüllter Eckbereich falsch aussehen.
+   * Die verwendete "normal"-Bildvariante von Scryfall ist ein normales, undurchsichtiges JPG ohne
+   * Alphakanal - die abgerundete Kartenecke ist darin schon als heller Fleck FEST einkopiert statt
+   * transparent. Deshalb hilft eine Hintergrundfarbe beim Zusammensetzen nichts (wird komplett vom
+   * Bild überzeichnet) - stattdessen wird nach dem Einfügen des Bildes gezielt eine schwarze
+   * Eckform genau über die vier Kartenecken gemalt. Bewusst als Nutzer-Option statt immer an: passt
+   * nur für Karten mit schwarzem Rahmen - bei weiß- oder andersfarbig gerahmten Karten (z.B.
+   * manche Sonderdrucke) würde ein schwarz gefüllter Eckbereich falsch aussehen.
    */
   readonly fillCorners = signal(false);
   readonly busy = signal(false);
@@ -149,13 +151,33 @@ export class DeckPdfService {
       canvas.height = targetH;
       const ctx = canvas.getContext('2d');
       if (!ctx) return dataUrl;
-      // Hintergrundfarbe statt Transparenz - die png-Variante hat abgerundete Ecken mit Alpha, die
-      // sonst je nach Motiv als winzige weiße Lücken zwischen den Karten auffallen (siehe
-      // fillCorners-Kommentar oben). Schwarz passt nur bei schwarz gerahmten Karten, deshalb per
-      // Nutzer-Option statt fest.
-      ctx.fillStyle = fillCorners ? '#000000' : '#ffffff';
+      ctx.fillStyle = '#ffffff';
       ctx.fillRect(0, 0, targetW, targetH);
       ctx.drawImage(img, 0, 0, targetW, targetH);
+      if (fillCorners) {
+        // Radius der echten Kartenecke (~3,5mm) in Pixel bei der Zielauflösung - bewusst etwas
+        // großzügig, damit auch ein leicht abweichender Radius im Quellbild sauber überdeckt wird;
+        // die minimale Überlappung fällt auf den ohnehin schwarzen Kartenrahmen und ist unsichtbar.
+        const r = Math.round((3.5 / 25.4) * 300);
+        ctx.fillStyle = '#000000';
+        const corners: Array<[number, number, number, number]> = [
+          [0, 0, r, r], // oben links
+          [targetW - r, 0, targetW, r], // oben rechts
+          [0, targetH - r, r, targetH], // unten links
+          [targetW - r, targetH - r, targetW, targetH], // unten rechts
+        ];
+        for (const [x0, y0, x1, y1] of corners) {
+          const cx = x0 < r ? r : x1 - r; // Kreismittelpunkt liegt r nach innen von der Kartenecke
+          const cy = y0 < r ? r : y1 - r;
+          ctx.fillRect(x0, y0, x1 - x0, y1 - y0);
+          ctx.save();
+          ctx.globalCompositeOperation = 'destination-out';
+          ctx.beginPath();
+          ctx.arc(cx, cy, r, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
+      }
       return canvas.toDataURL('image/jpeg', 0.9);
     } catch {
       // Im Zweifel lieber das Original verwenden als das Bild ganz zu verlieren.
