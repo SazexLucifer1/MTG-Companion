@@ -127,6 +127,37 @@ export class DeckService {
     }));
   }
 
+  /** Lädt ein einzelnes Deck per ID, unabhängig vom Besitzer - z.B. für den Direkt-Sprung aus der Stats-Rangliste. */
+  async getDeckById(deckId: string): Promise<Deck | null> {
+    const { data, error } = await supabase
+      .from('decks')
+      .select(
+        'id, user_id, player_id, name, format, updated_at, is_precon, edhrec_tag, is_private, is_outdated, players ( group_id )'
+      )
+      .eq('id', deckId)
+      .maybeSingle();
+
+    if (error || !data) {
+      console.error('Konnte Deck nicht laden:', error);
+      return null;
+    }
+
+    const row = data as any;
+    return {
+      id: row.id,
+      userId: row.user_id,
+      playerId: row.player_id,
+      groupId: row.players?.group_id ?? null,
+      name: row.name,
+      format: row.format,
+      updatedAt: row.updated_at,
+      isPrecon: row.is_precon,
+      edhrecTag: row.edhrec_tag,
+      isPrivate: row.is_private ?? false,
+      isOutdated: row.is_outdated ?? false,
+    };
+  }
+
   async loadDeckCards(deckId: string): Promise<DeckCard[]> {
     const { data, error } = await supabase
       .from('deck_cards')
