@@ -17,8 +17,8 @@ import { CardImage } from '../card-image/card-image';
  *
  * Zusätzlich zur direkten Namenseingabe gibt es einen Entdecken-Modus: Farb- und Archetyp-Filter
  * zeigen EDHRECs "Top Commanders"-Übersicht für diese Auswahl (dieselbe Seitenstruktur wie eine
- * einzelne Commander-Seite, siehe edhrec.service.ts's getTopCommandersForColors()/-ForTheme()) -
- * ein Klick auf einen der vorgeschlagenen Commander springt direkt in dessen Detailansicht.
+ * einzelne Commander-Seite, siehe edhrec.service.ts's getTopCommandersForColors()/getCommanderTags())
+ * - ein Klick auf einen der vorgeschlagenen Commander springt direkt in dessen Detailansicht.
  */
 @Component({
   selector: 'app-commander-recommendations',
@@ -57,11 +57,33 @@ export class CommanderRecommendations {
   readonly browseBusy = signal(false);
   readonly browseFailed = signal(false);
 
-  /** EDHRECs eigene Archetyp-Liste, geladen über getAllThemes() statt geraten - null solange noch nicht geladen/fehlgeschlagen. */
+  /**
+   * Archetyp-Vorschläge für die aktuelle Farbauswahl, geladen über die bereits an anderer Stelle
+   * bewährte getCommanderTags() (nutzt exakt denselben Endpunkt/Feld wie das seit Langem produktiv
+   * genutzte "Vorschläge für anderen Tag anzeigen"-Dropdown im Deck-Baukasten, nur mit einem
+   * Farbkombinations-Slug statt eines echten Commander-Namens als Seiten-Schlüssel) - null solange
+   * noch nicht geladen/fehlgeschlagen.
+   */
   readonly themeOptions = signal<EdhrecTag[] | null>(null);
 
   constructor() {
-    this.edhrec.getAllThemes().then((themes) => this.themeOptions.set(themes ?? []));
+    this.refreshThemeOptions();
+  }
+
+  /** Ohne Farbauswahl wird die breitest mögliche Seite (alle 5 Farben) als Basis für Tag-Vorschläge/Browsing genutzt, statt "farblos" (leere Auswahl würde sonst fälschlich auf EDHRECs Colorless-Seite zeigen). */
+  private effectiveColors(): string[] {
+    const colors = [...this.browseColors()];
+    return colors.length > 0 ? colors : ['W', 'U', 'B', 'R', 'G'];
+  }
+
+  private refreshThemeOptions(): void {
+    this.themeOptions.set(null);
+    const slug = this.edhrec.colorComboSlug(this.effectiveColors());
+    if (!slug) {
+      this.themeOptions.set([]);
+      return;
+    }
+    this.edhrec.getCommanderTags([slug]).then((tags) => this.themeOptions.set(tags ?? []));
   }
 
   toggleBrowseColor(color: string): void {
@@ -69,6 +91,8 @@ export class CommanderRecommendations {
     if (next.has(color)) next.delete(color);
     else next.add(color);
     this.browseColors.set(next);
+    this.browseTheme.set(null);
+    this.refreshThemeOptions();
   }
 
   setBrowseTheme(value: string): void {
@@ -85,11 +109,7 @@ export class CommanderRecommendations {
     this.browseFailed.set(false);
     this.browseLists.set(null);
 
-    const theme = this.browseTheme();
-    const colors = [...this.browseColors()];
-    const result = theme
-      ? await this.edhrec.getTopCommandersForTheme(theme, colors)
-      : await this.edhrec.getTopCommandersForColors(colors);
+    const result = await this.edhrec.getTopCommandersForColors(this.effectiveColors(), this.browseTheme());
 
     this.browseLists.set(result);
     this.browseFailed.set(result === null);
@@ -101,6 +121,7 @@ export class CommanderRecommendations {
     this.browseTheme.set(null);
     this.browseLists.set(null);
     this.browseFailed.set(false);
+    this.refreshThemeOptions();
   }
 
   // --- Direkte Namenssuche ---
