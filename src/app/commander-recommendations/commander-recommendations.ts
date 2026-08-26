@@ -7,6 +7,7 @@ import { EdhrecCardlist, EdhrecService, EdhrecTag } from '../edhrec.service';
 import { CardPreviewService } from '../card-preview.service';
 import { I18nService } from '../i18n.service';
 import { CardImage } from '../card-image/card-image';
+import { PartnerCardImage } from '../partner-card-image/partner-card-image';
 import { COMMANDER_ARCHETYPE_FILTERS } from '../commander-archetype-filters';
 
 /** Ein Treffer der Commander-Suche - 1 Karte bei einem Solo-Commander, 2 bei einem Partner-Paar (siehe searchCommanderPairs()). */
@@ -33,7 +34,7 @@ interface CommanderBrowseEntry {
  */
 @Component({
   selector: 'app-commander-recommendations',
-  imports: [FormsModule, CardImage, PercentPipe],
+  imports: [FormsModule, CardImage, PartnerCardImage, PercentPipe],
   templateUrl: './commander-recommendations.html',
   styleUrl: './commander-recommendations.scss',
 })

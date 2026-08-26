@@ -1435,11 +1435,32 @@ export class DeckViewerService {
     }
 
     const savedCommanders = this.savedCommanderByKey();
+    let commanderChanged = false;
     for (const [key, isCommander] of this.pendingCommanderChanges()) {
       if (isCommander === (savedCommanders.get(key) ?? false)) continue;
       const cardName =
         this.editedDeckCards().find((c) => c.cardName.toLowerCase() === key)?.cardName ?? key;
       await this.deckService.setCardCommanderFlag(deck.id, cardName, isCommander);
+      commanderChanged = true;
+    }
+
+    // Farb-/Typal-Metadaten für den öffentlichen Decks-Suchreiter nachpflegen (siehe
+    // sql/public-deck-browse-2026-08-26.sql) - nur wenn sich die Commander-Markierung tatsächlich
+    // geändert hat, sonst unnötiger Schreibzugriff bei jedem Speichern. editedDeckCards() spiegelt
+    // an dieser Stelle noch den fertig gemergten Zustand wider (pendingCommanderChanges wird erst
+    // unten zurückgesetzt). viewingCardDetails() liefert die schon geladenen ScryfallCard-Daten
+    // (colorIdentity/typeLine) der Commander-Karten - kein zusätzlicher Netzwerk-Call nötig.
+    if (commanderChanged) {
+      const commanderCards = this.editedDeckCards()
+        .filter((c) => c.isCommander)
+        .map((c) => this.viewingCardDetails().get(c.cardName.toLowerCase()))
+        .filter((c): c is ScryfallCard => c !== undefined);
+
+      const colorIdentity = [...new Set(commanderCards.flatMap((c) => c.colorIdentity ?? []))].sort();
+      const commanderTypes = [
+        ...new Set(commanderCards.flatMap((c) => DeckViewerService.parseSubtypes(c.typeLine ?? null))),
+      ].sort();
+      await this.deckService.updateDeckCommanderMetadata(deck.id, colorIdentity, commanderTypes);
     }
 
     // Für Karten, die im selben Speichervorgang brandneu hinzugefügt wurden, wurde der

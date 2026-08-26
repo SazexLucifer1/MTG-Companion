@@ -1,0 +1,173 @@
+import { Injectable } from '@angular/core';
+import { supabase } from './supabase.client';
+
+export interface PublicDeck {
+  id: string;
+  name: string;
+  format: string | null;
+  updatedAt: string;
+  edhrecTag: string | null;
+  colorIdentity: string[];
+  commanderTypes: string[];
+  commanderNames: string[];
+}
+
+export interface PublicDeckStats {
+  games: number;
+  wins: number;
+  winRate: number;
+}
+
+export interface PublicDeckFilters {
+  name?: string;
+  /** Exakte Farbidentität (wie ScryfallService.searchCommanders()) - sortiert, für den eq()-Vergleich gegen decks.color_identity. */
+  colors?: string[];
+  /** decks.edhrec_tag, exakt (siehe archetypeOptions()). */
+  archetype?: string | null;
+  /** Muss in decks.commander_types enthalten sein. */
+  creatureType?: string | null;
+  sort: 'recent' | 'winRate';
+}
+
+/** Obergrenze für die Grundmenge, über die "neu"/"Winrate" sortiert wird - siehe searchPublicDecks(). */
+const MAX_RESULTS = 300;
+
+/**
+ * Schlanker, eigenständiger Service für den öffentlichen "Decks"-Suchreiter (alle nicht-privaten
+ * Decks aller Nutzer, auch ohne Login lesbar - siehe sql/public-deck-browse-2026-08-26.sql für die
+ * nötige RLS-Änderung). Bewusst NICHT DeckService erweitert - der ist auf eingeloggte
+ * Nutzer/eigene Decks zugeschnitten (Erstellen/Löschen/Umbenennen); hier geht es rein um Lesen
+ * über ALLE Nutzer hinweg.
+ */
+@Injectable({ providedIn: 'root' })
+export class PublicDeckService {
+  /**
+   * Sucht öffentliche Decks über die gegebenen Filter. Begrenzt auf die MAX_RESULTS zuletzt
+   * aktualisierten Treffer, bevor sortiert/angezeigt wird - eine "Winrate"-Sortierung über
+   * wirklich JEDES öffentliche Deck aller Zeiten bräuchte eine serverseitige Sortier-/
+   * Aggregations-Lösung; dieselbe bewusste Grenze (Grundmenge laden, Winrate clientseitig
+   * nachsortieren) nutzt bereits deck-list.ts für die eigene Deck-Liste.
+   */
+  async searchPublicDecks(filters: PublicDeckFilters): Promise<{ decks: PublicDeck[]; stats: Map<string, PublicDeckStats> }> {
+    let query = supabase
+      .from('decks')
+      .select('id, name, format, updated_at, edhrec_tag, color_identity, commander_types')
+      .eq('is_private', false)
+      .order('updated_at', { ascending: false })
+      .limit(MAX_RESULTS);
+
+    const name = filters.name?.trim();
+    if (name) query = query.ilike('name', `%${name}%`);
+    if (filters.colors && filters.colors.length > 0) query = query.eq('color_identity', [...filters.colors].sort());
+    if (filters.archetype) query = query.eq('edhrec_tag', filters.archetype);
+    if (filters.creatureType) query = query.contains('commander_types', [filters.creatureType]);
+
+    const { data, error } = await query;
+    if (error || !data) {
+      console.error('Konnte öffentliche Decks nicht laden:', error);
+      return { decks: [], stats: new Map() };
+    }
+
+    const deckIds = (data as any[]).map((row) => row.id);
+    const [commanderNames, stats] = await Promise.all([
+      this.getCommanderNames(deckIds),
+      this.getStats(deckIds),
+    ]);
+
+    const decks: PublicDeck[] = (data as any[]).map((row) => ({
+      id: row.id,
+      name: row.name,
+      format: row.format,
+      updatedAt: row.updated_at,
+      edhrecTag: row.edhrec_tag,
+      colorIdentity: row.color_identity ?? [],
+      commanderTypes: row.commander_types ?? [],
+      commanderNames: commanderNames.get(row.id) ?? [],
+    }));
+
+    if (filters.sort === 'winRate') {
+      decks.sort((a, b) => {
+        const sa = stats.get(a.id) ?? { games: 0, wins: 0, winRate: 0 };
+        const sb = stats.get(b.id) ?? { games: 0, wins: 0, winRate: 0 };
+        return sb.winRate - sa.winRate || sb.games - sa.games;
+      });
+    }
+
+    return { decks, stats };
+  }
+
+  /** Alle markierten Commander pro Deck (nicht nur der erste - wichtig für Partner-Decks). */
+  private async getCommanderNames(deckIds: string[]): Promise<Map<string, string[]>> {
+    const result = new Map<string, string[]>();
+    if (deckIds.length === 0) return result;
+
+    const { data, error } = await supabase
+      .from('deck_cards')
+      .select('deck_id, card_name')
+      .eq('is_commander', true)
+      .in('deck_id', deckIds);
+
+    if (error || !data) {
+      console.error('Konnte Commander-Namen nicht laden:', error);
+      return result;
+    }
+
+    for (const row of data as any[]) {
+      const list = result.get(row.deck_id) ?? [];
+      list.push(row.card_name);
+      result.set(row.deck_id, list);
+    }
+    return result;
+  }
+
+  /** Liest die vorab aggregierten Sieg-/Partienzahlen aus deck_public_stats (siehe SQL-Migration). */
+  private async getStats(deckIds: string[]): Promise<Map<string, PublicDeckStats>> {
+    const result = new Map<string, PublicDeckStats>();
+    if (deckIds.length === 0) return result;
+
+    const { data, error } = await supabase
+      .from('deck_public_stats')
+      .select('deck_id, games, wins')
+      .in('deck_id', deckIds);
+
+    if (error || !data) {
+      console.error('Konnte Deck-Statistiken nicht laden:', error);
+      return result;
+    }
+
+    for (const row of data as any[]) {
+      const games = row.games ?? 0;
+      const wins = row.wins ?? 0;
+      result.set(row.deck_id, { games, wins, winRate: games > 0 ? (wins / games) * 100 : 0 });
+    }
+    return result;
+  }
+
+  /** Kartenliste eines einzelnen öffentlichen Decks (Hauptdeck, ohne Maybeboard) - für die Leseansicht. */
+  async loadDeckCards(deckId: string): Promise<{ name: string; quantity: number; isCommander: boolean }[]> {
+    const { data, error } = await supabase
+      .from('deck_cards')
+      .select('card_name, quantity, is_commander')
+      .eq('deck_id', deckId)
+      .eq('is_maybeboard', false)
+      .eq('is_token', false);
+
+    if (error || !data) {
+      console.error('Konnte Deckliste nicht laden:', error);
+      return [];
+    }
+    return (data as any[]).map((row) => ({ name: row.card_name, quantity: row.quantity, isCommander: row.is_commander }));
+  }
+
+  /** Distinkte Archetyp-Werte (decks.edhrec_tag) unter allen öffentlichen Decks - für das Archetyp-Dropdown. */
+  async archetypeOptions(): Promise<string[]> {
+    const { data, error } = await supabase
+      .from('decks')
+      .select('edhrec_tag')
+      .eq('is_private', false)
+      .not('edhrec_tag', 'is', null);
+
+    if (error || !data) return [];
+    return [...new Set((data as any[]).map((row) => row.edhrec_tag as string))].sort();
+  }
+}

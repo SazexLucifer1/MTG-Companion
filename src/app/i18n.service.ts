@@ -13,6 +13,8 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     // --- Header / Navigation ---
     'search.cardsTab': 'Karten',
     'search.commanderTab': 'Commander',
+    'search.preconsTab': 'Precons',
+    'search.decksTab': 'Decks',
 
     'nav.match': 'Match',
     'nav.search': 'Suche',
@@ -601,6 +603,7 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     'deckView.addAria': 'Hinzufügen',
     'deckView.flipAria': 'Karte umdrehen',
     'cardImage.flipAria': 'Karte umdrehen',
+    'partnerCardImage.swapAria': 'Anderen Partner-Commander zeigen',
     'deckView.loadingImages': 'Lade Bilder …',
     'deckView.alreadyInDeckAria': 'Bereits im Deck',
     'deckView.deckAnalysis': '📊 Deck-Analyse',
@@ -1029,6 +1032,19 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     'archetypeFilter.control': 'Kontrolle',
     'archetypeFilter.combo': 'Combo',
 
+    // --- Precon-Suche, Suche-Tab ---
+    'precons.namePlaceholder': 'Precon-Name eingeben …',
+    'precons.noResults': 'Keine Precons gefunden.',
+    'precons.back': '← Zurück',
+    'precons.loadFailed': 'Precon konnte nicht geladen werden.',
+
+    // --- Öffentliche Deck-Suche, Suche-Tab ---
+    'publicDecks.namePlaceholder': 'Deck-Name eingeben …',
+    'publicDecks.sortRecent': 'Sortierung: Neu erstellt',
+    'publicDecks.sortWinRate': 'Sortierung: Winrate',
+    'publicDecks.searchButton': 'Suchen',
+    'publicDecks.noResults': 'Keine öffentlichen Decks gefunden.',
+
     // --- "Bitte anmelden"-Hinweis für Tabs, die einen Account brauchen ---
     'loginRequired.genericHint': 'Melde dich an, um diesen Bereich zu nutzen.',
     'loginRequired.cta': 'Jetzt anmelden',
@@ -1212,6 +1228,8 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     // --- Header / Navigation ---
     'search.cardsTab': 'Cards',
     'search.commanderTab': 'Commander',
+    'search.preconsTab': 'Precons',
+    'search.decksTab': 'Decks',
 
     'nav.match': 'Match',
     'nav.search': 'Search',
@@ -1800,6 +1818,7 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     'deckView.addAria': 'Add',
     'deckView.flipAria': 'Flip card',
     'cardImage.flipAria': 'Flip card',
+    'partnerCardImage.swapAria': 'Show other partner commander',
     'deckView.loadingImages': 'Loading images …',
     'deckView.alreadyInDeckAria': 'Already in deck',
     'deckView.deckAnalysis': '📊 Deck Analysis',
@@ -2231,6 +2250,19 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     'archetypeFilter.politics': 'Politics',
     'archetypeFilter.control': 'Control',
     'archetypeFilter.combo': 'Combo',
+
+    // --- Precon browser, Search tab ---
+    'precons.namePlaceholder': 'Enter precon name …',
+    'precons.noResults': 'No precons found.',
+    'precons.back': '← Back',
+    'precons.loadFailed': 'Could not load this precon.',
+
+    // --- Public deck browser, Search tab ---
+    'publicDecks.namePlaceholder': 'Enter deck name …',
+    'publicDecks.sortRecent': 'Sort: Recently created',
+    'publicDecks.sortWinRate': 'Sort: Win rate',
+    'publicDecks.searchButton': 'Search',
+    'publicDecks.noResults': 'No public decks found.',
 
     // --- "Please sign in" hint for tabs that need an account ---
     'loginRequired.genericHint': 'Sign in to use this area.',

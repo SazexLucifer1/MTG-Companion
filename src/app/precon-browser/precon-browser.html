@@ -1,0 +1,65 @@
+<div class="precon-browser-content">
+  @if (!selected()) {
+    <div class="chip-row precon-filter-row">
+      <input
+        class="glass-input"
+        type="text"
+        [placeholder]="i18n.t('precons.namePlaceholder')"
+        [ngModel]="nameFilter()"
+        (ngModelChange)="nameFilter.set($event)"
+      />
+      <input
+        class="glass-input small precon-year-input"
+        type="number"
+        [ngModel]="year()"
+        (ngModelChange)="setYear($event)"
+      />
+    </div>
+
+    @if (busy()) {
+      <p class="hint">{{ i18n.t('login.pleaseWait') }}</p>
+    } @else if (filteredPrecons().length === 0) {
+      <p class="hint">{{ i18n.t('precons.noResults') }}</p>
+    } @else {
+      <ul class="precon-list">
+        @for (p of filteredPrecons(); track p.fileName) {
+          <li (click)="openPrecon(p)">{{ p.name }}</li>
+        }
+      </ul>
+    }
+  } @else {
+    <button class="glass-chip small" (click)="backToList()">{{ i18n.t('precons.back') }}</button>
+
+    <div class="commander-rec-header">
+      @if (commanderCards().length > 0) {
+        <div class="commander-rec-image">
+          <app-partner-card-image [cards]="commanderCards()" [compact]="true" (imageClick)="openPreview($event)" />
+        </div>
+      }
+      <h3>{{ selected()?.name }}</h3>
+    </div>
+
+    @if (deckBusy()) {
+      <p class="hint">{{ i18n.t('login.pleaseWait') }}</p>
+    } @else if (deckFailed()) {
+      <p class="hint">{{ i18n.t('precons.loadFailed') }}</p>
+    } @else {
+      <div class="card-pick-grid">
+        @for (entry of mainCards(); track entry.card.name) {
+          <div class="card-pick-tile" (click)="openPreview(entry.card)">
+            <div class="card-pick-image">
+              @if (entry.card.imageUrl) {
+                <app-card-image [imageUrl]="entry.card.imageUrl" [backImageUrl]="entry.card.backImageUrl" [alt]="entry.card.name" [compact]="true" />
+              } @else {
+                <div class="card-pick-placeholder">{{ entry.card.name }}</div>
+              }
+            </div>
+            @if (entry.quantity > 1) {
+              <span class="card-pick-stats">×{{ entry.quantity }}</span>
+            }
+          </div>
+        }
+      </div>
+    }
+  }
+</div>

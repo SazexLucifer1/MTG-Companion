@@ -1,27 +1,37 @@
-.commander-rec-content {
+.precon-browser-content {
   max-width: 720px;
   margin: 0 auto;
   text-align: left;
 }
 
-.commander-rec-input-row {
+.precon-filter-row {
   margin: 12px 0;
 
   input {
-    width: 100%;
+    flex: 1 1 auto;
   }
 }
 
-.commander-rec-browse-hint {
-  margin-top: 16px;
+.precon-year-input {
+  max-width: 100px;
+  flex: 0 0 auto !important;
 }
 
-.commander-rec-theme-row {
-  margin-bottom: 10px;
+.precon-list {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+  max-height: 320px;
+  overflow-y: auto;
 
-  select {
-    flex: 1 1 auto;
-    min-width: 140px;
+  li {
+    padding: 8px 10px;
+    cursor: pointer;
+    border-radius: 10px;
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.08);
+    }
   }
 }
 
@@ -39,34 +49,10 @@
 .commander-rec-image {
   width: 90px;
   flex-shrink: 0;
-  cursor: pointer;
   aspect-ratio: 63 / 88;
   border-radius: 8px;
   overflow: hidden;
   border: 1px solid var(--glass-border);
-}
-
-.commander-rec-suggestions {
-  list-style: none;
-  margin: 0 0 12px;
-  padding: 6px;
-  max-height: 220px;
-  overflow-y: auto;
-  border-radius: 14px;
-  background: rgba(20, 16, 38, 0.85);
-  backdrop-filter: blur(20px) saturate(160%);
-  -webkit-backdrop-filter: blur(20px) saturate(160%);
-  border: 1px solid rgba(255, 255, 255, 0.18);
-
-  li {
-    padding: 8px 10px;
-    cursor: pointer;
-    border-radius: 10px;
-
-    &:hover {
-      background: rgba(255, 255, 255, 0.08);
-    }
-  }
 }
 
 .card-pick-grid {
@@ -120,10 +106,4 @@
   font-size: 0.72rem;
   opacity: 0.75;
   text-align: center;
-}
-
-.pager {
-  align-items: center;
-  justify-content: center;
-  margin-top: 10px;
 }

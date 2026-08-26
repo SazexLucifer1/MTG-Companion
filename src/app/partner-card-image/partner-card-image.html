@@ -1,0 +1,18 @@
+<div class="partner-card-image-tap" (click)="onImageClick()">
+  @if (frontCard.imageUrl; as imageUrl) {
+    <app-card-image [imageUrl]="imageUrl" [backImageUrl]="frontCard.backImageUrl" [alt]="frontCard.name" [compact]="compact()" />
+  } @else {
+    <div class="partner-card-placeholder">{{ frontCard.name }}</div>
+  }
+</div>
+
+@if (cards().length > 1) {
+  <button
+    type="button"
+    class="partner-swap-button"
+    (click)="swapFront($event)"
+    [attr.aria-label]="i18n.t('partnerCardImage.swapAria')"
+  >
+    👥
+  </button>
+}

@@ -736,6 +736,25 @@ export class DeckService {
     return true;
   }
 
+  /**
+   * Pflegt decks.color_identity/commander_types nach - fürs Farb-/Typal-Filter im öffentlichen
+   * Decks-Suchreiter (siehe sql/public-deck-browse-2026-08-26.sql). Wird von
+   * DeckViewerService.saveEdits() aufgerufen, sobald sich die Commander-Markierung geändert hat -
+   * ohne diese Pflege würden die Spalten sofort wieder veralten.
+   */
+  async updateDeckCommanderMetadata(deckId: string, colorIdentity: string[], commanderTypes: string[]): Promise<boolean> {
+    const { error } = await supabase
+      .from('decks')
+      .update({ color_identity: colorIdentity, commander_types: commanderTypes })
+      .eq('id', deckId);
+
+    if (error) {
+      console.error('Konnte Commander-Metadaten (Farbe/Typal) nicht aktualisieren:', error);
+      return false;
+    }
+    return true;
+  }
+
   /** Verschiebt eine bereits im Deck vorhandene Karte zwischen Hauptdeck und Maybeboard. */
   async setCardMaybeboardFlag(deckId: string, cardName: string, isMaybeboard: boolean): Promise<boolean> {
     const { error } = await supabase

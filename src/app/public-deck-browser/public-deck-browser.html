@@ -1,0 +1,119 @@
+<div class="public-deck-browser-content">
+  @if (!selectedDeck()) {
+    <div class="public-deck-input-row">
+      <input
+        class="glass-input"
+        type="text"
+        [placeholder]="i18n.t('publicDecks.namePlaceholder')"
+        [ngModel]="nameFilter()"
+        (ngModelChange)="nameFilter.set($event)"
+      />
+    </div>
+
+    <div class="chip-row">
+      @for (c of colorOptions; track c) {
+        <button class="glass-chip small" [class.active]="browseColors().has(c)" (click)="toggleColor(c)">
+          {{ i18n.t('pip.' + c) }}
+        </button>
+      }
+    </div>
+
+    <div class="chip-row public-deck-filter-row">
+      <select class="glass-input small" [ngModel]="sort()" (ngModelChange)="setSort($event)">
+        <option value="recent">{{ i18n.t('publicDecks.sortRecent') }}</option>
+        <option value="winRate">{{ i18n.t('publicDecks.sortWinRate') }}</option>
+      </select>
+
+      <select class="glass-input small" [ngModel]="archetype() ?? 'all'" (ngModelChange)="setArchetype($event)">
+        <option [ngValue]="'all'">{{ i18n.t('commanderRec.anyArchetype') }}</option>
+        @for (a of archetypeOptions(); track a) {
+          <option [ngValue]="a">{{ a }}</option>
+        }
+      </select>
+
+      <select
+        class="glass-input small"
+        [disabled]="creatureTypesLoading()"
+        [ngModel]="creatureType() ?? 'all'"
+        (ngModelChange)="setCreatureType($event)"
+      >
+        <option [ngValue]="'all'">
+          {{ creatureTypesLoading() ? i18n.t('commanderRec.creatureTypesLoading') : i18n.t('commanderRec.anyCreatureType') }}
+        </option>
+        @for (ct of creatureTypeOptions(); track ct) {
+          <option [ngValue]="ct">{{ ct }}</option>
+        }
+      </select>
+    </div>
+
+    <div class="chip-row public-deck-filter-row">
+      <button class="glass-chip small" (click)="search()">{{ i18n.t('publicDecks.searchButton') }}</button>
+      <button class="glass-chip small" (click)="resetFilters()">✕ {{ i18n.t('publicSearch.resetFilters') }}</button>
+    </div>
+
+    @if (busy()) {
+      <p class="hint">{{ i18n.t('login.pleaseWait') }}</p>
+    } @else if (results().length === 0) {
+      <p class="hint">{{ i18n.t('publicDecks.noResults') }}</p>
+    } @else {
+      <div class="card-pick-grid">
+        @for (deck of pagedResults(); track deck.id) {
+          <div class="card-pick-tile" (click)="openDeck(deck)">
+            <div class="card-pick-image">
+              @if (commanderCardsFor(deck.id).length > 0) {
+                <app-partner-card-image [cards]="commanderCardsFor(deck.id)" [compact]="true" />
+              } @else {
+                <div class="card-pick-placeholder">{{ deck.name }}</div>
+              }
+            </div>
+            <span class="card-pick-stats">{{ deck.name }}</span>
+            @if (statsFor(deck.id); as s) {
+              @if (s.games > 0) {
+                <span class="card-pick-stats public-deck-winrate">{{ s.winRate | number: '1.0-0' }}% ({{ s.wins }}/{{ s.games }})</span>
+              }
+            }
+          </div>
+        }
+      </div>
+      @if (totalPages() > 1) {
+        <div class="chip-row pager">
+          <button class="icon-button" (click)="prevPage()" [disabled]="effectivePage() === 0">◀</button>
+          <span class="hint">{{ effectivePage() + 1 }} / {{ totalPages() }}</span>
+          <button class="icon-button" (click)="nextPage()" [disabled]="effectivePage() >= totalPages() - 1">▶</button>
+        </div>
+      }
+    }
+  } @else {
+    <button class="glass-chip small" (click)="backToList()">{{ i18n.t('precons.back') }}</button>
+
+    <div class="commander-rec-header">
+      @if (selectedDeckCommanderCards().length > 0) {
+        <div class="commander-rec-image">
+          <app-partner-card-image [cards]="selectedDeckCommanderCards()" [compact]="true" (imageClick)="openPreview($event)" />
+        </div>
+      }
+      <h3>{{ selectedDeck()?.name }}</h3>
+    </div>
+
+    @if (deckBusy()) {
+      <p class="hint">{{ i18n.t('login.pleaseWait') }}</p>
+    } @else {
+      <div class="card-pick-grid">
+        @for (entry of mainCards(); track entry.card.name) {
+          <div class="card-pick-tile" (click)="openPreview(entry.card)">
+            <div class="card-pick-image">
+              @if (entry.card.imageUrl) {
+                <app-card-image [imageUrl]="entry.card.imageUrl" [backImageUrl]="entry.card.backImageUrl" [alt]="entry.card.name" [compact]="true" />
+              } @else {
+                <div class="card-pick-placeholder">{{ entry.card.name }}</div>
+              }
+            </div>
+            @if (entry.quantity > 1) {
+              <span class="card-pick-stats">×{{ entry.quantity }}</span>
+            }
+          </div>
+        }
+      </div>
+    }
+  }
+</div>
