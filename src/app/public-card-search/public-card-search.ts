@@ -1,5 +1,5 @@
 // NEU
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ScryfallCard, ScryfallService } from '../scryfall.service';
 import { CardPreviewService } from '../card-preview.service';
@@ -9,7 +9,10 @@ import { CardImage } from '../card-image/card-image';
 /**
  * Öffentliche Kartensuche - ohne Account nutzbar (Fan-Content-Policy). Nutzt bewusst
  * autocompleteAnyCard() statt der Commander-only autocomplete()/searchCards(), da hier jede
- * Karte gefunden werden soll, nicht nur Commander-legale.
+ * Karte gefunden werden soll, nicht nur Commander-legale. Filter-Optionen/Labels sind bewusst
+ * unabhängig von DeckViewerService kopiert (nicht injiziert - viel zu groß, an Deck-Schreib-
+ * Operationen gebunden, unpassend für diese anonyme Route), siehe deck-viewer.service.ts für die
+ * ursprünglichen Listen.
  */
 @Component({
   selector: 'app-public-card-search',
@@ -29,9 +32,222 @@ export class PublicCardSearch {
   readonly loading = signal(false);
   private searchTimer: ReturnType<typeof setTimeout> | null = null;
 
+  // --- Filter (wirken auf ALLE Karten, keine Commander-Legalitätsprüfung) ---
+
+  readonly typeFilter = signal<'all' | string>('all');
+  readonly creatureTypeFilter = signal('');
+  readonly cmcFilter = signal<'all' | number>('all');
+  readonly colorFilter = signal<'all' | string>('all');
+  readonly effectFilter = signal<'all' | string>('all');
+  readonly keywordFilter = signal<'all' | string>('all');
+  readonly sortMode = signal<'name' | 'cmc'>('name');
+
+  readonly gridResults = signal<ScryfallCard[]>([]);
+  readonly gridBusy = signal(false);
+  readonly gridPage = signal(0);
+
+  private static readonly PAGE_SIZE = 30;
+
+  readonly gridTotalPages = computed(() =>
+    Math.max(1, Math.ceil(this.gridResults().length / PublicCardSearch.PAGE_SIZE))
+  );
+  readonly gridEffectivePage = computed(() => Math.min(this.gridPage(), this.gridTotalPages() - 1));
+  readonly pagedGridResults = computed(() => {
+    const start = this.gridEffectivePage() * PublicCardSearch.PAGE_SIZE;
+    return this.gridResults().slice(start, start + PublicCardSearch.PAGE_SIZE);
+  });
+
+  readonly typeOptions = [
+    'Kreatur',
+    'Legendäre Kreatur',
+    'Planeswalker',
+    'Battle',
+    'Spontanzauber',
+    'Hexerei',
+    'Artefakt',
+    'Verzauberung',
+    'Land',
+  ];
+
+  private static readonly TYPE_TO_SCRYFALL: Record<string, string> = {
+    Planeswalker: 'planeswalker',
+    Battle: 'battle',
+    Kreatur: 'creature',
+    'Legendäre Kreatur': 'legendary creature',
+    Spontanzauber: 'instant',
+    Hexerei: 'sorcery',
+    Artefakt: 'artifact',
+    Verzauberung: 'enchantment',
+    Land: 'land',
+  };
+
+  /** Kopie von deck-viewer.service.ts's effectFilters OHNE die 3 rein deck-lokalen Einträge (tutor/extraturn/mld, query: '' - laufen dort über deck-spezifische Analyse statt Scryfall-Abfrage, hier ohne Deck-Kontext nicht möglich). */
+  readonly effectFilters: { value: string; query: string }[] = [
+    { value: 'tokens', query: 'o:create o:token' },
+    { value: 'draw', query: 'otag:draw' },
+    { value: 'removal', query: 'otag:removal' },
+    {
+      value: 'counterspell',
+      query:
+        '(otag:counterspell or otag:counterspell-noncreature or otag:counterspell-creature or otag:counterspell-sorcery or otag:counterspell-instant or otag:counterspell-artifact or otag:counterspell-enchantment or otag:counterspell-planeswalker or otag:counterspell-ability or otag:counterspell-reusable or otag:counterspell-exile or otag:counterspell-free)',
+    },
+    { value: 'boardwipe', query: 'otag:board-wipe' },
+    { value: 'ramp', query: '(otag:ramp or otag:land-ramp or otag:extra-land or otag:play-additional-land) -t:land' },
+    { value: 'lifegain', query: 'otag:lifegain' },
+    { value: 'counters', query: 'otag:gives-1-1-counters' },
+    { value: 'proliferate', query: 'keyword:proliferate' },
+    { value: 'protection', query: 'otag:protection' },
+    {
+      value: 'reanimate',
+      query:
+        '(otag:reanimate or otag:reanimate-creature or otag:reanimate-artifact or otag:reanimate-enchantment or otag:reanimate-planeswalker or otag:reanimate-permanent)',
+    },
+    { value: 'recursion', query: 'otag:recursion' },
+    { value: 'sacrifice', query: 'otag:sacrifice-outlet' },
+    { value: 'extracombat', query: 'otag:extra-combat' },
+  ];
+
+  readonly keywordFilters: string[] = [
+    'lifelink',
+    'deathtouch',
+    'flying',
+    'trample',
+    'vigilance',
+    'haste',
+    'hexproof',
+    'indestructible',
+    'menace',
+    'reach',
+    'first strike',
+    'double strike',
+    'ward',
+    'flash',
+    'defender',
+  ];
+
+  private static readonly TYPE_LABEL_KEYS: Record<string, string> = {
+    Planeswalker: 'deckViewer.type.Planeswalker',
+    Battle: 'deckViewer.type.Battle',
+    Kreatur: 'deckViewer.type.Kreatur',
+    'Legendäre Kreatur': 'deckViewer.type.LegendaereKreatur',
+    Spontanzauber: 'deckViewer.type.Spontanzauber',
+    Hexerei: 'deckViewer.type.Hexerei',
+    Artefakt: 'deckViewer.type.Artefakt',
+    Verzauberung: 'deckViewer.type.Verzauberung',
+    Land: 'deckViewer.type.Land',
+  };
+
+  typeFilterLabel(label: string): string {
+    const key = PublicCardSearch.TYPE_LABEL_KEYS[label];
+    return key ? this.i18n.t(key) : label;
+  }
+
+  effectFilterLabel(value: string): string {
+    return this.i18n.t(`effectFilter.${value}`);
+  }
+
+  keywordFilterLabel(value: string): string {
+    return this.i18n.t(`keywordFilter.${value}`);
+  }
+
+  hasActiveFilters(): boolean {
+    return (
+      this.typeFilter() !== 'all' ||
+      this.creatureTypeFilter().trim() !== '' ||
+      this.cmcFilter() !== 'all' ||
+      this.colorFilter() !== 'all' ||
+      this.effectFilter() !== 'all' ||
+      this.keywordFilter() !== 'all'
+    );
+  }
+
+  resetFilters(): void {
+    this.typeFilter.set('all');
+    this.creatureTypeFilter.set('');
+    this.cmcFilter.set('all');
+    this.colorFilter.set('all');
+    this.effectFilter.set('all');
+    this.keywordFilter.set('all');
+    this.gridResults.set([]);
+  }
+
+  setTypeFilter(value: string): void {
+    this.typeFilter.set(value);
+    this.runFilterSearch();
+  }
+
+  onCreatureTypeInput(value: string): void {
+    this.creatureTypeFilter.set(value);
+    if (this.searchTimer) clearTimeout(this.searchTimer);
+    this.searchTimer = setTimeout(() => this.runFilterSearch(), 300);
+  }
+
+  setCmcFilter(value: 'all' | number): void {
+    this.cmcFilter.set(value);
+    this.runFilterSearch();
+  }
+
+  setColorFilter(value: string): void {
+    this.colorFilter.set(value);
+    this.runFilterSearch();
+  }
+
+  setEffectFilter(value: string): void {
+    this.effectFilter.set(value);
+    this.runFilterSearch();
+  }
+
+  setKeywordFilter(value: string): void {
+    this.keywordFilter.set(value);
+    this.runFilterSearch();
+  }
+
+  setSortMode(value: 'name' | 'cmc'): void {
+    this.sortMode.set(value);
+    this.runFilterSearch();
+  }
+
+  private async runFilterSearch(): Promise<void> {
+    if (!this.hasActiveFilters() && !this.query().trim()) {
+      this.gridResults.set([]);
+      return;
+    }
+    this.gridBusy.set(true);
+    this.result.set(null);
+    this.searched.set(false);
+    const type = this.typeFilter();
+    const results = await this.scryfall.searchCards(this.query(), {
+      type: type === 'all' ? undefined : (PublicCardSearch.TYPE_TO_SCRYFALL[type] ?? type.toLowerCase()),
+      creatureType: this.creatureTypeFilter().trim() || undefined,
+      color: this.colorFilter() === 'all' ? null : this.colorFilter(),
+      cmc: this.cmcFilter() === 'all' ? null : (this.cmcFilter() as number),
+      effectQuery:
+        this.effectFilter() === 'all' ? undefined : this.effectFilters.find((f) => f.value === this.effectFilter())?.query,
+      keyword: this.keywordFilter() === 'all' ? undefined : this.keywordFilter(),
+      order: this.sortMode(),
+      commanderOnly: false,
+    });
+    this.gridResults.set(results);
+    this.gridPage.set(0);
+    this.gridBusy.set(false);
+  }
+
+  prevGridPage(): void {
+    this.gridPage.update((p) => Math.max(0, p - 1));
+  }
+
+  nextGridPage(): void {
+    this.gridPage.update((p) => Math.min(this.gridTotalPages() - 1, p + 1));
+  }
+
   onQueryInput(value: string): void {
     this.query.set(value);
     if (this.searchTimer) clearTimeout(this.searchTimer);
+    if (this.hasActiveFilters()) {
+      this.suggestions.set([]);
+      this.searchTimer = setTimeout(() => this.runFilterSearch(), 300);
+      return;
+    }
     this.searchTimer = setTimeout(async () => {
       this.suggestions.set(await this.scryfall.autocompleteAnyCard(value));
     }, 250);
@@ -39,6 +255,7 @@ export class PublicCardSearch {
 
   async selectCard(name: string): Promise<void> {
     this.suggestions.set([]);
+    this.gridResults.set([]);
     this.query.set(name);
     this.loading.set(true);
     this.searched.set(true);
@@ -47,6 +264,11 @@ export class PublicCardSearch {
   }
 
   async submit(): Promise<void> {
+    if (this.hasActiveFilters()) {
+      if (this.searchTimer) clearTimeout(this.searchTimer);
+      await this.runFilterSearch();
+      return;
+    }
     if (!this.query().trim()) return;
     await this.selectCard(this.query());
   }

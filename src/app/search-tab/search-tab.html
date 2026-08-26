@@ -1,1 +1,14 @@
-<app-public-card-search />
+<div class="chip-row search-mode-toggle">
+  <button class="glass-chip" [class.active]="subView() === 'cards'" (click)="subView.set('cards')">
+    🔍 {{ i18n.t('search.cardsTab') }}
+  </button>
+  <button class="glass-chip" [class.active]="subView() === 'commander'" (click)="subView.set('commander')">
+    👑 {{ i18n.t('search.commanderTab') }}
+  </button>
+</div>
+
+@if (subView() === 'cards') {
+  <app-public-card-search />
+} @else {
+  <app-commander-recommendations />
+}

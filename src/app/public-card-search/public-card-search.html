@@ -10,6 +10,66 @@
     />
   </div>
 
+  <div class="chip-row card-filter-row">
+    <select class="glass-input small" [ngModel]="typeFilter()" (ngModelChange)="setTypeFilter($event)">
+      <option [ngValue]="'all'">{{ i18n.t('deckView.typeAll') }}</option>
+      @for (t of typeOptions; track t) {
+        <option [ngValue]="t">{{ typeFilterLabel(t) }}</option>
+      }
+    </select>
+
+    <input
+      class="glass-input small"
+      type="text"
+      [placeholder]="i18n.t('deckView.creatureTypePlaceholder')"
+      [ngModel]="creatureTypeFilter()"
+      (ngModelChange)="onCreatureTypeInput($event)"
+    />
+
+    <select class="glass-input small" [ngModel]="cmcFilter()" (ngModelChange)="setCmcFilter($event)">
+      <option [ngValue]="'all'">{{ i18n.t('deckView.cmcAll') }}</option>
+      @for (n of [0, 1, 2, 3, 4, 5, 6, 7]; track n) {
+        <option [ngValue]="n">{{ n === 7 ? '7+' : n }}</option>
+      }
+    </select>
+
+    <select class="glass-input small" [ngModel]="colorFilter()" (ngModelChange)="setColorFilter($event)">
+      <option [ngValue]="'all'">{{ i18n.t('deckView.colorAll') }}</option>
+      <option [ngValue]="'W'">{{ i18n.t('pip.W') }}</option>
+      <option [ngValue]="'U'">{{ i18n.t('pip.U') }}</option>
+      <option [ngValue]="'B'">{{ i18n.t('pip.B') }}</option>
+      <option [ngValue]="'R'">{{ i18n.t('pip.R') }}</option>
+      <option [ngValue]="'G'">{{ i18n.t('pip.G') }}</option>
+      <option [ngValue]="'C'">{{ i18n.t('deckView.colorless') }}</option>
+    </select>
+
+    <select class="glass-input small" [ngModel]="effectFilter()" (ngModelChange)="setEffectFilter($event)">
+      <option [ngValue]="'all'">{{ i18n.t('deckView.effectAll') }}</option>
+      @for (f of effectFilters; track f.value) {
+        <option [ngValue]="f.value">{{ effectFilterLabel(f.value) }}</option>
+      }
+    </select>
+
+    <select class="glass-input small" [ngModel]="keywordFilter()" (ngModelChange)="setKeywordFilter($event)">
+      <option [ngValue]="'all'">{{ i18n.t('deckView.abilityAll') }}</option>
+      @for (k of keywordFilters; track k) {
+        <option [ngValue]="k">{{ keywordFilterLabel(k) }}</option>
+      }
+    </select>
+  </div>
+
+  @if (hasActiveFilters()) {
+    <div class="chip-row">
+      <button class="glass-chip small" [class.active]="sortMode() === 'name'" (click)="setSortMode('name')">
+        {{ i18n.t('deckView.sortByName') }}
+      </button>
+      <button class="glass-chip small" [class.active]="sortMode() === 'cmc'" (click)="setSortMode('cmc')">
+        {{ i18n.t('deckView.sortByCmc') }}
+      </button>
+      <button class="glass-chip small" (click)="resetFilters()">✕ {{ i18n.t('publicSearch.resetFilters') }}</button>
+    </div>
+  }
+
   @if (suggestions().length > 0) {
     <ul class="public-search-suggestions">
       @for (name of suggestions(); track name) {
@@ -18,24 +78,53 @@
     </ul>
   }
 
-  @if (loading()) {
-    <p class="hint">{{ i18n.t('login.pleaseWait') }}</p>
-  } @else if (searched() && result(); as card) {
-    <div class="public-search-result" (click)="openPreview(card)">
-      @if (card.imageUrl) {
-        <app-card-image [imageUrl]="card.imageUrl" [backImageUrl]="card.backImageUrl" [alt]="card.name" />
+  @if (gridBusy()) {
+    <p class="hint">{{ i18n.t('deckView.searching') }}</p>
+  } @else if (gridResults().length > 0) {
+    <div class="card-pick-grid">
+      @for (card of pagedGridResults(); track card.name) {
+        <div class="card-pick-tile" (click)="openPreview(card)">
+          <div class="card-pick-image">
+            @if (card.imageUrl) {
+              <app-card-image [imageUrl]="card.imageUrl" [backImageUrl]="card.backImageUrl" [alt]="card.name" [compact]="true" />
+            } @else {
+              <div class="card-pick-placeholder">{{ card.name }}</div>
+            }
+          </div>
+        </div>
       }
-      <div class="public-search-result-info">
-        <strong>{{ card.name }}</strong>
-        @if (card.typeLine) {
-          <span class="type-line">{{ card.typeLine }}</span>
-        }
-        @if (card.oracleText) {
-          <p class="oracle-text">{{ card.oracleText }}</p>
-        }
-      </div>
     </div>
-  } @else if (searched()) {
+    @if (gridTotalPages() > 1) {
+      <div class="chip-row pager">
+        <button class="icon-button" (click)="prevGridPage()" [disabled]="gridEffectivePage() === 0">◀</button>
+        <span class="hint">{{ gridEffectivePage() + 1 }} / {{ gridTotalPages() }}</span>
+        <button class="icon-button" (click)="nextGridPage()" [disabled]="gridEffectivePage() >= gridTotalPages() - 1">▶</button>
+      </div>
+    }
+  } @else if (hasActiveFilters() && !loading()) {
     <p class="hint">{{ i18n.t('publicSearch.noResults') }}</p>
+  }
+
+  @if (!hasActiveFilters()) {
+    @if (loading()) {
+      <p class="hint">{{ i18n.t('login.pleaseWait') }}</p>
+    } @else if (searched() && result(); as card) {
+      <div class="public-search-result" (click)="openPreview(card)">
+        @if (card.imageUrl) {
+          <app-card-image [imageUrl]="card.imageUrl" [backImageUrl]="card.backImageUrl" [alt]="card.name" />
+        }
+        <div class="public-search-result-info">
+          <strong>{{ card.name }}</strong>
+          @if (card.typeLine) {
+            <span class="type-line">{{ card.typeLine }}</span>
+          }
+          @if (card.oracleText) {
+            <p class="oracle-text">{{ card.oracleText }}</p>
+          }
+        </div>
+      </div>
+    } @else if (searched()) {
+      <p class="hint">{{ i18n.t('publicSearch.noResults') }}</p>
+    }
   }
 </div>

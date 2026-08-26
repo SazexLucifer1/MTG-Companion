@@ -367,6 +367,8 @@ export class ScryfallService {
       keyword?: string;
       /** Sortierung der Ergebnisliste - Default 'name' (alphabetisch), 'cmc' sortiert nach Manawert aufsteigend. */
       order?: 'name' | 'cmc';
+      /** Default true (bestehendes Verhalten fürs Deck-Hinzufügen). false = auch Nicht-Commander-legale Karten (öffentliche Suche ohne Format-Bezug). */
+      commanderOnly?: boolean;
     }
   ): Promise<ScryfallCard[]> {
     const trimmed = query.trim();
@@ -383,7 +385,7 @@ export class ScryfallService {
       return [];
     }
 
-    const parts = ['legal:commander'];
+    const parts = filters.commanderOnly === false ? [] : ['legal:commander'];
     if (trimmed) parts.push(`name:"${trimmed.replace(/"/g, '')}"`);
     if (filters.type) parts.push(`type:"${filters.type}"`);
     if (creatureType) parts.push(`type:"${creatureType.replace(/"/g, '')}"`);
