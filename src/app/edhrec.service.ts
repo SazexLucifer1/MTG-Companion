@@ -100,6 +100,26 @@ export class EdhrecService {
     return this.fetchPage('commanders', path);
   }
 
+  /** Fetch für Top-Level-Übersichtsseiten ohne Unterordner, z.B. "themes.json" (alle Themes). */
+  private async fetchTopLevelPage(name: string): Promise<any | null> {
+    const cacheKey = `_top/${name}`;
+    const cache = this.getCache();
+    const cached = cache[cacheKey];
+    if (cached && Date.now() - cached.cachedAt < EdhrecService.CACHE_TTL_MS) {
+      return cached.data;
+    }
+    try {
+      const res = await fetch(`https://json.edhrec.com/pages/${name}.json`);
+      if (!res.ok) return null;
+      const data = await res.json();
+      cache[cacheKey] = { data, cachedAt: Date.now() };
+      this.saveCache();
+      return data;
+    } catch {
+      return null;
+    }
+  }
+
   private static mapCardlists(raw: any[]): EdhrecCardlist[] {
     return raw.map((list: any) => ({
       tag: list.tag,
@@ -199,15 +219,52 @@ export class EdhrecService {
   }
 
   /**
-   * Liefert die "Top Commanders"-Übersicht für ein Archetyp/Theme (z.B. "sacrifice", "stax") -
+   * Liefert die "Top Commanders"-Übersicht für ein Archetyp/Theme (z.B. "sacrifice", "stax"),
+   * optional zusätzlich auf eine Farbkombination eingeschränkt (z.B. "sacrifice" + Rakdos) -
    * eigener EDHREC-Seitentyp ("themes/…" statt "commanders/…"), deshalb ein separater Fetch statt
    * Wiederverwendung von getCommanderRecommendations().
    */
-  async getTopCommandersForTheme(themeSlug: string): Promise<EdhrecCardlist[] | null> {
-    const data = await this.fetchPage('themes', themeSlug);
+  async getTopCommandersForTheme(themeSlug: string, colors?: string[]): Promise<EdhrecCardlist[] | null> {
+    const colorSlug = colors && colors.length > 0 ? this.colorComboSlug(colors) : null;
+    const path = colorSlug ? `${themeSlug}/${colorSlug}` : themeSlug;
+    const data = await this.fetchPage('themes', path);
     const cardlists = data?.container?.json_dict?.cardlists;
     if (!Array.isArray(cardlists)) return null;
     return EdhrecService.mapCardlists(cardlists);
+  }
+
+  /**
+   * Liefert EDHRECs eigene, vollständige Liste aller Archetyp/Theme-Slugs ("themes.json") - ersetzt
+   * eine früher fest kodierte, teils geratene Werte-Liste. Die genaue Antwortstruktur dieser
+   * Übersichtsseite (anders als bei einzelnen Commander-/Theme-Seiten) ist nicht sicher bestätigt -
+   * defensiv geparst, liefert bei unerwarteter Struktur einfach null statt abzustürzen.
+   */
+  async getAllThemes(): Promise<EdhrecTag[] | null> {
+    const data = await this.fetchTopLevelPage('themes');
+    if (!data) return null;
+
+    // Fallback 1: eigene "PageThemes"-Struktur (mightstone-Recherche deutet auf ein eigenes
+    // Antwort-Modell hin, nicht die Container/json_dict/cardlists-Hülle einzelner Seiten).
+    const flat = data?.themes ?? data?.container?.json_dict?.themes;
+    if (Array.isArray(flat) && flat.length > 0) {
+      return flat
+        .filter((t: any) => t?.name && (t?.slug || t?.urlhash))
+        .map((t: any) => ({ slug: t.slug ?? t.urlhash, value: t.name, count: t.num_decks ?? t.count ?? 0 }));
+    }
+
+    // Fallback 2: dieselbe Container/json_dict/cardlists-Hülle wie einzelne Commander-/Theme-Seiten,
+    // falls EDHREC die "alle Themes"-Übersicht doch mit derselben Kartenlisten-Vorlage rendert.
+    const cardlists = data?.container?.json_dict?.cardlists;
+    if (Array.isArray(cardlists)) {
+      const cards = cardlists.flatMap((list: any) => (list.cardviews ?? []) as any[]);
+      if (cards.length > 0) {
+        return cards
+          .filter((c: any) => c.name && (c.slug || c.urlhash))
+          .map((c: any) => ({ slug: c.slug ?? c.urlhash, value: c.name, count: c.num_decks ?? 0 }));
+      }
+    }
+
+    return null;
   }
 
   /** Liefert die auf EDHREC verfügbaren Theme-Tags für einen Commander/ein Commander-Paar (z.B. Ramp, Aristocrats, Stax, ...), sortiert nach Häufigkeit. */

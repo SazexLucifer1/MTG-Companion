@@ -57,29 +57,11 @@ export class CommanderRecommendations {
   readonly browseBusy = signal(false);
   readonly browseFailed = signal(false);
 
-  readonly themeOptions = [
-    'sacrifice',
-    'tokens',
-    'lifegain',
-    'ramp',
-    'stax',
-    'mill',
-    'reanimator',
-    'voltron',
-    'superfriends',
-    'spellslinger',
-    'landfall',
-    'group-hug',
-    'aggro',
-    'control',
-    'artifacts',
-    'enchantress',
-    'counters',
-    'blink',
-  ];
+  /** EDHRECs eigene Archetyp-Liste, geladen über getAllThemes() statt geraten - null solange noch nicht geladen/fehlgeschlagen. */
+  readonly themeOptions = signal<EdhrecTag[] | null>(null);
 
-  themeLabel(value: string): string {
-    return this.i18n.t(`themeFilter.${value}`);
+  constructor() {
+    this.edhrec.getAllThemes().then((themes) => this.themeOptions.set(themes ?? []));
   }
 
   toggleBrowseColor(color: string): void {
@@ -104,9 +86,10 @@ export class CommanderRecommendations {
     this.browseLists.set(null);
 
     const theme = this.browseTheme();
+    const colors = [...this.browseColors()];
     const result = theme
-      ? await this.edhrec.getTopCommandersForTheme(theme)
-      : await this.edhrec.getTopCommandersForColors([...this.browseColors()]);
+      ? await this.edhrec.getTopCommandersForTheme(theme, colors)
+      : await this.edhrec.getTopCommandersForColors(colors);
 
     this.browseLists.set(result);
     this.browseFailed.set(result === null);
