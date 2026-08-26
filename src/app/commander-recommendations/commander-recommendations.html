@@ -56,6 +56,9 @@
       <p class="hint">{{ i18n.t('login.pleaseWait') }}</p>
     } @else if (browseFailed()) {
       <p class="hint">{{ i18n.t('deckView.edhrecUnavailable') }}</p>
+      @if (browseDebug(); as debug) {
+        <p class="hint commander-rec-debug">🔧 {{ debug }}</p>
+      }
     } @else if (browseLists(); as browseLists) {
       @for (list of browseLists; track list.tag) {
         @if (list.cards.length > 0) {

@@ -76,7 +76,16 @@ export class EdhrecService {
     }
   }
 
-  /** Gemeinsame Fetch-/Fehlerbehandlung für EDHRECs Seiten-JSON-Endpunkte ("commanders/…", "themes/…", …) - liefert das rohe JSON oder null. */
+  /**
+   * Debug-Info zum zuletzt versuchten fetchPage()-Aufruf (URL + HTTP-Status oder "network-error") -
+   * NUR zur Fehlerdiagnose bei einem "nicht verfügbar"-Fehlschlag gedacht (EDHRECs API ist
+   * undokumentiert und von der Entwicklungsumgebung aus nicht direkt testbar), wird in der UI
+   * angezeigt, damit ein fehlschlagender Live-Test die tatsächlich versuchte URL zurückmelden kann,
+   * statt weiter raten zu müssen. TODO: entfernen, sobald die Archetyp-Endpunkte zuverlässig laufen.
+   */
+  lastFetchDebug: string | null = null;
+
+  /** Gemeinsame Fetch-/Fehlerbehandlung für EDHRECs Seiten-JSON-Endpunkte ("commanders/…", "tags/…", …) - liefert das rohe JSON oder null. */
   private async fetchPage(prefix: string, path: string): Promise<any | null> {
     const cacheKey = `${prefix}/${path}`;
     const cache = this.getCache();
@@ -84,14 +93,20 @@ export class EdhrecService {
     if (cached && Date.now() - cached.cachedAt < EdhrecService.CACHE_TTL_MS) {
       return cached.data;
     }
+    const url = `https://json.edhrec.com/pages/${prefix}/${path}.json`;
     try {
-      const res = await fetch(`https://json.edhrec.com/pages/${prefix}/${path}.json`);
-      if (!res.ok) return null;
+      const res = await fetch(url);
+      if (!res.ok) {
+        this.lastFetchDebug = `${url} → HTTP ${res.status}`;
+        return null;
+      }
       const data = await res.json();
       cache[cacheKey] = { data, cachedAt: Date.now() };
       this.saveCache();
+      this.lastFetchDebug = `${url} → OK`;
       return data;
-    } catch {
+    } catch (err) {
+      this.lastFetchDebug = `${url} → network error (${err instanceof Error ? err.message : String(err)})`;
       return null;
     }
   }
@@ -220,8 +235,8 @@ export class EdhrecService {
   /**
    * Liefert EDHRECs vollständige Archetyp-Liste ("Alle Archetypen", unabhängig von jeder
    * Farbauswahl) - echte, per Websuche bestätigte Seite: edhrec.com/tags/themes ("All Tags |
-   * EDHREC"). Anders als bei früheren Versuchen (PR #108s "themes/"-Präfix) ist der bestätigte
-   * Pfad-Präfix "tags/" - siehe z.B. edhrec.com/tags/sacrifice, /tags/aristocrats, /tags/voltron.
+   * EDHREC"). Live bestätigt funktionsfähig (füllt das Archetyp-Dropdown tatsächlich mit echten
+   * Namen). Pfad: tags/themes.json.
    */
   async getAllTags(): Promise<EdhrecTag[] | null> {
     const data = await this.fetchPage('tags', 'themes');
@@ -236,12 +251,19 @@ export class EdhrecService {
 
   /**
    * Liefert die "Top Commanders"-Übersicht für einen Archetyp/Tag (z.B. "sacrifice", "voltron"),
-   * optional zusätzlich auf eine Farbkombination eingeschränkt - komplett unabhängig von einer
-   * Farbauswahl nutzbar (echte Seite: edhrec.com/tags/{tag}, bestätigt per Websuche existierend).
+   * optional zusätzlich auf eine Farbkombination eingeschränkt.
+   *
+   * Pfad: tags/themes/{tag}[/{farbe}].json - NICHT tags/{tag}.json (das war der vorherige,
+   * fehlgeschlagene Versuch). Da getAllTags() (tags/themes.json, die "alle Archetypen"-Liste) live
+   * bestätigt funktioniert, aber die einzelne Archetyp-Seite unter tags/{tag}.json live NICHT
+   * funktioniert hat, ist die naheliegendste Erklärung: "themes" ist bei EDHREC keine reine
+   * Farbkombinations-Kategorie, sondern der gemeinsame Container für ALLE Tag-Einträge (Farben UND
+   * Archetypen) - einzelne Einträge liegen dann konsequenterweise unter tags/themes/{eintrag}, nicht
+   * direkt unter tags/{eintrag}. Passt auch zur separat bestätigten Seite edhrec.com/tags/themes/rakdos.
    */
   async getTopCommandersForTag(tagSlug: string, colors?: string[]): Promise<EdhrecCardlist[] | null> {
     const colorSlug = colors && colors.length > 0 ? this.colorComboSlug(colors) : null;
-    const path = colorSlug ? `${tagSlug}/${colorSlug}` : tagSlug;
+    const path = colorSlug ? `themes/${tagSlug}/${colorSlug}` : `themes/${tagSlug}`;
     const data = await this.fetchPage('tags', path);
     const cardlists = data?.container?.json_dict?.cardlists;
     if (!Array.isArray(cardlists)) return null;

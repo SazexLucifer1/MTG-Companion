@@ -56,6 +56,8 @@ export class CommanderRecommendations {
   readonly browseLists = signal<EdhrecCardlist[] | null>(null);
   readonly browseBusy = signal(false);
   readonly browseFailed = signal(false);
+  /** TODO: entfernen, sobald die Archetyp-Endpunkte zuverlässig laufen - zeigt bei einem Fehlschlag die tatsächlich versuchte URL, damit ein Live-Test sie zurückmelden kann statt weiter geraten zu müssen. */
+  readonly browseDebug = signal<string | null>(null);
 
   /**
    * EDHRECs vollständige, farbunabhängige Archetyp-Liste (getAllTags(), edhrec.com/tags/themes) -
@@ -99,6 +101,7 @@ export class CommanderRecommendations {
 
     this.browseLists.set(result);
     this.browseFailed.set(result === null);
+    this.browseDebug.set(result === null ? this.edhrec.lastFetchDebug : null);
     this.browseBusy.set(false);
   }
 
@@ -107,6 +110,7 @@ export class CommanderRecommendations {
     this.browseTheme.set(null);
     this.browseLists.set(null);
     this.browseFailed.set(false);
+    this.browseDebug.set(null);
   }
 
   // --- Direkte Namenssuche ---

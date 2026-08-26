@@ -121,3 +121,11 @@
   opacity: 0.75;
   text-align: center;
 }
+
+/* TODO: entfernen, sobald die Archetyp-Endpunkte zuverlässig laufen. */
+.commander-rec-debug {
+  font-family: monospace;
+  font-size: 0.7rem;
+  opacity: 0.6;
+  word-break: break-all;
+}
