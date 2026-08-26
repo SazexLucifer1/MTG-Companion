@@ -9,6 +9,11 @@ import { I18nService } from '../i18n.service';
 import { CardImage } from '../card-image/card-image';
 import { COMMANDER_ARCHETYPE_FILTERS } from '../commander-archetype-filters';
 
+/** Ein Treffer der Commander-Suche - 1 Karte bei einem Solo-Commander, 2 bei einem Partner-Paar (siehe searchCommanderPairs()). */
+interface CommanderBrowseEntry {
+  cards: ScryfallCard[];
+}
+
 /**
  * Commander-Empfehlungen - ohne Account/Deck nutzbar, eigener Umschalter im Suche-Tab. Rein
  * lesend (kein "zum Deck hinzufügen"), dafür mit Zoom über CardPreviewService. Spiegelt das
@@ -42,8 +47,8 @@ export class CommanderRecommendations {
   readonly suggestions = signal<string[]>([]);
   private searchTimer: ReturnType<typeof setTimeout> | null = null;
 
-  readonly commanderName = signal<string | null>(null);
-  readonly commanderCard = signal<ScryfallCard | null>(null);
+  readonly commanderNames = signal<string[] | null>(null);
+  readonly commanderCards = signal<ScryfallCard[]>([]);
   readonly tags = signal<EdhrecTag[]>([]);
   readonly selectedTag = signal<string | null>(null);
   readonly lists = signal<EdhrecCardlist[] | null>(null);
@@ -62,7 +67,7 @@ export class CommanderRecommendations {
   readonly browseCreatureType = signal<string | null>(null);
   readonly creatureTypeOptions = signal<string[]>([]);
   readonly creatureTypesLoading = signal(false);
-  readonly browseResults = signal<ScryfallCard[]>([]);
+  readonly browseResults = signal<CommanderBrowseEntry[]>([]);
   readonly browseBusy = signal(false);
   readonly browsePage = signal(0);
 
@@ -127,13 +132,17 @@ export class CommanderRecommendations {
     const colors = [...this.browseColors()];
     const archetype = this.browseArchetype();
     const archetypeQuery = archetype ? this.archetypeOptions.find((f) => f.value === archetype)?.query : undefined;
-    const results = await this.scryfall.searchCommanders(colors, {
-      name: this.query(),
-      archetypeQuery,
-      creatureType: this.browseCreatureType(),
-    });
+    const filters = { name: this.query(), archetypeQuery, creatureType: this.browseCreatureType() };
 
-    this.browseResults.set(results);
+    // Paare (Partner, Friends forever, Choose a Background, Doctor's companion, ...) laufen als
+    // eigene Abfrage neben den Solo-Commandern (siehe searchCommanderPairs() - nur aktiv, wenn eine
+    // Farbe gesetzt ist, da die exakte Paar-Farbidentität sonst kein sinnvolles Ziel hätte).
+    const [singles, pairs] = await Promise.all([
+      this.scryfall.searchCommanders(colors, filters),
+      this.scryfall.searchCommanderPairs(colors, filters),
+    ]);
+
+    this.browseResults.set([...singles.map((card) => ({ cards: [card] })), ...pairs.map(([a, b]) => ({ cards: [a, b] }))]);
     this.browsePage.set(0);
     this.browseBusy.set(false);
   }
@@ -165,28 +174,30 @@ export class CommanderRecommendations {
     }, 250);
   }
 
-  async selectCommander(name: string): Promise<void> {
+  /** Nimmt 1 Namen (Solo-Commander) oder 2 Namen (Partner-Paar, siehe searchCommanderPairs()). */
+  async selectCommander(names: string[]): Promise<void> {
     this.suggestions.set([]);
-    this.query.set(name);
-    this.commanderName.set(name);
-    this.commanderCard.set(null);
+    this.query.set(names.join(' + '));
+    this.commanderNames.set(names);
+    this.commanderCards.set([]);
     this.selectedTag.set(null);
     this.expandedCategories.set(new Set());
     this.cardDetails.set(new Map());
     this.tags.set([]);
-    await Promise.all([this.loadRecommendations(), this.loadCommanderCard(name)]);
-    this.tags.set((await this.edhrec.getCommanderTags([name])) ?? []);
+    await Promise.all([this.loadRecommendations(), this.loadCommanderCards(names)]);
+    this.tags.set((await this.edhrec.getCommanderTags(names)) ?? []);
   }
 
   backToBrowse(): void {
-    this.commanderName.set(null);
-    this.commanderCard.set(null);
+    this.commanderNames.set(null);
+    this.commanderCards.set([]);
     this.lists.set(null);
     this.query.set('');
   }
 
-  private async loadCommanderCard(name: string): Promise<void> {
-    this.commanderCard.set(await this.scryfall.findCard(name));
+  private async loadCommanderCards(names: string[]): Promise<void> {
+    const cards = await Promise.all(names.map((n) => this.scryfall.findCard(n)));
+    this.commanderCards.set(cards.filter((c): c is ScryfallCard => c !== null));
   }
 
   setTag(tagSlug: string | null): void {
@@ -198,11 +209,11 @@ export class CommanderRecommendations {
   }
 
   private async loadRecommendations(): Promise<void> {
-    const name = this.commanderName();
-    if (!name) return;
+    const names = this.commanderNames();
+    if (!names) return;
     this.busy.set(true);
     this.failed.set(false);
-    const result = await this.edhrec.getCommanderRecommendations([name], this.selectedTag());
+    const result = await this.edhrec.getCommanderRecommendations(names, this.selectedTag());
     this.lists.set(result);
     this.failed.set(result === null);
     this.busy.set(false);
@@ -254,9 +265,8 @@ export class CommanderRecommendations {
     this.cardPreview.open(card.imageUrl, card.backImageUrl, card.name);
   }
 
-  openCommanderPreview(): void {
-    const card = this.commanderCard();
-    if (!card?.imageUrl) return;
+  openCommanderPreview(card: ScryfallCard): void {
+    if (!card.imageUrl) return;
     this.cardPreview.open(card.imageUrl, card.backImageUrl, card.name);
   }
 }

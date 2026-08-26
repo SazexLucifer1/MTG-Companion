@@ -1,5 +1,5 @@
 <div class="commander-rec-content">
-  @if (!commanderName()) {
+  @if (!commanderNames()) {
     <div class="commander-rec-input-row">
       <input
         class="glass-input"
@@ -13,7 +13,7 @@
     @if (suggestions().length > 0) {
       <ul class="commander-rec-suggestions">
         @for (name of suggestions(); track name) {
-          <li (click)="selectCommander(name)">{{ name }}</li>
+          <li (click)="selectCommander([name])">{{ name }}</li>
         }
       </ul>
     }
@@ -62,15 +62,34 @@
       <p class="hint">{{ i18n.t('login.pleaseWait') }}</p>
     } @else if (browseResults().length > 0) {
       <div class="card-pick-grid">
-        @for (card of pagedBrowseResults(); track card.name) {
-          <div class="card-pick-tile" (click)="selectCommander(card.name)">
-            <div class="card-pick-image">
-              @if (card.imageUrl) {
-                <app-card-image [imageUrl]="card.imageUrl" [backImageUrl]="card.backImageUrl" [alt]="card.name" [compact]="true" />
-              } @else {
-                <div class="card-pick-placeholder">{{ card.name }}</div>
-              }
-            </div>
+        @for (entry of pagedBrowseResults(); track entry.cards[0].name + (entry.cards[1]?.name ?? '')) {
+          <div class="card-pick-tile" (click)="selectCommander(entry.cards.map(c => c.name))">
+            @if (entry.cards.length === 1) {
+              <div class="card-pick-image">
+                @if (entry.cards[0].imageUrl) {
+                  <app-card-image
+                    [imageUrl]="entry.cards[0].imageUrl"
+                    [backImageUrl]="entry.cards[0].backImageUrl"
+                    [alt]="entry.cards[0].name"
+                    [compact]="true"
+                  />
+                } @else {
+                  <div class="card-pick-placeholder">{{ entry.cards[0].name }}</div>
+                }
+              </div>
+            } @else {
+              <div class="card-pick-image card-pick-image-pair">
+                @for (card of entry.cards; track card.name) {
+                  <div class="card-pick-image-half">
+                    @if (card.imageUrl) {
+                      <app-card-image [imageUrl]="card.imageUrl" [backImageUrl]="card.backImageUrl" [alt]="card.name" [compact]="true" />
+                    } @else {
+                      <div class="card-pick-placeholder">{{ card.name }}</div>
+                    }
+                  </div>
+                }
+              </div>
+            }
           </div>
         }
       </div>
@@ -86,14 +105,14 @@
     <button class="glass-chip small" (click)="backToBrowse()">{{ i18n.t('commanderRec.back') }}</button>
 
     <div class="commander-rec-header">
-      @if (commanderCard(); as card) {
-        <div class="commander-rec-image" (click)="openCommanderPreview()">
+      @for (card of commanderCards(); track card.name) {
+        <div class="commander-rec-image" (click)="openCommanderPreview(card)">
           @if (card.imageUrl) {
             <app-card-image [imageUrl]="card.imageUrl" [backImageUrl]="card.backImageUrl" [alt]="card.name" [compact]="true" />
           }
         </div>
       }
-      <h3>{{ commanderName() }}</h3>
+      <h3>{{ commanderNames()?.join(' + ') }}</h3>
     </div>
 
     <p class="hint edhrec-credit">
@@ -119,7 +138,7 @@
     }
 
     @if (busy()) {
-      <p class="hint">{{ i18n.t('deckView.loadingEdhrecSuggestionsFor', { commander: commanderName() ?? '' }) }}</p>
+      <p class="hint">{{ i18n.t('deckView.loadingEdhrecSuggestionsFor', { commander: commanderNames()?.join(' + ') ?? '' }) }}</p>
     } @else if (failed()) {
       <p class="hint">{{ i18n.t('deckView.edhrecUnavailable') }}</p>
     } @else if (lists(); as lists) {

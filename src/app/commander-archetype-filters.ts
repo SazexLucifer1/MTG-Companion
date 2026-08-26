@@ -14,11 +14,15 @@
  * nach demselben Muster wie CARD_EFFECT_FILTERS' "tokens"-Eintrag (o:create o:token).
  *
  * Die Tag-Recherche für diese Liste lief indirekt über Websuche (nicht per direktem Live-Aufruf
- * gegen api.scryfall.com). Vor dem produktiven Rollout sollten insbesondere die unten als
- * niedrig-konfident markierten Einträge (voltron, aristocrats, spellslinger, superfriends,
- * politics, control, combo) einmal live gegen
- * https://api.scryfall.com/cards/search?q=is:commander+<query> geprüft werden - z.B. mit demselben
- * Wegwerf-console.log-Trick, den filterNamesByQueryChecked() in scryfall.service.ts nutzt.
+ * gegen api.scryfall.com, der von dieser Sandbox aus blockiert ist). Eine zweite Rechercherunde
+ * hat u.a. den "superfriends"-Eintrag korrigiert: die ursprüngliche Abfrage suchte nur nach dem
+ * PLURAL "planeswalkers you control" und übersah damit Karten mit Singular-Text (z.B. Carth the
+ * Lion: "...or a planeswalker you control dies...") - dadurch lieferte z.B. Golgari (BG) trotz
+ * real existierender BG-Superfriends-Commander null Treffer. Vor dem produktiven Rollout sollten
+ * die weiterhin als niedrig-konfident markierten Einträge (voltron, aristocrats, combo) einmal
+ * live gegen https://api.scryfall.com/cards/search?q=is:commander+<query> geprüft werden - z.B.
+ * mit demselben Wegwerf-console.log-Trick, den filterNamesByQueryChecked() in scryfall.service.ts
+ * nutzt.
  */
 export interface CommanderArchetypeFilter {
   value: string;
@@ -45,7 +49,7 @@ export const COMMANDER_ARCHETYPE_FILTERS: CommanderArchetypeFilter[] = [
   { value: 'storm', query: '(keyword:storm or otag:storm-count-matters)' },
 
   // --- naheliegender Proxy-Tag statt exaktem Treffer ---
-  { value: 'stax', query: 'otag:tax' },
+  { value: 'stax', query: '(otag:tax or otag:prison or otag:pillowfort)' },
   { value: 'enchantress', query: '(oracletag:enchantress or o:"whenever you cast an enchantment spell")' },
   { value: 'equipmentmatters', query: 'otag:synergy-equipment' },
 
@@ -56,9 +60,18 @@ export const COMMANDER_ARCHETYPE_FILTERS: CommanderArchetypeFilter[] = [
     query:
       '(otag:sacrifice-outlet or o:"whenever a creature you control dies" or o:"whenever another creature you control dies")',
   },
-  { value: 'spellslinger', query: '(o:"instant or sorcery spell" or o:"whenever you cast an instant or sorcery spell")' },
-  { value: 'superfriends', query: 'o:"planeswalkers you control"' },
+  {
+    value: 'spellslinger',
+    query:
+      '(otag:synergy-instant or otag:synergy-sorcery or o:"instant or sorcery spell" or o:"whenever you cast an instant or sorcery spell")',
+  },
+  {
+    value: 'superfriends',
+    // Bewusst Singular UND Plural: "a planeswalker you control" (z.B. Carth the Lion) vs.
+    // "planeswalkers you control" - eine reine Plural-Suche übersieht echte Superfriends-Commander.
+    query: '(otag:synergy-planeswalker or o:"planeswalkers you control" or o:"a planeswalker you control")',
+  },
   { value: 'politics', query: '(o:monarch or o:goad or o:"vote for")' },
-  { value: 'control', query: '(otag:removal or otag:board-wipe or otag:counterspell)' },
+  { value: 'control', query: '(otag:removal or otag:boardwipe or otag:counterspell)' },
   { value: 'combo', query: '(otag:combo-piece or otag:infinite-combo)' },
 ];

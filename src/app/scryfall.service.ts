@@ -48,6 +48,31 @@ export interface ScryfallSet {
   set_type?: string;
 }
 
+export interface CommanderFilters {
+  /** Freitext, UND-verknüpft als Teilstring-Suche auf den Kartennamen (name:"..."). */
+  name?: string | null;
+  /** Fertiges Scryfall-Query-Fragment für einen Archetyp, z.B. "otag:landfall" - siehe commander-archetype-filters.ts. */
+  archetypeQuery?: string | null;
+  /**
+   * Kreaturtyp aus dem Scryfall-Katalog (z.B. "Elf") - bewusst BREIT: matcht Commander, die
+   * SELBST diesen Typ tragen (t:) ODER ihn im Oracle-Text referenzieren/unterstützen (o:), z.B.
+   * ein Nicht-Elf-Commander mit "Elfen, die du kontrollierst erhalten +1/+1".
+   */
+  creatureType?: string | null;
+}
+
+/** Welche der 5 Partner-Commander-Mechaniken eine Karte trägt - siehe ScryfallService.partnerProfile(). */
+interface PartnerProfile {
+  plainPartner: boolean;
+  partnerWithName: string | null;
+  partnerDesignator: string | null;
+  friendsForever: boolean;
+  chooseBackground: boolean;
+  isBackground: boolean;
+  doctorsCompanion: boolean;
+  isTimeLordDoctor: boolean;
+}
+
 const API = 'https://api.scryfall.com';
 
 @Injectable({ providedIn: 'root' })
@@ -433,23 +458,16 @@ export class ScryfallService {
    * fürs Commander-Entdecken (Farbe/Archetyp-Browsing), die trotz mehrerer Versuche keine
    * zuverlässigen Endpunkte fand - Scryfalls eigene API ist dokumentiert und stabil.
    */
-  async searchCommanders(
-    colors: string[],
-    filters?: {
-      /** Freitext, UND-verknüpft als Teilstring-Suche auf den Kartennamen (name:"..."). */
-      name?: string | null;
-      /** Fertiges Scryfall-Query-Fragment für einen Archetyp, z.B. "otag:landfall" - siehe commander-archetype-filters.ts. */
-      archetypeQuery?: string | null;
-      /**
-       * Kreaturtyp aus dem Scryfall-Katalog (z.B. "Elf") - bewusst BREIT: matcht Commander, die
-       * SELBST diesen Typ tragen (t:) ODER ihn im Oracle-Text referenzieren/unterstützen (o:), z.B.
-       * ein Nicht-Elf-Commander mit "Elfen, die du kontrollierst erhalten +1/+1".
-       */
-      creatureType?: string | null;
-    }
-  ): Promise<ScryfallCard[]> {
+  async searchCommanders(colors: string[], filters?: CommanderFilters): Promise<ScryfallCard[]> {
     const parts = ['is:commander'];
     if (colors.length > 0) parts.push(`id=${colors.join('')}`);
+    parts.push(...this.buildCommanderFilterParts(filters));
+    return this.fetchCommanderList(parts.join(' '));
+  }
+
+  /** Baut die Name-/Archetyp-/Kreaturtyp-Query-Fragmente, die searchCommanders() UND searchCommanderPairs() teilen. */
+  private buildCommanderFilterParts(filters?: CommanderFilters): string[] {
+    const parts: string[] = [];
 
     const name = filters?.name?.trim();
     if (name) parts.push(`name:"${name.replace(/"/g, '')}"`);
@@ -462,11 +480,122 @@ export class ScryfallService {
       parts.push(`(t:"${safe}" or o:"${safe}")`);
     }
 
-    const q = encodeURIComponent(parts.join(' '));
+    return parts;
+  }
+
+  /** Führt eine fertige Scryfall-Query aus und liefert die geparste Kartenliste (order=edhrec, wie searchCommanders()). */
+  private async fetchCommanderList(query: string): Promise<ScryfallCard[]> {
+    const q = encodeURIComponent(query);
     const res = await this.fetchWithRetry(`${API}/cards/search?q=${q}&unique=cards&order=edhrec`);
     if (!res?.ok) return [];
     const data = await res.json();
     return ((data.data as any[]) ?? []).map((c) => this.toCard(c));
+  }
+
+  /**
+   * Erkennt, über welche der 5 Partner-Commander-Mechaniken eine Karte verfügt (reines Parsen von
+   * oracleText/typeLine, keine zusätzliche Netzwerkanfrage nötig) - Grundlage für searchCommanderPairs().
+   * Reihenfolge/Erkennung nach Recherche gegen Scryfalls Suchsyntax:
+   * - "Partner" (bare) pairt mit jedem anderen bare-Partner - MUSS von "Partner with X" und
+   *   "Partner—Designator" unterschieden werden (beide enthalten ebenfalls das Wort "Partner").
+   * - "Partner with X" pairt NUR mit der explizit genannten Karte X.
+   * - "Partner—Designator" (z.B. "Partner—Survivors") pairt nur mit Karten mit demselben Designator.
+   * - "Friends forever" pairt mit jeder anderen Friends-forever-Karte.
+   * - "Choose a Background" pairt mit jeder Karte vom Typ "Background".
+   * - "Doctor's companion" pairt mit jeder Karte vom Kreaturtyp "Time Lord Doctor".
+   */
+  private partnerProfile(card: ScryfallCard): PartnerProfile {
+    const text = card.oracleText ?? '';
+    const lines = text.split('\n').map((l) => l.trim());
+
+    const partnerWithMatch = text.match(/Partner with ([^(\n]+)/);
+    const designatorMatch = text.match(/Partner—([^(\n]+)/);
+    // Bewusst NICHT auf exakte Gleichheit mit "Partner" prüfen: Scryfalls oracle_text hängt bei
+    // Keyword-Fähigkeiten oft den Reminder-Text in Klammern an dieselbe Zeile an (z.B.
+    // "Partner (You can have two commanders if both have partner.)"). Das Pattern lässt genau
+    // diesen optionalen Klammerzusatz zu, schließt aber "Partner with X"/"Partner—X" aus, weil dort
+    // zwischen "Partner" und der Klammer noch anderer Text steht.
+    const barePartnerLine = /^Partner(\s*\(.*\))?$/;
+
+    return {
+      plainPartner: lines.some((l) => barePartnerLine.test(l)),
+      partnerWithName: partnerWithMatch ? partnerWithMatch[1].trim().replace(/[.,]$/, '').toLowerCase() : null,
+      partnerDesignator: designatorMatch ? designatorMatch[1].trim().replace(/[.,]$/, '').toLowerCase() : null,
+      friendsForever: text.includes('Friends forever'),
+      chooseBackground: /Choose a Background/i.test(text),
+      isBackground: (card.typeLine ?? '').includes('Background'),
+      doctorsCompanion: /Doctor.s companion/i.test(text),
+      isTimeLordDoctor: (card.typeLine ?? '').includes('Time Lord Doctor'),
+    };
+  }
+
+  /** Prüft, ob zwei Karten laut ihrer Partner-Profile ein regelkonformes Commander-Paar bilden können. */
+  private partnersCompatible(a: ScryfallCard, pa: PartnerProfile, b: ScryfallCard, pb: PartnerProfile): boolean {
+    if (pa.plainPartner && pb.plainPartner) return true;
+    if (pa.partnerWithName === b.name.toLowerCase() || pb.partnerWithName === a.name.toLowerCase()) return true;
+    if (pa.partnerDesignator && pa.partnerDesignator === pb.partnerDesignator) return true;
+    if (pa.friendsForever && pb.friendsForever) return true;
+    if ((pa.chooseBackground && pb.isBackground) || (pb.chooseBackground && pa.isBackground)) return true;
+    if ((pa.doctorsCompanion && pb.isTimeLordDoctor) || (pb.doctorsCompanion && pa.isTimeLordDoctor)) return true;
+    return false;
+  }
+
+  /**
+   * Sucht regelkonforme PAARE von Partner-Commandern (Partner, Partner with X, Friends forever,
+   * Choose a Background, Doctor's companion), deren KOMBINIERTE Farbidentität exakt den Filtern
+   * entspricht - Ergänzung zu searchCommanders() für Decks mit zwei Commandern. Ein Paar zählt als
+   * Treffer, sobald MINDESTENS EINE Hälfte Name/Archetyp/Kreaturtyp erfüllt (nicht zwingend beide -
+   * genau wie im echten Partner-Deckbau ergänzen sich beide Hälften, statt identisch zu sein).
+   *
+   * Bewusst nur aktiv, wenn mindestens eine Farbe gewählt ist: ohne Farbziel gäbe es keine sinnvolle
+   * Grenze für "welche Farbkombination muss die Paarung exakt ergeben", und ein ungefiltertes
+   * Durchpaaren aller ~230 Partner-fähigen Karten wäre kombinatorisch (zehntausende Paare) sinnlos.
+   *
+   * Backgrounds sind selbst NICHT is:commander-legal (keine "kann dein Commander sein"-Karte),
+   * werden also über eine separate type:background-Abfrage geholt, sonst würden sie in der
+   * Kandidatenliste fehlen und "Choose a Background"-Paarungen wären nie vollständig.
+   */
+  async searchCommanderPairs(colors: string[], filters?: CommanderFilters): Promise<[ScryfallCard, ScryfallCard][]> {
+    if (colors.length === 0) return [];
+
+    const colorClause = `id<=${colors.join('')}`;
+    const matchingQuery = ['is:commander', 'is:partner', colorClause, ...this.buildCommanderFilterParts(filters)].join(' ');
+    const fullQuery = ['is:commander', 'is:partner', colorClause].join(' ');
+    const backgroundQuery = ['type:background', colorClause].join(' ');
+
+    const [matchingPool, fullCreaturePool, backgroundPool] = await Promise.all([
+      this.fetchCommanderList(matchingQuery),
+      this.fetchCommanderList(fullQuery),
+      this.fetchCommanderList(backgroundQuery),
+    ]);
+
+    const fullPool = [...fullCreaturePool, ...backgroundPool];
+    const profiles = new Map(fullPool.map((c) => [c.name, this.partnerProfile(c)]));
+    const targetColors = new Set(colors);
+
+    const pairs: [ScryfallCard, ScryfallCard][] = [];
+    const seen = new Set<string>();
+
+    for (const a of matchingPool) {
+      const profileA = profiles.get(a.name);
+      if (!profileA) continue;
+
+      for (const b of fullPool) {
+        if (b.name === a.name) continue;
+        const profileB = profiles.get(b.name)!;
+        if (!this.partnersCompatible(a, profileA, b, profileB)) continue;
+
+        const combined = new Set([...(a.colorIdentity ?? []), ...(b.colorIdentity ?? [])]);
+        if (combined.size !== targetColors.size || [...combined].some((c) => !targetColors.has(c))) continue;
+
+        const key = [a.name, b.name].sort().join('|');
+        if (seen.has(key)) continue;
+        seen.add(key);
+        pairs.push([a, b]);
+      }
+    }
+
+    return pairs;
   }
 
   // NEU
