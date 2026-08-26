@@ -201,7 +201,7 @@ export class EdhrecService {
     return this.getCommanderRecommendations([slug], tagSlug);
   }
 
-  /** Liefert die auf EDHREC verfügbaren Theme-Tags für einen Commander/ein Commander-Paar (z.B. Ramp, Aristocrats, Stax, ...), sortiert nach Häufigkeit. Funktioniert genauso für eine Farbkombinations-Übersichtsseite (z.B. "rakdos") wie für einen echten Commander-Namen. */
+  /** Liefert die auf EDHREC verfügbaren Theme-Tags für einen Commander/ein Commander-Paar (z.B. Ramp, Aristocrats, Stax, ...), sortiert nach Häufigkeit. */
   async getCommanderTags(commanderNames: string[]): Promise<EdhrecTag[] | null> {
     for (const slug of this.buildCommanderSlugCandidates(commanderNames)) {
       const data = await this.fetchCommanderPage(slug);
@@ -215,5 +215,36 @@ export class EdhrecService {
       }));
     }
     return null;
+  }
+
+  /**
+   * Liefert EDHRECs vollständige Archetyp-Liste ("Alle Archetypen", unabhängig von jeder
+   * Farbauswahl) - echte, per Websuche bestätigte Seite: edhrec.com/tags/themes ("All Tags |
+   * EDHREC"). Anders als bei früheren Versuchen (PR #108s "themes/"-Präfix) ist der bestätigte
+   * Pfad-Präfix "tags/" - siehe z.B. edhrec.com/tags/sacrifice, /tags/aristocrats, /tags/voltron.
+   */
+  async getAllTags(): Promise<EdhrecTag[] | null> {
+    const data = await this.fetchPage('tags', 'themes');
+    const cardlists = data?.container?.json_dict?.cardlists;
+    if (!Array.isArray(cardlists)) return null;
+    const cards = cardlists.flatMap((list: any) => (list.cardviews ?? []) as any[]);
+    if (cards.length === 0) return null;
+    return cards
+      .filter((c: any) => c.name && (c.slug || c.urlhash))
+      .map((c: any) => ({ slug: c.slug ?? c.urlhash, value: c.name, count: c.num_decks ?? 0 }));
+  }
+
+  /**
+   * Liefert die "Top Commanders"-Übersicht für einen Archetyp/Tag (z.B. "sacrifice", "voltron"),
+   * optional zusätzlich auf eine Farbkombination eingeschränkt - komplett unabhängig von einer
+   * Farbauswahl nutzbar (echte Seite: edhrec.com/tags/{tag}, bestätigt per Websuche existierend).
+   */
+  async getTopCommandersForTag(tagSlug: string, colors?: string[]): Promise<EdhrecCardlist[] | null> {
+    const colorSlug = colors && colors.length > 0 ? this.colorComboSlug(colors) : null;
+    const path = colorSlug ? `${tagSlug}/${colorSlug}` : tagSlug;
+    const data = await this.fetchPage('tags', path);
+    const cardlists = data?.container?.json_dict?.cardlists;
+    if (!Array.isArray(cardlists)) return null;
+    return EdhrecService.mapCardlists(cardlists);
   }
 }
