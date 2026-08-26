@@ -98,6 +98,23 @@ export class ScryfallService {
     }
   }
 
+  private cachedCreatureTypes: string[] | null = null;
+
+  /**
+   * Liefert den vollständigen, offiziellen Katalog aller je gedruckten Kreaturtypen (Scryfalls
+   * /catalog/creature-types) - Grundlage für das Kreaturtyp-Dropdown der Commander-Suche.
+   * Alphabetisch sortiert, da Scryfalls Katalog-Reihenfolge nicht dokumentiert/stabil ist.
+   * Caching wie allSets() - ändert sich praktisch nur bei neuen Editionen.
+   */
+  async creatureTypes(): Promise<string[]> {
+    if (this.cachedCreatureTypes) return this.cachedCreatureTypes;
+    const res = await this.fetchWithRetry(`${API}/catalog/creature-types`);
+    if (!res?.ok) return [];
+    const data = await res.json();
+    this.cachedCreatureTypes = ((data.data as string[]) ?? []).slice().sort((a, b) => a.localeCompare(b));
+    return this.cachedCreatureTypes;
+  }
+
   // NEU
   /** Entfernt Apostrophe/Akzente, damit z.B. "Baldurs" auch "Baldur's" findet. */
   private normalizeForSearch(text: string): string {
@@ -407,18 +424,43 @@ export class ScryfallService {
   }
 
   /**
-   * Sucht Commander-legale Legenden nach Farbidentität (exakt, nicht Teilmenge - "Rakdos-Commander"
-   * meint wirklich Schwarz+Rot, nicht auch Mono-Schwarz) und optional einer Mechanik-Kategorie (aus
-   * card-effect-filters.ts, z.B. "Sacrifice-Outlet"), sortiert nach Scryfalls eigenem EDHREC-Rang
+   * Sucht Commander-legale Legenden über beliebig kombinierbare Filter (Name, exakte Farbidentität,
+   * Archetyp-Kategorie, Kreaturtyp), alle UND-verknüpft, sortiert nach Scryfalls eigenem EDHREC-Rang
    * (order=edhrec - offizieller, dokumentierter Scryfall-Sortierparameter, keine inoffizielle
-   * EDHREC-API nötig). Ersetzt die EDHREC-Direktanbindung fürs Commander-Entdecken (Farbe/Archetyp-
-   * Browsing), die trotz mehrerer Versuche keine zuverlässigen Endpunkte fand - Scryfalls eigene
-   * API ist dokumentiert und stabil.
+   * EDHREC-API nötig). Farbidentität nutzt bewusst id= (EXAKTE Übereinstimmung) statt id:
+   * (Teilmenge) - "Azorius-Commander" meint wirklich genau Weiß+Blau, nicht auch Mono-Weiß oder
+   * einen 3-Farben-Commander, der Weiß+Blau mit einschließt. Ersetzt die EDHREC-Direktanbindung
+   * fürs Commander-Entdecken (Farbe/Archetyp-Browsing), die trotz mehrerer Versuche keine
+   * zuverlässigen Endpunkte fand - Scryfalls eigene API ist dokumentiert und stabil.
    */
-  async searchCommanders(colors: string[], effectQuery?: string | null): Promise<ScryfallCard[]> {
+  async searchCommanders(
+    colors: string[],
+    filters?: {
+      /** Freitext, UND-verknüpft als Teilstring-Suche auf den Kartennamen (name:"..."). */
+      name?: string | null;
+      /** Fertiges Scryfall-Query-Fragment für einen Archetyp, z.B. "otag:landfall" - siehe commander-archetype-filters.ts. */
+      archetypeQuery?: string | null;
+      /**
+       * Kreaturtyp aus dem Scryfall-Katalog (z.B. "Elf") - bewusst BREIT: matcht Commander, die
+       * SELBST diesen Typ tragen (t:) ODER ihn im Oracle-Text referenzieren/unterstützen (o:), z.B.
+       * ein Nicht-Elf-Commander mit "Elfen, die du kontrollierst erhalten +1/+1".
+       */
+      creatureType?: string | null;
+    }
+  ): Promise<ScryfallCard[]> {
     const parts = ['is:commander'];
-    if (colors.length > 0) parts.push(`id:${colors.join('')}`);
-    if (effectQuery) parts.push(effectQuery);
+    if (colors.length > 0) parts.push(`id=${colors.join('')}`);
+
+    const name = filters?.name?.trim();
+    if (name) parts.push(`name:"${name.replace(/"/g, '')}"`);
+
+    if (filters?.archetypeQuery) parts.push(filters.archetypeQuery);
+
+    const creatureType = filters?.creatureType?.trim();
+    if (creatureType) {
+      const safe = creatureType.replace(/"/g, '');
+      parts.push(`(t:"${safe}" or o:"${safe}")`);
+    }
 
     const q = encodeURIComponent(parts.join(' '));
     const res = await this.fetchWithRetry(`${API}/cards/search?q=${q}&unique=cards&order=edhrec`);

@@ -29,12 +29,27 @@
     </div>
 
     <div class="chip-row commander-rec-theme-row">
-      <select class="glass-input small" [ngModel]="browseTheme() ?? 'all'" (ngModelChange)="setBrowseTheme($event)">
-        <option [ngValue]="'all'">{{ i18n.t('commanderRec.anyTheme') }}</option>
-        @for (t of themeOptions; track t.value) {
-          <option [ngValue]="t.value">{{ themeLabel(t.value) }}</option>
+      <select class="glass-input small" [ngModel]="browseArchetype() ?? 'all'" (ngModelChange)="setBrowseArchetype($event)">
+        <option [ngValue]="'all'">{{ i18n.t('commanderRec.anyArchetype') }}</option>
+        @for (a of archetypeOptions; track a.value) {
+          <option [ngValue]="a.value">{{ archetypeLabel(a.value) }}</option>
         }
       </select>
+
+      <select
+        class="glass-input small"
+        [disabled]="creatureTypesLoading()"
+        [ngModel]="browseCreatureType() ?? 'all'"
+        (ngModelChange)="setBrowseCreatureType($event)"
+      >
+        <option [ngValue]="'all'">
+          {{ creatureTypesLoading() ? i18n.t('commanderRec.creatureTypesLoading') : i18n.t('commanderRec.anyCreatureType') }}
+        </option>
+        @for (ct of creatureTypeOptions(); track ct) {
+          <option [ngValue]="ct">{{ ct }}</option>
+        }
+      </select>
+
       <button class="glass-chip small" [disabled]="!canBrowse()" (click)="browse()">
         {{ i18n.t('commanderRec.browseButton') }}
       </button>

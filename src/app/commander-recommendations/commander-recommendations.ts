@@ -7,7 +7,7 @@ import { EdhrecCardlist, EdhrecService, EdhrecTag } from '../edhrec.service';
 import { CardPreviewService } from '../card-preview.service';
 import { I18nService } from '../i18n.service';
 import { CardImage } from '../card-image/card-image';
-import { CARD_EFFECT_FILTERS } from '../card-effect-filters';
+import { COMMANDER_ARCHETYPE_FILTERS } from '../commander-archetype-filters';
 
 /**
  * Commander-Empfehlungen - ohne Account/Deck nutzbar, eigener Umschalter im Suche-Tab. Rein
@@ -58,10 +58,23 @@ export class CommanderRecommendations {
 
   readonly colorOptions = ['W', 'U', 'B', 'R', 'G'];
   readonly browseColors = signal<Set<string>>(new Set());
-  readonly browseTheme = signal<string | null>(null);
+  readonly browseArchetype = signal<string | null>(null);
+  readonly browseCreatureType = signal<string | null>(null);
+  readonly creatureTypeOptions = signal<string[]>([]);
+  readonly creatureTypesLoading = signal(false);
   readonly browseResults = signal<ScryfallCard[]>([]);
   readonly browseBusy = signal(false);
   readonly browsePage = signal(0);
+
+  constructor() {
+    this.loadCreatureTypes();
+  }
+
+  private async loadCreatureTypes(): Promise<void> {
+    this.creatureTypesLoading.set(true);
+    this.creatureTypeOptions.set(await this.scryfall.creatureTypes());
+    this.creatureTypesLoading.set(false);
+  }
 
   private static readonly BROWSE_PAGE_SIZE = 30;
 
@@ -74,11 +87,11 @@ export class CommanderRecommendations {
     return this.browseResults().slice(start, start + CommanderRecommendations.BROWSE_PAGE_SIZE);
   });
 
-  /** Mechanik-Filter (Sacrifice-Outlet, Removal, Ramp, ...) - dieselbe, geteilte Liste wie public-card-search.ts. */
-  readonly themeOptions = CARD_EFFECT_FILTERS;
+  /** Archetyp-Filter (Voltron, Stax, Aristocrats, ...) - eigene Liste, siehe commander-archetype-filters.ts. */
+  readonly archetypeOptions = COMMANDER_ARCHETYPE_FILTERS;
 
-  themeLabel(value: string): string {
-    return this.i18n.t(`effectFilter.${value}`);
+  archetypeLabel(value: string): string {
+    return this.i18n.t(`archetypeFilter.${value}`);
   }
 
   toggleBrowseColor(color: string): void {
@@ -88,12 +101,22 @@ export class CommanderRecommendations {
     this.browseColors.set(next);
   }
 
-  setBrowseTheme(value: string): void {
-    this.browseTheme.set(value === 'all' ? null : value);
+  setBrowseArchetype(value: string): void {
+    this.browseArchetype.set(value === 'all' ? null : value);
   }
 
+  setBrowseCreatureType(value: string): void {
+    this.browseCreatureType.set(value === 'all' ? null : value);
+  }
+
+  /** Aktiv, sobald irgendein Filter gesetzt ist - Name (dasselbe Feld wie die Autovervollständigung), Farbe, Archetyp oder Kreaturtyp. */
   canBrowse(): boolean {
-    return this.browseColors().size > 0 || this.browseTheme() !== null;
+    return (
+      this.query().trim().length > 0 ||
+      this.browseColors().size > 0 ||
+      this.browseArchetype() !== null ||
+      this.browseCreatureType() !== null
+    );
   }
 
   async browse(): Promise<void> {
@@ -102,9 +125,13 @@ export class CommanderRecommendations {
     this.browseResults.set([]);
 
     const colors = [...this.browseColors()];
-    const theme = this.browseTheme();
-    const effectQuery = theme ? this.themeOptions.find((f) => f.value === theme)?.query : undefined;
-    const results = await this.scryfall.searchCommanders(colors, effectQuery);
+    const archetype = this.browseArchetype();
+    const archetypeQuery = archetype ? this.archetypeOptions.find((f) => f.value === archetype)?.query : undefined;
+    const results = await this.scryfall.searchCommanders(colors, {
+      name: this.query(),
+      archetypeQuery,
+      creatureType: this.browseCreatureType(),
+    });
 
     this.browseResults.set(results);
     this.browsePage.set(0);
@@ -112,8 +139,11 @@ export class CommanderRecommendations {
   }
 
   resetBrowse(): void {
+    this.query.set('');
+    this.suggestions.set([]);
     this.browseColors.set(new Set());
-    this.browseTheme.set(null);
+    this.browseArchetype.set(null);
+    this.browseCreatureType.set(null);
     this.browseResults.set([]);
   }
 
