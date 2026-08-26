@@ -12,6 +12,40 @@
   }
 }
 
+.commander-rec-browse-hint {
+  margin-top: 16px;
+}
+
+.commander-rec-theme-row {
+  margin-bottom: 10px;
+
+  select {
+    flex: 1 1 auto;
+    min-width: 140px;
+  }
+}
+
+.commander-rec-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 10px 0;
+
+  h3 {
+    margin: 0;
+  }
+}
+
+.commander-rec-image {
+  width: 90px;
+  flex-shrink: 0;
+  cursor: pointer;
+  aspect-ratio: 63 / 88;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--glass-border);
+}
+
 .commander-rec-suggestions {
   list-style: none;
   margin: 0 0 12px;

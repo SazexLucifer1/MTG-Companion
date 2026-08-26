@@ -14,6 +14,11 @@ import { CardImage } from '../card-image/card-image';
  * bestehende Muster aus deck-viewer.service.ts/deck-detail-view.html (dort an ein konkretes Deck
  * gebunden), hält den Zustand aber komplett lokal statt DeckViewerService zu injizieren - der ist
  * viel zu groß und an Deck-Schreiboperationen gebunden, unpassend für diese anonyme Route.
+ *
+ * Zusätzlich zur direkten Namenseingabe gibt es einen Entdecken-Modus: Farb- und Archetyp-Filter
+ * zeigen EDHRECs "Top Commanders"-Übersicht für diese Auswahl (dieselbe Seitenstruktur wie eine
+ * einzelne Commander-Seite, siehe edhrec.service.ts's getTopCommandersForColors()/-ForTheme()) -
+ * ein Klick auf einen der vorgeschlagenen Commander springt direkt in dessen Detailansicht.
  */
 @Component({
   selector: 'app-commander-recommendations',
@@ -32,6 +37,7 @@ export class CommanderRecommendations {
   private searchTimer: ReturnType<typeof setTimeout> | null = null;
 
   readonly commanderName = signal<string | null>(null);
+  readonly commanderCard = signal<ScryfallCard | null>(null);
   readonly tags = signal<EdhrecTag[]>([]);
   readonly selectedTag = signal<string | null>(null);
   readonly lists = signal<EdhrecCardlist[] | null>(null);
@@ -41,6 +47,80 @@ export class CommanderRecommendations {
   readonly expandedCategories = signal<Set<string>>(new Set());
   readonly cardDetails = signal<Map<string, ScryfallCard>>(new Map());
   readonly categoryImagesBusy = signal<Set<string>>(new Set());
+
+  // --- Entdecken: Farb-/Archetyp-Filter statt direkter Namenseingabe ---
+
+  readonly colorOptions = ['W', 'U', 'B', 'R', 'G'];
+  readonly browseColors = signal<Set<string>>(new Set());
+  readonly browseTheme = signal<string | null>(null);
+  readonly browseLists = signal<EdhrecCardlist[] | null>(null);
+  readonly browseBusy = signal(false);
+  readonly browseFailed = signal(false);
+
+  readonly themeOptions = [
+    'sacrifice',
+    'tokens',
+    'lifegain',
+    'ramp',
+    'stax',
+    'mill',
+    'reanimator',
+    'voltron',
+    'superfriends',
+    'spellslinger',
+    'landfall',
+    'group-hug',
+    'aggro',
+    'control',
+    'artifacts',
+    'enchantress',
+    'counters',
+    'blink',
+  ];
+
+  themeLabel(value: string): string {
+    return this.i18n.t(`themeFilter.${value}`);
+  }
+
+  toggleBrowseColor(color: string): void {
+    const next = new Set(this.browseColors());
+    if (next.has(color)) next.delete(color);
+    else next.add(color);
+    this.browseColors.set(next);
+  }
+
+  setBrowseTheme(value: string): void {
+    this.browseTheme.set(value === 'all' ? null : value);
+  }
+
+  canBrowse(): boolean {
+    return this.browseColors().size > 0 || this.browseTheme() !== null;
+  }
+
+  async browse(): Promise<void> {
+    if (!this.canBrowse()) return;
+    this.browseBusy.set(true);
+    this.browseFailed.set(false);
+    this.browseLists.set(null);
+
+    const theme = this.browseTheme();
+    const result = theme
+      ? await this.edhrec.getTopCommandersForTheme(theme)
+      : await this.edhrec.getTopCommandersForColors([...this.browseColors()]);
+
+    this.browseLists.set(result);
+    this.browseFailed.set(result === null);
+    this.browseBusy.set(false);
+  }
+
+  resetBrowse(): void {
+    this.browseColors.set(new Set());
+    this.browseTheme.set(null);
+    this.browseLists.set(null);
+    this.browseFailed.set(false);
+  }
+
+  // --- Direkte Namenssuche ---
 
   onQueryInput(value: string): void {
     this.query.set(value);
@@ -54,12 +134,24 @@ export class CommanderRecommendations {
     this.suggestions.set([]);
     this.query.set(name);
     this.commanderName.set(name);
+    this.commanderCard.set(null);
     this.selectedTag.set(null);
     this.expandedCategories.set(new Set());
     this.cardDetails.set(new Map());
     this.tags.set([]);
-    await this.loadRecommendations();
+    await Promise.all([this.loadRecommendations(), this.loadCommanderCard(name)]);
     this.tags.set((await this.edhrec.getCommanderTags([name])) ?? []);
+  }
+
+  backToBrowse(): void {
+    this.commanderName.set(null);
+    this.commanderCard.set(null);
+    this.lists.set(null);
+    this.query.set('');
+  }
+
+  private async loadCommanderCard(name: string): Promise<void> {
+    this.commanderCard.set(await this.scryfall.findCard(name));
   }
 
   setTag(tagSlug: string | null): void {
@@ -123,6 +215,12 @@ export class CommanderRecommendations {
 
   openPreview(cardName: string): void {
     const card = this.cardDetails().get(cardName.toLowerCase());
+    if (!card?.imageUrl) return;
+    this.cardPreview.open(card.imageUrl, card.backImageUrl, card.name);
+  }
+
+  openCommanderPreview(): void {
+    const card = this.commanderCard();
     if (!card?.imageUrl) return;
     this.cardPreview.open(card.imageUrl, card.backImageUrl, card.name);
   }

@@ -1,25 +1,94 @@
 <div class="commander-rec-content">
-  <div class="commander-rec-input-row">
-    <input
-      class="glass-input"
-      type="text"
-      [placeholder]="i18n.t('commanderRec.namePlaceholder')"
-      [value]="query()"
-      (input)="onQueryInput($any($event.target).value)"
-    />
-  </div>
-
-  @if (suggestions().length > 0) {
-    <ul class="commander-rec-suggestions">
-      @for (name of suggestions(); track name) {
-        <li (click)="selectCommander(name)">{{ name }}</li>
-      }
-    </ul>
-  }
-
   @if (!commanderName()) {
-    <p class="hint">{{ i18n.t('commanderRec.hint') }}</p>
+    <div class="commander-rec-input-row">
+      <input
+        class="glass-input"
+        type="text"
+        [placeholder]="i18n.t('commanderRec.namePlaceholder')"
+        [value]="query()"
+        (input)="onQueryInput($any($event.target).value)"
+      />
+    </div>
+
+    @if (suggestions().length > 0) {
+      <ul class="commander-rec-suggestions">
+        @for (name of suggestions(); track name) {
+          <li (click)="selectCommander(name)">{{ name }}</li>
+        }
+      </ul>
+    }
+
+    <p class="hint commander-rec-browse-hint">{{ i18n.t('commanderRec.browseHint') }}</p>
+
+    <div class="chip-row">
+      @for (c of colorOptions; track c) {
+        <button class="glass-chip small" [class.active]="browseColors().has(c)" (click)="toggleBrowseColor(c)">
+          {{ i18n.t('pip.' + c) }}
+        </button>
+      }
+    </div>
+
+    <div class="chip-row commander-rec-theme-row">
+      <select class="glass-input small" [ngModel]="browseTheme() ?? 'all'" (ngModelChange)="setBrowseTheme($event)">
+        <option [ngValue]="'all'">{{ i18n.t('commanderRec.anyTheme') }}</option>
+        @for (t of themeOptions; track t) {
+          <option [ngValue]="t">{{ themeLabel(t) }}</option>
+        }
+      </select>
+      <button class="glass-chip small" [disabled]="!canBrowse()" (click)="browse()">
+        {{ i18n.t('commanderRec.browseButton') }}
+      </button>
+      @if (browseLists() || browseFailed()) {
+        <button class="glass-chip small" (click)="resetBrowse()">✕ {{ i18n.t('publicSearch.resetFilters') }}</button>
+      }
+    </div>
+
+    @if (browseBusy()) {
+      <p class="hint">{{ i18n.t('login.pleaseWait') }}</p>
+    } @else if (browseFailed()) {
+      <p class="hint">{{ i18n.t('deckView.edhrecUnavailable') }}</p>
+    } @else if (browseLists(); as browseLists) {
+      @for (list of browseLists; track list.tag) {
+        @if (list.cards.length > 0) {
+          <button class="glass-chip small" (click)="toggleCategory(list)">
+            {{ isExpanded(list.tag) ? '▾' : '▸' }} {{ list.header }} ({{ list.cards.length }})
+          </button>
+          @if (isExpanded(list.tag)) {
+            @if (isCategoryImagesBusy(list.tag)) {
+              <p class="hint">{{ i18n.t('deckView.loadingImages') }}</p>
+            }
+            <div class="card-pick-grid">
+              @for (card of list.cards; track card.name) {
+                <div class="card-pick-tile" (click)="selectCommander(card.name)">
+                  <div class="card-pick-image">
+                    @if (cardImage(card.name); as img) {
+                      <app-card-image [imageUrl]="img" [backImageUrl]="cardBackImage(card.name)" [alt]="card.name" [compact]="true" />
+                    } @else {
+                      <div class="card-pick-placeholder">{{ card.name }}</div>
+                    }
+                  </div>
+                  <span class="card-pick-stats">{{ card.numDecks }}/{{ card.potentialDecks }}</span>
+                </div>
+              }
+            </div>
+          }
+        }
+      }
+    }
   } @else {
+    <button class="glass-chip small" (click)="backToBrowse()">{{ i18n.t('commanderRec.back') }}</button>
+
+    <div class="commander-rec-header">
+      @if (commanderCard(); as card) {
+        <div class="commander-rec-image" (click)="openCommanderPreview()">
+          @if (card.imageUrl) {
+            <app-card-image [imageUrl]="card.imageUrl" [backImageUrl]="card.backImageUrl" [alt]="card.name" [compact]="true" />
+          }
+        </div>
+      }
+      <h3>{{ commanderName() }}</h3>
+    </div>
+
     <p class="hint edhrec-credit">
       {{ i18n.t('deckView.edhrecCredit') }}
       <a href="https://edhrec.com" target="_blank" rel="noopener">edhrec.com</a>

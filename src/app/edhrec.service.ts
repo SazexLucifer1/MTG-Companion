@@ -76,23 +76,92 @@ export class EdhrecService {
     }
   }
 
-  /** Gemeinsame Fetch-/Fehlerbehandlung für die commanders-JSON-Endpunkte - liefert das rohe JSON oder null. */
-  private async fetchCommanderPage(path: string): Promise<any | null> {
+  /** Gemeinsame Fetch-/Fehlerbehandlung für EDHRECs Seiten-JSON-Endpunkte ("commanders/…", "themes/…", …) - liefert das rohe JSON oder null. */
+  private async fetchPage(prefix: string, path: string): Promise<any | null> {
+    const cacheKey = `${prefix}/${path}`;
     const cache = this.getCache();
-    const cached = cache[path];
+    const cached = cache[cacheKey];
     if (cached && Date.now() - cached.cachedAt < EdhrecService.CACHE_TTL_MS) {
       return cached.data;
     }
     try {
-      const res = await fetch(`https://json.edhrec.com/pages/commanders/${path}.json`);
+      const res = await fetch(`https://json.edhrec.com/pages/${prefix}/${path}.json`);
       if (!res.ok) return null;
       const data = await res.json();
-      cache[path] = { data, cachedAt: Date.now() };
+      cache[cacheKey] = { data, cachedAt: Date.now() };
       this.saveCache();
       return data;
     } catch {
       return null;
     }
+  }
+
+  private async fetchCommanderPage(path: string): Promise<any | null> {
+    return this.fetchPage('commanders', path);
+  }
+
+  private static mapCardlists(raw: any[]): EdhrecCardlist[] {
+    return raw.map((list: any) => ({
+      tag: list.tag,
+      header: list.header,
+      cards: ((list.cardviews ?? []) as any[]).map((c) => ({
+        name: c.name,
+        synergy: c.synergy ?? 0,
+        numDecks: c.num_decks ?? 0,
+        potentialDecks: c.potential_decks ?? 0,
+      })),
+    }));
+  }
+
+  /**
+   * Slug-Namen für Farbkombinationen, wie EDHREC sie für seine eigenen "Top X Commanders"-Seiten
+   * verwendet (z.B. edhrec.com/commanders/rakdos, edhrec.com/commanders/sultai) - Community-
+   * übliche Gilden-/Keil-/Verbund-Namen, keine offizielle Konvention. Keys sind WUBRG-Buchstaben
+   * in fester Reihenfolge (W vor U vor B vor R vor G), damit die Auswahl unabhängig von der
+   * Klick-Reihenfolge der Farb-Chips im UI immer denselben Schlüssel ergibt.
+   */
+  private static readonly COLOR_COMBO_SLUGS: Record<string, string> = {
+    '': 'colorless',
+    W: 'mono-white',
+    U: 'mono-blue',
+    B: 'mono-black',
+    R: 'mono-red',
+    G: 'mono-green',
+    WU: 'azorius',
+    UB: 'dimir',
+    BR: 'rakdos',
+    RG: 'gruul',
+    GW: 'selesnya',
+    WB: 'orzhov',
+    UR: 'izzet',
+    BG: 'golgari',
+    RW: 'boros',
+    GU: 'simic',
+    WUB: 'esper',
+    UBR: 'grixis',
+    BRG: 'jund',
+    RGW: 'naya',
+    GWU: 'bant',
+    WBG: 'abzan',
+    URW: 'jeskai',
+    BGU: 'sultai',
+    RWB: 'mardu',
+    GUR: 'temur',
+    WUBR: 'yore-tiller',
+    UBRG: 'glint-eye',
+    BRGW: 'dune-brood',
+    RGWU: 'ink-treader',
+    GWUB: 'witch-maw',
+    WUBRG: 'five-color',
+  };
+
+  /** Ordnet eine beliebige Farbauswahl (z.B. ['R','U']) auf EDHRECs Slug für diese Kombination - unabhängig von der Reihenfolge der übergebenen Farben. */
+  colorComboSlug(colors: string[]): string | null {
+    const key = 'WUBRG'
+      .split('')
+      .filter((c) => colors.includes(c))
+      .join('');
+    return EdhrecService.COLOR_COMBO_SLUGS[key] ?? null;
   }
 
   /**
@@ -112,18 +181,33 @@ export class EdhrecService {
       const cardlists = data?.container?.json_dict?.cardlists;
       if (!Array.isArray(cardlists)) continue;
 
-      return cardlists.map((list: any) => ({
-        tag: list.tag,
-        header: list.header,
-        cards: ((list.cardviews ?? []) as any[]).map((c) => ({
-          name: c.name,
-          synergy: c.synergy ?? 0,
-          numDecks: c.num_decks ?? 0,
-          potentialDecks: c.potential_decks ?? 0,
-        })),
-      }));
+      return EdhrecService.mapCardlists(cardlists);
     }
     return null;
+  }
+
+  /**
+   * Liefert die "Top Commanders"-Übersicht für eine Farbkombination (z.B. Rakdos, Sultai,
+   * Mono-Rot, Fünffarbig) - dieselbe Seite/Struktur wie eine einzelne Commander-Empfehlungsseite
+   * (EDHREC rendert Gilden-/Keil-Übersichten mit demselben Vorlagensystem), deshalb Wiederverwendung
+   * von getCommanderRecommendations() mit dem Farb-Slug als Pseudo-Commander-Namen.
+   */
+  async getTopCommandersForColors(colors: string[]): Promise<EdhrecCardlist[] | null> {
+    const slug = this.colorComboSlug(colors);
+    if (!slug) return null;
+    return this.getCommanderRecommendations([slug]);
+  }
+
+  /**
+   * Liefert die "Top Commanders"-Übersicht für ein Archetyp/Theme (z.B. "sacrifice", "stax") -
+   * eigener EDHREC-Seitentyp ("themes/…" statt "commanders/…"), deshalb ein separater Fetch statt
+   * Wiederverwendung von getCommanderRecommendations().
+   */
+  async getTopCommandersForTheme(themeSlug: string): Promise<EdhrecCardlist[] | null> {
+    const data = await this.fetchPage('themes', themeSlug);
+    const cardlists = data?.container?.json_dict?.cardlists;
+    if (!Array.isArray(cardlists)) return null;
+    return EdhrecService.mapCardlists(cardlists);
   }
 
   /** Liefert die auf EDHREC verfügbaren Theme-Tags für einen Commander/ein Commander-Paar (z.B. Ramp, Aristocrats, Stax, ...), sortiert nach Häufigkeit. */
