@@ -11,6 +11,9 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     'dialog.cancel': 'Abbrechen',
 
     // --- Header / Navigation ---
+    'search.cardsTab': 'Karten',
+    'search.commanderTab': 'Commander',
+
     'nav.match': 'Match',
     'nav.search': 'Suche',
     'nav.stats': 'Statistik',
@@ -986,6 +989,11 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     'login.alreadyHaveAccount': 'Schon einen Account? Anmelden',
     'publicSearch.placeholder': 'Kartenname eingeben …',
     'publicSearch.noResults': 'Keine Karte gefunden.',
+    'publicSearch.resetFilters': 'Filter zurücksetzen',
+
+    // --- Commander-Empfehlungen (EDHREC), Suche-Tab ---
+    'commanderRec.namePlaceholder': 'Commander-Name eingeben …',
+    'commanderRec.hint': 'Wähle einen Commander, um EDHRECs Empfehlungen für synergistische Karten zu sehen.',
 
     // --- "Bitte anmelden"-Hinweis für Tabs, die einen Account brauchen ---
     'loginRequired.genericHint': 'Melde dich an, um diesen Bereich zu nutzen.',
@@ -1168,6 +1176,9 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     'dialog.cancel': 'Cancel',
 
     // --- Header / Navigation ---
+    'search.cardsTab': 'Cards',
+    'search.commanderTab': 'Commander',
+
     'nav.match': 'Match',
     'nav.search': 'Search',
     'nav.stats': 'Stats',
@@ -2147,6 +2158,11 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     'login.alreadyHaveAccount': 'Already have an account? Sign in',
     'publicSearch.placeholder': 'Enter card name …',
     'publicSearch.noResults': 'No card found.',
+    'publicSearch.resetFilters': 'Reset filters',
+
+    // --- Commander recommendations (EDHREC), Search tab ---
+    'commanderRec.namePlaceholder': 'Enter commander name …',
+    'commanderRec.hint': "Pick a commander to see EDHREC's recommendations for synergistic cards.",
 
     // --- "Please sign in" hint for tabs that need an account ---
     'loginRequired.genericHint': 'Sign in to use this area.',
