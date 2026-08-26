@@ -172,6 +172,19 @@ export class ScryfallService {
     }
   }
 
+  /**
+   * Autovervollständigung ohne Commander-Einschränkung - für die öffentliche Kartensuche (jede
+   * Karte, nicht nur Commander-legale), nutzt Scryfalls eigenen dafür vorgesehenen Endpoint statt
+   * einer eigenen name:"..."-Suche.
+   */
+  async autocompleteAnyCard(query: string): Promise<string[]> {
+    if (query.trim().length < 2) return [];
+    const res = await this.fetchWithRetry(`${API}/cards/autocomplete?q=${encodeURIComponent(query.trim())}`);
+    if (!res?.ok) return [];
+    const data = await res.json();
+    return (data.data as string[]) ?? [];
+  }
+
   /** Sucht englische Kartennamen, die als Commander erlaubt sind (Regel 903.3). */
   private async searchCommanderNamesByName(query: string): Promise<string[]> {
     const safeQuery = query.trim().replace(/"/g, '');

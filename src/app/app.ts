@@ -17,6 +17,7 @@ import { TournamentPanel } from './tournament-panel/tournament-panel';
 import { Dialog } from './dialog/dialog';
 import { LegalFooter } from './legal-footer/legal-footer';
 import { LegalPageView } from './legal-page-view/legal-page-view';
+import { PublicCardSearch } from './public-card-search/public-card-search';
 import { Login } from './login/login';
 import { ResetPassword } from './reset-password/reset-password';
 import { GameSessionService } from './game-session.service';
@@ -25,6 +26,7 @@ import { NavigationService, AppTab } from './navigation.service';
 import { I18nService } from './i18n.service';
 import { FeedbackService } from './feedback.service';
 import { TournamentService } from './tournament.service';
+import { PublicCardSearchService } from './public-card-search.service';
 import { APP_VERSION, APP_COMMIT } from './version';
 
 @Component({
@@ -50,6 +52,7 @@ import { APP_VERSION, APP_COMMIT } from './version';
     Dialog,
     LegalFooter,
     LegalPageView,
+    PublicCardSearch,
   ],
   templateUrl: './app.html',
   styleUrl: './app.scss',
@@ -61,6 +64,7 @@ export class App {
   readonly i18n = inject(I18nService);
   readonly feedback = inject(FeedbackService);
   readonly tournament = inject(TournamentService);
+  readonly publicCardSearch = inject(PublicCardSearchService);
 
   /** Bei jedem Build automatisch erzeugt (siehe scripts/generate-version.js) - Anzahl Commits als Versionsnummer + kurzer Commit-Hash, damit im Browser sofort sichtbar ist, ob ein Merge/Deploy schon angekommen ist. */
   readonly appVersion = APP_VERSION;

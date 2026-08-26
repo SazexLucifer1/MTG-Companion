@@ -48,7 +48,6 @@
 <app-deck-import-dialogs />
 <app-deck-pdf-dialog />
 <app-manual-deck-link-dialog />
-<app-card-preview-dialog />
 <app-tutorial-overlay />
 <app-feedback-dialog />
 <app-placement-dialog />
@@ -87,7 +86,12 @@
 </nav>
 <app-legal-footer />
 } @else {
-<app-login />
+  @if (publicCardSearch.active()) {
+  <app-public-card-search />
+  } @else {
+  <app-login />
+  }
 }
 
 <app-legal-page-view />
+<app-card-preview-dialog />

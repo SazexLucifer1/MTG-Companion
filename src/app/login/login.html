@@ -48,6 +48,10 @@
   <button type="button" class="switch-mode" (click)="toggleMode()">
     {{ mode() === 'signin' ? i18n.t('login.noAccountYet') : i18n.t('login.alreadyHaveAccount') }}
   </button>
+
+  <button type="button" class="switch-mode" (click)="publicCardSearch.open()">
+    {{ i18n.t('login.publicCardSearch') }}
+  </button>
 </div>
 <app-legal-footer />
 </div>
