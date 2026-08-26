@@ -400,6 +400,12 @@ export class MtgService {
     const groupId = this.groupService.groupId();
     if (!groupId || !this.groupService.isOwner()) return;
 
+    // Falls der Spieler mit einem echten Account verknüpft ist, muss diese Person auch als
+    // Gruppenmitglied entfernt werden - sonst löscht dieser Aufruf nur die Stat-Tracking-Identität
+    // (players-Zeile), die Person bleibt aber vollwertiges Mitglied (sieht die Gruppe weiterhin
+    // unter "Meine Gruppen", hat weiterhin Zugriff auf alle Gruppendaten).
+    const linkedUserId = this.playerUserIds()[name];
+
     const { error } = await supabase
       .from('players')
       .delete()
@@ -409,6 +415,15 @@ export class MtgService {
     if (error) {
       console.error('Konnte Spieler nicht löschen:', error);
       return;
+    }
+
+    if (linkedUserId) {
+      const { error: memberError } = await supabase
+        .from('group_members')
+        .delete()
+        .eq('group_id', groupId)
+        .eq('user_id', linkedUserId);
+      if (memberError) console.error('Konnte Gruppenmitgliedschaft nicht entfernen:', memberError);
     }
 
     this.allPlayers.update((players) => players.filter((p) => p !== name));
