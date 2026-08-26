@@ -1,6 +1,6 @@
 import { Injectable, signal } from '@angular/core';
 
-export type AppTab = 'match' | 'stats' | 'group' | 'profile';
+export type AppTab = 'match' | 'search' | 'stats' | 'group' | 'profile';
 
 /** Steuert, welcher der vier Haupt-Tabs aktiv ist - liegt in einem Service statt direkt in App,
  * damit auch andere Komponenten (z.B. "Profil ansehen" aus dem Gruppen-Tab) dorthin wechseln können. */

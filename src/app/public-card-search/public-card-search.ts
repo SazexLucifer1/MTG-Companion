@@ -3,7 +3,6 @@ import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ScryfallCard, ScryfallService } from '../scryfall.service';
 import { CardPreviewService } from '../card-preview.service';
-import { PublicCardSearchService } from '../public-card-search.service';
 import { I18nService } from '../i18n.service';
 import { CardImage } from '../card-image/card-image';
 
@@ -21,7 +20,6 @@ import { CardImage } from '../card-image/card-image';
 export class PublicCardSearch {
   private readonly scryfall = inject(ScryfallService);
   private readonly cardPreview = inject(CardPreviewService);
-  readonly service = inject(PublicCardSearchService);
   readonly i18n = inject(I18nService);
 
   readonly query = signal('');
@@ -56,9 +54,5 @@ export class PublicCardSearch {
   openPreview(card: ScryfallCard): void {
     if (!card.imageUrl) return;
     this.cardPreview.open(card.imageUrl, card.backImageUrl, card.name);
-  }
-
-  close(): void {
-    this.service.close();
   }
 }

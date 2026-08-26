@@ -1,49 +1,41 @@
-<div class="options-menu-overlay" (click)="close()">
-  <div class="options-menu-sheet public-search-sheet" (click)="$event.stopPropagation()">
-    <button type="button" class="glass-button small public-search-close" (click)="close()">
-      {{ i18n.t('publicSearch.back') }}
-    </button>
-
-    <h2>{{ i18n.t('publicSearch.title') }}</h2>
-
-    <div class="public-search-input-row">
-      <input
-        class="glass-input"
-        type="text"
-        [placeholder]="i18n.t('publicSearch.placeholder')"
-        [value]="query()"
-        (input)="onQueryInput($any($event.target).value)"
-        (keyup.enter)="submit()"
-      />
-    </div>
-
-    @if (suggestions().length > 0) {
-      <ul class="public-search-suggestions">
-        @for (name of suggestions(); track name) {
-          <li (click)="selectCard(name)">{{ name }}</li>
-        }
-      </ul>
-    }
-
-    @if (loading()) {
-      <p class="hint">{{ i18n.t('login.pleaseWait') }}</p>
-    } @else if (searched() && result(); as card) {
-      <div class="public-search-result" (click)="openPreview(card)">
-        @if (card.imageUrl) {
-          <app-card-image [imageUrl]="card.imageUrl" [backImageUrl]="card.backImageUrl" [alt]="card.name" />
-        }
-        <div class="public-search-result-info">
-          <strong>{{ card.name }}</strong>
-          @if (card.typeLine) {
-            <span class="type-line">{{ card.typeLine }}</span>
-          }
-          @if (card.oracleText) {
-            <p class="oracle-text">{{ card.oracleText }}</p>
-          }
-        </div>
-      </div>
-    } @else if (searched()) {
-      <p class="hint">{{ i18n.t('publicSearch.noResults') }}</p>
-    }
+<div class="public-search-content">
+  <div class="public-search-input-row">
+    <input
+      class="glass-input"
+      type="text"
+      [placeholder]="i18n.t('publicSearch.placeholder')"
+      [value]="query()"
+      (input)="onQueryInput($any($event.target).value)"
+      (keyup.enter)="submit()"
+    />
   </div>
+
+  @if (suggestions().length > 0) {
+    <ul class="public-search-suggestions">
+      @for (name of suggestions(); track name) {
+        <li (click)="selectCard(name)">{{ name }}</li>
+      }
+    </ul>
+  }
+
+  @if (loading()) {
+    <p class="hint">{{ i18n.t('login.pleaseWait') }}</p>
+  } @else if (searched() && result(); as card) {
+    <div class="public-search-result" (click)="openPreview(card)">
+      @if (card.imageUrl) {
+        <app-card-image [imageUrl]="card.imageUrl" [backImageUrl]="card.backImageUrl" [alt]="card.name" />
+      }
+      <div class="public-search-result-info">
+        <strong>{{ card.name }}</strong>
+        @if (card.typeLine) {
+          <span class="type-line">{{ card.typeLine }}</span>
+        }
+        @if (card.oracleText) {
+          <p class="oracle-text">{{ card.oracleText }}</p>
+        }
+      </div>
+    </div>
+  } @else if (searched()) {
+    <p class="hint">{{ i18n.t('publicSearch.noResults') }}</p>
+  }
 </div>

@@ -1,5 +1,14 @@
-<div class="login-screen">
+<div class="options-menu-overlay login-overlay" (click)="overlay.close()">
+<div class="login-screen" (click)="$event.stopPropagation()">
 <div class="login-card">
+  <button
+    type="button"
+    class="glass-button small login-close"
+    (click)="overlay.close()"
+    [attr.aria-label]="i18n.t('legal.close')"
+  >
+    ✕
+  </button>
   <button
     type="button"
     class="lang-toggle"
@@ -48,12 +57,9 @@
   <button type="button" class="switch-mode" (click)="toggleMode()">
     {{ mode() === 'signin' ? i18n.t('login.noAccountYet') : i18n.t('login.alreadyHaveAccount') }}
   </button>
-
-  <button type="button" class="switch-mode" (click)="publicCardSearch.open()">
-    {{ i18n.t('login.publicCardSearch') }}
-  </button>
 </div>
 <app-legal-footer />
+</div>
 </div>
 
 @if (showForgot()) {

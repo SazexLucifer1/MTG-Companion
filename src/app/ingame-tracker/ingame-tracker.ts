@@ -18,6 +18,7 @@ import { BackgroundService } from '../background.service';
 import { TournamentService } from '../tournament.service';
 import { DialogService } from '../dialog.service';
 import { I18nService } from '../i18n.service';
+import { AuthService } from '../auth.service';
 
 const FIVE_MINUTES_MS = 5 * 60_000;
 
@@ -34,6 +35,7 @@ export class IngameTracker implements AfterViewInit, OnDestroy {
   readonly tournament = inject(TournamentService);
   private readonly dialog = inject(DialogService);
   readonly i18n = inject(I18nService);
+  readonly auth = inject(AuthService);
 
   // --- Turnier-Rundenzeit (nur sichtbar, wenn dieses Spiel Teil eines Turnier-Tisches ist) ---
   private readonly now = signal(Date.now());
@@ -413,7 +415,8 @@ export class IngameTracker implements AfterViewInit, OnDestroy {
 
   async finishGame(): Promise<void> {
     if (!this.session.canSave()) return;
-    if (!(await this.dialog.confirm(this.i18n.t('ingame.confirmSaveWinner', { winner: this.winnerLabel() })))) return;
+    const confirmKey = this.auth.currentUser() ? 'ingame.confirmSaveWinner' : 'ingame.confirmEndGuestGame';
+    if (!(await this.dialog.confirm(this.i18n.t(confirmKey, { winner: this.winnerLabel() })))) return;
     this.stopAllHolds();
     this.session.saveAndReset();
   }

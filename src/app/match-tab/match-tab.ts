@@ -6,6 +6,7 @@ import { MtgService } from '../mtg.service';
 import { ScryfallCard, ScryfallService, ScryfallSet } from '../scryfall.service';
 import { GameSessionService } from '../game-session.service';
 import { GroupService } from '../group.service';
+import { AuthService } from '../auth.service';
 import { PlayerAvatar } from '../player-avatar/player-avatar';
 import { DeckService, DeckOwner } from '../deck.service';
 import { I18nService } from '../i18n.service';
@@ -38,6 +39,7 @@ export class MatchTab {
   readonly mtg = inject(MtgService);
   readonly session = inject(GameSessionService);
   readonly groupService = inject(GroupService);
+  readonly auth = inject(AuthService);
   private readonly scryfall = inject(ScryfallService);
   private readonly deckService = inject(DeckService);
   readonly i18n = inject(I18nService);
@@ -79,6 +81,24 @@ export class MatchTab {
 
   isSelected(name: string): boolean {
     return this.session.isSelected(name);
+  }
+
+  // --- Gast-Modus: freie Namenseingabe statt Gruppen-Chips (kein Account nötig) ---
+
+  readonly guestNameInput = signal('');
+  readonly guestPlayerNames = signal<string[]>([]);
+
+  addGuestPlayer(): void {
+    const name = this.guestNameInput().trim();
+    if (!name || this.guestPlayerNames().includes(name)) return;
+    this.guestPlayerNames.update((names) => [...names, name]);
+    this.session.togglePlayer(name);
+    this.guestNameInput.set('');
+  }
+
+  removeGuestPlayer(name: string): void {
+    this.guestPlayerNames.update((names) => names.filter((n) => n !== name));
+    this.session.togglePlayer(name);
   }
 
   // --- Commander-Suche ---
