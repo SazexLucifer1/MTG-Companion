@@ -1,0 +1,64 @@
+.public-search-sheet {
+  max-width: 480px;
+  max-height: 85vh;
+  overflow-y: auto;
+  text-align: left;
+}
+
+.public-search-close {
+  float: right;
+}
+
+.public-search-input-row {
+  margin: 12px 0;
+
+  input {
+    width: 100%;
+  }
+}
+
+.public-search-suggestions {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+  max-height: 200px;
+  overflow-y: auto;
+
+  li {
+    padding: 8px 10px;
+    cursor: pointer;
+    border-radius: 6px;
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.08);
+    }
+  }
+}
+
+.public-search-result {
+  display: flex;
+  gap: 12px;
+  cursor: pointer;
+
+  app-card-image {
+    width: 160px;
+    flex-shrink: 0;
+  }
+}
+
+.public-search-result-info {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+
+  .type-line {
+    font-size: 0.85rem;
+    opacity: 0.8;
+  }
+
+  .oracle-text {
+    font-size: 0.85rem;
+    line-height: 1.4;
+    white-space: pre-line;
+  }
+}
