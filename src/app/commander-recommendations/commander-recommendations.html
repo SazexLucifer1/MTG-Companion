@@ -29,62 +29,42 @@
     </div>
 
     <div class="chip-row commander-rec-theme-row">
-      <select
-        class="glass-input small"
-        [ngModel]="browseTheme() ?? 'all'"
-        (ngModelChange)="setBrowseTheme($event)"
-        [disabled]="!themeOptions() || themeOptions()!.length === 0"
-      >
+      <select class="glass-input small" [ngModel]="browseTheme() ?? 'all'" (ngModelChange)="setBrowseTheme($event)">
         <option [ngValue]="'all'">{{ i18n.t('commanderRec.anyTheme') }}</option>
-        @for (t of themeOptions(); track t.slug) {
-          <option [ngValue]="t.slug">{{ t.value }}</option>
+        @for (t of themeOptions; track t.value) {
+          <option [ngValue]="t.value">{{ themeLabel(t.value) }}</option>
         }
       </select>
       <button class="glass-chip small" [disabled]="!canBrowse()" (click)="browse()">
         {{ i18n.t('commanderRec.browseButton') }}
       </button>
-      @if (browseLists() || browseFailed()) {
+      @if (browseResults().length > 0) {
         <button class="glass-chip small" (click)="resetBrowse()">✕ {{ i18n.t('publicSearch.resetFilters') }}</button>
       }
     </div>
 
-    @if (themeOptions() && themeOptions()!.length === 0) {
-      <p class="hint">{{ i18n.t('commanderRec.themesUnavailable') }}</p>
-    }
-
     @if (browseBusy()) {
       <p class="hint">{{ i18n.t('login.pleaseWait') }}</p>
-    } @else if (browseFailed()) {
-      <p class="hint">{{ i18n.t('deckView.edhrecUnavailable') }}</p>
-      @if (browseDebug(); as debug) {
-        <p class="hint commander-rec-debug">🔧 {{ debug }}</p>
-      }
-    } @else if (browseLists(); as browseLists) {
-      @for (list of browseLists; track list.tag) {
-        @if (list.cards.length > 0) {
-          <button class="glass-chip small" (click)="toggleCategory(list)">
-            {{ isExpanded(list.tag) ? '▾' : '▸' }} {{ list.header }} ({{ list.cards.length }})
-          </button>
-          @if (isExpanded(list.tag)) {
-            @if (isCategoryImagesBusy(list.tag)) {
-              <p class="hint">{{ i18n.t('deckView.loadingImages') }}</p>
-            }
-            <div class="card-pick-grid">
-              @for (card of list.cards; track card.name) {
-                <div class="card-pick-tile" (click)="selectCommander(card.name)">
-                  <div class="card-pick-image">
-                    @if (cardImage(card.name); as img) {
-                      <app-card-image [imageUrl]="img" [backImageUrl]="cardBackImage(card.name)" [alt]="card.name" [compact]="true" />
-                    } @else {
-                      <div class="card-pick-placeholder">{{ card.name }}</div>
-                    }
-                  </div>
-                  <span class="card-pick-stats">{{ card.numDecks }}/{{ card.potentialDecks }}</span>
-                </div>
+    } @else if (browseResults().length > 0) {
+      <div class="card-pick-grid">
+        @for (card of pagedBrowseResults(); track card.name) {
+          <div class="card-pick-tile" (click)="selectCommander(card.name)">
+            <div class="card-pick-image">
+              @if (card.imageUrl) {
+                <app-card-image [imageUrl]="card.imageUrl" [backImageUrl]="card.backImageUrl" [alt]="card.name" [compact]="true" />
+              } @else {
+                <div class="card-pick-placeholder">{{ card.name }}</div>
               }
             </div>
-          }
+          </div>
         }
+      </div>
+      @if (browseTotalPages() > 1) {
+        <div class="chip-row pager">
+          <button class="icon-button" (click)="prevBrowsePage()" [disabled]="browseEffectivePage() === 0">◀</button>
+          <span class="hint">{{ browseEffectivePage() + 1 }} / {{ browseTotalPages() }}</span>
+          <button class="icon-button" (click)="nextBrowsePage()" [disabled]="browseEffectivePage() >= browseTotalPages() - 1">▶</button>
+        </div>
       }
     }
   } @else {

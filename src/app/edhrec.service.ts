@@ -76,107 +76,23 @@ export class EdhrecService {
     }
   }
 
-  /**
-   * Debug-Info zum zuletzt versuchten fetchPage()-Aufruf (URL + HTTP-Status oder "network-error") -
-   * NUR zur Fehlerdiagnose bei einem "nicht verfügbar"-Fehlschlag gedacht (EDHRECs API ist
-   * undokumentiert und von der Entwicklungsumgebung aus nicht direkt testbar), wird in der UI
-   * angezeigt, damit ein fehlschlagender Live-Test die tatsächlich versuchte URL zurückmelden kann,
-   * statt weiter raten zu müssen. TODO: entfernen, sobald die Archetyp-Endpunkte zuverlässig laufen.
-   */
-  lastFetchDebug: string | null = null;
-
-  /** Gemeinsame Fetch-/Fehlerbehandlung für EDHRECs Seiten-JSON-Endpunkte ("commanders/…", "tags/…", …) - liefert das rohe JSON oder null. */
-  private async fetchPage(prefix: string, path: string): Promise<any | null> {
-    const cacheKey = `${prefix}/${path}`;
+  /** Gemeinsame Fetch-/Fehlerbehandlung für die commanders-JSON-Endpunkte - liefert das rohe JSON oder null. */
+  private async fetchCommanderPage(path: string): Promise<any | null> {
     const cache = this.getCache();
-    const cached = cache[cacheKey];
+    const cached = cache[path];
     if (cached && Date.now() - cached.cachedAt < EdhrecService.CACHE_TTL_MS) {
       return cached.data;
     }
-    const url = `https://json.edhrec.com/pages/${prefix}/${path}.json`;
     try {
-      const res = await fetch(url);
-      if (!res.ok) {
-        this.lastFetchDebug = `${url} → HTTP ${res.status}`;
-        return null;
-      }
+      const res = await fetch(`https://json.edhrec.com/pages/commanders/${path}.json`);
+      if (!res.ok) return null;
       const data = await res.json();
-      cache[cacheKey] = { data, cachedAt: Date.now() };
+      cache[path] = { data, cachedAt: Date.now() };
       this.saveCache();
-      this.lastFetchDebug = `${url} → OK`;
       return data;
-    } catch (err) {
-      this.lastFetchDebug = `${url} → network error (${err instanceof Error ? err.message : String(err)})`;
+    } catch {
       return null;
     }
-  }
-
-  private async fetchCommanderPage(path: string): Promise<any | null> {
-    return this.fetchPage('commanders', path);
-  }
-
-  private static mapCardlists(raw: any[]): EdhrecCardlist[] {
-    return raw.map((list: any) => ({
-      tag: list.tag,
-      header: list.header,
-      cards: ((list.cardviews ?? []) as any[]).map((c) => ({
-        name: c.name,
-        synergy: c.synergy ?? 0,
-        numDecks: c.num_decks ?? 0,
-        potentialDecks: c.potential_decks ?? 0,
-      })),
-    }));
-  }
-
-  /**
-   * Slug-Namen für Farbkombinationen, wie EDHREC sie für seine eigenen "Top X Commanders"-Seiten
-   * verwendet (z.B. edhrec.com/commanders/rakdos, edhrec.com/commanders/sultai) - Community-
-   * übliche Gilden-/Keil-/Verbund-Namen, keine offizielle Konvention. Keys sind WUBRG-Buchstaben
-   * in fester Reihenfolge (W vor U vor B vor R vor G), damit die Auswahl unabhängig von der
-   * Klick-Reihenfolge der Farb-Chips im UI immer denselben Schlüssel ergibt.
-   */
-  private static readonly COLOR_COMBO_SLUGS: Record<string, string> = {
-    '': 'colorless',
-    W: 'mono-white',
-    U: 'mono-blue',
-    B: 'mono-black',
-    R: 'mono-red',
-    G: 'mono-green',
-    WU: 'azorius',
-    UB: 'dimir',
-    BR: 'rakdos',
-    RG: 'gruul',
-    GW: 'selesnya',
-    WB: 'orzhov',
-    UR: 'izzet',
-    BG: 'golgari',
-    RW: 'boros',
-    GU: 'simic',
-    WUB: 'esper',
-    UBR: 'grixis',
-    BRG: 'jund',
-    RGW: 'naya',
-    GWU: 'bant',
-    WBG: 'abzan',
-    URW: 'jeskai',
-    BGU: 'sultai',
-    RWB: 'mardu',
-    GUR: 'temur',
-    WUBR: 'yore-tiller',
-    UBRG: 'glint-eye',
-    BRGW: 'dune-brood',
-    RGWU: 'ink-treader',
-    GWUB: 'witch-maw',
-    WUBRG: 'five-color',
-  };
-
-  /** Ordnet eine beliebige Farbauswahl (z.B. ['R','U']) auf EDHRECs Slug für diese Kombination - unabhängig von der Reihenfolge der übergebenen Farben. */
-  colorComboSlug(colors: string[]): string | null {
-    const key = 'WUBRG'
-      .split('')
-      .filter((c) => colors.includes(c))
-      .join('');
-    return EdhrecService.COLOR_COMBO_SLUGS[key] ?? null;
   }
 
   /**
@@ -184,7 +100,11 @@ export class EdhrecService {
    * kombiniert mit einem Theme-Tag, z.B. "ramp" oder "aristocrats" - dieselben Tags, die EDHREC
    * auf der Commander-Seite selbst als anklickbare Links zeigt) direkt vom selben JSON, das ihre
    * eigene Webseite nutzt (kein offizieller API-Key noetig, CORS ist offen) -
-   * inoffiziell/undokumentiert, kann sich also theoretisch ohne Vorwarnung aendern.
+   * inoffiziell/undokumentiert, kann sich also theoretisch ohne Vorwarnung aendern. Nur noch für
+   * die Empfehlungen zu einem konkreten, per Namen ausgewählten Commander im Einsatz - das
+   * allgemeine "Commander nach Farbe/Archetyp entdecken" läuft seit einem gescheiterten mehrfachen
+   * Anlauf mit EDHRECs undokumentierter API stattdessen über Scryfalls eigene, dokumentierte API
+   * (ScryfallService.searchCommanders(), order=edhrec).
    */
   async getCommanderRecommendations(
     commanderNames: string[],
@@ -196,24 +116,18 @@ export class EdhrecService {
       const cardlists = data?.container?.json_dict?.cardlists;
       if (!Array.isArray(cardlists)) continue;
 
-      return EdhrecService.mapCardlists(cardlists);
+      return cardlists.map((list: any) => ({
+        tag: list.tag,
+        header: list.header,
+        cards: ((list.cardviews ?? []) as any[]).map((c) => ({
+          name: c.name,
+          synergy: c.synergy ?? 0,
+          numDecks: c.num_decks ?? 0,
+          potentialDecks: c.potential_decks ?? 0,
+        })),
+      }));
     }
     return null;
-  }
-
-  /**
-   * Liefert die "Top Commanders"-Übersicht für eine Farbkombination (z.B. Rakdos, Sultai,
-   * Mono-Rot, Fünffarbig), optional zusätzlich auf einen Archetyp-Tag eingeschränkt (z.B. Rakdos +
-   * "sacrifice") - dieselbe Seite/Struktur wie eine einzelne Commander-Empfehlungsseite (EDHREC
-   * rendert Gilden-/Keil-Übersichten mit demselben Vorlagensystem, inkl. Tag-Filterung über
-   * ".../{tag}.json"), deshalb Wiederverwendung von getCommanderRecommendations() mit dem Farb-Slug
-   * als Pseudo-Commander-Namen - liegt bereits vor dieser Session im Deck-Baukasten produktiv im
-   * Einsatz (Commander + Tag kombiniert), verifiziert live per Farbkombination in dieser Session.
-   */
-  async getTopCommandersForColors(colors: string[], tagSlug?: string | null): Promise<EdhrecCardlist[] | null> {
-    const slug = this.colorComboSlug(colors);
-    if (!slug) return null;
-    return this.getCommanderRecommendations([slug], tagSlug);
   }
 
   /** Liefert die auf EDHREC verfügbaren Theme-Tags für einen Commander/ein Commander-Paar (z.B. Ramp, Aristocrats, Stax, ...), sortiert nach Häufigkeit. */
@@ -230,43 +144,5 @@ export class EdhrecService {
       }));
     }
     return null;
-  }
-
-  /**
-   * Liefert EDHRECs vollständige Archetyp-Liste ("Alle Archetypen", unabhängig von jeder
-   * Farbauswahl) - echte, per Websuche bestätigte Seite: edhrec.com/tags/themes ("All Tags |
-   * EDHREC"). Live bestätigt funktionsfähig (füllt das Archetyp-Dropdown tatsächlich mit echten
-   * Namen). Pfad: tags/themes.json.
-   */
-  async getAllTags(): Promise<EdhrecTag[] | null> {
-    const data = await this.fetchPage('tags', 'themes');
-    const cardlists = data?.container?.json_dict?.cardlists;
-    if (!Array.isArray(cardlists)) return null;
-    const cards = cardlists.flatMap((list: any) => (list.cardviews ?? []) as any[]);
-    if (cards.length === 0) return null;
-    return cards
-      .filter((c: any) => c.name && (c.slug || c.urlhash))
-      .map((c: any) => ({ slug: c.slug ?? c.urlhash, value: c.name, count: c.num_decks ?? 0 }));
-  }
-
-  /**
-   * Liefert die "Top Commanders"-Übersicht für einen Archetyp/Tag (z.B. "sacrifice", "voltron"),
-   * optional zusätzlich auf eine Farbkombination eingeschränkt.
-   *
-   * Pfad: tags/themes/{tag}[/{farbe}].json - NICHT tags/{tag}.json (das war der vorherige,
-   * fehlgeschlagene Versuch). Da getAllTags() (tags/themes.json, die "alle Archetypen"-Liste) live
-   * bestätigt funktioniert, aber die einzelne Archetyp-Seite unter tags/{tag}.json live NICHT
-   * funktioniert hat, ist die naheliegendste Erklärung: "themes" ist bei EDHREC keine reine
-   * Farbkombinations-Kategorie, sondern der gemeinsame Container für ALLE Tag-Einträge (Farben UND
-   * Archetypen) - einzelne Einträge liegen dann konsequenterweise unter tags/themes/{eintrag}, nicht
-   * direkt unter tags/{eintrag}. Passt auch zur separat bestätigten Seite edhrec.com/tags/themes/rakdos.
-   */
-  async getTopCommandersForTag(tagSlug: string, colors?: string[]): Promise<EdhrecCardlist[] | null> {
-    const colorSlug = colors && colors.length > 0 ? this.colorComboSlug(colors) : null;
-    const path = colorSlug ? `themes/${tagSlug}/${colorSlug}` : `themes/${tagSlug}`;
-    const data = await this.fetchPage('tags', path);
-    const cardlists = data?.container?.json_dict?.cardlists;
-    if (!Array.isArray(cardlists)) return null;
-    return EdhrecService.mapCardlists(cardlists);
   }
 }

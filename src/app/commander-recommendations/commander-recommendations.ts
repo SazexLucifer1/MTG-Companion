@@ -1,5 +1,5 @@
 // NEU
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { PercentPipe } from '@angular/common';
 import { ScryfallCard, ScryfallService } from '../scryfall.service';
@@ -7,18 +7,24 @@ import { EdhrecCardlist, EdhrecService, EdhrecTag } from '../edhrec.service';
 import { CardPreviewService } from '../card-preview.service';
 import { I18nService } from '../i18n.service';
 import { CardImage } from '../card-image/card-image';
+import { CARD_EFFECT_FILTERS } from '../card-effect-filters';
 
 /**
- * Commander-Empfehlungen (EDHREC) - ohne Account/Deck nutzbar, eigener Umschalter im Suche-Tab.
- * Rein lesend (kein "zum Deck hinzufügen"), dafür mit Zoom über CardPreviewService. Spiegelt das
+ * Commander-Empfehlungen - ohne Account/Deck nutzbar, eigener Umschalter im Suche-Tab. Rein
+ * lesend (kein "zum Deck hinzufügen"), dafür mit Zoom über CardPreviewService. Spiegelt das
  * bestehende Muster aus deck-viewer.service.ts/deck-detail-view.html (dort an ein konkretes Deck
  * gebunden), hält den Zustand aber komplett lokal statt DeckViewerService zu injizieren - der ist
  * viel zu groß und an Deck-Schreiboperationen gebunden, unpassend für diese anonyme Route.
  *
- * Zusätzlich zur direkten Namenseingabe gibt es einen Entdecken-Modus: Farb- und Archetyp-Filter
- * sind zwei unabhängige, frei kombinierbare Filter (edhrec.service.ts's getTopCommandersForColors()/
- * getTopCommandersForTag()/getAllTags()) - ein Klick auf einen der vorgeschlagenen Commander springt
- * direkt in dessen Detailansicht.
+ * Zwei unabhängige Bereiche mit unterschiedlicher Datenquelle:
+ * - "Entdecken" (Farbe/Mechanik-Filter → Liste von Commandern): läuft über Scryfalls eigene,
+ *   dokumentierte API (searchCommanders(), is:commander + Farbidentität + otag:-Mechanik-Filter,
+ *   sortiert nach Scryfalls order=edhrec) - EDHRECs eigene, undokumentierte API fand trotz
+ *   mehrerer Versuche keine zuverlässigen Endpunkte für diese Art Browsing.
+ * - Direkte Namenssuche → EDHREC-Empfehlungen für GENAU diesen einen Commander (welche Karten
+ *   synergieren mit ihm, über echte Deck-Statistiken) - das kann Scryfall nicht leisten, bleibt
+ *   also bei edhrec.service.ts's getCommanderRecommendations()/getCommanderTags() (bereits vor
+ *   dieser Session produktiv im Deck-Baukasten bewährt).
  */
 @Component({
   selector: 'app-commander-recommendations',
@@ -48,28 +54,31 @@ export class CommanderRecommendations {
   readonly cardDetails = signal<Map<string, ScryfallCard>>(new Map());
   readonly categoryImagesBusy = signal<Set<string>>(new Set());
 
-  // --- Entdecken: Farb-/Archetyp-Filter statt direkter Namenseingabe ---
+  // --- Entdecken: Farb-/Mechanik-Filter statt direkter Namenseingabe (über Scryfall, siehe Klassenkommentar) ---
 
   readonly colorOptions = ['W', 'U', 'B', 'R', 'G'];
   readonly browseColors = signal<Set<string>>(new Set());
   readonly browseTheme = signal<string | null>(null);
-  readonly browseLists = signal<EdhrecCardlist[] | null>(null);
+  readonly browseResults = signal<ScryfallCard[]>([]);
   readonly browseBusy = signal(false);
-  readonly browseFailed = signal(false);
-  /** TODO: entfernen, sobald die Archetyp-Endpunkte zuverlässig laufen - zeigt bei einem Fehlschlag die tatsächlich versuchte URL, damit ein Live-Test sie zurückmelden kann statt weiter geraten zu müssen. */
-  readonly browseDebug = signal<string | null>(null);
+  readonly browsePage = signal(0);
 
-  /**
-   * EDHRECs vollständige, farbunabhängige Archetyp-Liste (getAllTags(), edhrec.com/tags/themes) -
-   * einmalig beim Öffnen geladen, NICHT von der Farbauswahl abhängig, damit sich Farbe und Archetyp
-   * frei und unabhängig voneinander kombinieren lassen (explizit vom Nutzer gewünscht: Archetyp-
-   * Suche soll auch ohne vorherige Farbeinschränkung funktionieren). Null solange noch nicht
-   * geladen/fehlgeschlagen.
-   */
-  readonly themeOptions = signal<EdhrecTag[] | null>(null);
+  private static readonly BROWSE_PAGE_SIZE = 30;
 
-  constructor() {
-    this.edhrec.getAllTags().then((tags) => this.themeOptions.set(tags ?? []));
+  readonly browseTotalPages = computed(() =>
+    Math.max(1, Math.ceil(this.browseResults().length / CommanderRecommendations.BROWSE_PAGE_SIZE))
+  );
+  readonly browseEffectivePage = computed(() => Math.min(this.browsePage(), this.browseTotalPages() - 1));
+  readonly pagedBrowseResults = computed(() => {
+    const start = this.browseEffectivePage() * CommanderRecommendations.BROWSE_PAGE_SIZE;
+    return this.browseResults().slice(start, start + CommanderRecommendations.BROWSE_PAGE_SIZE);
+  });
+
+  /** Mechanik-Filter (Sacrifice-Outlet, Removal, Ramp, ...) - dieselbe, geteilte Liste wie public-card-search.ts. */
+  readonly themeOptions = CARD_EFFECT_FILTERS;
+
+  themeLabel(value: string): string {
+    return this.i18n.t(`effectFilter.${value}`);
   }
 
   toggleBrowseColor(color: string): void {
@@ -90,30 +99,33 @@ export class CommanderRecommendations {
   async browse(): Promise<void> {
     if (!this.canBrowse()) return;
     this.browseBusy.set(true);
-    this.browseFailed.set(false);
-    this.browseLists.set(null);
+    this.browseResults.set([]);
 
     const colors = [...this.browseColors()];
     const theme = this.browseTheme();
-    const result = theme
-      ? await this.edhrec.getTopCommandersForTag(theme, colors)
-      : await this.edhrec.getTopCommandersForColors(colors);
+    const effectQuery = theme ? this.themeOptions.find((f) => f.value === theme)?.query : undefined;
+    const results = await this.scryfall.searchCommanders(colors, effectQuery);
 
-    this.browseLists.set(result);
-    this.browseFailed.set(result === null);
-    this.browseDebug.set(result === null ? this.edhrec.lastFetchDebug : null);
+    this.browseResults.set(results);
+    this.browsePage.set(0);
     this.browseBusy.set(false);
   }
 
   resetBrowse(): void {
     this.browseColors.set(new Set());
     this.browseTheme.set(null);
-    this.browseLists.set(null);
-    this.browseFailed.set(false);
-    this.browseDebug.set(null);
+    this.browseResults.set([]);
   }
 
-  // --- Direkte Namenssuche ---
+  prevBrowsePage(): void {
+    this.browsePage.update((p) => Math.max(0, p - 1));
+  }
+
+  nextBrowsePage(): void {
+    this.browsePage.update((p) => Math.min(this.browseTotalPages() - 1, p + 1));
+  }
+
+  // --- Direkte Namenssuche → echte EDHREC-Empfehlungen für diesen einen Commander ---
 
   onQueryInput(value: string): void {
     this.query.set(value);
