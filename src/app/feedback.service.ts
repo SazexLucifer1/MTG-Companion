@@ -94,6 +94,8 @@ export class FeedbackService {
   readonly showDoneEntries = signal(false);
 
   async loadEntries(): Promise<void> {
+    if (!this.profileService.profile()?.isAppAdmin) return;
+
     this.entriesLoading.set(true);
     const { data, error } = await supabase
       .from('feedback')
@@ -126,6 +128,8 @@ export class FeedbackService {
   }
 
   async setStatus(id: string, status: FeedbackStatus): Promise<void> {
+    if (!this.profileService.profile()?.isAppAdmin) return;
+
     const { error } = await supabase.from('feedback').update({ status }).eq('id', id);
     if (error) {
       console.error('Konnte Feedback-Status nicht ändern:', error);

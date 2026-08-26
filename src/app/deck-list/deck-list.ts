@@ -275,6 +275,7 @@ export class DeckList {
   }
 
   async deleteDeck(deck: Deck): Promise<void> {
+    if (this.readonlyMode()) return;
     if (!(await this.dialog.confirm(this.i18n.t('deck.msg.confirmDelete', { name: deck.name })))) return;
     await this.deckService.deleteDeck(deck.id);
     if (this.viewer.viewingDeck()?.id === deck.id) this.viewer.close();
@@ -282,6 +283,7 @@ export class DeckList {
   }
 
   async toggleDeckPrivate(deck: Deck): Promise<void> {
+    if (this.readonlyMode()) return;
     const ok = await this.deckService.setDeckPrivate(deck.id, !deck.isPrivate);
     if (ok) await this.refreshDecks();
   }

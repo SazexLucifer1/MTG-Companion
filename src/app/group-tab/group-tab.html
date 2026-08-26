@@ -300,8 +300,12 @@
               <button class="icon-button" (click)="openLinkDialog(player)" [attr.aria-label]="i18n.t('group.linkWithMemberAria')">🔗</button>
               <button class="icon-button" (click)="openPlayerDeckDialog(player)" [attr.aria-label]="i18n.t('group.playerDecksAria')" [title]="i18n.t('group.playerDecksAria')">🃏</button>
             }
-            <button class="icon-button" (click)="startEditPlayer(player)" [attr.aria-label]="i18n.t('group.renamePlayerAria')">✏️</button>
-            <button class="icon-button" (click)="deletePlayer(player)" [attr.aria-label]="i18n.t('group.deletePlayerAria')">🗑</button>
+            @if (groupService.isOwner() || player === mtg.myPlayerName()) {
+              <button class="icon-button" (click)="startEditPlayer(player)" [attr.aria-label]="i18n.t('group.renamePlayerAria')">✏️</button>
+            }
+            @if (groupService.isOwner()) {
+              <button class="icon-button" (click)="deletePlayer(player)" [attr.aria-label]="i18n.t('group.deletePlayerAria')">🗑</button>
+            }
           }
         </li>
       }

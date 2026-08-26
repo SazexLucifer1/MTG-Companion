@@ -691,6 +691,9 @@ export class TournamentService {
   }
 
   async removeParticipant(participantId: string, tournamentId: string): Promise<boolean> {
+    const tournament = this.activeTournament();
+    if (!tournament || tournament.id !== tournamentId || !this.isOrganizer()) return false;
+
     const { error } = await supabase.from('tournament_participants').delete().eq('id', participantId);
     if (error) {
       console.error('Konnte Teilnehmer nicht entfernen:', error);
@@ -836,6 +839,9 @@ export class TournamentService {
   }
 
   async endTournament(tournamentId: string): Promise<boolean> {
+    const tournament = this.activeTournament();
+    if (!tournament || tournament.id !== tournamentId || !this.isOrganizer()) return false;
+
     const { error } = await supabase.from('tournaments').update({ status: 'completed' }).eq('id', tournamentId);
     if (error) {
       console.error('Konnte Turnier nicht abschließen:', error);
@@ -876,6 +882,8 @@ export class TournamentService {
    * neuen Wert.
    */
   async setCountInGeneralStats(tournamentId: string, value: boolean): Promise<boolean> {
+    if (!this.groupService.isOwner()) return false;
+
     const { error: tournamentError } = await supabase
       .from('tournaments')
       .update({ count_in_general_stats: value })
@@ -913,6 +921,10 @@ export class TournamentService {
    * löscht auch die matches-Zeilen selbst, das Turnier verschwindet also komplett aus Verlauf/Statistik.
    */
   async deleteTournament(tournamentId: string, groupId: string): Promise<{ success: boolean; error?: string }> {
+    if (groupId !== this.groupService.groupId() || !this.groupService.isOwner()) {
+      return { success: false, error: 'Keine Berechtigung.' };
+    }
+
     const result = await this.deleteTournamentRows([tournamentId]);
     if (!result.success) return result;
 

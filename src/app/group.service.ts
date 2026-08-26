@@ -30,6 +30,16 @@ export class GroupService {
     () => this.myGroups().find((g) => g.id === this.groupId())?.statsLocked ?? false
   );
 
+  /**
+   * Host-Check für eine beliebige (nicht zwangsläufig aktuell aktive) Gruppe - zusätzliche
+   * Absicherung direkt in den Host-only-Methoden unten, nicht nur im Template. Ersetzt keine
+   * serverseitige RLS-Prüfung, verhindert aber Fehlbedienung/Missbrauch über die Service-Methode
+   * direkt (z.B. per Browser-Konsole).
+   */
+  private isOwnerOf(groupId: string): boolean {
+    return this.myGroups().find((g) => g.id === groupId)?.role === 'owner';
+  }
+
   constructor() {
     effect(() => {
       const user = this.auth.currentUser();
@@ -210,6 +220,10 @@ export class GroupService {
     const trimmedCode = code.trim().toUpperCase();
     if (!trimmedCode) return { success: false, message: 'Bitte einen Code eingeben.' };
 
+    // Vorab-Prüfung nur für schnelle, spezifische Fehlermeldungen (UX) - die eigentliche,
+    // sicherheitsrelevante Prüfung (gültiger Code, nicht abgelaufen, role fest 'member') passiert
+    // unabhängig davon nochmal serverseitig in der join_group_by_code()-Funktion unten, ein reiner
+    // Client-Insert in group_members ist seit dem RLS-Fix nicht mehr möglich.
     const { data: invite, error: inviteError } = await supabase
       .from('group_invites')
       .select('id, group_id, expires_at')
@@ -229,11 +243,11 @@ export class GroupService {
       return { success: false, message: 'Du bist bereits Mitglied dieser Gruppe.' };
     }
 
-    const { error: joinError } = await supabase
-      .from('group_members')
-      .insert({ group_id: invite.group_id, user_id: user.id, role: 'member' });
+    const { data: joinResult, error: joinError } = await supabase.rpc('join_group_by_code', {
+      p_code: trimmedCode,
+    });
 
-    if (joinError) {
+    if (joinError || !joinResult?.[0]?.group_id) {
       console.error('Konnte Gruppe nicht beitreten:', joinError);
       return { success: false, message: 'Beitritt fehlgeschlagen.' };
     }
@@ -343,6 +357,8 @@ export class GroupService {
 
   /** Sperrt/entsperrt den Stats-Tab für alle außer dem Host - z.B. für eine Jahresend-Enthüllung. */
   async setStatsLocked(groupId: string, locked: boolean): Promise<boolean> {
+    if (!this.isOwnerOf(groupId)) return false;
+
     const { error } = await supabase.from('groups').update({ stats_locked: locked }).eq('id', groupId);
     if (error) {
       console.error('Konnte Stats-Sperre nicht ändern:', error);
@@ -353,6 +369,8 @@ export class GroupService {
   }
 
   async renameGroup(groupId: string, name: string): Promise<boolean> {
+    if (!this.isOwnerOf(groupId)) return false;
+
     const trimmed = name.trim();
     if (!trimmed) return false;
 
@@ -373,6 +391,8 @@ export class GroupService {
    * MtgService.resetAllData.
    */
   async deleteGroup(groupId: string): Promise<boolean> {
+    if (!this.isOwnerOf(groupId)) return false;
+
     const { data: matchRows, error: matchesFetchError } = await supabase
       .from('matches')
       .select('id')
