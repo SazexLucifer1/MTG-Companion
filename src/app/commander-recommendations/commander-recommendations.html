@@ -29,10 +29,15 @@
     </div>
 
     <div class="chip-row commander-rec-theme-row">
-      <select class="glass-input small" [ngModel]="browseTheme() ?? 'all'" (ngModelChange)="setBrowseTheme($event)">
+      <select
+        class="glass-input small"
+        [ngModel]="browseTheme() ?? 'all'"
+        (ngModelChange)="setBrowseTheme($event)"
+        [disabled]="!themeOptions() || themeOptions()!.length === 0"
+      >
         <option [ngValue]="'all'">{{ i18n.t('commanderRec.anyTheme') }}</option>
-        @for (t of themeOptions; track t) {
-          <option [ngValue]="t">{{ themeLabel(t) }}</option>
+        @for (t of themeOptions(); track t.slug) {
+          <option [ngValue]="t.slug">{{ t.value }}</option>
         }
       </select>
       <button class="glass-chip small" [disabled]="!canBrowse()" (click)="browse()">
@@ -42,6 +47,10 @@
         <button class="glass-chip small" (click)="resetBrowse()">✕ {{ i18n.t('publicSearch.resetFilters') }}</button>
       }
     </div>
+
+    @if (themeOptions() && themeOptions()!.length === 0) {
+      <p class="hint">{{ i18n.t('commanderRec.themesUnavailable') }}</p>
+    }
 
     @if (browseBusy()) {
       <p class="hint">{{ i18n.t('login.pleaseWait') }}</p>
