@@ -423,9 +423,10 @@ export class MtgService {
    * über deletePlayer(), da dort die Spiele beim gelöschten (Alt-)Namen verbleiben würden statt zum
    * Ziel-Spieler zu wandern.
    */
+  /** Nur für den Host - hängt fremde Match-/Turnier-Historie um, darf kein normales Mitglied auslösen können. */
   async mergePlayers(targetName: string, sourceNames: string[]): Promise<boolean> {
     const groupId = this.groupService.groupId();
-    if (!groupId || sourceNames.length === 0) return false;
+    if (!groupId || sourceNames.length === 0 || !this.groupService.isOwner()) return false;
 
     const idsByName = this.playerIdsByName();
     const targetId = idsByName[targetName];

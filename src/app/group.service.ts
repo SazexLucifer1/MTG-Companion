@@ -220,6 +220,10 @@ export class GroupService {
     const trimmedCode = code.trim().toUpperCase();
     if (!trimmedCode) return { success: false, message: 'Bitte einen Code eingeben.' };
 
+    // Vorab-Prüfung nur für schnelle, spezifische Fehlermeldungen (UX) - die eigentliche,
+    // sicherheitsrelevante Prüfung (gültiger Code, nicht abgelaufen, role fest 'member') passiert
+    // unabhängig davon nochmal serverseitig in der join_group_by_code()-Funktion unten, ein reiner
+    // Client-Insert in group_members ist seit dem RLS-Fix nicht mehr möglich.
     const { data: invite, error: inviteError } = await supabase
       .from('group_invites')
       .select('id, group_id, expires_at')
@@ -239,11 +243,11 @@ export class GroupService {
       return { success: false, message: 'Du bist bereits Mitglied dieser Gruppe.' };
     }
 
-    const { error: joinError } = await supabase
-      .from('group_members')
-      .insert({ group_id: invite.group_id, user_id: user.id, role: 'member' });
+    const { data: joinResult, error: joinError } = await supabase.rpc('join_group_by_code', {
+      p_code: trimmedCode,
+    });
 
-    if (joinError) {
+    if (joinError || !joinResult?.[0]?.group_id) {
       console.error('Konnte Gruppe nicht beitreten:', joinError);
       return { success: false, message: 'Beitritt fehlgeschlagen.' };
     }
