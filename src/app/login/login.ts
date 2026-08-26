@@ -2,7 +2,7 @@ import { Component, inject, signal } from '@angular/core';
 import { AuthService } from '../auth.service';
 import { I18nService } from '../i18n.service';
 import { LegalFooter } from '../legal-footer/legal-footer';
-import { PublicCardSearchService } from '../public-card-search.service';
+import { LoginOverlayService } from '../login-overlay.service';
 import { APP_VERSION, APP_COMMIT } from '../version';
 
 @Component({
@@ -14,7 +14,7 @@ import { APP_VERSION, APP_COMMIT } from '../version';
 export class Login {
   private readonly auth = inject(AuthService);
   readonly i18n = inject(I18nService);
-  readonly publicCardSearch = inject(PublicCardSearchService);
+  readonly overlay = inject(LoginOverlayService);
 
   readonly appVersion = APP_VERSION;
   readonly appCommit = APP_COMMIT;
@@ -46,6 +46,7 @@ export class Login {
         }
       } else {
         await this.auth.signIn(this.email(), this.password());
+        this.overlay.close();
       }
     } catch (err: any) {
       this.errorMessage.set(err?.message ?? this.i18n.t('login.msg.genericError'));

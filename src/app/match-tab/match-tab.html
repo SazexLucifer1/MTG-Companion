@@ -29,6 +29,7 @@
     </ul>
   }
 
+  @if (auth.currentUser()) {
   <h3 data-tutorial="match-players-heading">{{ i18n.t('match.whoPlays') }}</h3>
   @if (mtg.allPlayers().length === 0) {
     <p class="hint">{{ i18n.t('match.noPlayersYet') }}</p>
@@ -278,6 +279,62 @@
     @if (session.selectedDraftSet()) {
       <p>{{ i18n.t('match.selectedSet') }} <strong>{{ session.selectedDraftSet()?.name }}</strong>@if (session.selectedDraftSet()?.releasedAt) { – {{ session.selectedDraftSet()?.releasedAt }} }</p>
       <button class="glass-button small" (click)="selectDraftSet(null)">{{ i18n.t('match.removeSelection') }}</button>
+    }
+  }
+
+  } @else {
+    <h3 data-tutorial="match-players-heading">{{ i18n.t('match.whoPlays') }}</h3>
+    <p class="hint">{{ i18n.t('match.guestHint') }}</p>
+
+    <div class="guest-name-row">
+      <input
+        class="glass-input"
+        type="text"
+        [placeholder]="i18n.t('match.guestNamePlaceholder')"
+        [ngModel]="guestNameInput()"
+        (ngModelChange)="guestNameInput.set($event)"
+        (keyup.enter)="addGuestPlayer()"
+      />
+      <button class="glass-button small" (click)="addGuestPlayer()">{{ i18n.t('match.guestAdd') }}</button>
+    </div>
+
+    @if (guestPlayerNames().length > 0) {
+      <div class="chip-row">
+        @for (name of guestPlayerNames(); track name) {
+          <button class="glass-chip active" (click)="removeGuestPlayer(name)">
+            {{ name }} ✕
+          </button>
+        }
+      </div>
+    }
+
+    @if (session.isTwoHeadedGiantMode() && session.selectedPlayers().length > 0) {
+      <h3>{{ i18n.t('match.assignTeams') }}</h3>
+      <div class="team-selector-list">
+        @for (p of session.selectedPlayers(); track p.name) {
+          <label class="team-selector-item">
+            <span>{{ p.name }}</span>
+            <select class="glass-input" [ngModel]="p.team ?? ''" (ngModelChange)="setPlayerTeam(p.name, $event)">
+              <option value="">{{ i18n.t('match.chooseTeamPlaceholder') }}</option>
+              @for (team of teamOptions; track team) {
+                <option [value]="team">{{ team }}</option>
+              }
+            </select>
+          </label>
+        }
+      </div>
+    }
+
+    @if (session.mode() === 'Archenemy' && session.selectedPlayers().length > 0) {
+      <h3>{{ i18n.t('match.markArchenemy') }}</h3>
+      <div class="chip-row">
+        @for (p of session.selectedPlayers(); track p.name) {
+          <button class="glass-chip" [class.active]="p.isArchenemy" (click)="toggleArchenemy(p.name)">
+            👹 {{ p.name }}
+          </button>
+        }
+      </div>
+      <p class="hint">{{ i18n.t('match.archenemyHint') }}</p>
     }
   }
 

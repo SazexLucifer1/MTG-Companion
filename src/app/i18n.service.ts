@@ -12,12 +12,14 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
 
     // --- Header / Navigation ---
     'nav.match': 'Match',
+    'nav.search': 'Suche',
     'nav.stats': 'Statistik',
     'nav.group': 'Gruppe',
     'nav.profile': 'Profil',
     'nav.game': 'Spiel',
     'nav.tournament': 'Turnier',
     'header.logout': 'Logout',
+    'header.login': 'Anmelden',
     'header.switchLanguage': 'Auf Englisch umschalten',
 
     // --- Match-Tab: Neues Match ---
@@ -25,6 +27,9 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     'match.gameMode': 'Spielmodus',
     'match.whoPlays': 'Wer spielt mit?',
     'match.noPlayersYet': 'Noch keine Spieler angelegt. Füge sie im Tab „Gruppe" hinzu.',
+    'match.guestHint': 'Testspiel ohne Account - gib die Namen der Mitspieler ein. Stats werden nicht gespeichert.',
+    'match.guestNamePlaceholder': 'Name eingeben …',
+    'match.guestAdd': '➕ Hinzufügen',
     'match.commander': 'Commander',
     'match.removeCommander': 'Commander entfernen',
     'match.searchCardPlaceholder': 'Kartenname suchen …',
@@ -941,6 +946,7 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     'ingame.draw': '🤝 Unentschieden',
     'ingame.saveAndFinish': 'Match speichern & beenden',
     'ingame.confirmSaveWinner': 'Match mit "{{winner}}" als Sieger speichern?',
+    'ingame.confirmEndGuestGame': '"{{winner}}" hat gewonnen. Da du nicht angemeldet bist, wird dieses Spiel NICHT gespeichert. Trotzdem beenden?',
     'ingame.backToLifeTracker': 'Zurück zum Life Tracker',
     'ingame.closeWithoutSaving': 'Ohne Speichern schließen',
     'ingame.backgroundFor': 'Hintergrund für {{name}}',
@@ -978,11 +984,15 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     'login.forgotPassword': 'Passwort vergessen?',
     'login.noAccountYet': 'Noch keinen Account? Registrieren',
     'login.alreadyHaveAccount': 'Schon einen Account? Anmelden',
-    'login.publicCardSearch': '🔍 Karten durchsuchen (ohne Account)',
-    'publicSearch.title': 'Kartensuche',
     'publicSearch.placeholder': 'Kartenname eingeben …',
-    'publicSearch.back': '← Zurück',
     'publicSearch.noResults': 'Keine Karte gefunden.',
+
+    // --- "Bitte anmelden"-Hinweis für Tabs, die einen Account brauchen ---
+    'loginRequired.genericHint': 'Melde dich an, um diesen Bereich zu nutzen.',
+    'loginRequired.cta': 'Jetzt anmelden',
+    'loginRequired.stats': 'Melde dich an, um deine Statistiken zu sehen.',
+    'loginRequired.group': 'Melde dich an, um deine Gruppe zu verwalten.',
+    'loginRequired.profile': 'Melde dich an, um dein Profil zu sehen.',
     'login.forgotTitle': 'Passwort vergessen',
     'login.forgotHint': 'Gib deine E-Mail-Adresse ein, wir schicken dir einen Link zum Zurücksetzen.',
     'login.emailPlaceholder': 'E-Mail-Adresse',
@@ -1159,12 +1169,14 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
 
     // --- Header / Navigation ---
     'nav.match': 'Match',
+    'nav.search': 'Search',
     'nav.stats': 'Stats',
     'nav.group': 'Group',
     'nav.profile': 'Profile',
     'nav.game': 'Game',
     'nav.tournament': 'Tournament',
     'header.logout': 'Logout',
+    'header.login': 'Sign in',
     'header.switchLanguage': 'Switch to German',
 
     // --- Match tab: New match ---
@@ -1172,6 +1184,9 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     'match.gameMode': 'Game Mode',
     'match.whoPlays': 'Who is playing?',
     'match.noPlayersYet': 'No players yet. Add them in the "Group" tab.',
+    'match.guestHint': 'Guest game, no account - enter your fellow players\' names. Stats will not be saved.',
+    'match.guestNamePlaceholder': 'Enter name …',
+    'match.guestAdd': '➕ Add',
     'match.commander': 'Commander',
     'match.removeCommander': 'Remove commander',
     'match.searchCardPlaceholder': 'Search card name …',
@@ -2092,6 +2107,7 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     'ingame.draw': '🤝 Draw',
     'ingame.saveAndFinish': 'Save match & finish',
     'ingame.confirmSaveWinner': 'Save match with "{{winner}}" as winner?',
+    'ingame.confirmEndGuestGame': '"{{winner}}" won. Since you are not signed in, this game will NOT be saved. End anyway?',
     'ingame.backToLifeTracker': 'Back to Life Tracker',
     'ingame.closeWithoutSaving': 'Close without saving',
     'ingame.backgroundFor': 'Background for {{name}}',
@@ -2129,11 +2145,15 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     'login.forgotPassword': 'Forgot password?',
     'login.noAccountYet': "Don't have an account? Sign up",
     'login.alreadyHaveAccount': 'Already have an account? Sign in',
-    'login.publicCardSearch': '🔍 Search cards (no account needed)',
-    'publicSearch.title': 'Card search',
     'publicSearch.placeholder': 'Enter card name …',
-    'publicSearch.back': '← Back',
     'publicSearch.noResults': 'No card found.',
+
+    // --- "Please sign in" hint for tabs that need an account ---
+    'loginRequired.genericHint': 'Sign in to use this area.',
+    'loginRequired.cta': 'Sign in now',
+    'loginRequired.stats': 'Sign in to see your stats.',
+    'loginRequired.group': 'Sign in to manage your group.',
+    'loginRequired.profile': 'Sign in to see your profile.',
     'login.forgotTitle': 'Forgot password',
     'login.forgotHint': "Enter your email address, we'll send you a reset link.",
     'login.emailPlaceholder': 'Email address',

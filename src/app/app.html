@@ -1,7 +1,7 @@
 <!-- NEU -->
 @if (auth.passwordRecovery()) {
 <app-reset-password />
-} @else if (auth.currentUser()) {
+} @else {
   <header class="app-header">
     <h1>MTG Companion <span class="app-version-badge" [title]="appCommit">{{ appVersion }}</span></h1>
     <div class="header-actions">
@@ -22,7 +22,11 @@
       >
         {{ i18n.lang() === 'de' ? 'DE' : 'EN' }}
       </button>
+      @if (auth.currentUser()) {
       <button class="logout-btn" (click)="auth.signOut()">{{ i18n.t('header.logout') }}</button>
+      } @else {
+      <button class="logout-btn" (click)="loginOverlay.open()">{{ i18n.t('header.login') }}</button>
+      }
     </div>
   </header>
 
@@ -32,12 +36,14 @@
   } @else {
   @switch (navigation.activeTab()) { @case ('match') {
   <app-match-tab />
+  } @case ('search') {
+  <app-search-tab />
   } @case ('stats') {
-  <app-stats-tab />
+  @if (auth.currentUser()) { <app-stats-tab /> } @else { <app-login-required [message]="i18n.t('loginRequired.stats')" /> }
   } @case ('group') {
-  <app-group-tab />
+  @if (auth.currentUser()) { <app-group-tab /> } @else { <app-login-required [message]="i18n.t('loginRequired.group')" /> }
   } @case ('profile') {
-  <app-profile-tab />
+  @if (auth.currentUser()) { <app-profile-tab /> } @else { <app-login-required [message]="i18n.t('loginRequired.profile')" /> }
   } }
   }
 </main>
@@ -85,12 +91,10 @@
   }
 </nav>
 <app-legal-footer />
-} @else {
-  @if (publicCardSearch.active()) {
-  <app-public-card-search />
-  } @else {
-  <app-login />
-  }
+}
+
+@if (loginOverlay.active()) {
+<app-login />
 }
 
 <app-legal-page-view />

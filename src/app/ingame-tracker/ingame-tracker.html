@@ -56,6 +56,7 @@
             [ngClass]="iconPairCorner(i)"
             [style.flex-direction]="iconPairDirection(i)"
           >
+            @if (auth.currentUser()) {
             <button
               class="panel-icon-button"
               (click)="openBackgroundPicker(p.key)"
@@ -64,6 +65,7 @@
             >
               🖌️
             </button>
+            }
             <button
               class="panel-icon-button death"
               [class.active]="session.isDead(p.key)"

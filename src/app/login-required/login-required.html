@@ -1,0 +1,6 @@
+<section class="glass-card login-required">
+  <p class="hint">{{ message() ?? i18n.t('loginRequired.genericHint') }}</p>
+  <button type="button" class="glass-button primary" (click)="overlay.open()">
+    {{ i18n.t('loginRequired.cta') }}
+  </button>
+</section>
