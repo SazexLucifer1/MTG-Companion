@@ -34,4 +34,19 @@ export const CARD_EFFECT_FILTERS: CardEffectFilter[] = [
   { value: 'recursion', query: 'otag:recursion' },
   { value: 'sacrifice', query: 'otag:sacrifice-outlet' },
   { value: 'extracombat', query: 'otag:extra-combat' },
+
+  // EDHREC-Archetyp-Tags (edhrec.com/tags) statt enger Karten-Mechaniken - per Websuche bestätigte
+  // otag:-Werte, wo möglich: group-hug (412 Karten), landfall (mehrfach in echten Suchen belegt),
+  // enchantress (17 Karten über den oracletag:-Alias), synergy-artifact (1030 Karten - Scryfall nutzt
+  // hier bewusst ein "synergy-"-Präfix statt nur "artifact", um nicht mit dem Kartentyp zu
+  // kollidieren). aristocrats/voltron/stax/spellslinger folgen bestmöglich derselben Namenskonvention,
+  // ohne einzeln bestätigt zu sein - liefert bei falschem Slug einfach 0 Ergebnisse statt Fehler.
+  { value: 'aristocrats', query: 'otag:aristocrats' },
+  { value: 'voltron', query: 'otag:voltron' },
+  { value: 'stax', query: 'otag:stax' },
+  { value: 'group-hug', query: 'otag:group-hug' },
+  { value: 'artifact-synergy', query: 'otag:synergy-artifact' },
+  { value: 'landfall', query: 'otag:landfall' },
+  { value: 'enchantress', query: 'otag:enchantress' },
+  { value: 'spellslinger', query: 'otag:spellslinger' },
 ];
