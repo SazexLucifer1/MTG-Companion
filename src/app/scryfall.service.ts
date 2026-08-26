@@ -406,6 +406,27 @@ export class ScryfallService {
     return ((data.data as any[]) ?? []).map((c) => this.toCard(c));
   }
 
+  /**
+   * Sucht Commander-legale Legenden nach Farbidentität (exakt, nicht Teilmenge - "Rakdos-Commander"
+   * meint wirklich Schwarz+Rot, nicht auch Mono-Schwarz) und optional einer Mechanik-Kategorie (aus
+   * card-effect-filters.ts, z.B. "Sacrifice-Outlet"), sortiert nach Scryfalls eigenem EDHREC-Rang
+   * (order=edhrec - offizieller, dokumentierter Scryfall-Sortierparameter, keine inoffizielle
+   * EDHREC-API nötig). Ersetzt die EDHREC-Direktanbindung fürs Commander-Entdecken (Farbe/Archetyp-
+   * Browsing), die trotz mehrerer Versuche keine zuverlässigen Endpunkte fand - Scryfalls eigene
+   * API ist dokumentiert und stabil.
+   */
+  async searchCommanders(colors: string[], effectQuery?: string | null): Promise<ScryfallCard[]> {
+    const parts = ['is:commander'];
+    if (colors.length > 0) parts.push(`id:${colors.join('')}`);
+    if (effectQuery) parts.push(effectQuery);
+
+    const q = encodeURIComponent(parts.join(' '));
+    const res = await this.fetchWithRetry(`${API}/cards/search?q=${q}&unique=cards&order=edhrec`);
+    if (!res?.ok) return [];
+    const data = await res.json();
+    return ((data.data as any[]) ?? []).map((c) => this.toCard(c));
+  }
+
   // NEU
   // NEU
   /**

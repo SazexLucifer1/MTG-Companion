@@ -994,11 +994,10 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     // --- Commander-Empfehlungen (EDHREC), Suche-Tab ---
     'commanderRec.namePlaceholder': 'Commander-Name eingeben …',
     'commanderRec.hint': 'Wähle einen Commander, um EDHRECs Empfehlungen für synergistische Karten zu sehen.',
-    'commanderRec.browseHint': 'Oder nach Farbe/Archetyp durchsuchen (EDHRECs Top-Commander-Listen):',
-    'commanderRec.anyTheme': 'Archetyp: alle',
+    'commanderRec.browseHint': 'Oder nach Farbe/Mechanik durchsuchen (sortiert nach Beliebtheit):',
+    'commanderRec.anyTheme': 'Mechanik: alle',
     'commanderRec.browseButton': 'Anzeigen',
     'commanderRec.back': '← Zurück',
-    'commanderRec.themesUnavailable': 'Archetyp-Liste aktuell nicht verfügbar - Farbfilter funktionieren trotzdem.',
 
     // --- "Bitte anmelden"-Hinweis für Tabs, die einen Account brauchen ---
     'loginRequired.genericHint': 'Melde dich an, um diesen Bereich zu nutzen.',
@@ -2168,11 +2167,10 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     // --- Commander recommendations (EDHREC), Search tab ---
     'commanderRec.namePlaceholder': 'Enter commander name …',
     'commanderRec.hint': "Pick a commander to see EDHREC's recommendations for synergistic cards.",
-    'commanderRec.browseHint': "Or browse by color/archetype (EDHREC's top commander lists):",
-    'commanderRec.anyTheme': 'Archetype: any',
+    'commanderRec.browseHint': 'Or browse by color/mechanic (sorted by popularity):',
+    'commanderRec.anyTheme': 'Mechanic: any',
     'commanderRec.browseButton': 'Show',
     'commanderRec.back': '← Back',
-    'commanderRec.themesUnavailable': 'Archetype list currently unavailable - color filters still work.',
 
     // --- "Please sign in" hint for tabs that need an account ---
     'loginRequired.genericHint': 'Sign in to use this area.',
