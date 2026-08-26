@@ -30,6 +30,16 @@ export class GroupService {
     () => this.myGroups().find((g) => g.id === this.groupId())?.statsLocked ?? false
   );
 
+  /**
+   * Host-Check für eine beliebige (nicht zwangsläufig aktuell aktive) Gruppe - zusätzliche
+   * Absicherung direkt in den Host-only-Methoden unten, nicht nur im Template. Ersetzt keine
+   * serverseitige RLS-Prüfung, verhindert aber Fehlbedienung/Missbrauch über die Service-Methode
+   * direkt (z.B. per Browser-Konsole).
+   */
+  private isOwnerOf(groupId: string): boolean {
+    return this.myGroups().find((g) => g.id === groupId)?.role === 'owner';
+  }
+
   constructor() {
     effect(() => {
       const user = this.auth.currentUser();
@@ -343,6 +353,8 @@ export class GroupService {
 
   /** Sperrt/entsperrt den Stats-Tab für alle außer dem Host - z.B. für eine Jahresend-Enthüllung. */
   async setStatsLocked(groupId: string, locked: boolean): Promise<boolean> {
+    if (!this.isOwnerOf(groupId)) return false;
+
     const { error } = await supabase.from('groups').update({ stats_locked: locked }).eq('id', groupId);
     if (error) {
       console.error('Konnte Stats-Sperre nicht ändern:', error);
@@ -353,6 +365,8 @@ export class GroupService {
   }
 
   async renameGroup(groupId: string, name: string): Promise<boolean> {
+    if (!this.isOwnerOf(groupId)) return false;
+
     const trimmed = name.trim();
     if (!trimmed) return false;
 
@@ -373,6 +387,8 @@ export class GroupService {
    * MtgService.resetAllData.
    */
   async deleteGroup(groupId: string): Promise<boolean> {
+    if (!this.isOwnerOf(groupId)) return false;
+
     const { data: matchRows, error: matchesFetchError } = await supabase
       .from('matches')
       .select('id')

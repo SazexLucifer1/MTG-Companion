@@ -107,7 +107,7 @@ export class MtgService {
   /** Nur für den Host: legt die Mindestanzahl Spiele für einen Modus (oder 'Alle' für die Aggregat-Ansicht) fest. 0 = keine Mindestspielzahl. */
   async setQualificationThreshold(mode: GameMode | 'Alle', minGames: number): Promise<boolean> {
     const groupId = this.groupService.groupId();
-    if (!groupId) return false;
+    if (!groupId || !this.groupService.isOwner()) return false;
 
     const { error } = await supabase
       .from('group_qualification_settings')
@@ -154,7 +154,7 @@ export class MtgService {
   /** Nur für den Host: legt fest, ob die Stats eines Spielers für einen bestimmten Modus für die ganze Gruppe sichtbar sind. */
   async setStatVisibility(playerName: string, mode: GameMode, visible: boolean): Promise<boolean> {
     const groupId = this.groupService.groupId();
-    if (!groupId) return false;
+    if (!groupId || !this.groupService.isOwner()) return false;
 
     const playerId = this.playerIdsByName()[playerName];
     if (!playerId) return false;
@@ -184,7 +184,7 @@ export class MtgService {
   /** Nur für den Host: setzt die Sichtbarkeit eines Spielers für alle Modi auf einmal. */
   async setStatVisibilityForAllModes(playerName: string, visible: boolean): Promise<boolean> {
     const groupId = this.groupService.groupId();
-    if (!groupId) return false;
+    if (!groupId || !this.groupService.isOwner()) return false;
 
     const playerId = this.playerIdsByName()[playerName];
     if (!playerId) return false;
@@ -334,6 +334,11 @@ export class MtgService {
     const groupId = this.groupService.groupId();
     if (!groupId) return false;
 
+    // Umbenennen darf jeder Spieler nur bei sich selbst (eigener verknüpfter Account) - alle
+    // anderen Namen bleiben dem Host vorbehalten.
+    const isSelf = this.playerUserIds()[oldName] === this.auth.currentUser()?.id;
+    if (!isSelf && !this.groupService.isOwner()) return false;
+
     const playerId = this.playerIdsByName()[oldName];
 
     const { error } = await supabase
@@ -390,9 +395,10 @@ export class MtgService {
     return true;
   }
 
+  /** Nur für den Host - Spieler löschen ist einschneidender als Umbenennen, deshalb nicht auch selbst-erlaubt. */
   async deletePlayer(name: string): Promise<void> {
     const groupId = this.groupService.groupId();
-    if (!groupId) return;
+    if (!groupId || !this.groupService.isOwner()) return;
 
     const { error } = await supabase
       .from('players')
