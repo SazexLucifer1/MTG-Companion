@@ -220,6 +220,7 @@ export class DeckImportService {
         edhrecTag: tag,
         isPrivate: false,
         isOutdated: false,
+        creatureType: null,
       });
     } else {
       this.newDeckMessage.set(this.i18n.t('importDialog.msg.createFailed'));

@@ -12,6 +12,7 @@ import { normalizeCardName, sleep } from './array-utils';
 import { AuthService } from './auth.service';
 import { GroupService } from './group.service';
 import { I18nService } from './i18n.service';
+import { COMMANDER_ARCHETYPE_FILTERS } from './commander-archetype-filters';
 
 export interface ManaCurveBucket {
   label: string;
@@ -1064,6 +1065,49 @@ export class DeckViewerService {
     await this.reloadDeckCards();
   }
 
+  // --- Archetyp/Kreaturtyp: vom Spieler selbst gewählte Einordnung (siehe DeckService.updateDeckArchetype())
+  // fürs Filtern im öffentlichen Decks-Suchreiter - unabhängig von der automatisch aus der
+  // Commander-Farbidentität gepflegten color_identity-Spalte. Speichert (wie toggleOutdated()) sofort
+  // bei Auswahl, ohne eigenen Save/Discard-Schritt, da es sich um zwei einzelne, unabhängig
+  // wählbare Werte handelt statt einer zusammenhängenden Änderung wie beim Karten-Editor.
+  readonly archetypeOptions = COMMANDER_ARCHETYPE_FILTERS;
+  readonly creatureTypeOptions = signal<string[]>([]);
+  readonly creatureTypeOptionsLoading = signal(false);
+  readonly archetypeSaving = signal(false);
+
+  archetypeLabel(value: string): string {
+    return this.i18n.t(`archetypeFilter.${value}`);
+  }
+
+  private async loadCreatureTypeOptions(): Promise<void> {
+    this.creatureTypeOptionsLoading.set(true);
+    this.creatureTypeOptions.set(await this.scryfall.creatureTypes());
+    this.creatureTypeOptionsLoading.set(false);
+  }
+
+  async setArchetype(edhrecTag: string | null): Promise<void> {
+    const deck = this.viewingDeck();
+    if (!deck || !this.canEditViewingDeck()) return;
+
+    this.archetypeSaving.set(true);
+    const ok = await this.deckService.updateDeckArchetype(deck.id, edhrecTag, deck.creatureType);
+    this.archetypeSaving.set(false);
+    if (ok) {
+      this.viewingDeck.set({ ...deck, edhrecTag });
+      this.deckTagDraft.set(edhrecTag);
+    }
+  }
+
+  async setCreatureType(creatureType: string | null): Promise<void> {
+    const deck = this.viewingDeck();
+    if (!deck || !this.canEditViewingDeck()) return;
+
+    this.archetypeSaving.set(true);
+    const ok = await this.deckService.updateDeckArchetype(deck.id, deck.edhrecTag, creatureType);
+    this.archetypeSaving.set(false);
+    if (ok) this.viewingDeck.set({ ...deck, creatureType });
+  }
+
   readonly commanderMarkError = signal<string | null>(null);
 
   /**
@@ -1269,6 +1313,7 @@ export class DeckViewerService {
     if (this.editMode() || !this.canEditViewingDeck()) return; // Verlassen geht nur bewusst über saveEdits()/cancelEdits()
     this.editMode.set(true);
     this.showCommanderToggle.set(false);
+    if (this.creatureTypeOptions().length === 0) this.loadCreatureTypeOptions();
     this.artworkPickerCard.set(null);
     this.artworkOptions.set([]);
     this.tagEditorCard.set(null);
@@ -1444,12 +1489,16 @@ export class DeckViewerService {
       commanderChanged = true;
     }
 
-    // Farb-/Typal-Metadaten für den öffentlichen Decks-Suchreiter nachpflegen (siehe
+    // Farb-Metadaten für den öffentlichen Decks-Suchreiter nachpflegen (siehe
     // sql/public-deck-browse-2026-08-26.sql) - nur wenn sich die Commander-Markierung tatsächlich
     // geändert hat, sonst unnötiger Schreibzugriff bei jedem Speichern. editedDeckCards() spiegelt
     // an dieser Stelle noch den fertig gemergten Zustand wider (pendingCommanderChanges wird erst
     // unten zurückgesetzt). viewingCardDetails() liefert die schon geladenen ScryfallCard-Daten
-    // (colorIdentity/typeLine) der Commander-Karten - kein zusätzlicher Netzwerk-Call nötig.
+    // (colorIdentity) der Commander-Karten - kein zusätzlicher Netzwerk-Call nötig. Der Kreaturtyp
+    // (commander_types) wird HIER bewusst nicht mehr angefasst - das ist seit dem Archetyp-/
+    // Kreaturtyp-Dropdown im Bearbeiten-Modus ein eigenständiges, rein manuelles Feld (siehe
+    // setArchetype()/setCreatureType() unten), das nicht bei jedem Commander-Wechsel überschrieben
+    // werden soll.
     if (commanderChanged) {
       const commanderCards = this.editedDeckCards()
         .filter((c) => c.isCommander)
@@ -1457,10 +1506,7 @@ export class DeckViewerService {
         .filter((c): c is ScryfallCard => c !== undefined);
 
       const colorIdentity = [...new Set(commanderCards.flatMap((c) => c.colorIdentity ?? []))].sort();
-      const commanderTypes = [
-        ...new Set(commanderCards.flatMap((c) => DeckViewerService.parseSubtypes(c.typeLine ?? null))),
-      ].sort();
-      await this.deckService.updateDeckCommanderMetadata(deck.id, colorIdentity, commanderTypes);
+      await this.deckService.updateDeckCommanderMetadata(deck.id, colorIdentity);
     }
 
     // Für Karten, die im selben Speichervorgang brandneu hinzugefügt wurden, wurde der
