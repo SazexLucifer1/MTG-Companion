@@ -225,13 +225,21 @@ export class DeckPdfService {
         for (const c of corners) {
           const [ra, ga, ba] = sample(c.sampleA[0], c.sampleA[1]);
           const [rb, gb, bb] = sample(c.sampleB[0], c.sampleB[1]);
+          ctx.save();
+          // Nur den "Zwickel" außerhalb der Kartenrundung füllen (Eckquadrat MINUS Rundungs-
+          // Viertelkreis), nicht das ganze Eckquadrat - sonst würde die bereits gezeichnete
+          // Kartenrundung selbst überdeckt. Umgesetzt per Clip mit "evenodd": Rechteck- und
+          // Kreispfad überlappen sich innerhalb der Rundung, wodurch dort ein Loch entsteht und
+          // nur der Zwickel zum Füllen übrig bleibt (frühere Version hat die Rundung stattdessen
+          // mit destination-out komplett transparent "ausgestanzt" - beim JPEG-Export ohne
+          // Alphakanal wurde daraus ein sichtbarer schwarzer Kreis).
+          ctx.beginPath();
+          ctx.rect(c.x0, c.y0, c.x1 - c.x0, c.y1 - c.y0);
+          ctx.moveTo(c.cx + r, c.cy);
+          ctx.arc(c.cx, c.cy, r, 0, Math.PI * 2);
+          ctx.clip('evenodd');
           ctx.fillStyle = `rgb(${Math.round((ra + rb) / 2)}, ${Math.round((ga + gb) / 2)}, ${Math.round((ba + bb) / 2)})`;
           ctx.fillRect(c.x0, c.y0, c.x1 - c.x0, c.y1 - c.y0);
-          ctx.save();
-          ctx.globalCompositeOperation = 'destination-out';
-          ctx.beginPath();
-          ctx.arc(c.cx, c.cy, r, 0, Math.PI * 2);
-          ctx.fill();
           ctx.restore();
         }
       }
