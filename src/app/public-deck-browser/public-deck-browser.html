@@ -67,12 +67,14 @@
                 <div class="card-pick-placeholder">{{ deck.name }}</div>
               }
             </div>
-            <span class="card-pick-stats">{{ deck.name }}</span>
-            @if (statsFor(deck.id); as s) {
-              @if (s.games > 0) {
-                <span class="card-pick-stats public-deck-winrate">{{ s.winRate | number: '1.0-0' }}% ({{ s.wins }}/{{ s.games }})</span>
+            <span class="card-pick-stats card-pick-name">{{ deck.name }}</span>
+            <span class="card-pick-stats public-deck-winrate">
+              @if (statsFor(deck.id); as s) {
+                @if (s.games > 0) {
+                  {{ s.winRate | number: '1.0-0' }}% ({{ s.wins }}/{{ s.games }})
+                }
               }
-            }
+            </span>
           </div>
         }
       </div>
