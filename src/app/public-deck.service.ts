@@ -9,7 +9,8 @@ export interface PublicDeck {
   edhrecTag: string | null;
   colorIdentity: string[];
   commanderTypes: string[];
-  commanderNames: string[];
+  /** Name + individuell gewähltes Artwork (deck_cards.image_url) jedes markierten Commanders - dieselbe Priorität wie deck-list.ts' commanderImageUrl, damit das Bild hier mit dem in der Deck-Ansicht übereinstimmt. */
+  commanders: { name: string; imageUrl: string | null }[];
 }
 
 export interface PublicDeckStats {
@@ -76,8 +77,8 @@ export class PublicDeckService {
     }
 
     const deckIds = (data as any[]).map((row) => row.id);
-    const [commanderNames, stats] = await Promise.all([
-      this.getCommanderNames(deckIds),
+    const [commanders, stats] = await Promise.all([
+      this.getCommanders(deckIds),
       this.getStats(deckIds),
     ]);
 
@@ -89,7 +90,7 @@ export class PublicDeckService {
       edhrecTag: row.edhrec_tag,
       colorIdentity: row.color_identity ?? [],
       commanderTypes: row.commander_types ?? [],
-      commanderNames: commanderNames.get(row.id) ?? [],
+      commanders: commanders.get(row.id) ?? [],
     }));
 
     if (filters.sort === 'winRate') {
@@ -103,25 +104,31 @@ export class PublicDeckService {
     return { decks, stats };
   }
 
-  /** Alle markierten Commander pro Deck (nicht nur der erste - wichtig für Partner-Decks). */
-  private async getCommanderNames(deckIds: string[]): Promise<Map<string, string[]>> {
-    const result = new Map<string, string[]>();
+  /**
+   * Alle markierten Commander pro Deck (nicht nur der erste - wichtig für Partner-Decks), inklusive
+   * des individuell gewählten Artworks (deck_cards.image_url). Wird für die Kartenbild-Anzeige
+   * gebraucht - ein reiner Namens-Lookup bei Scryfall (frühere Version) liefert das generische/
+   * neueste Artwork zum Namen, das vom tatsächlich im Deck hinterlegten Bild abweichen kann (z.B.
+   * nach Nutzung des Artwork-Pickers im Deck-Editor).
+   */
+  private async getCommanders(deckIds: string[]): Promise<Map<string, { name: string; imageUrl: string | null }[]>> {
+    const result = new Map<string, { name: string; imageUrl: string | null }[]>();
     if (deckIds.length === 0) return result;
 
     const { data, error } = await supabase
       .from('deck_cards')
-      .select('deck_id, card_name')
+      .select('deck_id, card_name, image_url')
       .eq('is_commander', true)
       .in('deck_id', deckIds);
 
     if (error || !data) {
-      console.error('Konnte Commander-Namen nicht laden:', error);
+      console.error('Konnte Commander nicht laden:', error);
       return result;
     }
 
     for (const row of data as any[]) {
       const list = result.get(row.deck_id) ?? [];
-      list.push(row.card_name);
+      list.push({ name: row.card_name, imageUrl: row.image_url });
       result.set(row.deck_id, list);
     }
     return result;

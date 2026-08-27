@@ -58,7 +58,7 @@ describe('PublicDeckService', () => {
         error: null,
       },
       deck_cards: {
-        data: [{ deck_id: 'deck-1', card_name: 'Meren of Clan Nel Toth' }],
+        data: [{ deck_id: 'deck-1', card_name: 'Meren of Clan Nel Toth', image_url: 'https://example.com/meren.jpg' }],
         error: null,
       },
       deck_public_stats: {
@@ -75,7 +75,7 @@ describe('PublicDeckService', () => {
       name: 'Golgari Midrange',
       colorIdentity: ['B', 'G'],
       commanderTypes: ['Elf'],
-      commanderNames: ['Meren of Clan Nel Toth'],
+      commanders: [{ name: 'Meren of Clan Nel Toth', imageUrl: 'https://example.com/meren.jpg' }],
     });
     expect(stats.get('deck-1')).toEqual({ games: 4, wins: 3, winRate: 75 });
   });
