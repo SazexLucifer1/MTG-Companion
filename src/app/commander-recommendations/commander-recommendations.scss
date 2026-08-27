@@ -4,6 +4,14 @@
   text-align: left;
 }
 
+// Auf breiten Desktop-Bildschirmen blieb bisher viel Platz links/rechts ungenutzt - ab hier lohnt
+// sich eine breitere Spalte, damit die Karten-Kacheln wirklich den verfügbaren Platz nutzen.
+@media (min-width: 1000px) {
+  .commander-rec-content {
+    max-width: 1100px;
+  }
+}
+
 .commander-rec-input-row {
   margin: 12px 0;
 
@@ -85,6 +93,12 @@
 @media (min-width: 700px) {
   .card-pick-grid {
     grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+@media (min-width: 1000px) {
+  .card-pick-grid {
+    grid-template-columns: repeat(5, 1fr);
   }
 }
 

@@ -4,6 +4,12 @@
   text-align: left;
 }
 
+@media (min-width: 1000px) {
+  .precon-browser-content {
+    max-width: 1100px;
+  }
+}
+
 .precon-filter-row {
   margin: 12px 0;
 
@@ -71,6 +77,12 @@
 @media (min-width: 700px) {
   .card-pick-grid {
     grid-template-columns: repeat(5, 1fr);
+  }
+}
+
+@media (min-width: 1000px) {
+  .card-pick-grid {
+    grid-template-columns: repeat(6, 1fr);
   }
 }
 
