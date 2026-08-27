@@ -190,6 +190,32 @@
             <button class="glass-chip small" [disabled]="viewer.tokenScanBusy()" (click)="viewer.scanForTokens()">
               {{ viewer.tokenScanBusy() ? viewer.i18n.t('deckView.scanningTokens') : viewer.i18n.t('deckView.scanTokens') }}
             </button>
+
+            <select
+              class="glass-input small"
+              [disabled]="viewer.archetypeSaving()"
+              [ngModel]="viewer.viewingDeck()?.edhrecTag ?? 'all'"
+              (ngModelChange)="viewer.setArchetype($event === 'all' ? null : $event)"
+            >
+              <option [ngValue]="'all'">{{ viewer.i18n.t('commanderRec.anyArchetype') }}</option>
+              @for (a of viewer.archetypeOptions; track a.value) {
+                <option [ngValue]="a.value">{{ viewer.archetypeLabel(a.value) }}</option>
+              }
+            </select>
+
+            <select
+              class="glass-input small"
+              [disabled]="viewer.archetypeSaving() || viewer.creatureTypeOptionsLoading()"
+              [ngModel]="viewer.viewingDeck()?.creatureType ?? 'all'"
+              (ngModelChange)="viewer.setCreatureType($event === 'all' ? null : $event)"
+            >
+              <option [ngValue]="'all'">
+                {{ viewer.creatureTypeOptionsLoading() ? viewer.i18n.t('commanderRec.creatureTypesLoading') : viewer.i18n.t('commanderRec.anyCreatureType') }}
+              </option>
+              @for (ct of viewer.creatureTypeOptions(); track ct) {
+                <option [ngValue]="ct">{{ ct }}</option>
+              }
+            </select>
           </div>
           @if (viewer.tokenScanMessage()) {
             <p class="hint">{{ viewer.tokenScanMessage() }}</p>

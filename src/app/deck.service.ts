@@ -22,6 +22,16 @@ export interface Deck {
   isPrivate: boolean;
   /** Als "Outdated" markierte Decks sind standardmäßig in der Deck-Liste ausgeblendet (z.B. für Decks, die nicht mehr gespielt werden, aber nicht gelöscht werden sollen). */
   isOutdated: boolean;
+  /**
+   * Vom Spieler selbst gewählter Kreaturtyp (z.B. "Elf") für Typal-/Stammes-Decks, gespeichert in
+   * decks.commander_types (siehe updateDeckArchetype()) - beim Import wird die Spalte zwar einmalig
+   * mit dem Typ des markierten Commanders vorbefüllt (siehe DeckService.saveDeck()), da aber nicht
+   * jeder Stammes-Commander selbst den beworbenen Kreaturtyp trägt, bleibt sie danach rein manuell
+   * gepflegt (ändert sich NICHT mehr automatisch mit, wenn später der Commander gewechselt wird).
+   * Nur der erste Wert der commander_types-Spalte - die Auswahl im Bearbeiten-Modus ist bewusst ein
+   * einzelnes Dropdown, keine Mehrfachauswahl.
+   */
+  creatureType: string | null;
 }
 
 /**
@@ -123,7 +133,7 @@ export class DeckService {
     let query = supabase
       .from('decks')
       .select(
-        'id, user_id, player_id, name, format, updated_at, is_precon, edhrec_tag, is_private, is_outdated, players ( group_id )'
+        'id, user_id, player_id, name, format, updated_at, is_precon, edhrec_tag, is_private, is_outdated, commander_types, players ( group_id )'
       )
       .order('updated_at', { ascending: false });
     query = owner.kind === 'user' ? query.eq('user_id', owner.userId) : query.eq('player_id', owner.playerId);
@@ -147,6 +157,7 @@ export class DeckService {
       edhrecTag: row.edhrec_tag,
       isPrivate: row.is_private ?? false,
       isOutdated: row.is_outdated ?? false,
+      creatureType: row.commander_types?.[0] ?? null,
     }));
   }
 
@@ -155,7 +166,7 @@ export class DeckService {
     const { data, error } = await supabase
       .from('decks')
       .select(
-        'id, user_id, player_id, name, format, updated_at, is_precon, edhrec_tag, is_private, is_outdated, players ( group_id )'
+        'id, user_id, player_id, name, format, updated_at, is_precon, edhrec_tag, is_private, is_outdated, commander_types, players ( group_id )'
       )
       .eq('id', deckId)
       .maybeSingle();
@@ -178,6 +189,7 @@ export class DeckService {
       edhrecTag: row.edhrec_tag,
       isPrivate: row.is_private ?? false,
       isOutdated: row.is_outdated ?? false,
+      creatureType: row.commander_types?.[0] ?? null,
     };
   }
 
@@ -737,6 +749,28 @@ export class DeckService {
     return true;
   }
 
+  /**
+   * Setzt den vom Spieler selbst gewählten Archetyp (decks.edhrec_tag) und/oder Kreaturtyp
+   * (decks.commander_types, als Einzelwert-Array) - für den öffentlichen Decks-Suchreiter (siehe
+   * sql/public-deck-browse-2026-08-26.sql), unabhängig von der automatisch aus der
+   * Commander-Farbidentität gepflegten decks.color_identity-Spalte (siehe
+   * updateDeckCommanderMetadata()). Beide Felder werden hier bewusst gemeinsam geschrieben (auch
+   * wenn im UI nur eines von beiden geändert wurde) - der jeweils andere Wert kommt vom Aufrufer
+   * unverändert aus dem aktuell angezeigten Deck.
+   */
+  async updateDeckArchetype(deckId: string, edhrecTag: string | null, creatureType: string | null): Promise<boolean> {
+    const { error } = await supabase
+      .from('decks')
+      .update({ edhrec_tag: edhrecTag, commander_types: creatureType ? [creatureType] : [] })
+      .eq('id', deckId);
+
+    if (error) {
+      console.error('Konnte Archetyp/Kreaturtyp nicht ändern:', error);
+      return false;
+    }
+    return true;
+  }
+
   /** Stellt ein Deck privat/sichtbar - private Decks tauchen nicht mehr auf, wenn andere User dieses Profil ansehen. */
   async setDeckPrivate(deckId: string, isPrivate: boolean): Promise<boolean> {
     const { error } = await supabase.from('decks').update({ is_private: isPrivate }).eq('id', deckId);
@@ -775,15 +809,17 @@ export class DeckService {
   }
 
   /**
-   * Pflegt decks.color_identity/commander_types nach - fürs Farb-/Typal-Filter im öffentlichen
-   * Decks-Suchreiter (siehe sql/public-deck-browse-2026-08-26.sql). Wird von
-   * DeckViewerService.saveEdits() aufgerufen, sobald sich die Commander-Markierung geändert hat -
-   * ohne diese Pflege würden die Spalten sofort wieder veralten.
+   * Pflegt decks.color_identity nach - fürs Farbfilter im öffentlichen Decks-Suchreiter (siehe
+   * sql/public-deck-browse-2026-08-26.sql). Wird von DeckViewerService.saveEdits() aufgerufen,
+   * sobald sich die Commander-Markierung geändert hat - ohne diese Pflege würde die Spalte sofort
+   * wieder veralten. commander_types (Kreaturtyp) wird bewusst NICHT hier mitgepflegt - das ist ein
+   * eigenständiges, vom Spieler manuell gesetztes Feld (siehe updateDeckArchetype()), das nicht bei
+   * jedem Commander-Wechsel stillschweigend überschrieben werden soll.
    */
-  async updateDeckCommanderMetadata(deckId: string, colorIdentity: string[], commanderTypes: string[]): Promise<boolean> {
+  async updateDeckCommanderMetadata(deckId: string, colorIdentity: string[]): Promise<boolean> {
     const { error } = await supabase
       .from('decks')
-      .update({ color_identity: colorIdentity, commander_types: commanderTypes })
+      .update({ color_identity: colorIdentity })
       .eq('id', deckId);
 
     if (error) {
