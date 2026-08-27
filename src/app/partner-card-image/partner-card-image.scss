@@ -17,32 +17,36 @@
   height: 100%;
 }
 
-// Versetzter Stapel wie auf EDHRECs Partner-Seiten: vordere Karte unten links groß und prominent,
-// hintere Karte oben rechts nur teilweise sichtbar dahinter. Beide bleiben innerhalb der
-// bestehenden, vom Aufrufer vorgegebenen Kartenbox (z.B. .card-pick-image, aspect-ratio 63/88) -
-// keine Überlappung über den Rand hinaus nötig, da beide Kacheln kleiner als die Box sind.
+// Wie auf EDHRECs Partner-Seiten: die vordere Karte dominiert (fast die ganze Box), die hintere
+// ist deutlich kleiner und sitzt als Ecke oben rechts - kein 50/50-Überlapp zweier gleich großer
+// Karten (das wirkte unklar/verrauscht), sondern klar eine Haupt- und eine Nebenkarte. Beide bleiben
+// vollständig innerhalb der vom Aufrufer vorgegebenen Box (z.B. .card-pick-image, aspect-ratio
+// 63/88) - kein Overflow über den Rand hinaus nötig.
 .partner-card-slot {
   position: absolute;
-  width: 78%;
   aspect-ratio: 63 / 88;
   border-radius: 6px;
   overflow: hidden;
   cursor: pointer;
 }
 
-.partner-card-back {
-  top: 0;
-  right: 0;
-  z-index: 1;
-  filter: brightness(0.78);
-}
-
 .partner-card-front {
+  width: 92%;
   bottom: 0;
   left: 0;
   z-index: 2;
   border: 1px solid rgba(255, 255, 255, 0.2);
   box-shadow: -3px 4px 10px rgba(0, 0, 0, 0.45);
+}
+
+.partner-card-back {
+  width: 52%;
+  top: 0;
+  right: 0;
+  z-index: 1;
+  filter: brightness(0.8);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
 }
 
 .partner-card-placeholder {

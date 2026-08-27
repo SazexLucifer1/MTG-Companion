@@ -1,15 +1,15 @@
-import { Component, inject, input, output } from '@angular/core';
+import { Component, inject, input, output, signal } from '@angular/core';
 import { ScryfallCard } from '../scryfall.service';
 import { CardImage } from '../card-image/card-image';
 import { I18nService } from '../i18n.service';
 
 /**
  * Zeigt 1 Commander normal, bei einem Partner-Paar (2 Commander, siehe
- * ScryfallService.searchCommanderPairs()) BEIDE Karten gleichzeitig als versetzter Stapel - vordere
- * Karte unten links groß, hintere Karte oben rechts nur teilweise sichtbar, wie EDHREC es auf
- * seinen Partner-Seiten macht. Ersetzt die vorherige "1 Karte + Umschalt-Button"-Darstellung, die
- * optisch nicht dem von EDHREC bekannten Bild entsprach. Beide Kartenhälften bleiben einzeln
- * anklickbar (eigene Vorschau je Karte, siehe imageClick).
+ * ScryfallService.searchCommanderPairs()) BEIDE Karten als versetzter Stapel - vordere Karte groß
+ * und dominant, hintere Karte deutlich kleiner oben rechts als Ecke sichtbar (wie EDHREC es auf
+ * seinen Partner-Seiten macht: eine Karte klar im Vordergrund, die andere nur als Hinweis). Klick
+ * auf die kleine hintere Karte tauscht die beiden (um sie in Ruhe lesen zu können, ohne extra die
+ * Vorschau zu öffnen); Klick auf die vordere Karte öffnet wie gewohnt die Vorschau (imageClick).
  */
 @Component({
   selector: 'app-partner-card-image',
@@ -28,10 +28,26 @@ export class PartnerCardImage {
 
   readonly imageClick = output<ScryfallCard>();
 
-  onCardClick(card: ScryfallCard, event: Event): void {
-    // Verhindert, dass ein Klick auf die hintere (teils verdeckte) Karte auch die davor liegende
-    // Karten-Fläche mit-auslöst - beide Kacheln überlappen sich absichtlich.
+  readonly frontIndex = signal(0);
+
+  get frontCard(): ScryfallCard {
+    return this.cards()[this.frontIndex()] ?? this.cards()[0];
+  }
+
+  get backCard(): ScryfallCard {
+    return this.cards()[1 - this.frontIndex()] ?? this.cards()[0];
+  }
+
+  onFrontClick(event: Event): void {
     event.stopPropagation();
-    this.imageClick.emit(card);
+    this.imageClick.emit(this.frontCard);
+  }
+
+  swapToFront(event: Event): void {
+    // Bringt die hintere Karte nach vorne, um sie lesen zu können - bewusst KEIN imageClick hier,
+    // sonst würde ein Antippen der kleinen hinteren Karte sofort die (unpassend große) Vorschau
+    // öffnen statt sie erstmal nur im Stapel nach vorne zu holen.
+    event.stopPropagation();
+    this.frontIndex.update((i) => 1 - i);
   }
 }
