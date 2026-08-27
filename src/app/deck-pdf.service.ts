@@ -51,10 +51,10 @@ export class DeckPdfService {
    * Die verwendete "normal"-Bildvariante von Scryfall ist ein normales, undurchsichtiges JPG ohne
    * Alphakanal - die abgerundete Kartenecke ist darin schon als heller Fleck FEST einkopiert statt
    * transparent. Deshalb hilft eine Hintergrundfarbe beim Zusammensetzen nichts (wird komplett vom
-   * Bild überzeichnet) - stattdessen wird nach dem Einfügen des Bildes gezielt eine schwarze
-   * Eckform genau über die vier Kartenecken gemalt. Bewusst als Nutzer-Option statt immer an: passt
-   * nur für Karten mit schwarzem Rahmen - bei weiß- oder andersfarbig gerahmten Karten (z.B.
-   * manche Sonderdrucke) würde ein schwarz gefüllter Eckbereich falsch aussehen.
+   * Bild überzeichnet) - stattdessen wird nach dem Einfügen des Bildes gezielt eine Eckform genau
+   * über die vier Kartenecken gemalt, eingefärbt mit der tatsächlich vom jeweiligen Kartenbild
+   * abgetasteten Rahmenfarbe (siehe recompressForPrint) statt einer festen Farbe - funktioniert so
+   * unabhängig vom Rahmen (schwarz, weiß, randlos, ...).
    */
   readonly fillCorners = signal(false);
   readonly busy = signal(false);
@@ -157,23 +157,80 @@ export class DeckPdfService {
       if (fillCorners) {
         // Radius der echten Kartenecke (~3,5mm) in Pixel bei der Zielauflösung - bewusst etwas
         // großzügig, damit auch ein leicht abweichender Radius im Quellbild sauber überdeckt wird;
-        // die minimale Überlappung fällt auf den ohnehin schwarzen Kartenrahmen und ist unsichtbar.
+        // die minimale Überlappung fällt auf den Kartenrahmen und ist unsichtbar.
         const r = Math.round((3.5 / 25.4) * 300);
-        ctx.fillStyle = '#000000';
-        const corners: Array<[number, number, number, number]> = [
-          [0, 0, r, r], // oben links
-          [targetW - r, 0, targetW, r], // oben rechts
-          [0, targetH - r, r, targetH], // unten links
-          [targetW - r, targetH - r, targetW, targetH], // unten rechts
+        // Statt einer festen Farbe (frühere Version: immer schwarz, sah bei weiß- oder anders
+        // gerahmten sowie randlosen Karten sichtbar falsch aus) wird je Ecke die tatsächliche
+        // Rahmenfarbe direkt aus dem eben gezeichneten Kartenbild abgetastet - je zwei Messpunkte
+        // knapp innerhalb der geraden Kante (kurz hinter der Rundung, siehe edgeOffset/nearEdge),
+        // gemittelt. Funktioniert dadurch für jede Rahmenfarbe; bei randlosen Karten trifft die
+        // Abtastung den Kartenrand-Farbverlauf statt eines echten Rahmens - näherungsweise passend.
+        const edgeOffset = 5;
+        const nearEdge = 2;
+        const sample = (x: number, y: number): [number, number, number] => {
+          const d = ctx.getImageData(Math.max(0, Math.min(targetW - 1, x)), Math.max(0, Math.min(targetH - 1, y)), 1, 1).data;
+          return [d[0], d[1], d[2]];
+        };
+        const corners: Array<{
+          x0: number;
+          y0: number;
+          x1: number;
+          y1: number;
+          cx: number;
+          cy: number;
+          sampleA: [number, number];
+          sampleB: [number, number];
+        }> = [
+          {
+            x0: 0,
+            y0: 0,
+            x1: r,
+            y1: r,
+            cx: r,
+            cy: r,
+            sampleA: [r + edgeOffset, nearEdge],
+            sampleB: [nearEdge, r + edgeOffset],
+          },
+          {
+            x0: targetW - r,
+            y0: 0,
+            x1: targetW,
+            y1: r,
+            cx: targetW - r,
+            cy: r,
+            sampleA: [targetW - r - edgeOffset, nearEdge],
+            sampleB: [targetW - nearEdge, r + edgeOffset],
+          },
+          {
+            x0: 0,
+            y0: targetH - r,
+            x1: r,
+            y1: targetH,
+            cx: r,
+            cy: targetH - r,
+            sampleA: [r + edgeOffset, targetH - nearEdge],
+            sampleB: [nearEdge, targetH - r - edgeOffset],
+          },
+          {
+            x0: targetW - r,
+            y0: targetH - r,
+            x1: targetW,
+            y1: targetH,
+            cx: targetW - r,
+            cy: targetH - r,
+            sampleA: [targetW - r - edgeOffset, targetH - nearEdge],
+            sampleB: [targetW - nearEdge, targetH - r - edgeOffset],
+          },
         ];
-        for (const [x0, y0, x1, y1] of corners) {
-          const cx = x0 < r ? r : x1 - r; // Kreismittelpunkt liegt r nach innen von der Kartenecke
-          const cy = y0 < r ? r : y1 - r;
-          ctx.fillRect(x0, y0, x1 - x0, y1 - y0);
+        for (const c of corners) {
+          const [ra, ga, ba] = sample(c.sampleA[0], c.sampleA[1]);
+          const [rb, gb, bb] = sample(c.sampleB[0], c.sampleB[1]);
+          ctx.fillStyle = `rgb(${Math.round((ra + rb) / 2)}, ${Math.round((ga + gb) / 2)}, ${Math.round((ba + bb) / 2)})`;
+          ctx.fillRect(c.x0, c.y0, c.x1 - c.x0, c.y1 - c.y0);
           ctx.save();
           ctx.globalCompositeOperation = 'destination-out';
           ctx.beginPath();
-          ctx.arc(cx, cy, r, 0, Math.PI * 2);
+          ctx.arc(c.cx, c.cy, r, 0, Math.PI * 2);
           ctx.fill();
           ctx.restore();
         }
