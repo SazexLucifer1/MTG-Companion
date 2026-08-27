@@ -81,6 +81,28 @@ const QUANTITY_LINE = /^(\d+)\s*x?\s+(.+)$/i;
 /** Set-Kürzel + Sammelnummer, wie sie z.B. deckstats.net anhängt: "Sol Ring (SOC) 128" -> "Sol Ring". */
 const SET_AND_COLLECTOR_NUMBER_SUFFIX = /\s*\([A-Za-z0-9]{2,6}\)\s*[A-Za-z0-9★]*\s*$/;
 
+function parseSubtypes(typeLine: string | undefined): string[] {
+  const parts = (typeLine ?? '').split('—');
+  if (parts.length < 2) return [];
+  return parts[1].trim().split(/\s+/).filter(Boolean);
+}
+
+/** Wie DeckViewerService.saveEdits() für nachträgliche Commander-Wechsel - hier für den Import-/Neuanlage-Pfad in saveDeck(). */
+function commanderMetadataFrom(
+  parsed: { name: string; isCommander: boolean }[],
+  cardMap: Map<string, ScryfallCard>
+): { colorIdentity: string[]; commanderTypes: string[] } {
+  const commanderCards = parsed
+    .filter((p) => p.isCommander)
+    .map((p) => cardMap.get(p.name.toLowerCase()))
+    .filter((c): c is ScryfallCard => !!c);
+
+  return {
+    colorIdentity: [...new Set(commanderCards.flatMap((c) => c.colorIdentity ?? []))].sort(),
+    commanderTypes: [...new Set(commanderCards.flatMap((c) => parseSubtypes(c.typeLine)))].sort(),
+  };
+}
+
 @Injectable({ providedIn: 'root' })
 export class DeckService {
   private readonly scryfall = inject(ScryfallService);
@@ -274,6 +296,13 @@ export class DeckService {
     if (parsed.length === 0) return null;
 
     const cardMap = await this.scryfall.findCardsBulk(parsed.map((p) => p.name));
+    // Farb-/Typal-Metadaten für den öffentlichen Decks-Suchreiter (siehe
+    // sql/public-deck-browse-2026-08-26.sql) direkt beim Import/Neuanlegen mitschreiben - vorher
+    // wurden sie erst befüllt, sobald später im Deck-Editor die Commander-Markierung geändert
+    // wurde (DeckViewerService.saveEdits()), wodurch frisch importierte Decks mit bereits im Text
+    // markiertem Commander auf unbestimmte Zeit ungefiltert blieben (color_identity/commander_types
+    // blieben beim Spalten-Default '{}').
+    const { colorIdentity, commanderTypes } = commanderMetadataFrom(parsed, cardMap);
 
     let deckId = existingDeckId;
 
@@ -334,7 +363,14 @@ export class DeckService {
 
       const { error: updateError } = await supabase
         .from('decks')
-        .update({ name, format, edhrec_tag: edhrecTag, updated_at: new Date().toISOString() })
+        .update({
+          name,
+          format,
+          edhrec_tag: edhrecTag,
+          color_identity: colorIdentity,
+          commander_types: commanderTypes,
+          updated_at: new Date().toISOString(),
+        })
         .eq('id', deckId);
       if (updateError) {
         console.error('Konnte Deck nicht aktualisieren:', updateError);
@@ -350,6 +386,8 @@ export class DeckService {
           format,
           is_precon: isPrecon,
           edhrec_tag: edhrecTag,
+          color_identity: colorIdentity,
+          commander_types: commanderTypes,
         })
         .select('id')
         .single();
