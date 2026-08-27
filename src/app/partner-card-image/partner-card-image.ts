@@ -6,10 +6,16 @@ import { I18nService } from '../i18n.service';
 /**
  * Zeigt 1 Commander normal, bei einem Partner-Paar (2 Commander, siehe
  * ScryfallService.searchCommanderPairs()) BEIDE Karten als versetzter Stapel - vordere Karte groß
- * und dominant, hintere Karte deutlich kleiner oben rechts als Ecke sichtbar (wie EDHREC es auf
- * seinen Partner-Seiten macht: eine Karte klar im Vordergrund, die andere nur als Hinweis). Klick
- * auf die kleine hintere Karte tauscht die beiden (um sie in Ruhe lesen zu können, ohne extra die
- * Vorschau zu öffnen); Klick auf die vordere Karte öffnet wie gewohnt die Vorschau (imageClick).
+ * und dominant, hintere Karte kleiner oben rechts als Ecke sichtbar (wie EDHREC es auf seinen
+ * Partner-Seiten macht). Ein kleiner Button oben links tauscht die beiden (um den hinteren
+ * Commander zu lesen), ebenso ein Klick auf die hintere Karte selbst.
+ *
+ * WICHTIG: der Klick auf die vordere/einzelne Karte selbst löst NUR imageClick aus und stoppt die
+ * Ereignis-Weiterleitung NICHT - diese Komponente wird oft in eine anklickbare Kachel eingebettet
+ * (z.B. `<div class="card-pick-tile" (click)="openDeck(deck)">`), die beim Klick auf den Commander
+ * genauso reagieren soll wie beim Klick auf den Rest der Kachel (Deck/Commander öffnen). Nur der
+ * Umschalt-Button (und ein Klick auf die kleine hintere Karte) stoppen die Weiterleitung bewusst,
+ * damit sie nicht zusätzlich die Kachel auslösen.
  */
 @Component({
   selector: 'app-partner-card-image',
@@ -38,15 +44,14 @@ export class PartnerCardImage {
     return this.cards()[1 - this.frontIndex()] ?? this.cards()[0];
   }
 
-  onFrontClick(event: Event): void {
-    event.stopPropagation();
+  onFrontClick(): void {
     this.imageClick.emit(this.frontCard);
   }
 
   swapToFront(event: Event): void {
-    // Bringt die hintere Karte nach vorne, um sie lesen zu können - bewusst KEIN imageClick hier,
-    // sonst würde ein Antippen der kleinen hinteren Karte sofort die (unpassend große) Vorschau
-    // öffnen statt sie erstmal nur im Stapel nach vorne zu holen.
+    // Bringt die hintere Karte nach vorne - bewusst stopPropagation, damit weder der Umschalt-
+    // Button noch ein Klick auf die kleine hintere Karte zusätzlich eine umschließende anklickbare
+    // Kachel (Deck/Commander öffnen) mit-auslöst.
     event.stopPropagation();
     this.frontIndex.update((i) => 1 - i);
   }
