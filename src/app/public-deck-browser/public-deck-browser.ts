@@ -208,11 +208,20 @@ export class PublicDeckBrowser {
     this.stats.set(stats);
     this.page.set(0);
 
-    const allCommanderNames = [...new Set(decks.flatMap((d) => d.commanderNames))];
+    const allCommanderNames = [...new Set(decks.flatMap((d) => d.commanders.map((c) => c.name)))];
     const cardMap = await this.scryfall.findCardsBulk(allCommanderNames);
     const byDeck = new Map<string, ScryfallCard[]>();
     for (const deck of decks) {
-      const cards = deck.commanderNames.map((n) => cardMap.get(n.toLowerCase())).filter((c): c is ScryfallCard => !!c);
+      // Individuell gewähltes Artwork (deck_cards.image_url) hat Vorrang vor dem generischen
+      // Scryfall-Bild zum Namen - gleiche Priorität wie deck-list.ts' commanderImage(), damit hier
+      // dasselbe Bild wie in der eigentlichen Deck-Ansicht erscheint.
+      const cards = deck.commanders
+        .map((c) => {
+          const base = cardMap.get(c.name.toLowerCase());
+          if (!base) return undefined;
+          return c.imageUrl ? { ...base, imageUrl: c.imageUrl } : base;
+        })
+        .filter((c): c is ScryfallCard => !!c);
       byDeck.set(deck.id, cards);
     }
     this.commanderCardsByDeck.set(byDeck);
