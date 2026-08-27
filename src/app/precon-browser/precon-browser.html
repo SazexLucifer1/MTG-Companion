@@ -44,22 +44,145 @@
     } @else if (deckFailed()) {
       <p class="hint">{{ i18n.t('precons.loadFailed') }}</p>
     } @else {
-      <div class="card-pick-grid">
-        @for (entry of mainCards(); track entry.card.name) {
-          <div class="card-pick-tile" (click)="openPreview(entry.card)">
-            <div class="card-pick-image">
-              @if (entry.card.imageUrl) {
-                <app-card-image [imageUrl]="entry.card.imageUrl" [backImageUrl]="entry.card.backImageUrl" [alt]="entry.card.name" [compact]="true" />
-              } @else {
-                <div class="card-pick-placeholder">{{ entry.card.name }}</div>
-              }
+      <p class="hint">{{ i18n.t('deckView.cardsCount', { count: sectionCardCount(allCards()) }) }}</p>
+
+      <div class="stat-tiles deck-analysis-tiles">
+        <div class="stat-tile">
+          <span class="stat-value">{{ averageCmc() != null ? (averageCmc() | number: '1.1-2') : '–' }}</span>
+          <span class="stat-label">{{ i18n.t('deckView.avgCmcTile') }}</span>
+        </div>
+        <div class="stat-tile">
+          <span class="stat-value">{{ landCount() }}</span>
+          <span class="stat-label">{{ i18n.t('deckView.landsTile') }}</span>
+        </div>
+        <div class="stat-tile">
+          <span class="stat-value">{{ nonBasicLandPercent() != null ? (nonBasicLandPercent() + '%') : '–' }}</span>
+          <span class="stat-label">{{ i18n.t('deckView.nonBasicLandTile') }}</span>
+        </div>
+        <div class="stat-tile">
+          @if (priceBusy()) {
+            <span class="stat-value">…</span>
+          } @else if (totalDeckPrice(); as price) {
+            <span class="stat-value">{{ price | currency: 'EUR' }}</span>
+          } @else {
+            <span class="stat-value">–</span>
+          }
+          <span class="stat-label">{{ i18n.t('deckView.priceTile') }}</span>
+        </div>
+      </div>
+
+      <h4 class="deck-section-title">{{ i18n.t('deckView.manaCurveTitle') }}</h4>
+      <div class="curve-chart">
+        @for (bucket of manaCurve(); track bucket.label) {
+          <div class="curve-bar-col">
+            <div class="curve-bar-track">
+              <div class="curve-bar" [style.height.%]="curveBarHeight(bucket.count)">
+                @if (bucket.count > 0) {
+                  <span class="curve-bar-value">{{ bucket.count }}</span>
+                }
+              </div>
             </div>
-            @if (entry.quantity > 1) {
-              <span class="card-pick-stats">×{{ entry.quantity }}</span>
-            }
+            <span class="curve-bar-label">{{ bucket.label }}</span>
           </div>
         }
       </div>
+
+      <h4 class="deck-section-title">{{ i18n.t('deckView.pipDistTitle') }}</h4>
+      <div class="pip-chart">
+        @for (pip of pipDistribution(); track pip.color) {
+          @if (pip.count > 0) {
+            <div class="pip-row">
+              <span class="pip-swatch" [class]="'pip-' + pip.color"></span>
+              <span class="pip-label">{{ pip.label }}</span>
+              <div class="pip-bar-track">
+                <div class="pip-bar-fill" [class]="'pip-' + pip.color" [style.width.%]="pipBarWidth(pip.count)"></div>
+              </div>
+              <span class="pip-value">{{ pip.count }}</span>
+            </div>
+          }
+        }
+      </div>
+
+      <h4 class="deck-section-title">{{ i18n.t('deckView.typeBreakdownTitle') }}</h4>
+      <div class="pip-chart">
+        @for (t of typeBreakdown(); track t.type) {
+          @if (t.count > 0) {
+            <div class="pip-row">
+              <span class="pip-label type-label">{{ t.label }}</span>
+              <div class="pip-bar-track">
+                <div class="pip-bar-fill type-bar" [style.width.%]="typeBarWidth(t.count)"></div>
+              </div>
+              <span class="pip-value">{{ t.count }}</span>
+            </div>
+          }
+        }
+      </div>
+
+      <input
+        class="glass-input"
+        type="text"
+        [placeholder]="i18n.t('deckView.searchCardPlaceholder')"
+        [ngModel]="cardSearchQuery()"
+        (ngModelChange)="cardSearchQuery.set($event)"
+      />
+      <div class="chip-row card-filter-row">
+        <select class="glass-input small" [ngModel]="cmcFilter()" (ngModelChange)="cmcFilter.set($event)">
+          <option [ngValue]="'all'">{{ i18n.t('deckView.cmcAll') }}</option>
+          @for (n of [0, 1, 2, 3, 4, 5, 6, 7]; track n) {
+            <option [ngValue]="n">{{ n === 7 ? '7+' : n }}</option>
+          }
+        </select>
+        <select class="glass-input small" [ngModel]="typeFilterValue()" (ngModelChange)="typeFilterValue.set($event)">
+          <option [ngValue]="'all'">{{ i18n.t('deckView.typeAll') }}</option>
+          @for (label of availableTypeSections(); track label) {
+            <option [ngValue]="label">{{ translateLabel(label) }}</option>
+          }
+        </select>
+        @if (availableCreatureTypes().length > 0) {
+          <select class="glass-input small" [ngModel]="creatureTypeFilter()" (ngModelChange)="creatureTypeFilter.set($event)">
+            <option [ngValue]="'all'">{{ i18n.t('deckView.creatureTypeAll') }}</option>
+            @for (t of availableCreatureTypes(); track t) {
+              <option [ngValue]="t">{{ t }}</option>
+            }
+          </select>
+        }
+        <select class="glass-input small" [ngModel]="colorFilter()" (ngModelChange)="colorFilter.set($event)">
+          <option [ngValue]="'all'">{{ i18n.t('deckView.colorAll') }}</option>
+          <option [ngValue]="'W'">{{ i18n.t('pip.W') }}</option>
+          <option [ngValue]="'U'">{{ i18n.t('pip.U') }}</option>
+          <option [ngValue]="'B'">{{ i18n.t('pip.B') }}</option>
+          <option [ngValue]="'R'">{{ i18n.t('pip.R') }}</option>
+          <option [ngValue]="'G'">{{ i18n.t('pip.G') }}</option>
+          <option [ngValue]="'C'">{{ i18n.t('deckView.colorless') }}</option>
+        </select>
+        @if (hasActiveCardFilters()) {
+          <button class="glass-chip small" (click)="resetCardFilters()">{{ i18n.t('deckView.resetFilters') }}</button>
+        }
+      </div>
+
+      @if (hasActiveCardFilters() && filteredGroupedCards().length === 0) {
+        <p class="hint">{{ i18n.t('deckView.noCardsFound') }}</p>
+      }
+
+      @for (section of filteredGroupedCards(); track section.label) {
+        <h4 class="deck-section-title">{{ translateLabel(section.label) }} ({{ sectionCardCount(section.cards) }})</h4>
+        <div class="card-pick-grid">
+          @for (entry of section.cards; track entry.card.name) {
+            <div class="card-pick-tile" (click)="openPreview(entry.card)">
+              <div class="card-pick-image">
+                @if (entry.card.imageUrl) {
+                  <app-card-image [imageUrl]="entry.card.imageUrl" [backImageUrl]="entry.card.backImageUrl" [alt]="entry.card.name" [compact]="true" />
+                } @else {
+                  <div class="card-pick-placeholder">{{ entry.card.name }}</div>
+                }
+              </div>
+              @if (entry.quantity > 1) {
+                <span class="card-pick-stats">×{{ entry.quantity }}</span>
+              }
+            </div>
+          }
+        </div>
+      }
     }
   }
 </div>
