@@ -1,8 +1,13 @@
 // Einmaliges Backfill-Skript für sql/public-deck-browse-2026-08-26.sql: befüllt decks.color_identity
-// und decks.commander_types für alle BESTEHENDEN Decks (neue/bearbeitete Decks pflegen diese Spalten
-// ab sofort selbst, siehe DeckViewerService.saveEdits()). Reine SQL-Migrationen haben keinen
+// für alle BESTEHENDEN Decks (neue/bearbeitete Decks pflegen die Spalte ab sofort selbst, siehe
+// DeckViewerService.saveEdits()/DeckService.saveDeck()). Reine SQL-Migrationen haben keinen
 // Scryfall-Netzwerkzugriff, deshalb läuft das hier als separates Node-Skript statt als Teil der
 // SQL-Datei.
+//
+// Fasst bewusst NUR color_identity an, NICHT decks.commander_types (Kreaturtyp) - das ist seit dem
+// Archetyp-/Kreaturtyp-Dropdown im Deck-Editor ein rein manuelles, vom Spieler selbst gesetztes Feld
+// (siehe DeckService.updateDeckArchetype()) und darf hier nicht mit dem Commander-eigenen Typ
+// überschrieben werden.
 //
 // Braucht den Supabase SERVICE-ROLE-Key (nicht den öffentlichen Anon-Key aus supabase.client.ts) -
 // nur damit lassen sich Decks ALLER Nutzer per Update erreichen, RLS würde einen Anon-Client sonst
@@ -30,12 +35,6 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-function parseSubtypes(typeLine) {
-  const parts = (typeLine ?? '').split('—');
-  if (parts.length < 2) return [];
-  return parts[1].trim().split(/\s+/).filter(Boolean);
-}
-
 /** Gleiche Fuzzy-Suche wie ScryfallService.findCard() - hier als eigenständiger fetch-Aufruf, da dieses Skript ohne Angular-DI läuft. */
 async function findCard(name) {
   const res = await fetch(`https://api.scryfall.com/cards/named?fuzzy=${encodeURIComponent(name)}`, {
@@ -43,7 +42,7 @@ async function findCard(name) {
   });
   if (!res.ok) return null;
   const data = await res.json();
-  return { colorIdentity: data.color_identity ?? [], typeLine: data.type_line ?? '' };
+  return { colorIdentity: data.color_identity ?? [] };
 }
 
 async function main() {
@@ -89,12 +88,8 @@ async function main() {
     }
 
     const colorIdentity = [...new Set(cards.flatMap((c) => c.colorIdentity))].sort();
-    const commanderTypes = [...new Set(cards.flatMap((c) => parseSubtypes(c.typeLine)))].sort();
 
-    const { error: updateError } = await supabase
-      .from('decks')
-      .update({ color_identity: colorIdentity, commander_types: commanderTypes })
-      .eq('id', deckId);
+    const { error: updateError } = await supabase.from('decks').update({ color_identity: colorIdentity }).eq('id', deckId);
 
     if (updateError) {
       console.error(`Deck ${deckId}: Update fehlgeschlagen:`, updateError);
