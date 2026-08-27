@@ -1,18 +1,26 @@
-<div class="partner-card-image-tap" (click)="onImageClick()">
-  @if (frontCard.imageUrl; as imageUrl) {
-    <app-card-image [imageUrl]="imageUrl" [backImageUrl]="frontCard.backImageUrl" [alt]="frontCard.name" [compact]="compact()" />
-  } @else {
-    <div class="partner-card-placeholder">{{ frontCard.name }}</div>
-  }
-</div>
-
 @if (cards().length > 1) {
-  <button
-    type="button"
-    class="partner-swap-button"
-    (click)="swapFront($event)"
-    [attr.aria-label]="i18n.t('partnerCardImage.swapAria')"
-  >
-    👥
-  </button>
+  <div class="partner-card-stack">
+    <div class="partner-card-slot partner-card-back" (click)="onCardClick(cards()[1], $event)">
+      @if (cards()[1].imageUrl; as imageUrl) {
+        <app-card-image [imageUrl]="imageUrl" [backImageUrl]="cards()[1].backImageUrl" [alt]="cards()[1].name" [compact]="compact()" />
+      } @else {
+        <div class="partner-card-placeholder">{{ cards()[1].name }}</div>
+      }
+    </div>
+    <div class="partner-card-slot partner-card-front" (click)="onCardClick(cards()[0], $event)">
+      @if (cards()[0].imageUrl; as imageUrl) {
+        <app-card-image [imageUrl]="imageUrl" [backImageUrl]="cards()[0].backImageUrl" [alt]="cards()[0].name" [compact]="compact()" />
+      } @else {
+        <div class="partner-card-placeholder">{{ cards()[0].name }}</div>
+      }
+    </div>
+  </div>
+} @else {
+  <div class="partner-card-slot partner-card-solo" (click)="onCardClick(cards()[0], $event)">
+    @if (cards()[0].imageUrl; as imageUrl) {
+      <app-card-image [imageUrl]="imageUrl" [backImageUrl]="cards()[0].backImageUrl" [alt]="cards()[0].name" [compact]="compact()" />
+    } @else {
+      <div class="partner-card-placeholder">{{ cards()[0].name }}</div>
+    }
+  </div>
 }
