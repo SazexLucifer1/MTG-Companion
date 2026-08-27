@@ -8,12 +8,15 @@ import { supabase } from './supabase.client';
  * jeweilige Tabelle vorgegebenen Antwort auflöst - reicht aus, um PublicDeckService's Mapping-/
  * Aggregationslogik zu testen, ohne die echte Supabase-Query-Builder-Kette nachzubauen.
  */
-function mockSupabaseFrom(responses: Record<string, { data: any[] | null; error: unknown }>) {
+function mockSupabaseFrom(responses: Record<string, { data: any[] | null; error: unknown }>, eqSpy?: (column: string, value: unknown) => void) {
   return vi.spyOn(supabase, 'from').mockImplementation((table: string) => {
     const response = responses[table] ?? { data: [], error: null };
     const builder: any = {
       select: () => builder,
-      eq: () => builder,
+      eq: (column: string, value: unknown) => {
+        eqSpy?.(column, value);
+        return builder;
+      },
       ilike: () => builder,
       contains: () => builder,
       order: () => builder,
@@ -99,6 +102,18 @@ describe('PublicDeckService', () => {
     const { decks } = await service.searchPublicDecks({ sort: 'winRate' });
 
     expect(decks.map((d) => d.id)).toEqual(['high', 'low']);
+  });
+
+  it('filters color_identity using a Postgres array literal, not a bare comma-joined string', async () => {
+    // Regression: .eq() sendet ein JS-Array als bloßen String("B,G", ohne { }) - für eine
+    // text[]-Spalte ein ungültiges Array-Literal, das Postgres/PostgREST ablehnt. Die Query muss
+    // stattdessen selbst das "{B,G}"-Literal bauen (siehe searchPublicDecks()).
+    const eqCalls: [string, unknown][] = [];
+    mockSupabaseFrom({ decks: { data: [], error: null } }, (column, value) => eqCalls.push([column, value]));
+
+    await service.searchPublicDecks({ colors: ['G', 'B'], sort: 'recent' });
+
+    expect(eqCalls).toContainEqual(['color_identity', '{B,G}']);
   });
 
   it('returns distinct, sorted archetype values', async () => {
