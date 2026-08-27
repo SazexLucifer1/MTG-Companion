@@ -110,6 +110,23 @@
   text-align: center;
 }
 
+// Feste Höhe für Name (immer 2 Zeilen reserviert, egal ob der Name in eine oder zwei passt) und
+// Winrate-Zeile (immer gerendert, auch leer ohne erfasste Partien) - sonst variiert die Kachelhöhe
+// je nach Namenslänge/Partienzahl, was das 2-spaltige Grid auf schmalen Bildschirmen (Handy) sehr
+// ungleichmäßig aussehen lässt (Zeilen springen je nach längster Kachel unterschiedlich weit runter).
+.card-pick-name {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  line-height: 1.25;
+  min-height: calc(0.72rem * 1.25 * 2);
+}
+
+.public-deck-winrate {
+  min-height: calc(0.72rem * 1.25);
+}
+
 .pager {
   align-items: center;
   justify-content: center;
