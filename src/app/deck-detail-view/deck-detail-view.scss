@@ -766,27 +766,28 @@
 // im schmaleren, eingerahmten Bearbeiten-Kästchen gequetscht zu sein.
 .card-pick-grid {
   display: grid;
-  // Gleiche Begründung/Breakpoints wie bei .deck-visual-grid.
-  grid-template-columns: repeat(3, 1fr);
+  // Gleiche Begründung/Breakpoints wie bei .deck-visual-grid. minmax(0, 1fr) statt bloß 1fr -
+  // siehe public-deck-browser.scss für die Begründung (Grid Blowout bei Partner-Commander-Kacheln).
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
   margin: 10px 0 16px;
 }
 
 @media (min-width: 480px) {
   .card-pick-grid {
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
 
 @media (min-width: 700px) {
   .card-pick-grid {
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(5, minmax(0, 1fr));
   }
 }
 
 @media (min-width: 1000px) {
   .card-pick-grid {
-    grid-template-columns: repeat(8, 1fr);
+    grid-template-columns: repeat(8, minmax(0, 1fr));
   }
 }
 
