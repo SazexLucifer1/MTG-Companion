@@ -1,4 +1,4 @@
-/* Globales Liquid-Glass-Theme für die MTG Companion App */
+/* Globales Liquid-Glass-Theme für die Statsfinity App */
 
 :root {
   --accent: #8ab4ff;
@@ -335,7 +335,7 @@ h3 {
   }
 }
 
-// NEU - neben dem "MTG Companion"-Titel (Header und Login-Screen), damit sich auf einen Blick
+// NEU - neben dem "Statsfinity"-Titel (Header und Login-Screen), damit sich auf einen Blick
 // prüfen lässt, ob ein Merge/Deploy schon angekommen ist (siehe scripts/generate-version.js).
 .app-version-badge {
   display: inline-block;

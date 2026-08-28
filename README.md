@@ -1,4 +1,4 @@
-# MTG Companion
+# Statsfinity
 
 Deutsche, mobile Companion-App für **Magic: The Gathering** – optimiert für das iPhone (Safari), installierbar als Web-App auf dem Home-Bildschirm.
 
@@ -30,7 +30,7 @@ Die App läuft dann unter `http://localhost:4200`.
 npm run build
 ```
 
-Das Ergebnis liegt in `dist/fabi-mtg/browser` und kann auf jedem statischen Webserver (z. B. Netlify, Vercel, GitHub Pages) gehostet werden.
+Das Ergebnis liegt in `dist/statsfinity/browser` und kann auf jedem statischen Webserver (z. B. Netlify, Vercel, GitHub Pages) gehostet werden.
 
 ## Gemini-API-Key (für die Foto-Erkennung)
 

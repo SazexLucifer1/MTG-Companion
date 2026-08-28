@@ -1071,7 +1071,7 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     'profile.replayTutorialAria': 'Tutorial erneut anzeigen',
 
     // --- Einführungs-Tutorial ---
-    'tutorial.welcome.title': '👋 Willkommen bei MTG Companion!',
+    'tutorial.welcome.title': '👋 Willkommen bei Statsfinity!',
     'tutorial.welcome.text': 'Kurze Tour zu den wichtigsten Funktionen - dauert nur eine Minute. Du kannst sie jederzeit über "Überspringen" beenden.',
     'tutorial.lang.title': '🌐 Sprache umschalten',
     'tutorial.lang.text': 'Hier wechselst du jederzeit zwischen Deutsch und Englisch - die Wahl wird an deinem Account gespeichert.',
@@ -1090,7 +1090,7 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     'tutorial.profileIcons.title': '🖼️ Hintergründe, Teilen & mehr',
     'tutorial.profileIcons.text': 'Eigene Hintergrundbilder für den Life-Tracker hochladen, die App per Link/QR-Code teilen - und dieses Tutorial hier jederzeit erneut öffnen.',
     'tutorial.done.title': '🎉 Fertig!',
-    'tutorial.done.text': 'Das war\'s schon - viel Spaß mit MTG Companion! Du findest alle Touren jederzeit über den ❓-Button im Profil wieder.',
+    'tutorial.done.text': 'Das war\'s schon - viel Spaß mit Statsfinity! Du findest alle Touren jederzeit über den ❓-Button im Profil wieder.',
     'tutorial.skip': 'Überspringen',
     'tutorial.back': '← Zurück',
     'tutorial.next': 'Weiter →',
@@ -2290,7 +2290,7 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     'profile.replayTutorialAria': 'Show tutorial again',
 
     // --- Onboarding tutorial ---
-    'tutorial.welcome.title': '👋 Welcome to MTG Companion!',
+    'tutorial.welcome.title': '👋 Welcome to Statsfinity!',
     'tutorial.welcome.text': 'A quick tour of the most important features - takes just a minute. You can end it anytime via "Skip".',
     'tutorial.lang.title': '🌐 Switch language',
     'tutorial.lang.text': 'Switch between German and English here anytime - the choice is saved to your account.',
@@ -2309,7 +2309,7 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     'tutorial.profileIcons.title': '🖼️ Backgrounds, sharing & more',
     'tutorial.profileIcons.text': 'Upload custom backgrounds for the life tracker, share the app via link/QR code - and reopen this tutorial anytime.',
     'tutorial.done.title': "🎉 That's it!",
-    'tutorial.done.text': "That's it - have fun with MTG Companion! You can find all tours again anytime via the ❓ button in your profile.",
+    'tutorial.done.text': "That's it - have fun with Statsfinity! You can find all tours again anytime via the ❓ button in your profile.",
     'tutorial.skip': 'Skip',
     'tutorial.back': '← Back',
     'tutorial.next': 'Next →',
