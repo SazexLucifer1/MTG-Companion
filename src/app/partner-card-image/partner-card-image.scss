@@ -46,9 +46,12 @@
 }
 
 .partner-card-front {
-  width: 90%;
+  // Etwas kleiner als die vorherigen 90%, damit der herausschauende Streifen der Hinterkarte hoch
+  // genug ist, um Name UND Manakosten wirklich vollständig lesen zu können (bei 90% wurde die
+  // Titelzeile der Hinterkarte oben leicht abgeschnitten).
+  width: 85%;
   bottom: 0;
-  left: 5%;
+  left: 7.5%;
   z-index: 2;
   border: 1px solid rgba(255, 255, 255, 0.2);
   box-shadow: 0 -4px 10px rgba(0, 0, 0, 0.45);
