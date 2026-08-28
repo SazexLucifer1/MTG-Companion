@@ -30,6 +30,18 @@
   cursor: pointer;
 }
 
+// Ohne top/left/width würde eine absolut positionierte Box mit nur aspect-ratio (aber ohne
+// definierte Breite/Höhe) auf ihren Inhalt zusammenschrumpfen statt die vorgegebene Box zu füllen
+// (anders als bei .partner-card-front/-back, die über die explizite Breite in Prozent bereits eine
+// definierte Größe haben) - dadurch wirkten Solo-Commander-Kacheln in Rastern schmaler als
+// Partner-Kacheln.
+.partner-card-solo {
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
 .partner-card-front {
   width: 92%;
   bottom: 0;
