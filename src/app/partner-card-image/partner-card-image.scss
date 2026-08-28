@@ -17,11 +17,14 @@
   height: 100%;
 }
 
-// Wie auf EDHRECs Partner-Seiten: die vordere Karte dominiert (fast die ganze Box), die hintere
-// ist deutlich kleiner und sitzt als Ecke oben rechts - kein 50/50-Überlapp zweier gleich großer
-// Karten (das wirkte unklar/verrauscht), sondern klar eine Haupt- und eine Nebenkarte. Beide bleiben
-// vollständig innerhalb der vom Aufrufer vorgegebenen Box (z.B. .card-pick-image, aspect-ratio
-// 63/88) - kein Overflow über den Rand hinaus nötig.
+// Die hintere Karte liegt in echter Kartengröße direkt hinter der vorderen (deckungsgleich mit der
+// vom Aufrufer vorgegebenen Box, z.B. .card-pick-image, aspect-ratio 63/88 - also exakt dieselbe
+// Fläche wie eine Solo-Commander-Kachel). Die vordere Karte ist dafür nur ein kleines Stück
+// (10%) verkleinert und unten zentriert, sodass oben ein schmaler Streifen der Hinterkarte
+// herausschaut - gerade genug, um Name und Manakosten der Hinterkarte lesen zu können, ohne dass
+// die Kachel insgesamt größer wird als eine Solo-Kachel (frühere Version zeigte die Hinterkarte
+// stattdessen als deutlich kleinere zweite Karte diagonal in der Ecke - wirkte wie zwei fast
+// gleichwertige Karten statt einer klar dominanten Hauptkarte mit einer Andeutung der zweiten).
 .partner-card-slot {
   position: absolute;
   aspect-ratio: 63 / 88;
@@ -43,22 +46,21 @@
 }
 
 .partner-card-front {
-  width: 92%;
+  width: 90%;
   bottom: 0;
-  left: 0;
+  left: 5%;
   z-index: 2;
   border: 1px solid rgba(255, 255, 255, 0.2);
-  box-shadow: -3px 4px 10px rgba(0, 0, 0, 0.45);
+  box-shadow: 0 -4px 10px rgba(0, 0, 0, 0.45);
 }
 
 .partner-card-back {
-  width: 65%;
+  width: 100%;
   top: 0;
-  right: 0;
+  left: 0;
   z-index: 1;
   filter: brightness(0.8);
   border: 1px solid rgba(255, 255, 255, 0.15);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
 }
 
 // Eigenständiger Umschalt-Button oben links (statt nur "auf die kleine hintere Karte klicken") -

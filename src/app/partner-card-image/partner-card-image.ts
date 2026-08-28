@@ -5,10 +5,12 @@ import { I18nService } from '../i18n.service';
 
 /**
  * Zeigt 1 Commander normal, bei einem Partner-Paar (2 Commander, siehe
- * ScryfallService.searchCommanderPairs()) BEIDE Karten als versetzter Stapel - vordere Karte groß
- * und dominant, hintere Karte kleiner oben rechts als Ecke sichtbar (wie EDHREC es auf seinen
- * Partner-Seiten macht). Ein kleiner Button oben links tauscht die beiden (um den hinteren
- * Commander zu lesen), ebenso ein Klick auf die hintere Karte selbst.
+ * ScryfallService.searchCommanderPairs()) BEIDE Karten als versetzter Stapel - vordere Karte fast
+ * kartengroß und dominant, hintere Karte in echter Kartengröße direkt dahinter, sodass oben nur ein
+ * schmaler Streifen mit Name/Manakosten herausschaut. Dadurch nimmt eine Partner-Kachel exakt
+ * dieselbe Fläche ein wie eine Solo-Commander-Kachel (siehe partner-card-image.scss). Ein kleiner
+ * Button oben links tauscht die beiden (um den hinteren Commander zu lesen), ebenso ein Klick auf
+ * den sichtbaren Streifen der hinteren Karte selbst.
  *
  * WICHTIG: der Klick auf die vordere/einzelne Karte selbst löst NUR imageClick aus und stoppt die
  * Ereignis-Weiterleitung NICHT - diese Komponente wird oft in eine anklickbare Kachel eingebettet
