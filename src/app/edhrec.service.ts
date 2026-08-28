@@ -53,7 +53,7 @@ export class EdhrecService {
   // Zusage aus der Erlaubnis-Anfrage an EDHREC ein ("cache all responses for 24 hours") und
   // reduziert die Anfragelast deutlich, da dieselbe Commander-Seite bei jedem Deck-Öffnen bzw.
   // jeder Tag-Auswahl sonst immer wieder frisch abgefragt würde.
-  private static readonly CACHE_KEY = 'mtg-companion-edhrec-cache-v1';
+  private static readonly CACHE_KEY = 'statsfinity-edhrec-cache-v1';
   private static readonly CACHE_TTL_MS = 24 * 60 * 60 * 1000;
   private cache: Record<string, { data: any; cachedAt: number }> | null = null;
 

@@ -7,7 +7,7 @@
   },
   "newProjectRoot": "projects",
   "projects": {
-    "fabi-mtg": {
+    "statsfinity": {
       "projectType": "application",
       "schematics": {
         "@schematics/angular:component": {
@@ -91,10 +91,10 @@
           "builder": "@angular/build:dev-server",
           "configurations": {
             "production": {
-              "buildTarget": "fabi-mtg:build:production"
+              "buildTarget": "statsfinity:build:production"
             },
             "development": {
-              "buildTarget": "fabi-mtg:build:development"
+              "buildTarget": "statsfinity:build:development"
             }
           },
           "defaultConfiguration": "development"
