@@ -270,9 +270,13 @@ export class ScryfallService {
    * Zusatztext steht meist hinter dem eigentlichen Namen) und sucht bei jeder Länge gezielt nach
    * Commander-fähigen Karten - auf Englisch, dann Deutsch (nacheinander statt parallel, siehe
    * fetchWithRetry). Sobald eine Länge Treffer liefert, wird abgebrochen (kürzer würde die Trefferzahl nur
-   * noch vergrößern, nie eindeutiger machen). Bei mehreren Treffern wird der erste (alphabetisch)
-   * als Best-Effort-Rateversuch genommen. Letzter Fallback: die normale Fuzzy-Suche, die auch
-   * Tippfehler im Kernnamen selbst abdeckt.
+   * noch vergrößern, nie eindeutiger machen). Von den englischen Treffern zählt nur einer, dessen
+   * Name mit dem gesuchten Ausschnitt beginnt (z.B. akzeptiert "T'Challa, the Black Panther" für die
+   * Suche "T'Challa" - aber NICHT "King T'Challa // Black Panther, Hope Enduring", das "T'Challa" nur
+   * mittendrin enthält). Ohne diesen Filter griff Scryfalls Namens-Suche als reine Teilstring-Suche
+   * und der alphabetisch erste Treffer konnte eine völlig andere Karte sein, die den gesuchten
+   * Ausschnitt nur zufällig irgendwo im Namen trägt. Letzter Fallback: die normale Fuzzy-Suche, die
+   * auch Tippfehler im Kernnamen selbst abdeckt.
    */
   async resolveCommanderCandidate(candidate: string): Promise<string | null> {
     const words = candidate.trim().split(/\s+/).filter(Boolean);
@@ -283,9 +287,11 @@ export class ScryfallService {
     // Sprachversuche braucht (mehrere Anfragen in kurzer Zeit).
     for (let len = words.length; len >= 1; len--) {
       const attempt = words.slice(0, len).join(' ');
+      const normalizedAttempt = normalizeCardName(attempt);
 
       const english = await this.searchCommanderNamesByName(attempt);
-      if (english.length > 0) return english[0];
+      const englishMatch = english.find((name) => normalizeCardName(name).startsWith(normalizedAttempt));
+      if (englishMatch) return englishMatch;
       await sleep(400);
 
       const german = await this.searchGermanPrintedNames(attempt);
