@@ -44,10 +44,16 @@ export class ProfileTab {
   readonly deckListRef = viewChild<DeckList>('deckListRef');
   readonly ownCommanderListRef = viewChild<CommanderStatList>('ownCommanderListRef');
   readonly viewingCommanderListRef = viewChild<CommanderStatList>('viewingCommanderListRef');
+  readonly viewingNpcCommanderListRef = viewChild<CommanderStatList>('viewingNpcCommanderListRef');
 
-  /** Ob beim Ansehen eines FREMDEN Profils die Statistiken (Deck-Winrates, Platzierungsverteilung, Commander ohne Deck) wegen einer aktiven Gruppen-Sperre ausgeblendet werden müssen - der Host ist davon ausgenommen. */
+  /** Ob beim Ansehen eines FREMDEN Profils oder NPC-Profils die Statistiken (Deck-Winrates,
+   * Platzierungsverteilung, Commander ohne Deck) wegen einer aktiven Gruppen-Sperre ausgeblendet
+   * werden müssen - der Host ist davon ausgenommen. */
   readonly othersStatsHidden = computed(
-    () => !!this.profileService.viewingUserId() && this.groupService.statsLocked() && !this.groupService.isOwner()
+    () =>
+      (!!this.profileService.viewingUserId() || !!this.profileService.viewingPlayerId()) &&
+      this.groupService.statsLocked() &&
+      !this.groupService.isOwner()
   );
 
   /** Als computed() statt eines Inline-Objektliterals im Template gehalten - sonst würde bei jedem
@@ -64,6 +70,20 @@ export class ProfileTab {
     return userId ? { kind: 'user', userId } : null;
   });
 
+  /** Deck-Besitzer für ein gerade angesehenes NPC-Profil (siehe viewNpcProfile in profile.service.ts). */
+  readonly viewingNpcDeckOwner = computed<DeckOwner | null>(() => {
+    const playerId = this.profileService.viewingPlayerId();
+    return playerId ? { kind: 'player', playerId } : null;
+  });
+
+  /** Lieblingscommander des gerade angesehenen NPC-Profils (players.favorite_commanders, vom Host
+   * gepflegt) - kommt direkt aus MtgService statt aus einem eigenen Ladevorgang, siehe
+   * ProfileService.viewingPlayerId. */
+  readonly viewingNpcFavoriteCommanders = computed<string[]>(() => {
+    const name = this.profileService.viewingPlayerName();
+    return name ? this.mtg.playerFavoriteCommanders()[name] ?? [] : [];
+  });
+
   /** Findet den Spielernamen (mtg.playerUserIds ist name-indiziert) zu einer Account-User-ID, oder null ohne Zuordnung. */
   private playerNameForUserId(userId: string | null): string | null {
     if (!userId) return null;
@@ -74,11 +94,12 @@ export class ProfileTab {
   /**
    * Wie oft welcher Platz (1., 2., ...) erreicht wurde - nur Matches mit eingetragener
    * Platzierung zählen mit (rein optionale Zusatz-Info, siehe models.ts MatchPlayer.placement).
-   * Gilt für das gerade angezeigte Profil (eigenes oder fremdes, je nach viewingUserId).
+   * Gilt für das gerade angezeigte Profil (eigenes, ein fremder Account oder ein NPC).
    */
   readonly placementDistribution = computed<{ placement: number; count: number }[]>(() => {
+    const npcName = this.profileService.viewingPlayerName();
     const userId = this.profileService.viewingUserId() ?? this.profileService.profile()?.id ?? null;
-    const name = this.playerNameForUserId(userId);
+    const name = npcName ?? this.playerNameForUserId(userId);
     if (!name) return [];
 
     const counts = new Map<number, number>();
@@ -93,6 +114,9 @@ export class ProfileTab {
   readonly unassignedCommanderStats = signal<CommanderGameStats[]>([]);
   /** Gleiches wie unassignedCommanderStats, aber für ein FREMDES Profil - rein zum Ansehen, ohne Reparieren/Verlinken (das kann nur der Account-Besitzer selbst). */
   readonly viewingUnassignedCommanderStats = signal<CommanderGameStats[]>([]);
+  /** Gleiches wie viewingUnassignedCommanderStats, aber für ein gerade angesehenes NPC-Profil. */
+  readonly viewingNpcUnassignedCommanderStats = signal<CommanderGameStats[]>([]);
+  readonly npcFavoriteCommanderBusy = signal(false);
 
   /** Gesamt-Statistik über ALLE Gruppen des eigenen Accounts hinweg (siehe DeckService.getCrossGroupPersonalStats) -
    * bewusst nur fürs eigene Profil, nicht beim Ansehen eines fremden. Das Stats-Tab bleibt unverändert pro aktiver Gruppe. */
@@ -142,11 +166,25 @@ export class ProfileTab {
     });
 
     effect(() => {
-      // Lädt Bilder sowohl für die eigenen als auch für die eines gerade angesehenen fremden Profils -
-      // die Karte ist nach Namen (nicht nach Nutzer) geschlüsselt, ein gemeinsamer Cache reicht also.
+      const playerId = this.profileService.viewingPlayerId();
+      if (!playerId) {
+        this.viewingNpcUnassignedCommanderStats.set([]);
+        return;
+      }
+      this.deckService.getUnassignedCommanderStats({ kind: 'player', playerId }).then((stats) => {
+        this.viewingNpcUnassignedCommanderStats.set(stats);
+        this.viewingNpcCommanderListRef()?.reset();
+      });
+    });
+
+    effect(() => {
+      // Lädt Bilder für die eigenen, die eines gerade angesehenen fremden Accounts UND die eines
+      // gerade angesehenen NPC-Profils - die Karte ist nach Namen (nicht nach Nutzer) geschlüsselt,
+      // ein gemeinsamer Cache reicht also.
       const ownNames = this.profileService.profile()?.favoriteCommanders ?? [];
       const viewedNames = this.profileService.viewingProfile()?.favoriteCommanders ?? [];
-      const names = [...new Set([...ownNames, ...viewedNames])];
+      const npcNames = this.viewingNpcFavoriteCommanders();
+      const names = [...new Set([...ownNames, ...viewedNames, ...npcNames])];
       if (names.length === 0) {
         this.favoriteCommanderCards.set({});
         return;
@@ -160,6 +198,7 @@ export class ProfileTab {
       const names = [
         ...this.unassignedCommanderStats().map((c) => c.commander),
         ...this.viewingUnassignedCommanderStats().map((c) => c.commander),
+        ...this.viewingNpcUnassignedCommanderStats().map((c) => c.commander),
       ];
       const cache = this.commanderCards();
       const missing = [...new Set(names)].filter((n) => !(n.toLowerCase() in cache));
@@ -287,6 +326,87 @@ export class ProfileTab {
     this.favoriteCommanderBusy.set(false);
   }
 
+  // --- Lieblingscommander eines gerade angesehenen NPC-Profils (nur Host, siehe group-tab.ts
+  // openNpcProfileView) - gleiche Logik wie oben fürs eigene Profil, nur gegen
+  // MtgService.setPlayerFavoriteCommanders statt ProfileService.updateFavoriteCommanders. ---
+
+  readonly addNpcFavoriteCommander = async (name: string): Promise<void> => {
+    const playerName = this.profileService.viewingPlayerName();
+    if (!playerName) return;
+    const current = this.viewingNpcFavoriteCommanders();
+    if (current.length >= 3 || current.includes(name)) return;
+
+    this.npcFavoriteCommanderBusy.set(true);
+    await this.mtg.setPlayerFavoriteCommanders(playerName, [...current, name]);
+    this.npcFavoriteCommanderBusy.set(false);
+  };
+
+  readonly removeNpcFavoriteCommander = async (name: string): Promise<void> => {
+    const playerName = this.profileService.viewingPlayerName();
+    if (!playerName) return;
+    const current = this.viewingNpcFavoriteCommanders();
+
+    this.npcFavoriteCommanderBusy.set(true);
+    await this.mtg.setPlayerFavoriteCommanders(
+      playerName,
+      current.filter((c) => c !== name)
+    );
+    this.npcFavoriteCommanderBusy.set(false);
+  };
+
+  readonly canAutofillNpcFavoriteCommanders = computed(() => {
+    const name = this.profileService.viewingPlayerName();
+    const current = this.viewingNpcFavoriteCommanders();
+    if (!name || current.length >= 3) return false;
+    return this.topPlayedCommanders(name, 3).some((c) => !current.includes(c));
+  });
+
+  async autofillNpcFavoriteCommanders(): Promise<void> {
+    const name = this.profileService.viewingPlayerName();
+    if (!name || this.npcFavoriteCommanderBusy()) return;
+
+    const current = this.viewingNpcFavoriteCommanders();
+    const remaining = 3 - current.length;
+    if (remaining <= 0) return;
+
+    const additions = this.topPlayedCommanders(name, current.length + remaining)
+      .filter((c) => !current.includes(c))
+      .slice(0, remaining);
+    if (additions.length === 0) return;
+
+    this.npcFavoriteCommanderBusy.set(true);
+    await this.mtg.setPlayerFavoriteCommanders(name, [...current, ...additions]);
+    this.npcFavoriteCommanderBusy.set(false);
+  }
+
+  /**
+   * Vereinheitlicht die Lieblingscommander-Bindings für den Bearbeiten-Dialog, je nachdem ob
+   * gerade das eigene Profil oder ein NPC-Profil offen ist - hält das Template frei von Ternaries
+   * an jeder einzelnen Stelle im Dialog.
+   */
+  readonly favoriteCommandersDialogTarget = computed(() => {
+    if (this.profileService.viewingPlayerId()) {
+      return {
+        isNpc: true as const,
+        favorites: this.viewingNpcFavoriteCommanders(),
+        busy: this.npcFavoriteCommanderBusy(),
+        canAutofill: this.canAutofillNpcFavoriteCommanders(),
+        onAdd: this.addNpcFavoriteCommander,
+        onRemove: this.removeNpcFavoriteCommander,
+        onAutofill: () => this.autofillNpcFavoriteCommanders(),
+      };
+    }
+    return {
+      isNpc: false as const,
+      favorites: this.profileService.profile()?.favoriteCommanders ?? [],
+      busy: this.favoriteCommanderBusy(),
+      canAutofill: this.canAutofillFavoriteCommanders(),
+      onAdd: this.addFavoriteCommander,
+      onRemove: this.removeFavoriteCommander,
+      onAutofill: () => this.autofillFavoriteCommanders(),
+    };
+  });
+
   readonly editedName = signal('');
   readonly isEditing = signal(false);
   readonly saveMessage = signal('');
@@ -384,16 +504,19 @@ export class ProfileTab {
   }
 
   async repairCommanderNames(): Promise<void> {
-    /** Admin/Host reparieren beim Ansehen eines FREMDEN Profils dessen Decks, sonst geht's um den eigenen Account. */
+    /** Host repariert beim Ansehen eines FREMDEN Profils oder NPC-Profils dessen Decks, sonst geht's um den eigenen Account. */
+    const viewingPlayerId = this.profileService.viewingPlayerId();
     const viewingUserId = this.profileService.viewingUserId();
-    const userId = viewingUserId ?? this.auth.currentUser()?.id;
-    if (!userId) return;
+    const owner: DeckOwner | null = viewingPlayerId
+      ? { kind: 'player', playerId: viewingPlayerId }
+      : this.resolveUserOwner(viewingUserId);
+    if (!owner) return;
 
     this.repairBusy.set(true);
     this.repairMessage.set('');
     this.repairProgress.set({ done: 0, total: 0 });
 
-    const result = await this.deckService.repairCommanderNames({ kind: 'user', userId }, (done, total) =>
+    const result = await this.deckService.repairCommanderNames(owner, (done, total) =>
       this.repairProgress.set({ done, total })
     );
 
@@ -409,12 +532,19 @@ export class ProfileTab {
           })
     );
 
-    if (viewingUserId) {
-      const owner = this.viewingDeckOwner();
-      if (owner) this.viewingUnassignedCommanderStats.set(await this.deckService.getUnassignedCommanderStats(owner));
+    if (viewingPlayerId) {
+      this.viewingNpcUnassignedCommanderStats.set(await this.deckService.getUnassignedCommanderStats(owner));
+    } else if (viewingUserId) {
+      this.viewingUnassignedCommanderStats.set(await this.deckService.getUnassignedCommanderStats(owner));
     } else {
       await this.refreshUnassignedAndDecks();
     }
+  }
+
+  /** null nur, wenn weder ein fremder Account angesehen wird noch überhaupt ein Account eingeloggt ist (sollte im Profil-Tab praktisch nie vorkommen). */
+  private resolveUserOwner(viewingUserId: string | null): DeckOwner | null {
+    const userId = viewingUserId ?? this.auth.currentUser()?.id;
+    return userId ? { kind: 'user', userId } : null;
   }
 
   // --- Manuell Commander <-> Deck verlinken/entlinken (Dialog + Logik in ManualDeckLinkService) ---
@@ -430,6 +560,14 @@ export class ProfileTab {
     const owner: DeckOwner = { kind: 'user', userId: viewingUserId };
     await this.manualDeckLink.open(owner, async () => {
       this.viewingUnassignedCommanderStats.set(await this.deckService.getUnassignedCommanderStats(owner));
+    });
+  }
+
+  /** Für den Host, der beim Ansehen eines NPC-Profils dessen Alt-Spiele nachträglich verlinkt. */
+  async openManualLinkDialogForNpc(playerId: string): Promise<void> {
+    const owner: DeckOwner = { kind: 'player', playerId };
+    await this.manualDeckLink.open(owner, async () => {
+      this.viewingNpcUnassignedCommanderStats.set(await this.deckService.getUnassignedCommanderStats(owner));
     });
   }
 
