@@ -13,7 +13,7 @@ import { I18nService } from '../i18n.service';
 import { TournamentService } from '../tournament.service';
 import { DialogService } from '../dialog.service';
 import { GAME_MODES, TEAM_OPTIONS, Match, LIVE_TRACKING_START_DATE } from '../models';
-import { teamMemberLabel } from '../match-utils';
+import { ARCHENEMY_OTHERS, DRAW, teamMemberLabel } from '../match-utils';
 import { CardImage } from '../card-image/card-image';
 
 /** Ein einzelnes Spiel oder eine zu einer Karte zusammengefasste BO3-Turnierpartie (2-3 Einzelspiele) im Verlauf. */
@@ -461,10 +461,7 @@ export class MatchTab {
 
   /** Findet zu einer Account-User-ID/players.id den Spielernamen in der aktuellen Gruppe (für "ausgeliehen von X" im Verlauf). */
   deckOwnerName(ownerId: string | undefined, ownerPlayerId?: string): string | null {
-    if (ownerPlayerId) return this.mtg.playerNameForId(ownerPlayerId);
-    if (!ownerId) return null;
-    const entry = Object.entries(this.mtg.playerUserIds()).find(([, uid]) => uid === ownerId);
-    return entry?.[0] ?? null;
+    return this.mtg.deckOwnerName(ownerId, ownerPlayerId);
   }
 
   /** true, wenn das im Verlauf gezeigte Deck nicht der spielenden Person selbst gehört (also geliehen wurde). */
@@ -491,10 +488,6 @@ export class MatchTab {
       await this.mtg.deleteMatch(id);
     }
   }
-
-  /** Gleiche Platzhalter-Werte wie im Stats-Tab (winnerDisplay), damit die Anzeige nach dem Ändern konsistent bleibt. */
-  private readonly ARCHENEMY_OTHERS = '__OTHERS__';
-  private readonly DRAW = '__DRAW__';
 
   // --- Ergebnis nachträglich bearbeiten (Sieger + Platzierung zusammen in einem Panel) ---
 
@@ -560,12 +553,12 @@ export class MatchTab {
           label: `👹 ${archenemy.name}${this.i18n.t('match.archenemySuffix')}`,
         });
       }
-      options.push({ value: this.ARCHENEMY_OTHERS, label: this.i18n.t('match.theOthers') });
+      options.push({ value: ARCHENEMY_OTHERS, label: this.i18n.t('match.theOthers') });
     } else {
       options.push(...match.players.map((p) => ({ value: p.name, label: p.name })));
     }
 
-    options.push({ value: this.DRAW, label: this.i18n.t('match.draw') });
+    options.push({ value: DRAW, label: this.i18n.t('match.draw') });
     return options;
   }
 }

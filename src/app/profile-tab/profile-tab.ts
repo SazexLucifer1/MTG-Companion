@@ -1,6 +1,6 @@
 import { Component, computed, effect, inject, signal, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { DatePipe, DecimalPipe } from '@angular/common';
+import { DatePipe } from '@angular/common';
 import QRCode from 'qrcode';
 import { ProfileService } from '../profile.service';
 import { MtgService } from '../mtg.service';
@@ -17,10 +17,11 @@ import { TutorialService } from '../tutorial.service';
 import { FeedbackService } from '../feedback.service';
 import { DialogService } from '../dialog.service';
 import { CardImage } from '../card-image/card-image';
+import { CommanderStatList } from '../commander-stat-list/commander-stat-list';
 
 @Component({
   selector: 'app-profile-tab',
-  imports: [FormsModule, DecimalPipe, DatePipe, DeckList, CardImage],
+  imports: [FormsModule, DatePipe, DeckList, CardImage, CommanderStatList],
   templateUrl: './profile-tab.html',
   styleUrl: './profile-tab.scss',
 })
@@ -40,6 +41,8 @@ export class ProfileTab {
   private readonly dialog = inject(DialogService);
 
   readonly deckListRef = viewChild<DeckList>('deckListRef');
+  readonly ownCommanderListRef = viewChild<CommanderStatList>('ownCommanderListRef');
+  readonly viewingCommanderListRef = viewChild<CommanderStatList>('viewingCommanderListRef');
 
   /** Ob beim Ansehen eines FREMDEN Profils die Statistiken (Deck-Winrates, Platzierungsverteilung, Commander ohne Deck) wegen einer aktiven Gruppen-Sperre ausgeblendet werden müssen - der Host ist davon ausgenommen. */
   readonly othersStatsHidden = computed(
@@ -108,7 +111,7 @@ export class ProfileTab {
       }
       this.deckService.getUnassignedCommanderStats({ kind: 'user', userId }).then((stats) => {
         this.unassignedCommanderStats.set(stats);
-        this.commanderPage.set(0);
+        this.ownCommanderListRef()?.reset();
       });
     });
 
@@ -120,9 +123,7 @@ export class ProfileTab {
       }
       this.deckService.getUnassignedCommanderStats({ kind: 'user', userId }).then((stats) => {
         this.viewingUnassignedCommanderStats.set(stats);
-        this.viewingCommanderSearchQuery.set('');
-        this.viewingCommanderSortMode.set('alpha');
-        this.viewingCommanderPage.set(0);
+        this.viewingCommanderListRef()?.reset();
       });
     });
 
@@ -143,7 +144,7 @@ export class ProfileTab {
 
     effect(() => {
       const names = [
-        ...this.pagedCommanderStats().map((c) => c.commander),
+        ...this.unassignedCommanderStats().map((c) => c.commander),
         ...this.viewingUnassignedCommanderStats().map((c) => c.commander),
       ];
       const cache = this.commanderCards();
@@ -173,15 +174,18 @@ export class ProfileTab {
   /** Kartenname (lowercase) -> Scryfall-Daten oder null (nicht gefunden), für die "Commander ohne Deck"-Liste. */
   private readonly commanderCards = signal<Record<string, ScryfallCard | null>>({});
 
-  commanderImage(name: string | undefined): string | null {
+  /** Als gebundene Arrow-Function-Property statt Methode gehalten, damit sie unverändert als
+   * Input an app-commander-stat-list durchgereicht werden kann (eine normale Methode würde dabei
+   * ihren this-Bezug verlieren). */
+  readonly commanderImage = (name: string | undefined): string | null => {
     if (!name) return null;
     return this.commanderCards()[name.toLowerCase()]?.imageUrl ?? null;
-  }
+  };
 
-  commanderBackImage(name: string | undefined): string | null {
+  readonly commanderBackImage = (name: string | undefined): string | null => {
     if (!name) return null;
     return this.commanderCards()[name.toLowerCase()]?.backImageUrl ?? null;
-  }
+  };
 
   /** Öffnet die große Kartenvorschau für einen Lieblingscommander (fremdes Profil - beim eigenen
    * öffnet der Klick stattdessen den Bearbeiten-Dialog, siehe openFavoriteCommanderDialog()). */
@@ -280,121 +284,6 @@ export class ProfileTab {
     this.favoriteCommanderBusy.set(true);
     await this.profileService.updateFavoriteCommanders([...current, ...additions]);
     this.favoriteCommanderBusy.set(false);
-  }
-
-  // --- Suche/Sortierung/Seiten für "Commander ohne Deck" ---
-
-  private static readonly PAGE_SIZE = 10;
-
-  readonly commanderSearchQuery = signal('');
-  readonly commanderSortMode = signal<'alpha' | 'winRate' | 'games'>('alpha');
-  readonly commanderPage = signal(0);
-
-  readonly filteredSortedCommanderStats = computed<CommanderGameStats[]>(() => {
-    const query = this.commanderSearchQuery().trim().toLowerCase();
-    let list = this.unassignedCommanderStats();
-    if (query) {
-      list = list.filter((c) => c.commander.toLowerCase().includes(query));
-    }
-
-    const mode = this.commanderSortMode();
-    list = [...list];
-    if (mode === 'alpha') {
-      list.sort((a, b) => a.commander.localeCompare(b.commander));
-    } else if (mode === 'winRate') {
-      list.sort((a, b) => b.winRate - a.winRate || b.games - a.games);
-    } else {
-      list.sort((a, b) => b.games - a.games || b.winRate - a.winRate);
-    }
-    return list;
-  });
-
-  readonly commanderTotalPages = computed(() =>
-    Math.max(1, Math.ceil(this.filteredSortedCommanderStats().length / ProfileTab.PAGE_SIZE))
-  );
-
-  readonly pagedCommanderStats = computed<CommanderGameStats[]>(() => {
-    const start = this.commanderPage() * ProfileTab.PAGE_SIZE;
-    return this.filteredSortedCommanderStats().slice(start, start + ProfileTab.PAGE_SIZE);
-  });
-
-  readonly commanderPageRangeEnd = computed(() =>
-    Math.min((this.commanderPage() + 1) * ProfileTab.PAGE_SIZE, this.filteredSortedCommanderStats().length)
-  );
-
-  setCommanderSearchQuery(value: string): void {
-    this.commanderSearchQuery.set(value);
-    this.commanderPage.set(0);
-  }
-
-  setCommanderSortMode(mode: 'alpha' | 'winRate' | 'games'): void {
-    this.commanderSortMode.set(mode);
-    this.commanderPage.set(0);
-  }
-
-  prevCommanderPage(): void {
-    this.commanderPage.update((p) => Math.max(0, p - 1));
-  }
-
-  nextCommanderPage(): void {
-    this.commanderPage.update((p) => Math.min(this.commanderTotalPages() - 1, p + 1));
-  }
-
-  // --- Gleiches wie oben, aber für die Commander-Statistik eines FREMDEN Profils - eigene Signale,
-  // damit Suche/Sortierung/Seite dort unabhängig vom eigenen Profil bleiben. ---
-
-  readonly viewingCommanderSearchQuery = signal('');
-  readonly viewingCommanderSortMode = signal<'alpha' | 'winRate' | 'games'>('alpha');
-  readonly viewingCommanderPage = signal(0);
-
-  readonly filteredSortedViewingCommanderStats = computed<CommanderGameStats[]>(() => {
-    const query = this.viewingCommanderSearchQuery().trim().toLowerCase();
-    let list = this.viewingUnassignedCommanderStats();
-    if (query) {
-      list = list.filter((c) => c.commander.toLowerCase().includes(query));
-    }
-
-    const mode = this.viewingCommanderSortMode();
-    list = [...list];
-    if (mode === 'alpha') {
-      list.sort((a, b) => a.commander.localeCompare(b.commander));
-    } else if (mode === 'winRate') {
-      list.sort((a, b) => b.winRate - a.winRate || b.games - a.games);
-    } else {
-      list.sort((a, b) => b.games - a.games || b.winRate - a.winRate);
-    }
-    return list;
-  });
-
-  readonly viewingCommanderTotalPages = computed(() =>
-    Math.max(1, Math.ceil(this.filteredSortedViewingCommanderStats().length / ProfileTab.PAGE_SIZE))
-  );
-
-  readonly pagedViewingCommanderStats = computed<CommanderGameStats[]>(() => {
-    const start = this.viewingCommanderPage() * ProfileTab.PAGE_SIZE;
-    return this.filteredSortedViewingCommanderStats().slice(start, start + ProfileTab.PAGE_SIZE);
-  });
-
-  readonly viewingCommanderPageRangeEnd = computed(() =>
-    Math.min((this.viewingCommanderPage() + 1) * ProfileTab.PAGE_SIZE, this.filteredSortedViewingCommanderStats().length)
-  );
-
-  setViewingCommanderSearchQuery(value: string): void {
-    this.viewingCommanderSearchQuery.set(value);
-    this.viewingCommanderPage.set(0);
-  }
-
-  setViewingCommanderSortMode(mode: 'alpha' | 'winRate' | 'games'): void {
-    this.viewingCommanderSortMode.set(mode);
-    this.viewingCommanderPage.set(0);
-  }
-
-  prevViewingCommanderPage(): void {
-    this.viewingCommanderPage.update((p) => Math.max(0, p - 1));
-  }
-
-  nextViewingCommanderPage(): void {
-    this.viewingCommanderPage.update((p) => Math.min(this.viewingCommanderTotalPages() - 1, p + 1));
   }
 
   readonly editedName = signal('');
@@ -632,9 +521,7 @@ export class ProfileTab {
   readonly deleteAccountBusy = signal(false);
   readonly deleteAccountError = signal('');
 
-  readonly canConfirmDeleteAccount = computed(
-    () => this.deleteAccountConfirmText().trim().toUpperCase() === this.i18n.t('stats.deleteConfirmWord')
-  );
+  readonly canConfirmDeleteAccount = computed(() => this.i18n.isDeleteConfirmed(this.deleteAccountConfirmText()));
 
   openDeleteAccountConfirm(): void {
     this.showDeleteAccountConfirm.set(true);

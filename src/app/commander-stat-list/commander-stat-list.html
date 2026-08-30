@@ -1,0 +1,40 @@
+<input
+  class="glass-input"
+  type="text"
+  [placeholder]="i18n.t(searchPlaceholderKey())"
+  [ngModel]="searchQuery()"
+  (ngModelChange)="setSearchQuery($event)"
+/>
+<div class="chip-row sort-toggle">
+  <button class="glass-chip small" [class.active]="sortMode() === 'alpha'" (click)="setSortMode('alpha')">{{ i18n.t('profile.sortAlpha') }}</button>
+  <button class="glass-chip small" [class.active]="sortMode() === 'winRate'" (click)="setSortMode('winRate')">{{ i18n.t('sort.winRate') }}</button>
+  <button class="glass-chip small" [class.active]="sortMode() === 'games'" (click)="setSortMode('games')">{{ i18n.t('profile.sortMostPlayed') }}</button>
+</div>
+
+@if (filteredSorted().length === 0) {
+  <p class="hint">{{ i18n.t(emptyLabelKey()) }}</p>
+} @else {
+  <ul class="player-list">
+    @for (c of paged(); track c.commander) {
+      <li>
+        <span class="player-name card-name-cell">
+          @if (commanderImage()(c.commander); as img) {
+          <button type="button" class="card-thumb" (click)="cardPreview.open(img, commanderBackImage()(c.commander), c.commander)">
+            <app-card-image [compact]="true" [imageUrl]="img" [backImageUrl]="commanderBackImage()(c.commander)" [alt]="c.commander" />
+          </button>
+          }
+          <span class="card-name-text">{{ c.commander }}</span>
+        </span>
+        <span class="hint">{{ c.wins }} / {{ c.games }} {{ i18n.t('stats.wins') }} · {{ c.winRate | number: '1.0-0' }}%</span>
+      </li>
+    }
+  </ul>
+
+  @if (totalPages() > 1) {
+    <div class="chip-row pager">
+      <button class="icon-button" (click)="prevPage()" [disabled]="page() === 0" [attr.aria-label]="i18n.t('stats.previousPage')">◀</button>
+      <span class="hint">{{ pageRangeStart() }}–{{ pageRangeEnd() }} {{ i18n.t('stats.of') }} {{ filteredSorted().length }}</span>
+      <button class="icon-button" (click)="nextPage()" [disabled]="page() >= totalPages() - 1" [attr.aria-label]="i18n.t('stats.nextPage')">▶</button>
+    </div>
+  }
+}

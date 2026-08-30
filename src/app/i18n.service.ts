@@ -2485,4 +2485,13 @@ export class I18nService {
       text
     );
   }
+
+  /**
+   * Prüft den in einem "Tippe LÖSCHEN zum Bestätigen"-Dialog eingegebenen Text gegen das
+   * sprachabhängige Bestätigungswort (stats.deleteConfirmWord) - gemeinsam genutzt vom
+   * Hard-Reset (Stats-Tab), Gruppe-löschen (Gruppen-Tab) und Account-löschen (Profil-Tab).
+   */
+  isDeleteConfirmed(input: string): boolean {
+    return input.trim().toUpperCase() === this.t('stats.deleteConfirmWord');
+  }
 }
