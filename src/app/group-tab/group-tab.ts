@@ -11,10 +11,11 @@ import { PlayerAvatar } from '../player-avatar/player-avatar';
 import { I18nService } from '../i18n.service';
 import { DialogService } from '../dialog.service';
 import { GAME_MODES, GameMode } from '../models';
+import { FavoriteCommanderEditor } from '../favorite-commander-editor/favorite-commander-editor';
 
 @Component({
   selector: 'app-group-tab',
-  imports: [FormsModule, PlayerAvatar, DeckList],
+  imports: [FormsModule, PlayerAvatar, DeckList, FavoriteCommanderEditor],
   templateUrl: './group-tab.html',
   styleUrl: './group-tab.scss',
 })
@@ -393,6 +394,37 @@ export class GroupTab {
     if (!playerId) return;
     this.manualDeckLink.open({ kind: 'player', playerId });
   }
+
+  // --- Lieblingscommander eines virtuellen Spielers (ohne Account) verwalten - nur Host,
+  // gleicher Dialog wie die Deck-Verwaltung oben. ---
+
+  readonly npcFavoriteCommanderBusy = signal(false);
+
+  /** Als gebundene Arrow-Function-Properties gehalten, damit sie unverändert als onAdd/onRemove-
+   * Inputs an app-favorite-commander-editor durchgereicht werden können. */
+  readonly addNpcFavoriteCommander = async (name: string): Promise<void> => {
+    const playerName = this.deckManagePlayerName();
+    if (!playerName) return;
+    const current = this.mtg.playerFavoriteCommanders()[playerName] ?? [];
+    if (current.length >= 3 || current.includes(name)) return;
+
+    this.npcFavoriteCommanderBusy.set(true);
+    await this.mtg.setPlayerFavoriteCommanders(playerName, [...current, name]);
+    this.npcFavoriteCommanderBusy.set(false);
+  };
+
+  readonly removeNpcFavoriteCommander = async (name: string): Promise<void> => {
+    const playerName = this.deckManagePlayerName();
+    if (!playerName) return;
+    const current = this.mtg.playerFavoriteCommanders()[playerName] ?? [];
+
+    this.npcFavoriteCommanderBusy.set(true);
+    await this.mtg.setPlayerFavoriteCommanders(
+      playerName,
+      current.filter((c) => c !== name)
+    );
+    this.npcFavoriteCommanderBusy.set(false);
+  };
 
   // --- Spieler zusammenführen (Duplikate wie "Theo"/"Theos"/"Theodor" zu einem machen) ---
 
