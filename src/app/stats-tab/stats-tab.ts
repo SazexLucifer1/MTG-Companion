@@ -640,9 +640,21 @@ export class StatsTab {
   readonly selectedCommanderDetail = signal<string | null>(null);
   readonly selectedDeckDetail = signal<string | null>(null);
 
+  /** Suchfeld für die Spielerauswahl unten - ersetzt die frühere Chip-Wand mit einem Klick pro
+   * Spieler, die bei großen Gruppen (50+ Leute) den halben Screen gefüllt hat. */
+  readonly playerSearchQuery = signal('');
+
+  readonly filteredPlayersForDetail = computed(() => {
+    const query = this.playerSearchQuery().trim().toLowerCase();
+    const all = this.mtg.allPlayers();
+    if (!query) return all;
+    return all.filter((p) => p.toLowerCase().includes(query));
+  });
+
   selectPlayer(player: string): void {
     const isSame = this.selectedPlayer() === player;
     this.selectedPlayer.set(isSame ? null : player);
+    this.playerSearchQuery.set('');
     this.selectedCommanderDetail.set(null);
     this.selectedDeckDetail.set(null);
     this.showPlayerDecks.set(false);

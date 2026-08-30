@@ -72,6 +72,36 @@
   gap: 8px;
 }
 
+/* --- Suchbare Spielerauswahl für "Spieler-Details" - ersetzt die frühere Chip-Wand (ein Button
+   pro Spieler), die bei großen Gruppen (50+ Leute) den halben Screen gefüllt hat, bevor man
+   überhaupt zu den eigentlichen Stats kam. max-height+Scroll statt unbegrenztem Wachsen der
+   Seite, egal wie viele Treffer die Suche liefert. --- */
+.player-picker-list {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  max-height: 320px;
+  overflow-y: auto;
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 4px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    cursor: pointer;
+    touch-action: manipulation;
+
+    &:last-child {
+      border-bottom: none;
+    }
+
+    &:active {
+      background: rgba(255, 255, 255, 0.06);
+    }
+  }
+}
+
 .borrowed-pilot {
   color: var(--gold);
 }

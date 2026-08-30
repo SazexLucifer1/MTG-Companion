@@ -184,18 +184,36 @@
 
 <section class="glass-card" data-tutorial="stats-player-details">
   <h2>{{ i18n.t('stats.playerDetails') }}</h2>
-  <div class="chip-row">
-    @for (player of mtg.allPlayers(); track player) {
-    <button
-      class="glass-chip avatar-chip"
-      [class.active]="selectedPlayer() === player"
-      (click)="selectPlayer(player)"
-    >
-      <app-player-avatar [url]="mtg.playerAvatars()[player] ?? null" />
-      {{ player }}
-    </button>
+
+  @if (selectedPlayer(); as selected) {
+    <div class="chip-row">
+      <span class="glass-chip avatar-chip active">
+        <app-player-avatar [url]="mtg.playerAvatars()[selected] ?? null" />
+        {{ selected }}
+      </span>
+      <button class="glass-chip small" (click)="selectPlayer(selected)">{{ i18n.t('stats.changePlayer') }}</button>
+    </div>
+  } @else {
+    <input
+      class="glass-input"
+      type="text"
+      [placeholder]="i18n.t('stats.searchPlayerPlaceholder')"
+      [ngModel]="playerSearchQuery()"
+      (ngModelChange)="playerSearchQuery.set($event)"
+    />
+    @if (filteredPlayersForDetail().length === 0) {
+      <p class="hint">{{ i18n.t('stats.noPlayerFound') }}</p>
+    } @else {
+      <ul class="player-picker-list">
+        @for (player of filteredPlayersForDetail(); track player) {
+          <li (click)="selectPlayer(player)">
+            <app-player-avatar [url]="mtg.playerAvatars()[player] ?? null" />
+            <span class="player-name">{{ player }}</span>
+          </li>
+        }
+      </ul>
     }
-  </div>
+  }
 
   @if (selectedPlayer() && isSingleMode() !== null) {
   <p class="hint">{{ i18n.t('stats.statsForModeOnly', { player: selectedPlayer() ?? '', mode: isSingleMode() ?? '' }) }}</p>
