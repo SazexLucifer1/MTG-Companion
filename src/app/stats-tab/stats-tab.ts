@@ -28,6 +28,7 @@ import {
 } from '../models';
 import { I18nService } from '../i18n.service';
 import { TournamentHistory } from '../tournament-history/tournament-history';
+import { isPlayerWinner as isMatchWinner } from '../match-utils';
 
 export type RankSortMode = 'wins' | 'winRate' | 'games';
 export type StatsViewMode = 'stats' | 'tournaments';
@@ -437,10 +438,7 @@ export class StatsTab {
 
   /** Findet zu einer Account-User-ID/players.id den Spielernamen in der aktuellen Gruppe (für "ausgeliehen von X"). */
   private deckOwnerName(ownerId: string | undefined, ownerPlayerId?: string): string | null {
-    if (ownerPlayerId) return this.mtg.playerNameForId(ownerPlayerId);
-    if (!ownerId) return null;
-    const entry = Object.entries(this.mtg.playerUserIds()).find(([, uid]) => uid === ownerId);
-    return entry?.[0] ?? null;
+    return this.mtg.deckOwnerName(ownerId, ownerPlayerId);
   }
 
   /**
@@ -929,25 +927,9 @@ export class StatsTab {
     return b ? this.h2hCommanderStatsFor(b) : [];
   });
 
-  private readonly ARCHENEMY_OTHERS = '__OTHERS__';
-
   private isPlayerWinner(match: Match, playerName: string): boolean {
-    if (match.mode === 'Two-Headed Giant') {
-      return match.players.some((p) => p.name === playerName && p.team === match.winner);
-    }
-
-    if (match.mode === 'Archenemy') {
-      const player = match.players.find((p) => p.name === playerName);
-      if (!player) return false;
-
-      if (match.winner === this.ARCHENEMY_OTHERS) {
-        return !player.isArchenemy;
-      }
-
-      return playerName === match.winner;
-    }
-
-    return playerName === match.winner;
+    const player = match.players.find((p) => p.name === playerName);
+    return isMatchWinner(match.mode, match.winner, playerName, player?.team, player?.isArchenemy);
   }
 
   medal(index: number): string {
@@ -1106,9 +1088,7 @@ export class StatsTab {
     this.resetConfirmText.set(value);
   }
 
-  readonly canConfirmReset = computed(
-    () => this.resetConfirmText().trim().toUpperCase() === this.i18n.t('stats.deleteConfirmWord')
-  );
+  readonly canConfirmReset = computed(() => this.i18n.isDeleteConfirmed(this.resetConfirmText()));
   readonly resetError = signal('');
   readonly resetBusy = signal(false);
 

@@ -147,9 +147,7 @@ export class GroupTab {
     this.deleteConfirmText.set(value);
   }
 
-  readonly canConfirmDeleteGroup = computed(
-    () => this.deleteConfirmText().trim().toUpperCase() === this.i18n.t('stats.deleteConfirmWord')
-  );
+  readonly canConfirmDeleteGroup = computed(() => this.i18n.isDeleteConfirmed(this.deleteConfirmText()));
 
   async confirmDeleteGroup(): Promise<void> {
     if (!this.canConfirmDeleteGroup()) return;

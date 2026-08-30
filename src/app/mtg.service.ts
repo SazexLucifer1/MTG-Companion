@@ -39,12 +39,7 @@ export class MtgService {
   readonly qualificationSettings = signal<Map<string, number>>(new Map());
 
   /** Der eigene Spielername (falls der eingeloggte User über einen verknüpften players-Eintrag verfügt). */
-  readonly myPlayerName = computed(() => {
-    const uid = this.auth.currentUser()?.id;
-    if (!uid) return null;
-    const entry = Object.entries(this.playerUserIds()).find(([, userId]) => userId === uid);
-    return entry?.[0] ?? null;
-  });
+  readonly myPlayerName = computed(() => this.playerNameForUserId(this.auth.currentUser()?.id));
 
   /** players.id zu einem Spielernamen dieser Gruppe - für Features, die direkt mit der players-ID arbeiten müssen (z.B. Turniere). */
   playerIdFor(name: string): string | null {
@@ -55,6 +50,23 @@ export class MtgService {
   playerNameForId(playerId: string): string | null {
     const entry = Object.entries(this.playerIdsByName()).find(([, id]) => id === playerId);
     return entry?.[0] ?? null;
+  }
+
+  /** Spielername zu einer verknüpften Account-User-ID dieser Gruppe, oder null ohne Zuordnung. */
+  playerNameForUserId(userId: string | null | undefined): string | null {
+    if (!userId) return null;
+    const entry = Object.entries(this.playerUserIds()).find(([, uid]) => uid === userId);
+    return entry?.[0] ?? null;
+  }
+
+  /**
+   * Spielername des Deck-Besitzers zu ownerId (Account-User-ID, für account-gebundene Decks) oder
+   * ownerPlayerId (players.id, für Decks eines accountlosen/virtuellen Spielers) - für
+   * "ausgeliehen von X"-Anzeigen im Match-Verlauf und in den Statistiken.
+   */
+  deckOwnerName(ownerId: string | undefined, ownerPlayerId?: string): string | null {
+    if (ownerPlayerId) return this.playerNameForId(ownerPlayerId);
+    return this.playerNameForUserId(ownerId);
   }
 
   constructor() {
