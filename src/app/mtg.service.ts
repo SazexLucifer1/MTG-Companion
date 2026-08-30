@@ -4,6 +4,7 @@ import { supabase } from './supabase.client';
 import { GroupService } from './group.service';
 import { AuthService } from './auth.service';
 import { DeckService } from './deck.service';
+import { ProfileService } from './profile.service';
 import { chunk } from './array-utils';
 
 @Injectable({ providedIn: 'root' })
@@ -11,6 +12,7 @@ export class MtgService {
   private readonly groupService = inject(GroupService);
   private readonly auth = inject(AuthService);
   private readonly deckService = inject(DeckService);
+  private readonly profileService = inject(ProfileService);
 
   readonly allPlayers = signal<string[]>([]);
   private readonly playerIdsByName = signal<Record<string, string>>({});
@@ -18,6 +20,11 @@ export class MtgService {
   readonly playerUserIds = signal<Record<string, string | null>>({});
   /** Spielername -> Profilbild-URL des verknüpften Accounts (null = kein Account/kein Bild). */
   readonly playerAvatars = signal<Record<string, string | null>>({});
+  /** Spielername -> Lieblingscommander eines accountlosen NPC-Profils (players.favorite_commanders,
+   * vom Host gepflegt - siehe setPlayerFavoriteCommanders). Sobald der Spieler verknüpft wird, geht
+   * dieses Feld per Alles-oder-nichts-Regel in profiles.favorite_commanders auf (siehe
+   * linkPlayerToUser) und wird hier wieder geleert. */
+  readonly playerFavoriteCommanders = signal<Record<string, string[]>>({});
   // ... der Rest bleibt unverändert
   readonly history = signal<Match[]>([]);
   readonly cubes = signal<Cube[]>([]);
@@ -289,7 +296,7 @@ export class MtgService {
   private async loadPlayers(groupId: string): Promise<void> {
     const { data, error } = await supabase
       .from('players')
-      .select('id, display_name, user_id, profiles ( avatar_url )')
+      .select('id, display_name, user_id, favorite_commanders, profiles ( avatar_url )')
       .eq('group_id', groupId)
       .order('display_name', { ascending: true });
 
@@ -303,14 +310,42 @@ export class MtgService {
     const idMap: Record<string, string> = {};
     const userIdMap: Record<string, string | null> = {};
     const avatarMap: Record<string, string | null> = {};
+    const favoriteCommanderMap: Record<string, string[]> = {};
     for (const row of data as any[]) {
       idMap[row.display_name] = row.id;
       userIdMap[row.display_name] = row.user_id ?? null;
       avatarMap[row.display_name] = row.profiles?.avatar_url ?? null;
+      favoriteCommanderMap[row.display_name] = row.favorite_commanders ?? [];
     }
     this.playerIdsByName.set(idMap);
     this.playerUserIds.set(userIdMap);
     this.playerAvatars.set(avatarMap);
+    this.playerFavoriteCommanders.set(favoriteCommanderMap);
+  }
+
+  /**
+   * Setzt die Lieblingscommander eines NPC-Profils (accountloser Spieler) - vom Host in
+   * group-tab.ts gepflegt, analog zu profiles.favorite_commanders bei echten Accounts. Maximal 3,
+   * gleiche Regel wie ProfileService.updateFavoriteCommanders.
+   */
+  async setPlayerFavoriteCommanders(name: string, commanders: string[]): Promise<boolean> {
+    const groupId = this.groupService.groupId();
+    const playerId = this.playerIdsByName()[name];
+    if (!groupId || !playerId) return false;
+
+    const trimmed = commanders.slice(0, 3);
+    const { error } = await supabase
+      .from('players')
+      .update({ favorite_commanders: trimmed })
+      .eq('id', playerId);
+
+    if (error) {
+      console.error('Konnte Lieblingscommander des NPC-Profils nicht speichern:', error);
+      return false;
+    }
+
+    this.playerFavoriteCommanders.update((map) => ({ ...map, [name]: trimmed }));
+    return true;
   }
 
   async addPlayer(name: string): Promise<boolean> {
@@ -629,10 +664,38 @@ export class MtgService {
 
     const { data: profile } = await supabase
       .from('profiles')
-      .select('avatar_url')
+      .select('avatar_url, favorite_commanders')
       .eq('id', userId)
       .single();
     this.playerAvatars.update((map) => ({ ...map, [playerName]: profile?.avatar_url ?? null }));
+
+    // Lieblingscommander per Alles-oder-nichts-Regel zusammenführen: hat der Account schon
+    // mindestens einen gesetzt, bleibt dessen Liste unverändert (der Account ist die "Wahrheit"
+    // für die Person). Nur wenn der Account noch komplett leer ist, übernimmt er die NPC-Liste -
+    // die dann am NPC-Eintrag geleert wird, damit sie nicht doppelt/veraltet irgendwo weiterlebt.
+    const npcFavorites = this.playerFavoriteCommanders()[playerName] ?? [];
+    const accountFavorites = profile?.favorite_commanders ?? [];
+    if (accountFavorites.length === 0 && npcFavorites.length > 0) {
+      const { error: favoriteMergeError } = await supabase
+        .from('profiles')
+        .update({ favorite_commanders: npcFavorites })
+        .eq('id', userId);
+
+      if (favoriteMergeError) {
+        console.error('Konnte Lieblingscommander nicht auf den Account übertragen:', favoriteMergeError);
+      } else if (playerId) {
+        await supabase.from('players').update({ favorite_commanders: [] }).eq('id', playerId);
+        this.playerFavoriteCommanders.update((map) => ({ ...map, [playerName]: [] }));
+
+        // Falls der verknüpfte Account der gerade eingeloggte User selbst ist (Host verknüpft sich
+        // z.B. selbst, oder der Spieler verknüpft während einer laufenden Session), muss auch das
+        // schon geladene eigene Profil-Signal aktualisiert werden - sonst zeigt der Profil-Tab bis
+        // zum nächsten Neuladen noch die alte (leere) Liste.
+        if (this.auth.currentUser()?.id === userId) {
+          this.profileService.profile.update((p) => (p ? { ...p, favoriteCommanders: npcFavorites } : p));
+        }
+      }
+    }
 
     return true;
   }

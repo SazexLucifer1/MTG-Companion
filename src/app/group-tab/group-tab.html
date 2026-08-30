@@ -354,9 +354,20 @@
       <h3>{{ i18n.t('group.playerDecksTitle', { name: playerName }) }}</h3>
       <button class="icon-button" (click)="openManualLinkForPlayer()" [attr.aria-label]="i18n.t('profile.manualLinkAria')" [title]="i18n.t('profile.manualLinkAria')">🔗</button>
     </div>
+
+    <h4>{{ i18n.t('group.npcDecksSectionTitle') }}</h4>
     @if (deckManageOwner(); as owner) {
       <app-deck-list [owner]="owner" />
     }
+
+    <h4>{{ i18n.t('group.npcFavoriteCommandersTitle') }}</h4>
+    <app-favorite-commander-editor
+      [favorites]="mtg.playerFavoriteCommanders()[playerName] ?? []"
+      [busy]="npcFavoriteCommanderBusy()"
+      [onAdd]="addNpcFavoriteCommander"
+      [onRemove]="removeNpcFavoriteCommander"
+    />
+
     <button class="glass-button" (click)="closePlayerDeckDialog()">{{ i18n.t('group.close') }}</button>
   </div>
 </div>

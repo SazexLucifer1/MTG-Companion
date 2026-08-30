@@ -56,6 +56,18 @@ export interface CommanderGameStats {
   winRate: number;
 }
 
+/** Persönliche Gesamt-Statistik eines Accounts über ALLE Gruppen hinweg, in denen er Mitglied ist
+ * (siehe DeckService.getCrossGroupPersonalStats) - fürs Profil-Tab, das Stats-Tab bleibt bewusst
+ * pro aktiver Gruppe getrennt. */
+export interface CrossGroupPersonalStats {
+  totalGames: number;
+  totalWins: number;
+  winRate: number;
+  /** Anzahl verschiedener Gruppen, aus denen Spiele in die Gesamtwertung eingeflossen sind. */
+  groupCount: number;
+  topCommander: CommanderGameStats | null;
+}
+
 export interface DeckCard {
   cardName: string;
   quantity: number;
@@ -1102,6 +1114,80 @@ export class DeckService {
         winRate: s.games > 0 ? (s.wins / s.games) * 100 : 0,
       }))
       .sort((a, b) => b.wins - a.wins || b.winRate - a.winRate);
+  }
+
+  /**
+   * Persönliche Gesamt-Statistik eines Accounts über ALLE Gruppen hinweg (nicht nur die gerade
+   * aktive) - fürs Profil-Tab. Anders als getUnassignedCommanderStats() zählt hier JEDES Spiel mit,
+   * unabhängig davon, ob ein Deck verlinkt ist, da hier die Gesamtzahl gefragt ist statt einer
+   * reinen Commander-Rangliste. Respektiert stats_locked einer Gruppe bewusst NICHT - das sperrt nur
+   * die geteilte Rangliste für andere Mitglieder, nicht die eigenen Zahlen für einen selbst.
+   */
+  async getCrossGroupPersonalStats(userId: string): Promise<CrossGroupPersonalStats> {
+    const { data: playerRows, error: playerError } = await supabase
+      .from('players')
+      .select('id, group_id')
+      .eq('user_id', userId);
+
+    if (playerError || !playerRows || playerRows.length === 0) {
+      if (playerError) console.error('Konnte Spieler-Zeilen für Gesamtstatistik nicht laden:', playerError);
+      return { totalGames: 0, totalWins: 0, winRate: 0, groupCount: 0, topCommander: null };
+    }
+
+    const playerIds = playerRows.map((p) => p.id);
+    const groupCount = new Set(playerRows.map((p) => p.group_id)).size;
+
+    const { data, error } = await supabase
+      .from('match_players')
+      .select(
+        'commander_name, team, is_archenemy, players ( display_name ), matches ( game_mode, winner_name, counts_in_general_stats )'
+      )
+      .in('player_id', playerIds);
+
+    if (error || !data) {
+      console.error('Konnte gruppenübergreifende Statistik nicht laden:', error);
+      return { totalGames: 0, totalWins: 0, winRate: 0, groupCount, topCommander: null };
+    }
+
+    let totalGames = 0;
+    let totalWins = 0;
+    const commanderStats = new Map<string, { games: number; wins: number }>();
+
+    for (const row of data as any[]) {
+      const match = row.matches;
+      const playerName = row.players?.display_name;
+      if (!match || !playerName || match.counts_in_general_stats === false) continue;
+
+      totalGames++;
+      const won = isPlayerWinner(match.game_mode, match.winner_name, playerName, row.team, row.is_archenemy);
+      if (won) totalWins++;
+
+      const commander = row.commander_name as string | null;
+      if (commander) {
+        const entry = commanderStats.get(commander) ?? { games: 0, wins: 0 };
+        entry.games++;
+        if (won) entry.wins++;
+        commanderStats.set(commander, entry);
+      }
+    }
+
+    const topCommander =
+      [...commanderStats.entries()]
+        .map(([commander, s]) => ({
+          commander,
+          games: s.games,
+          wins: s.wins,
+          winRate: s.games > 0 ? (s.wins / s.games) * 100 : 0,
+        }))
+        .sort((a, b) => b.games - a.games || b.winRate - a.winRate)[0] ?? null;
+
+    return {
+      totalGames,
+      totalWins,
+      winRate: totalGames > 0 ? (totalWins / totalGames) * 100 : 0,
+      groupCount,
+      topCommander,
+    };
   }
 
   /**

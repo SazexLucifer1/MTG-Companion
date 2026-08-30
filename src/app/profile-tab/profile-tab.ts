@@ -1,12 +1,12 @@
 import { Component, computed, effect, inject, signal, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { DatePipe } from '@angular/common';
+import { DatePipe, DecimalPipe } from '@angular/common';
 import QRCode from 'qrcode';
 import { ProfileService } from '../profile.service';
 import { MtgService } from '../mtg.service';
 import { GroupService } from '../group.service';
 import { DeckList } from '../deck-list/deck-list';
-import { DeckService, CommanderGameStats, DeckOwner } from '../deck.service';
+import { DeckService, CommanderGameStats, CrossGroupPersonalStats, DeckOwner } from '../deck.service';
 import { ManualDeckLinkService } from '../manual-deck-link.service';
 import { CardPreviewService } from '../card-preview.service';
 import { AuthService } from '../auth.service';
@@ -18,10 +18,11 @@ import { FeedbackService } from '../feedback.service';
 import { DialogService } from '../dialog.service';
 import { CardImage } from '../card-image/card-image';
 import { CommanderStatList } from '../commander-stat-list/commander-stat-list';
+import { FavoriteCommanderEditor } from '../favorite-commander-editor/favorite-commander-editor';
 
 @Component({
   selector: 'app-profile-tab',
-  imports: [FormsModule, DatePipe, DeckList, CardImage, CommanderStatList],
+  imports: [FormsModule, DatePipe, DecimalPipe, DeckList, CardImage, CommanderStatList, FavoriteCommanderEditor],
   templateUrl: './profile-tab.html',
   styleUrl: './profile-tab.scss',
 })
@@ -93,6 +94,10 @@ export class ProfileTab {
   /** Gleiches wie unassignedCommanderStats, aber für ein FREMDES Profil - rein zum Ansehen, ohne Reparieren/Verlinken (das kann nur der Account-Besitzer selbst). */
   readonly viewingUnassignedCommanderStats = signal<CommanderGameStats[]>([]);
 
+  /** Gesamt-Statistik über ALLE Gruppen des eigenen Accounts hinweg (siehe DeckService.getCrossGroupPersonalStats) -
+   * bewusst nur fürs eigene Profil, nicht beim Ansehen eines fremden. Das Stats-Tab bleibt unverändert pro aktiver Gruppe. */
+  readonly crossGroupStats = signal<CrossGroupPersonalStats | null>(null);
+
   private async refreshUnassignedAndDecks(): Promise<void> {
     const userId = this.profileService.profile()?.id;
     if (!userId) return;
@@ -113,6 +118,15 @@ export class ProfileTab {
         this.unassignedCommanderStats.set(stats);
         this.ownCommanderListRef()?.reset();
       });
+    });
+
+    effect(() => {
+      const userId = this.profileService.profile()?.id;
+      if (!userId) {
+        this.crossGroupStats.set(null);
+        return;
+      }
+      this.deckService.getCrossGroupPersonalStats(userId).then((stats) => this.crossGroupStats.set(stats));
     });
 
     effect(() => {
@@ -207,14 +221,9 @@ export class ProfileTab {
   readonly favoriteCommanderCards = signal<Record<string, ScryfallCard | null>>({});
 
   readonly showFavoriteCommanderDialog = signal(false);
-  readonly favoriteCommanderQuery = signal('');
-  readonly favoriteCommanderSuggestions = signal<string[]>([]);
   readonly favoriteCommanderBusy = signal(false);
-  private favoriteCommanderSearchTimer: ReturnType<typeof setTimeout> | null = null;
 
   openFavoriteCommanderDialog(): void {
-    this.favoriteCommanderQuery.set('');
-    this.favoriteCommanderSuggestions.set([]);
     this.showFavoriteCommanderDialog.set(true);
   }
 
@@ -222,32 +231,24 @@ export class ProfileTab {
     this.showFavoriteCommanderDialog.set(false);
   }
 
-  onFavoriteCommanderSearchInput(value: string): void {
-    this.favoriteCommanderQuery.set(value);
-    if (this.favoriteCommanderSearchTimer) clearTimeout(this.favoriteCommanderSearchTimer);
-    this.favoriteCommanderSearchTimer = setTimeout(async () => {
-      this.favoriteCommanderSuggestions.set(await this.scryfall.autocomplete(value));
-    }, 250);
-  }
-
-  async addFavoriteCommander(name: string): Promise<void> {
+  /** Als gebundene Arrow-Function-Properties gehalten, damit sie unverändert als onAdd/onRemove-
+   * Inputs an app-favorite-commander-editor durchgereicht werden können. */
+  readonly addFavoriteCommander = async (name: string): Promise<void> => {
     const current = this.profileService.profile()?.favoriteCommanders ?? [];
     if (current.length >= 3 || current.includes(name)) return;
 
     this.favoriteCommanderBusy.set(true);
     await this.profileService.updateFavoriteCommanders([...current, name]);
     this.favoriteCommanderBusy.set(false);
-    this.favoriteCommanderQuery.set('');
-    this.favoriteCommanderSuggestions.set([]);
-  }
+  };
 
-  async removeFavoriteCommander(name: string): Promise<void> {
+  readonly removeFavoriteCommander = async (name: string): Promise<void> => {
     const current = this.profileService.profile()?.favoriteCommanders ?? [];
 
     this.favoriteCommanderBusy.set(true);
     await this.profileService.updateFavoriteCommanders(current.filter((c) => c !== name));
     this.favoriteCommanderBusy.set(false);
-  }
+  };
 
   /** Meistgespielte Commander (Hauptcommander, Partner zählt nicht mit) dieser Person, absteigend - respektiert countsInGeneralStats wie der Rest der Statistik. */
   private topPlayedCommanders(playerName: string, limit: number): string[] {

@@ -234,36 +234,12 @@
         </button>
       }
 
-      @if ((profileService.profile()?.favoriteCommanders ?? []).length > 0) {
-        <ul class="player-list compact-list">
-          @for (name of profileService.profile()?.favoriteCommanders ?? []; track name) {
-            <li>
-              <span class="player-name">{{ name }}</span>
-              <button class="icon-button" [disabled]="favoriteCommanderBusy()" (click)="removeFavoriteCommander(name)" [attr.aria-label]="i18n.t('profile.removeAria')">🗑</button>
-            </li>
-          }
-        </ul>
-      }
-
-      @if ((profileService.profile()?.favoriteCommanders ?? []).length < 3) {
-        <input
-          class="glass-input"
-          type="text"
-          [placeholder]="i18n.t('profile.searchCardPlaceholder')"
-          [ngModel]="favoriteCommanderQuery()"
-          (ngModelChange)="onFavoriteCommanderSearchInput($event)"
-          autofocus
-        />
-        @if (favoriteCommanderSuggestions().length > 0) {
-          <ul class="player-list compact-list">
-            @for (s of favoriteCommanderSuggestions(); track s) {
-              <li class="clickable" (click)="addFavoriteCommander(s)">
-                <span class="player-name">{{ s }}</span>
-              </li>
-            }
-          </ul>
-        }
-      }
+      <app-favorite-commander-editor
+        [favorites]="profileService.profile()?.favoriteCommanders ?? []"
+        [busy]="favoriteCommanderBusy()"
+        [onAdd]="addFavoriteCommander"
+        [onRemove]="removeFavoriteCommander"
+      />
       <button class="glass-button" (click)="closeFavoriteCommanderDialog()">{{ i18n.t('profile.close') }}</button>
     </div>
   </div>
@@ -282,6 +258,27 @@
         }
       </ul>
     </section>
+  }
+
+  @if (crossGroupStats(); as overall) {
+    @if (overall.totalGames > 0) {
+      <section class="glass-card">
+        <h2>{{ i18n.t('profile.crossGroupStatsTitle') }}</h2>
+        <p class="hint">{{ i18n.t('profile.crossGroupStatsHint', { groups: overall.groupCount }) }}</p>
+        <ul class="player-list compact-list">
+          <li>
+            <span class="player-name">{{ i18n.t('profile.crossGroupGames') }}</span>
+            <span class="hint">{{ overall.totalWins }} / {{ overall.totalGames }} {{ i18n.t('stats.wins') }} · {{ overall.winRate | number: '1.0-0' }}%</span>
+          </li>
+          @if (overall.topCommander; as top) {
+            <li>
+              <span class="player-name">{{ i18n.t('profile.crossGroupTopCommander') }}</span>
+              <span class="hint">{{ top.commander }} ({{ top.wins }} / {{ top.games }} · {{ top.winRate | number: '1.0-0' }}%)</span>
+            </li>
+          }
+        </ul>
+      </section>
+    }
   }
 
   @if (profileService.profile(); as profile) {
