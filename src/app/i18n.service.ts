@@ -276,6 +276,7 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     'group.imNew': '➕ Ich bin neu',
 
     'group.players': 'Spieler',
+    'group.playersOf': 'Spieler von „{{name}}"',
     'group.mergePlayersAria': 'Spieler zusammenführen',
     'group.repairCommanderNamesAria': 'Commander-Namen der Gruppe reparieren',
     'group.newPlayerNamePlaceholder': 'Neuer Spielername …',
@@ -1498,6 +1499,7 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     'group.imNew': "➕ I'm new",
 
     'group.players': 'Players',
+    'group.playersOf': 'Players of "{{name}}"',
     'group.mergePlayersAria': 'Merge players',
     'group.repairCommanderNamesAria': "Repair the group's commander names",
     'group.newPlayerNamePlaceholder': 'New player name …',
