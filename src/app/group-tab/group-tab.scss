@@ -39,25 +39,6 @@
   overflow-y: auto;
 }
 
-.player-deck-sheet {
-  width: min(94vw, 720px);
-  max-width: 720px;
-  max-height: 88dvh;
-  overflow-y: auto;
-
-  .section-header-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-    margin-bottom: 4px;
-
-    h3 {
-      margin: 0;
-    }
-  }
-}
-
 .choice-candidate-list {
   max-height: 50dvh;
   overflow-y: auto;

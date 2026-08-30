@@ -31,16 +31,34 @@ export class ProfileService {
   } | null>(null);
   readonly viewingBusy = signal(false);
 
+  /** Ist gesetzt, während im Profil-Tab statt eines echten Accounts das "Profil" eines NPCs
+   * (accountloser Spieler) angezeigt wird - siehe group-tab.ts openNpcProfileView(). Anders als
+   * viewingUserId gibt es dafür keinen eigenen Ladevorgang: Name/Lieblingscommander kommen direkt
+   * aus MtgService, das für die aktive Gruppe schon reaktiv geladen ist (siehe profile-tab.ts). */
+  readonly viewingPlayerId = signal<string | null>(null);
+  readonly viewingPlayerName = signal<string | null>(null);
+
   async viewProfile(userId: string): Promise<void> {
+    this.viewingPlayerId.set(null);
+    this.viewingPlayerName.set(null);
     this.viewingUserId.set(userId);
     this.viewingBusy.set(true);
     this.viewingProfile.set(await this.loadPublicProfile(userId));
     this.viewingBusy.set(false);
   }
 
+  viewNpcProfile(playerId: string, playerName: string): void {
+    this.viewingUserId.set(null);
+    this.viewingProfile.set(null);
+    this.viewingPlayerId.set(playerId);
+    this.viewingPlayerName.set(playerName);
+  }
+
   stopViewingProfile(): void {
     this.viewingUserId.set(null);
     this.viewingProfile.set(null);
+    this.viewingPlayerId.set(null);
+    this.viewingPlayerName.set(null);
   }
 
   /** Account-ID des zuletzt ERFOLGREICH geladenen Profils - verhindert unnötige Neuladungen. */

@@ -296,15 +296,13 @@
           } @else {
             <app-player-avatar [url]="mtg.playerAvatars()[player] ?? null" />
             <span
-              class="player-name"
-              [class.clickable]="isPlayerLinked(player)"
-              (click)="isPlayerLinked(player) && openProfileView(mtg.playerUserIds()[player]!)"
+              class="player-name clickable"
+              (click)="isPlayerLinked(player) ? openProfileView(mtg.playerUserIds()[player]!) : openNpcProfileView(player)"
               >{{ player }}</span
             >
             <span class="player-games">{{ i18n.t('group.gamesCount', { count: gamesPerPlayer().get(player) ?? 0 }) }}</span>
             @if (!isPlayerLinked(player) && groupService.isOwner()) {
               <button class="icon-button" (click)="openLinkDialog(player)" [attr.aria-label]="i18n.t('group.linkWithMemberAria')" [title]="i18n.t('group.linkWithMemberAria')">🪪</button>
-              <button class="icon-button" (click)="openPlayerDeckDialog(player)" [attr.aria-label]="i18n.t('group.playerDecksAria')" [title]="i18n.t('group.playerDecksAria')">🃏</button>
             }
             @if (groupService.isOwner() || player === mtg.myPlayerName()) {
               <button class="icon-button" (click)="startEditPlayer(player)" [attr.aria-label]="i18n.t('group.renamePlayerAria')">✏️</button>
@@ -349,32 +347,6 @@
       {{ repairGroupBusy() ? i18n.t('group.checking') : i18n.t('group.checkNow') }}
     </button>
     <button class="glass-button" (click)="closeRepairInfoDialog()">{{ i18n.t('group.close') }}</button>
-  </div>
-</div>
-}
-
-@if (deckManagePlayerName(); as playerName) {
-<div class="options-menu-overlay" (click)="closePlayerDeckDialog()">
-  <div class="options-menu-sheet player-deck-sheet" (click)="$event.stopPropagation()">
-    <div class="section-header-row">
-      <h3>{{ i18n.t('group.playerDecksTitle', { name: playerName }) }}</h3>
-      <button class="icon-button" (click)="openManualLinkForPlayer()" [attr.aria-label]="i18n.t('profile.manualLinkAria')" [title]="i18n.t('profile.manualLinkAria')">🔗</button>
-    </div>
-
-    <h4>{{ i18n.t('group.npcDecksSectionTitle') }}</h4>
-    @if (deckManageOwner(); as owner) {
-      <app-deck-list [owner]="owner" />
-    }
-
-    <h4>{{ i18n.t('group.npcFavoriteCommandersTitle') }}</h4>
-    <app-favorite-commander-editor
-      [favorites]="mtg.playerFavoriteCommanders()[playerName] ?? []"
-      [busy]="npcFavoriteCommanderBusy()"
-      [onAdd]="addNpcFavoriteCommander"
-      [onRemove]="removeNpcFavoriteCommander"
-    />
-
-    <button class="glass-button" (click)="closePlayerDeckDialog()">{{ i18n.t('group.close') }}</button>
   </div>
 </div>
 }

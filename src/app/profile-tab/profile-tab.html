@@ -101,6 +101,104 @@
       </ul>
     </section>
   }
+} @else if (profileService.viewingPlayerId(); as npcPlayerId) {
+
+<section class="glass-card">
+  <div class="viewing-profile-header-row">
+    <div class="avatar-row">
+      <div class="avatar-circle">
+        <span class="avatar-placeholder">👤</span>
+      </div>
+      <span class="profile-name">{{ profileService.viewingPlayerName() }}</span>
+    </div>
+    <button class="glass-button small" (click)="profileService.stopViewingProfile()">{{ i18n.t('profile.backToMyProfile') }}</button>
+  </div>
+
+  @if (viewingNpcFavoriteCommanders().length > 0 || groupService.isOwner()) {
+    <div class="favorite-commanders-col" data-tutorial="profile-favorites">
+      <div class="section-header-row">
+        <h3>{{ i18n.t('group.npcFavoriteCommandersTitle') }}</h3>
+        @if (groupService.isOwner()) {
+          <button class="icon-button" (click)="openFavoriteCommanderDialog()" [attr.aria-label]="i18n.t('profile.editFavoriteCommandersAria')" [title]="i18n.t('profile.editFavoriteCommandersAria')">✏️</button>
+        }
+      </div>
+      @if (viewingNpcFavoriteCommanders().length > 0) {
+        <div class="favorite-commanders-row">
+          @for (name of viewingNpcFavoriteCommanders(); track name) {
+            <div
+              class="favorite-commander-card"
+              role="button"
+              tabindex="0"
+              [attr.aria-label]="name"
+              (click)="openFavoriteCommanderPreview(name)"
+              (keydown.enter)="openFavoriteCommanderPreview(name)"
+            >
+              @if (favoriteCommanderCards()[name]?.imageUrl; as img) {
+                <app-card-image [imageUrl]="img" [backImageUrl]="favoriteCommanderCards()[name]?.backImageUrl" [alt]="name" />
+              } @else {
+                <span class="favorite-commander-placeholder">{{ name }}</span>
+              }
+            </div>
+          }
+        </div>
+      } @else {
+        <p class="hint">{{ i18n.t('profile.noFavoriteCommandersYet') }}</p>
+      }
+    </div>
+  }
+</section>
+
+<section class="glass-card">
+  <div class="section-header-row">
+    <h2>{{ i18n.t('profile.decks') }}</h2>
+    @if (groupService.isOwner()) {
+      <div class="chip-row">
+        <button class="icon-button" (click)="openRepairInfoDialog()" [attr.aria-label]="i18n.t('profile.autoRepairAria')" [title]="i18n.t('profile.autoRepairAria')">🔧</button>
+        <button class="icon-button" (click)="openManualLinkDialogForNpc(npcPlayerId)" [attr.aria-label]="i18n.t('profile.manualLinkAria')" [title]="i18n.t('profile.manualLinkAria')">🔗</button>
+      </div>
+    }
+  </div>
+  @if (viewingNpcDeckOwner(); as owner) {
+    <app-deck-list [owner]="owner" [readonlyMode]="!groupService.isOwner()" [hideStats]="othersStatsHidden()" />
+  }
+</section>
+
+@if (othersStatsHidden()) {
+  <section class="glass-card">
+    <p class="hint">{{ i18n.t('profile.statsLockedHint') }}</p>
+  </section>
+}
+
+@if (!othersStatsHidden() && viewingNpcUnassignedCommanderStats().length > 0) {
+  <section class="glass-card">
+    <h2>{{ i18n.t('profile.commanderStats') }}</h2>
+    <p class="hint">
+      {{ i18n.t('profile.commanderStatsHint') }}
+    </p>
+
+    <app-commander-stat-list
+      #viewingNpcCommanderListRef
+      [stats]="viewingNpcUnassignedCommanderStats()"
+      [commanderImage]="commanderImage"
+      [commanderBackImage]="commanderBackImage"
+    />
+  </section>
+}
+
+@if (!othersStatsHidden() && placementDistribution().length > 0) {
+  <section class="glass-card">
+    <h2>{{ i18n.t('profile.placementDistribution') }}</h2>
+    <p class="hint">{{ i18n.t('profile.placementDistributionHint') }}</p>
+    <ul class="player-list compact-list">
+      @for (p of placementDistribution(); track p.placement) {
+        <li>
+          <span class="player-name">{{ i18n.t('placement.badge', { placement: p.placement }) }}</span>
+          <span class="hint">{{ p.count }}×</span>
+        </li>
+      }
+    </ul>
+  </section>
+}
 } @else {
 
 <section class="glass-card">
@@ -221,29 +319,6 @@
       </div>
     </div>
   </section>
-
-  @if (showFavoriteCommanderDialog()) {
-  <div class="options-menu-overlay" (click)="closeFavoriteCommanderDialog()">
-    <div class="options-menu-sheet" (click)="$event.stopPropagation()">
-      <h3>{{ i18n.t(mtg.myPlayerName() === 'Adrian' ? 'profile.myFavoriteGliederAdrian' : 'profile.favCommanderTitle') }}</h3>
-      <p class="hint">{{ i18n.t('profile.favCommanderHint') }}</p>
-
-      @if (canAutofillFavoriteCommanders()) {
-        <button class="glass-chip small" [disabled]="favoriteCommanderBusy()" (click)="autofillFavoriteCommanders()">
-          {{ i18n.t('profile.autofillFavoriteCommanders') }}
-        </button>
-      }
-
-      <app-favorite-commander-editor
-        [favorites]="profileService.profile()?.favoriteCommanders ?? []"
-        [busy]="favoriteCommanderBusy()"
-        [onAdd]="addFavoriteCommander"
-        [onRemove]="removeFavoriteCommander"
-      />
-      <button class="glass-button" (click)="closeFavoriteCommanderDialog()">{{ i18n.t('profile.close') }}</button>
-    </div>
-  </div>
-  }
 
   @if (placementDistribution().length > 0) {
     <section class="glass-card">
@@ -485,6 +560,36 @@
   </div>
   }
 
+}
+
+@if (showFavoriteCommanderDialog()) {
+  @let target = favoriteCommandersDialogTarget();
+  <div class="options-menu-overlay" (click)="closeFavoriteCommanderDialog()">
+    <div class="options-menu-sheet" (click)="$event.stopPropagation()">
+      <h3>
+        @if (target.isNpc) {
+          {{ i18n.t('group.npcFavoriteCommandersTitle') }}
+        } @else {
+          {{ i18n.t(mtg.myPlayerName() === 'Adrian' ? 'profile.myFavoriteGliederAdrian' : 'profile.favCommanderTitle') }}
+        }
+      </h3>
+      <p class="hint">{{ i18n.t('profile.favCommanderHint') }}</p>
+
+      @if (target.canAutofill) {
+        <button class="glass-chip small" [disabled]="target.busy" (click)="target.onAutofill()">
+          {{ i18n.t('profile.autofillFavoriteCommanders') }}
+        </button>
+      }
+
+      <app-favorite-commander-editor
+        [favorites]="target.favorites"
+        [busy]="target.busy"
+        [onAdd]="target.onAdd"
+        [onRemove]="target.onRemove"
+      />
+      <button class="glass-button" (click)="closeFavoriteCommanderDialog()">{{ i18n.t('profile.close') }}</button>
+    </div>
+  </div>
 }
 
 @if (showRepairInfoDialog()) {

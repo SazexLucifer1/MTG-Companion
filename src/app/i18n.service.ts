@@ -284,9 +284,6 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     'group.noPlayersYet': 'Noch keine Spieler angelegt.',
     'group.gamesCount': '{{count}} Spiele',
     'group.linkWithMemberAria': 'Mit Mitglied verknüpfen',
-    'group.playerDecksAria': 'NPC-Profil verwalten',
-    'group.playerDecksTitle': 'NPC-Profil von „{{name}}"',
-    'group.npcDecksSectionTitle': '🃏 Decks',
     'group.npcFavoriteCommandersTitle': '⭐ Lieblingscommander',
     'group.renamePlayerAria': 'Spieler umbenennen',
     'group.deletePlayerAria': 'Spieler löschen',
@@ -360,6 +357,8 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
 
     'profile.favCommanderTitle': '⭐ Meine Lieblingscommander',
     'profile.favCommanderHint': 'Bis zu 3 Stück.',
+    'profile.editFavoriteCommandersAria': 'Lieblingscommander bearbeiten',
+    'profile.noFavoriteCommandersYet': 'Noch keine Lieblingscommander festgelegt.',
 
     'profile.crossGroupStatsTitle': '🌐 Gesamt über alle Gruppen',
     'profile.crossGroupStatsHint': 'Zusammengefasst aus {{groups}} Gruppe(n), in denen du Mitglied bist.',
@@ -1507,9 +1506,6 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     'group.noPlayersYet': 'No players yet.',
     'group.gamesCount': '{{count}} games',
     'group.linkWithMemberAria': 'Link with member',
-    'group.playerDecksAria': 'Manage NPC profile',
-    'group.playerDecksTitle': 'NPC profile for "{{name}}"',
-    'group.npcDecksSectionTitle': '🃏 Decks',
     'group.npcFavoriteCommandersTitle': '⭐ Favorite Commanders',
     'group.renamePlayerAria': 'Rename player',
     'group.deletePlayerAria': 'Delete player',
@@ -1583,6 +1579,8 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
 
     'profile.favCommanderTitle': '⭐ My Favorite Commanders',
     'profile.favCommanderHint': 'Up to 3.',
+    'profile.editFavoriteCommandersAria': 'Edit favorite commanders',
+    'profile.noFavoriteCommandersYet': 'No favorite commanders set yet.',
 
     'profile.crossGroupStatsTitle': '🌐 Overall across all groups',
     'profile.crossGroupStatsHint': 'Combined from {{groups}} group(s) you are a member of.',

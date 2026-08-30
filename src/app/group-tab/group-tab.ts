@@ -3,19 +3,16 @@ import { FormsModule } from '@angular/forms';
 import { GroupService } from '../group.service';
 import { MtgService } from '../mtg.service';
 import { ProfileService } from '../profile.service';
-import { DeckService, DeckOwner } from '../deck.service';
-import { ManualDeckLinkService } from '../manual-deck-link.service';
-import { DeckList } from '../deck-list/deck-list';
+import { DeckService } from '../deck.service';
 import { NavigationService } from '../navigation.service';
 import { PlayerAvatar } from '../player-avatar/player-avatar';
 import { I18nService } from '../i18n.service';
 import { DialogService } from '../dialog.service';
 import { GAME_MODES, GameMode } from '../models';
-import { FavoriteCommanderEditor } from '../favorite-commander-editor/favorite-commander-editor';
 
 @Component({
   selector: 'app-group-tab',
-  imports: [FormsModule, PlayerAvatar, DeckList, FavoriteCommanderEditor],
+  imports: [FormsModule, PlayerAvatar],
   templateUrl: './group-tab.html',
   styleUrl: './group-tab.scss',
 })
@@ -24,7 +21,6 @@ export class GroupTab {
   readonly mtg = inject(MtgService);
   private readonly profileService = inject(ProfileService);
   private readonly deckService = inject(DeckService);
-  readonly manualDeckLink = inject(ManualDeckLinkService);
   private readonly navigation = inject(NavigationService);
   readonly i18n = inject(I18nService);
   private readonly dialog = inject(DialogService);
@@ -339,7 +335,7 @@ export class GroupTab {
   async deletePlayer(name: string): Promise<void> {
     const games = this.gamesPerPlayer().get(name) ?? 0;
     // Wegen der ON DELETE CASCADE auf decks.player_id löscht das Entfernen des Spielers automatisch
-    // auch alle Decks, die ihm direkt gehören (siehe openPlayerDeckDialog) - der Admin muss das vorher wissen.
+    // auch alle Decks, die ihm direkt gehören (siehe openNpcProfileView) - der Admin muss das vorher wissen.
     const playerId = this.mtg.playerIdFor(name);
     const deckCount = playerId
       ? (await this.deckService.loadDecksForOwner({ kind: 'player', playerId })).length
@@ -363,68 +359,6 @@ export class GroupTab {
   isPlayerLinked(name: string): boolean {
     return !!this.mtg.playerUserIds()[name];
   }
-
-  // --- Decks eines virtuellen Spielers (ohne Account) verwalten - nur Host ---
-
-  readonly deckManagePlayerName = signal<string | null>(null);
-  readonly deckManagePlayerId = signal<string | null>(null);
-  /** Als computed() statt eines Inline-Objektliterals im Template gehalten - sonst würde bei jedem
-   * Change-Detection-Durchlauf ein neues Objekt entstehen und der owner-Input von DeckList (ein
-   * Signal-Input) bei jedem Tick als "geändert" gelten, was den internen Lade-Effect dort in eine
-   * Dauerschleife von Deck-Neuladungen schickt. */
-  readonly deckManageOwner = computed<DeckOwner | null>(() => {
-    const playerId = this.deckManagePlayerId();
-    return playerId ? { kind: 'player', playerId } : null;
-  });
-
-  openPlayerDeckDialog(playerName: string): void {
-    const playerId = this.mtg.playerIdFor(playerName);
-    if (!playerId) return;
-    this.deckManagePlayerName.set(playerName);
-    this.deckManagePlayerId.set(playerId);
-  }
-
-  closePlayerDeckDialog(): void {
-    this.deckManagePlayerName.set(null);
-    this.deckManagePlayerId.set(null);
-  }
-
-  openManualLinkForPlayer(): void {
-    const playerId = this.deckManagePlayerId();
-    if (!playerId) return;
-    this.manualDeckLink.open({ kind: 'player', playerId });
-  }
-
-  // --- Lieblingscommander eines virtuellen Spielers (ohne Account) verwalten - nur Host,
-  // gleicher Dialog wie die Deck-Verwaltung oben. ---
-
-  readonly npcFavoriteCommanderBusy = signal(false);
-
-  /** Als gebundene Arrow-Function-Properties gehalten, damit sie unverändert als onAdd/onRemove-
-   * Inputs an app-favorite-commander-editor durchgereicht werden können. */
-  readonly addNpcFavoriteCommander = async (name: string): Promise<void> => {
-    const playerName = this.deckManagePlayerName();
-    if (!playerName) return;
-    const current = this.mtg.playerFavoriteCommanders()[playerName] ?? [];
-    if (current.length >= 3 || current.includes(name)) return;
-
-    this.npcFavoriteCommanderBusy.set(true);
-    await this.mtg.setPlayerFavoriteCommanders(playerName, [...current, name]);
-    this.npcFavoriteCommanderBusy.set(false);
-  };
-
-  readonly removeNpcFavoriteCommander = async (name: string): Promise<void> => {
-    const playerName = this.deckManagePlayerName();
-    if (!playerName) return;
-    const current = this.mtg.playerFavoriteCommanders()[playerName] ?? [];
-
-    this.npcFavoriteCommanderBusy.set(true);
-    await this.mtg.setPlayerFavoriteCommanders(
-      playerName,
-      current.filter((c) => c !== name)
-    );
-    this.npcFavoriteCommanderBusy.set(false);
-  };
 
   // --- Spieler zusammenführen (Duplikate wie "Theo"/"Theos"/"Theodor" zu einem machen) ---
 
@@ -530,6 +464,16 @@ export class GroupTab {
   async openProfileView(userId: string): Promise<void> {
     this.navigation.goToTab('profile');
     await this.profileService.viewProfile(userId);
+  }
+
+  /** Wie openProfileView, aber für ein NPC-Profil (accountloser Spieler) - zeigt dort dieselbe
+   * Profil-Tab-Struktur (Lieblingscommander, Decks, Statistiken), nur mit Bearbeiten-Möglichkeiten
+   * für den Host statt einem separaten Verwaltungs-Dialog hier im Gruppen-Tab. */
+  openNpcProfileView(playerName: string): void {
+    const playerId = this.mtg.playerIdFor(playerName);
+    if (!playerId) return;
+    this.navigation.goToTab('profile');
+    this.profileService.viewNpcProfile(playerId, playerName);
   }
 
   // --- Spieler nachträglich mit einem Mitglied-Account verknüpfen (nur Host) ---
