@@ -861,7 +861,12 @@
         @if (viewer.viewMode() === 'visual') {
           <div class="deck-visual-grid">
             @for (card of section.cards; track card.cardName) {
-              <div class="deck-card-tile" data-tutorial="deck-card-edit-controls">
+              <div
+                class="deck-card-tile"
+                data-tutorial="deck-card-edit-controls"
+                [class.clickable]="!viewer.editMode()"
+                (click)="!viewer.editMode() && viewer.openCardPreview(card.cardName)"
+              >
                 @if (viewer.isDeckCardFlipped(card.cardName) && viewer.resolvedCardBackImage(card); as img) {
                   <img [src]="img" [alt]="card.cardName" loading="lazy" />
                 } @else if (viewer.resolvedCardImage(card); as img) {
@@ -934,7 +939,11 @@
             @for (card of section.cards; track card.cardName) {
               <li>
                 <span class="deck-card-qty-text">{{ card.quantity }}×</span>
-                <span>{{ card.cardName }}</span>
+                @if (!viewer.editMode()) {
+                  <button class="card-name-link" (click)="viewer.openCardPreview(card.cardName)">{{ card.cardName }}</button>
+                } @else {
+                  <span>{{ card.cardName }}</span>
+                }
                 @if (viewer.editMode() && viewer.showCommanderToggle() && (card.isCommander || viewer.isCommanderEligible(card))) {
                   <button
                     class="icon-button"
