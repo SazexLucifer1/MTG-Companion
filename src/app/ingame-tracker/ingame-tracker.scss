@@ -138,13 +138,15 @@
 }
 
 .panel-icon-button {
-  width: 32px;
-  height: 32px;
+  // 44px statt vorher 32px - Apple/Material empfehlen mindestens 44/48px Tap-Target, gerade bei
+  // einem Icon in der Panel-Ecke, das während des Spiels unter Zeitdruck getroffen werden muss.
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   border: 1px solid rgba(255, 255, 255, 0.25);
   background: rgba(0, 0, 0, 0.35);
   color: var(--text);
-  font-size: 0.95rem;
+  font-size: 1.1rem;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -451,8 +453,11 @@
   left: calc(50% + (env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)) / 2);
   transform: translate(-50%, -50%);
   z-index: 60;
-  width: 48px;
-  height: 48px;
+  // 56px statt vorher 48px - der Button sitzt exakt an der Kreuzung aller vier Panels, umgeben von
+  // deren riesigen Tap-Zonen. Etwas mehr Fläche verringert die Chance, dass ein leicht daneben
+  // gesetzter Tap stattdessen im Leben eines Mitspielers landet.
+  width: 56px;
+  height: 56px;
   border-radius: 50%;
   border: 1px solid rgba(255, 255, 255, 0.3);
   background: rgba(20, 16, 38, 0.9);
@@ -587,16 +592,19 @@
 .bg-thumb-delete,
 .bg-thumb-shared {
   position: absolute;
+  // 36px statt vorher 26px - saß direkt am Rand einer horizontal wischbaren Karussell-Reihe
+  // (.background-swipe-row), 26px lag klar unter dem 44px-Mindest-Tap-Target und war dort auch
+  // noch in Konflikt mit der Wisch-Geste leicht daneben zu treffen.
   top: 4px;
   right: 4px;
-  width: 26px;
-  height: 26px;
+  width: 36px;
+  height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 50%;
   background: rgba(0, 0, 0, 0.65);
-  font-size: 0.9rem;
+  font-size: 1rem;
 }
 
 .bg-upload-label {

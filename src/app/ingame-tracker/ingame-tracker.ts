@@ -88,6 +88,65 @@ export class IngameTracker implements AfterViewInit, OnDestroy {
       const id = setInterval(() => this.now.set(Date.now()), 1000);
       onCleanup(() => clearInterval(id));
     });
+
+    // Verhindert, dass sich das Handy während einer laufenden Partie selbst sperrt - eine
+    // Commander-Runde dauert oft 60-90 Minuten mit langen Phasen ohne Interaktion (fremder Zug),
+    // und das Gerät liegt am Tisch, damit reihum draufgetippt werden kann. Ohne Wake Lock müsste
+    // sonst irgendwann jemand das gesperrte Handy erst wieder entsperren, bevor er Leben abziehen
+    // kann - das würde das ganze "Handy liegt am Tisch"-Konzept unterlaufen.
+    effect((onCleanup) => {
+      const isActive = this.session.phase() === 'ingame' && !this.session.minimized();
+      if (!isActive) return;
+
+      let cancelled = false;
+      this.acquireWakeLock().then((sentinel) => {
+        if (cancelled) sentinel?.release();
+      });
+
+      const reacquireOnVisible = (): void => {
+        if (document.visibilityState === 'visible') this.acquireWakeLock();
+      };
+      document.addEventListener('visibilitychange', reacquireOnVisible);
+
+      onCleanup(() => {
+        cancelled = true;
+        document.removeEventListener('visibilitychange', reacquireOnVisible);
+        this.releaseWakeLock();
+      });
+    });
+  }
+
+  // --- Wake Lock: hält den Bildschirm während einer laufenden Partie wach (siehe Effect oben).
+  // Der Browser gibt ein Wake Lock automatisch frei, sobald der Tab in den Hintergrund wechselt
+  // (App-Wechsel, Bildschirm manuell gesperrt) - deshalb wird es bei "wieder sichtbar" erneut
+  // angefordert, statt nur einmalig beim Spielstart. ---
+
+  private wakeLockSentinel: WakeLockSentinel | null = null;
+
+  private async acquireWakeLock(): Promise<WakeLockSentinel | null> {
+    if (!('wakeLock' in navigator)) return null;
+    try {
+      this.wakeLockSentinel = await navigator.wakeLock.request('screen');
+      return this.wakeLockSentinel;
+    } catch (err) {
+      // Kann z.B. bei niedrigem Akkustand oder fehlender Nutzer-Geste abgelehnt werden - dann bleibt
+      // der Tracker einfach ohne Wake Lock nutzbar, kein Grund für eine Fehlermeldung an den User.
+      console.warn('Wake Lock konnte nicht angefordert werden:', err);
+      return null;
+    }
+  }
+
+  private releaseWakeLock(): void {
+    this.wakeLockSentinel?.release();
+    this.wakeLockSentinel = null;
+  }
+
+  /** Kurzer Vibrations-Tick als taktile Rückmeldung fürs Tippen - Leben/Gift/Commander-Schaden
+   * werden erst nach 700ms verrechnet (siehe GameSessionService.bufferChange), die große Zahl
+   * rührt sich also kurz nicht. Ohne Vibration ist der einzige Hinweis "hat's registriert?" eine
+   * kleine, blasse "+1"-Einblendung - auf dem Handy unter Tischtrubel leicht zu übersehen. */
+  private vibrateTick(): void {
+    navigator.vibrate?.(10);
   }
 
   readonly backgroundPickerFor = signal<string | null>(null);
@@ -104,6 +163,11 @@ export class IngameTracker implements AfterViewInit, OnDestroy {
   selectBackground(player: string, url: string | null): void {
     this.mtg.setPlayerBackground(player, url);
     this.closeBackgroundPicker();
+  }
+
+  toggleDead(key: string): void {
+    this.vibrateTick();
+    this.session.toggleDead(key);
   }
 
   readonly brokenBackgrounds = signal<Set<string>>(new Set());
@@ -346,6 +410,7 @@ export class IngameTracker implements AfterViewInit, OnDestroy {
 
   private startHold(key: string, action: (step: number) => void): void {
     if (this.activeHolds.has(key)) return;
+    this.vibrateTick();
     action(1);
 
     const state: { timeout?: ReturnType<typeof setTimeout>; interval?: ReturnType<typeof setInterval>; startedAt: number } = {
