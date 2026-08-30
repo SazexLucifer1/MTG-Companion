@@ -47,12 +47,13 @@ export class ProfileTab {
   readonly viewingNpcCommanderListRef = viewChild<CommanderStatList>('viewingNpcCommanderListRef');
 
   /** Ob beim Ansehen eines FREMDEN Profils oder NPC-Profils die Statistiken (Deck-Winrates,
-   * Platzierungsverteilung, Commander ohne Deck) wegen einer aktiven Gruppen-Sperre ausgeblendet
-   * werden müssen - der Host ist davon ausgenommen. */
+   * Platzierungsverteilung, Commander ohne Deck) ausgeblendet werden müssen, weil der Host dem
+   * eingeloggten Viewer in der Sichtbarkeits-Matrix alle Modi gesperrt hat - der Host selbst ist
+   * davon ausgenommen. */
   readonly othersStatsHidden = computed(
     () =>
       (!!this.profileService.viewingUserId() || !!this.profileService.viewingPlayerId()) &&
-      this.groupService.statsLocked() &&
+      this.mtg.allModesHiddenForMe() &&
       !this.groupService.isOwner()
   );
 

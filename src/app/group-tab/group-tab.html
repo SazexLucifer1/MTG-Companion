@@ -47,9 +47,6 @@
               @if (group.role === 'owner') {
                 <button class="glass-button small" (click)="openVisibilityDialog(group.id)">{{ i18n.t('group.visibility') }}</button>
                 <button class="glass-button small" (click)="openQualificationDialog(group.id)">{{ i18n.t('group.qualification') }}</button>
-                <button class="glass-button small" [class.active]="group.statsLocked" (click)="toggleStatsLock(group.id, group.statsLocked)">
-                  {{ group.statsLocked ? i18n.t('group.unlockStats') : i18n.t('group.lockStats') }}
-                </button>
                 <button class="icon-button" (click)="startRenameGroup(group.id, group.name)" [attr.aria-label]="i18n.t('group.renameGroupAria')">✏️</button>
                 <button class="icon-button" (click)="openDeleteGroupConfirm(group.id, group.name)" [attr.aria-label]="i18n.t('group.deleteGroupAria')">🗑</button>
               } @else {
@@ -431,6 +428,17 @@
     <p class="hint">
       {{ i18n.t('group.visibilityHint') }}
     </p>
+    @if (linkedPlayersForVisibility().length > 1) {
+      <div class="chip-row">
+        <button class="glass-chip small" (click)="setVisibilityForAllPlayers(false)">
+          {{ i18n.t('group.lockAllPlayers') }}
+        </button>
+        <button class="glass-chip small" (click)="setVisibilityForAllPlayers(true)">
+          {{ i18n.t('group.unlockAllPlayers') }}
+        </button>
+      </div>
+      <p class="hint">{{ i18n.t('group.lockAllPlayersHint') }}</p>
+    }
     <ul class="visibility-list choice-candidate-list">
       @for (player of linkedPlayersForVisibility(); track player) {
       <li>

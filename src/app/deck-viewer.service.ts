@@ -11,6 +11,7 @@ import { EdhrecService, EdhrecCardlist, EdhrecTag } from './edhrec.service';
 import { normalizeCardName, sleep } from './array-utils';
 import { AuthService } from './auth.service';
 import { GroupService } from './group.service';
+import { MtgService } from './mtg.service';
 import { I18nService } from './i18n.service';
 import { COMMANDER_ARCHETYPE_FILTERS } from './commander-archetype-filters';
 
@@ -67,6 +68,7 @@ export class DeckViewerService {
   private readonly edhrec = inject(EdhrecService);
   private readonly auth = inject(AuthService);
   private readonly groupService = inject(GroupService);
+  private readonly mtg = inject(MtgService);
   readonly i18n = inject(I18nService);
 
   readonly viewingDeck = signal<Deck | null>(null);
@@ -93,10 +95,12 @@ export class DeckViewerService {
     return false;
   });
 
-  /** Ob die Spiel-Statistiken (Gespielt/Siege/Winrate) des gerade angesehenen Decks wegen einer aktiven Gruppen-Sperre ausgeblendet werden müssen - eigene Decks und der Host sind ausgenommen. */
+  /** Ob die Spiel-Statistiken (Gespielt/Siege/Winrate) des gerade angesehenen Decks ausgeblendet
+   * werden müssen, weil der Host dem eingeloggten Viewer in der Sichtbarkeits-Matrix alle Modi
+   * gesperrt hat - eigene Decks und der Host sind ausgenommen. */
   readonly hideViewingDeckStats = computed(() => {
     if (this.canEditViewingDeck()) return false;
-    return this.groupService.statsLocked() && !this.groupService.isOwner();
+    return this.mtg.allModesHiddenForMe() && !this.groupService.isOwner();
   });
   readonly viewingDeckCards = signal<DeckCard[]>([]);
   readonly viewingChangeLog = signal<DeckChangeEntry[]>([]);

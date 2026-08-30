@@ -113,7 +113,7 @@
   <app-tournament-history />
 } @else {
 
-@if (groupService.statsLocked() && !groupService.isOwner()) {
+@if (mtg.allModesHiddenForMe() && !groupService.isOwner()) {
 <section class="glass-card">
   <h2>{{ i18n.t('stats.title') }}</h2>
   <p class="hint">{{ i18n.t('stats.lockedHint') }}</p>
