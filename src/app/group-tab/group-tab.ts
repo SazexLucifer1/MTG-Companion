@@ -517,9 +517,15 @@ export class GroupTab {
     this.mtg.allPlayers().filter((name) => this.isPlayerLinked(name)),
   );
 
-  /** Sperrt/entsperrt den Stats-Tab der Gruppe für alle außer dem Host (z.B. für eine Jahresend-Enthüllung). */
-  async toggleStatsLock(groupId: string, currentlyLocked: boolean): Promise<void> {
-    await this.groupService.setStatsLocked(groupId, !currentlyLocked);
+  /** Setzt die Sichtbarkeits-Matrix für ALLE verlinkten Spieler auf einmal (alle Modi gesperrt/frei) -
+   * reiner Komfort-Button für den Massen-Fall (z.B. vor einer Jahresend-Enthüllung alles zumachen),
+   * schreibt aber in dieselbe Matrix wie die einzelnen Chips darunter. Der Host kann direkt danach
+   * einzelne Zellen wieder umschalten, ohne dass irgendein separates Flag das überschreibt.
+   */
+  async setVisibilityForAllPlayers(visible: boolean): Promise<void> {
+    await Promise.all(
+      this.linkedPlayersForVisibility().map((name) => this.mtg.setStatVisibilityForAllModes(name, visible))
+    );
   }
 
   openVisibilityDialog(groupId: string): void {

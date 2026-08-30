@@ -48,6 +48,24 @@ export class MtgService {
   /** Der eigene Spielername (falls der eingeloggte User über einen verknüpften players-Eintrag verfügt). */
   readonly myPlayerName = computed(() => this.playerNameForUserId(this.auth.currentUser()?.id));
 
+  /**
+   * Ob für den eingeloggten Account (den Viewer) ALLE Modi in der Sichtbarkeits-Matrix
+   * (player_stat_visibility) gesperrt sind - ersetzt das frühere separate groups.stats_locked-
+   * Flag. Statt eines zweiten, unabhängigen Schalters (der die Matrix beim Nachjustieren einzelner
+   * Zellen komplett übersteuert hätte) ist "alles gesperrt" jetzt einfach der Zustand, in dem die
+   * Matrix für diese Person überall auf false steht - der Host kann eine einzelne Zelle wieder
+   * freigeben und das wirkt sich sofort aus, ohne dass irgendwas das noch überschreibt. "Alle
+   * sperren"/"Alle freigeben" im Gruppen-Tab sind nur noch Komfort-Buttons, die diese Matrix in
+   * einem Rutsch für alle Spieler setzen, keine eigene Datenquelle mehr.
+   */
+  readonly allModesHiddenForMe = computed(() => {
+    const name = this.myPlayerName();
+    if (!name) return false;
+    const modes = this.statVisibility().get(name);
+    if (!modes) return false;
+    return GAME_MODES.every((mode) => modes.get(mode) === false);
+  });
+
   /** players.id zu einem Spielernamen dieser Gruppe - für Features, die direkt mit der players-ID arbeiten müssen (z.B. Turniere). */
   playerIdFor(name: string): string | null {
     return this.playerIdsByName()[name] ?? null;
