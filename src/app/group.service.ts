@@ -30,6 +30,13 @@ export class GroupService {
     () => this.myGroups().find((g) => g.id === this.groupId())?.statsLocked ?? false
   );
 
+  /** Name der aktuell aktiven Gruppe, oder null solange keine Gruppe aktiv ist (z.B. beim ersten
+   * Laden) - fürs Gruppen-Tab, damit z.B. der "Spieler"-Abschnitt erkennbar zeigt, für welche
+   * Gruppe er gerade gilt (relevant sobald jemand Mitglied in mehreren Gruppen ist). */
+  readonly activeGroupName = computed(
+    () => this.myGroups().find((g) => g.id === this.groupId())?.name ?? null
+  );
+
   /**
    * Host-Check für eine beliebige (nicht zwangsläufig aktuell aktive) Gruppe - zusätzliche
    * Absicherung direkt in den Host-only-Methoden unten, nicht nur im Template. Ersetzt keine

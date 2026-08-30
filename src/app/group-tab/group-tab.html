@@ -241,7 +241,13 @@
 
 <section class="glass-card" data-tutorial="group-players">
   <div class="section-header-row">
-    <h2>{{ i18n.t('group.players') }}</h2>
+    <h2>
+      @if (groupService.activeGroupName(); as activeName) {
+        {{ i18n.t('group.playersOf', { name: activeName }) }}
+      } @else {
+        {{ i18n.t('group.players') }}
+      }
+    </h2>
     @if (groupService.isOwner()) {
       <div class="chip-row">
         @if (mtg.allPlayers().length > 1) {
@@ -297,7 +303,7 @@
             >
             <span class="player-games">{{ i18n.t('group.gamesCount', { count: gamesPerPlayer().get(player) ?? 0 }) }}</span>
             @if (!isPlayerLinked(player) && groupService.isOwner()) {
-              <button class="icon-button" (click)="openLinkDialog(player)" [attr.aria-label]="i18n.t('group.linkWithMemberAria')">🔗</button>
+              <button class="icon-button" (click)="openLinkDialog(player)" [attr.aria-label]="i18n.t('group.linkWithMemberAria')" [title]="i18n.t('group.linkWithMemberAria')">🪪</button>
               <button class="icon-button" (click)="openPlayerDeckDialog(player)" [attr.aria-label]="i18n.t('group.playerDecksAria')" [title]="i18n.t('group.playerDecksAria')">🃏</button>
             }
             @if (groupService.isOwner() || player === mtg.myPlayerName()) {
