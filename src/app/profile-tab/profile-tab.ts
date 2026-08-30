@@ -494,7 +494,9 @@ export class ProfileTab {
   }
 
   async repairCommanderNames(): Promise<void> {
-    const userId = this.auth.currentUser()?.id;
+    /** Admin/Host reparieren beim Ansehen eines FREMDEN Profils dessen Decks, sonst geht's um den eigenen Account. */
+    const viewingUserId = this.profileService.viewingUserId();
+    const userId = viewingUserId ?? this.auth.currentUser()?.id;
     if (!userId) return;
 
     this.repairBusy.set(true);
@@ -516,7 +518,13 @@ export class ProfileTab {
             linked: result.linked,
           })
     );
-    await this.refreshUnassignedAndDecks();
+
+    if (viewingUserId) {
+      const owner = this.viewingDeckOwner();
+      if (owner) this.viewingUnassignedCommanderStats.set(await this.deckService.getUnassignedCommanderStats(owner));
+    } else {
+      await this.refreshUnassignedAndDecks();
+    }
   }
 
   // --- Manuell Commander <-> Deck verlinken/entlinken (Dialog + Logik in ManualDeckLinkService) ---

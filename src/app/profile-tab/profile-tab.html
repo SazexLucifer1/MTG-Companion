@@ -54,6 +54,7 @@
         <h2>{{ i18n.t('profile.decks') }}</h2>
         @if (groupService.isOwner()) {
           <div class="chip-row">
+            <button class="icon-button" (click)="openRepairInfoDialog()" [attr.aria-label]="i18n.t('profile.autoRepairAria')" [title]="i18n.t('profile.autoRepairAria')">🔧</button>
             <button class="icon-button" (click)="openManualLinkDialogFor(userId)" [attr.aria-label]="i18n.t('profile.manualLinkAria')" [title]="i18n.t('profile.manualLinkAria')">🔗</button>
           </div>
         }
@@ -331,27 +332,6 @@
     }
   </section>
 
-  @if (showRepairInfoDialog()) {
-  <div class="options-menu-overlay" (click)="closeRepairInfoDialog()">
-    <div class="options-menu-sheet" (click)="$event.stopPropagation()">
-      <h3>{{ i18n.t('profile.repairTitle') }}</h3>
-      <p class="hint">
-        {{ i18n.t('profile.repairHint') }}
-      </p>
-      @if (repairProgress(); as progress) {
-        <p class="hint">{{ i18n.t('group.repairProgress', { done: progress.done, total: progress.total }) }}</p>
-      }
-      @if (repairMessage()) {
-        <p class="hint">{{ repairMessage() }}</p>
-      }
-      <button class="glass-button primary" [disabled]="repairBusy()" (click)="repairCommanderNames()">
-        {{ repairBusy() ? i18n.t('profile.checking') : i18n.t('profile.checkNow') }}
-      </button>
-      <button class="glass-button" (click)="closeRepairInfoDialog()">{{ i18n.t('profile.close') }}</button>
-    </div>
-  </div>
-  }
-
   @if (unassignedCommanderStats().length > 0) {
     <section class="glass-card">
       <h2>{{ i18n.t('profile.commanderWithoutDeck') }}</h2>
@@ -576,4 +556,25 @@
   </div>
   }
 
+}
+
+@if (showRepairInfoDialog()) {
+<div class="options-menu-overlay" (click)="closeRepairInfoDialog()">
+  <div class="options-menu-sheet" (click)="$event.stopPropagation()">
+    <h3>{{ i18n.t('profile.repairTitle') }}</h3>
+    <p class="hint">
+      {{ i18n.t('profile.repairHint') }}
+    </p>
+    @if (repairProgress(); as progress) {
+      <p class="hint">{{ i18n.t('group.repairProgress', { done: progress.done, total: progress.total }) }}</p>
+    }
+    @if (repairMessage()) {
+      <p class="hint">{{ repairMessage() }}</p>
+    }
+    <button class="glass-button primary" [disabled]="repairBusy()" (click)="repairCommanderNames()">
+      {{ repairBusy() ? i18n.t('profile.checking') : i18n.t('profile.checkNow') }}
+    </button>
+    <button class="glass-button" (click)="closeRepairInfoDialog()">{{ i18n.t('profile.close') }}</button>
+  </div>
+</div>
 }
