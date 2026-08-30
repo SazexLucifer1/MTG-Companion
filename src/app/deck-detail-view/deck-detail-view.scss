@@ -429,6 +429,10 @@
     object-fit: cover;
     display: block;
   }
+
+  &.clickable {
+    cursor: pointer;
+  }
 }
 
 .deck-card-placeholder {
