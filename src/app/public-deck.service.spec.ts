@@ -6,9 +6,17 @@ import { supabase } from './supabase.client';
  * Baut einen Fake-Query-Builder, der jede Filter-Methode (select/eq/ilike/contains/order/limit/
  * in/not) einfach an sich selbst zurückgibt (wie Supabase es tut) und am Ende mit der für die
  * jeweilige Tabelle vorgegebenen Antwort auflöst - reicht aus, um PublicDeckService's Mapping-/
- * Aggregationslogik zu testen, ohne die echte Supabase-Query-Builder-Kette nachzubauen.
+ * Aggregationslogik zu testen, ohne die echte Supabase-Query-Builder-Kette nachzubauen. Stubbt
+ * zusätzlich supabase.rpc() für deck_public_stats() (seit deck-public-stats-function-2026-08-30.sql
+ * eine SECURITY DEFINER-Funktion statt einer View, siehe public-deck.service.ts#getStats) - die
+ * Responses werden über denselben "Tabellenname"-Schlüssel (hier: Funktionsname) angegeben.
  */
 function mockSupabaseFrom(responses: Record<string, { data: any[] | null; error: unknown }>, eqSpy?: (column: string, value: unknown) => void) {
+  vi.spyOn(supabase, 'rpc').mockImplementation((fn: string) => {
+    const response = responses[fn] ?? { data: [], error: null };
+    return Promise.resolve(response) as any;
+  });
+
   return vi.spyOn(supabase, 'from').mockImplementation((table: string) => {
     const response = responses[table] ?? { data: [], error: null };
     const builder: any = {

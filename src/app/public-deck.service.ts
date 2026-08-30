@@ -134,15 +134,14 @@ export class PublicDeckService {
     return result;
   }
 
-  /** Liest die vorab aggregierten Sieg-/Partienzahlen aus deck_public_stats (siehe SQL-Migration). */
+  /** Liest die vorab aggregierten Sieg-/Partienzahlen über die deck_public_stats()-Funktion (SECURITY
+   * DEFINER mit fest gesetztem search_path, siehe deck-public-stats-function-2026-08-30.sql - vorher
+   * eine View, die der Supabase Security Advisor als "Security Definer View" kritisch einstufte). */
   private async getStats(deckIds: string[]): Promise<Map<string, PublicDeckStats>> {
     const result = new Map<string, PublicDeckStats>();
     if (deckIds.length === 0) return result;
 
-    const { data, error } = await supabase
-      .from('deck_public_stats')
-      .select('deck_id, games, wins')
-      .in('deck_id', deckIds);
+    const { data, error } = await supabase.rpc('deck_public_stats', { p_deck_ids: deckIds });
 
     if (error || !data) {
       console.error('Konnte Deck-Statistiken nicht laden:', error);
