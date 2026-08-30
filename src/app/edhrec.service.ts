@@ -1,4 +1,5 @@
 import { Injectable } from '@angular/core';
+import { sleep } from './array-utils';
 
 export interface EdhrecCardview {
   name: string;
@@ -76,23 +77,53 @@ export class EdhrecService {
     }
   }
 
-  /** Gemeinsame Fetch-/Fehlerbehandlung für die commanders-JSON-Endpunkte - liefert das rohe JSON oder null. */
+  /**
+   * EDHRECs Nutzungsrichtlinie erlaubt max. 1 Request/Sekunde (besonders wichtig bei Fehlern) -
+   * instanzweiter statt pro-Aufruf-Zeitstempel, damit sich ALLE Aufrufer denselben Takt teilen.
+   * Nötig, weil z.B. deck-viewer.service.ts Tags und Empfehlungen aus zwei unabhängigen Angular-
+   * effect()s gleichzeitig laden kann, sobald sich der betrachtete Commander ändert - ohne
+   * gemeinsame Bremse hier würden diese (und ggf. mehrere sequentielle Fallback-Versuche bei
+   * seltenen Commander/Tag-Kombinationen) das Limit reißen, ohne dass jede Aufrufstelle das selbst
+   * wissen müsste.
+   */
+  private lastRequestAt = 0;
+
+  private async throttle(): Promise<void> {
+    const elapsed = Date.now() - this.lastRequestAt;
+    if (elapsed < 1000) await sleep(1000 - elapsed);
+    this.lastRequestAt = Date.now();
+  }
+
+  /**
+   * Gemeinsame Fetch-/Fehlerbehandlung für die commanders-JSON-Endpunkte - liefert das rohe JSON
+   * oder null. Bei 429 verlangt EDHRECs Policy mind. 2s Wartezeit vor einem erneuten Versuch -
+   * analog zu ScryfallService.fetchWithRetry() wird dabei auch ein geworfener Fehler wie ein 429
+   * behandelt, falls der Browser eine ohne CORS-Header ausgelieferte 429-Antwort als Promise-
+   * Rejection statt als lesbaren Status durchreicht.
+   */
   private async fetchCommanderPage(path: string): Promise<any | null> {
     const cache = this.getCache();
     const cached = cache[path];
     if (cached && Date.now() - cached.cachedAt < EdhrecService.CACHE_TTL_MS) {
       return cached.data;
     }
-    try {
-      const res = await fetch(`https://json.edhrec.com/pages/commanders/${path}.json`);
-      if (!res.ok) return null;
-      const data = await res.json();
-      cache[path] = { data, cachedAt: Date.now() };
-      this.saveCache();
-      return data;
-    } catch {
-      return null;
+    for (let attempt = 0; attempt <= 2; attempt++) {
+      await this.throttle();
+      try {
+        const res = await fetch(`https://json.edhrec.com/pages/commanders/${path}.json`);
+        if (res.ok) {
+          const data = await res.json();
+          cache[path] = { data, cachedAt: Date.now() };
+          this.saveCache();
+          return data;
+        }
+        if (res.status !== 429) return null;
+      } catch {
+        // Siehe Kommentar oben - im Zweifel wie ein 429 behandeln statt sofort aufzugeben.
+      }
+      if (attempt < 2) await sleep(2000);
     }
+    return null;
   }
 
   /**
