@@ -69,7 +69,7 @@
             <button
               class="panel-icon-button death"
               [class.active]="session.isDead(p.key)"
-              (click)="session.toggleDead(p.key)"
+              (click)="toggleDead(p.key)"
               [attr.aria-label]="i18n.t('ingame.markAsDead')"
               [title]="i18n.t('ingame.deadAliveTitle')"
             >
