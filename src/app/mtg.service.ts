@@ -141,10 +141,10 @@ export class MtgService {
     this.qualificationSettings.set(map);
   }
 
-  /** Nur für den Host: legt die Mindestanzahl Spiele für einen Modus (oder 'Alle' für die Aggregat-Ansicht) fest. 0 = keine Mindestspielzahl. */
+  /** Nur für Host oder freigeschaltetes Mitglied: legt die Mindestanzahl Spiele für einen Modus (oder 'Alle' für die Aggregat-Ansicht) fest. 0 = keine Mindestspielzahl. */
   async setQualificationThreshold(mode: GameMode | 'Alle', minGames: number): Promise<boolean> {
     const groupId = this.groupService.groupId();
-    if (!groupId || !this.groupService.isOwner()) return false;
+    if (!groupId || !this.groupService.hasPermission('stats.qualificationThreshold')) return false;
 
     const { error } = await supabase
       .from('group_qualification_settings')
@@ -188,10 +188,10 @@ export class MtgService {
     this.statVisibility.set(map);
   }
 
-  /** Nur für den Host: legt fest, ob die Stats eines Spielers für einen bestimmten Modus für die ganze Gruppe sichtbar sind. */
+  /** Nur für Host oder freigeschaltetes Mitglied: legt fest, ob die Stats eines Spielers für einen bestimmten Modus für die ganze Gruppe sichtbar sind. */
   async setStatVisibility(playerName: string, mode: GameMode, visible: boolean): Promise<boolean> {
     const groupId = this.groupService.groupId();
-    if (!groupId || !this.groupService.isOwner()) return false;
+    if (!groupId || !this.groupService.hasPermission('stats.visibility')) return false;
 
     const playerId = this.playerIdsByName()[playerName];
     if (!playerId) return false;
@@ -218,10 +218,10 @@ export class MtgService {
     return true;
   }
 
-  /** Nur für den Host: setzt die Sichtbarkeit eines Spielers für alle Modi auf einmal. */
+  /** Nur für Host oder freigeschaltetes Mitglied: setzt die Sichtbarkeit eines Spielers für alle Modi auf einmal. */
   async setStatVisibilityForAllModes(playerName: string, visible: boolean): Promise<boolean> {
     const groupId = this.groupService.groupId();
-    if (!groupId || !this.groupService.isOwner()) return false;
+    if (!groupId || !this.groupService.hasPermission('stats.visibility')) return false;
 
     const playerId = this.playerIdsByName()[playerName];
     if (!playerId) return false;
@@ -349,7 +349,7 @@ export class MtgService {
   async setPlayerFavoriteCommanders(name: string, commanders: string[]): Promise<boolean> {
     const groupId = this.groupService.groupId();
     const playerId = this.playerIdsByName()[name];
-    if (!groupId || !playerId) return false;
+    if (!groupId || !playerId || !this.groupService.hasPermission('npc.favoriteCommanders')) return false;
 
     const trimmed = commanders.slice(0, 3);
     const { error } = await supabase
@@ -402,7 +402,7 @@ export class MtgService {
     // Umbenennen darf jeder Spieler nur bei sich selbst (eigener verknüpfter Account) - alle
     // anderen Namen bleiben dem Host vorbehalten.
     const isSelf = this.playerUserIds()[oldName] === this.auth.currentUser()?.id;
-    if (!isSelf && !this.groupService.isOwner()) return false;
+    if (!isSelf && !this.groupService.hasPermission('player.renameOthers')) return false;
 
     const playerId = this.playerIdsByName()[oldName];
 
@@ -460,10 +460,10 @@ export class MtgService {
     return true;
   }
 
-  /** Nur für den Host - Spieler löschen ist einschneidender als Umbenennen, deshalb nicht auch selbst-erlaubt. */
+  /** Nur für Host oder freigeschaltetes Mitglied - Spieler löschen ist einschneidender als Umbenennen, deshalb nicht auch selbst-erlaubt. */
   async deletePlayer(name: string): Promise<void> {
     const groupId = this.groupService.groupId();
-    if (!groupId || !this.groupService.isOwner()) return;
+    if (!groupId || !this.groupService.hasPermission('player.delete')) return;
 
     // Falls der Spieler mit einem echten Account verknüpft ist, muss diese Person auch als
     // Gruppenmitglied entfernt werden - sonst löscht dieser Aufruf nur die Stat-Tracking-Identität
@@ -503,10 +503,10 @@ export class MtgService {
    * über deletePlayer(), da dort die Spiele beim gelöschten (Alt-)Namen verbleiben würden statt zum
    * Ziel-Spieler zu wandern.
    */
-  /** Nur für den Host - hängt fremde Match-/Turnier-Historie um, darf kein normales Mitglied auslösen können. */
+  /** Nur für Host oder freigeschaltetes Mitglied - hängt fremde Match-/Turnier-Historie um, darf kein normales Mitglied auslösen können. */
   async mergePlayers(targetName: string, sourceNames: string[]): Promise<boolean> {
     const groupId = this.groupService.groupId();
-    if (!groupId || sourceNames.length === 0 || !this.groupService.isOwner()) return false;
+    if (!groupId || sourceNames.length === 0 || !this.groupService.hasPermission('player.merge')) return false;
 
     const idsByName = this.playerIdsByName();
     const targetId = idsByName[targetName];
@@ -652,7 +652,7 @@ export class MtgService {
    */
   async linkPlayerToUser(playerName: string, userId: string): Promise<boolean> {
     const groupId = this.groupService.groupId();
-    if (!groupId) return false;
+    if (!groupId || !this.groupService.hasPermission('player.link')) return false;
 
     const { error } = await supabase
       .from('players')
@@ -951,6 +951,8 @@ export class MtgService {
    * (matches.winner_name) bleibt davon komplett unberührt.
    */
   async setPlacements(matchId: string, placements: { name: string; placement: number | null }[]): Promise<void> {
+    if (!this.groupService.hasPermission('match.editResult')) return;
+
     for (const { name, placement } of placements) {
       const { error } = await supabase
         .from('match_players')
@@ -987,14 +989,22 @@ export class MtgService {
    */
   async setCommanders(
     matchId: string,
-    entries: { name: string; commander: string | null; partnerCommander: string | null }[]
+    entries: {
+      name: string;
+      commander: string | null;
+      partnerCommander: string | null;
+      /** Explizit im Deck-Picker gewähltes/geliehenes Deck - hat Vorrang vor der automatischen Namens-Zuordnung (resolveAutoDeckLinks), da hier bereits eindeutig feststeht, welches Deck gemeint ist. */
+      deckId?: string;
+    }[]
   ): Promise<void> {
+    if (!this.groupService.hasPermission('match.editCommander')) return;
+
     const match = this.history().find((m) => m.id === matchId);
     if (!match) return;
 
     for (const entry of entries) {
       const player = match.players.find((p) => p.name === entry.name);
-      let deckId = player?.deckId;
+      let deckId = entry.deckId ?? player?.deckId;
 
       if (!deckId && entry.commander) {
         const [resolved] = await this.resolveAutoDeckLinks([{ name: entry.name, commander: entry.commander }], match.mode);
@@ -1031,7 +1041,7 @@ export class MtgService {
   // NEU
   async deleteMatch(id: string): Promise<void> {
     const groupId = this.groupService.groupId();
-    if (!groupId) return;
+    if (!groupId || !this.groupService.hasPermission('match.delete')) return;
 
     // Erst die zugehörigen Spieler-Zeilen löschen (wegen der Verknüpfung),
     // danach die Match-Zeile selbst.
@@ -1157,7 +1167,7 @@ export class MtgService {
   /** Ändert nachträglich den Gewinner eines gespeicherten Matches (z.B. bei Vertippern). */
   async updateMatchWinner(id: string, winner: string): Promise<void> {
     const groupId = this.groupService.groupId();
-    if (!groupId) return;
+    if (!groupId || !this.groupService.hasPermission('match.editResult')) return;
 
     const { error } = await supabase
       .from('matches')
@@ -1173,11 +1183,30 @@ export class MtgService {
     this.history.update((matches) => matches.map((m) => (m.id === id ? { ...m, winner } : m)));
   }
 
+  /** Ändert nachträglich, welcher Cube in einem gespeicherten Cube-Spiel verwendet wurde (z.B. bei Vertippern). */
+  async updateMatchCube(id: string, cubeId: string): Promise<void> {
+    const groupId = this.groupService.groupId();
+    if (!groupId || !this.groupService.hasPermission('match.editCube')) return;
+
+    const { error } = await supabase.from('matches').update({ cube_id: cubeId }).eq('id', id).eq('group_id', groupId);
+
+    if (error) {
+      console.error('Konnte Cube nicht ändern:', error);
+      return;
+    }
+
+    const cube = this.cubes().find((c) => c.id === cubeId);
+    if (!cube) return;
+
+    this.history.update((matches) => matches.map((m) => (m.id === id ? { ...m, cube } : m)));
+  }
+
   /** Hard-Reset: löscht Verlauf, alle Spieler und deren Hintergrundbilder unwiderruflich. Cubes bleiben erhalten. */
   /** Hard-Reset: löscht Verlauf, alle Spieler und deren Hintergrundbilder unwiderruflich. Cubes bleiben erhalten. */
   async resetAllData(): Promise<{ success: boolean; error?: string }> {
     const groupId = this.groupService.groupId();
     if (!groupId) return { success: false, error: 'Keine aktive Gruppe.' };
+    if (!this.groupService.hasPermission('group.resetAllData')) return { success: false, error: 'Keine Berechtigung.' };
 
     // Schritt 1: IDs aller Matches dieser Gruppe holen.
     const { data: matchRows, error: matchesFetchError } = await supabase

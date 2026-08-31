@@ -3,14 +3,14 @@
 
   @if (selectedTournament(); as t) {
     <button class="glass-button" (click)="closeTournament()">{{ i18n.t('tournament.back') }}</button>
-    @if (groupService.isOwner()) {
+    @if (groupService.hasPermission('tournament.manage')) {
       <button class="glass-button danger" [disabled]="deletingTournamentId() === t.id" (click)="deleteTournament(t, $event)">
         {{ i18n.t('tournamentHistory.deleteButton') }}
       </button>
     }
     <h3>{{ t.name }}</h3>
     <p class="hint">{{ t.createdAt | date: 'dd.MM.yyyy' }} · {{ t.gameMode }}</p>
-    @if (groupService.isOwner()) {
+    @if (groupService.hasPermission('tournament.manage')) {
       <label class="checkbox-inline">
         <input
           type="checkbox"
@@ -88,7 +88,7 @@
             <span class="hint">
               {{ t.status === 'completed' ? i18n.t('tournamentHistory.statusCompleted') : t.status === 'active' ? i18n.t('tournamentHistory.statusActive') : i18n.t('tournamentHistory.statusSetup') }}
             </span>
-            @if (groupService.isOwner()) {
+            @if (groupService.hasPermission('tournament.manage')) {
               <button
                 class="icon-button"
                 [disabled]="deletingTournamentId() === t.id"

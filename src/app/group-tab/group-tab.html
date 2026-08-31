@@ -45,11 +45,21 @@
               }
               <button class="glass-button small" (click)="openMembers(group.id)">{{ i18n.t('group.members') }}</button>
               @if (group.role === 'owner') {
+                <button class="glass-button small" (click)="openPermissionsDialog(group.id)">{{ i18n.t('group.permissions') }}</button>
+              }
+              @if (groupService.hasPermissionFor(group.id, 'stats.visibility')) {
                 <button class="glass-button small" (click)="openVisibilityDialog(group.id)">{{ i18n.t('group.visibility') }}</button>
+              }
+              @if (groupService.hasPermissionFor(group.id, 'stats.qualificationThreshold')) {
                 <button class="glass-button small" (click)="openQualificationDialog(group.id)">{{ i18n.t('group.qualification') }}</button>
+              }
+              @if (groupService.hasPermissionFor(group.id, 'group.rename')) {
                 <button class="icon-button" (click)="startRenameGroup(group.id, group.name)" [attr.aria-label]="i18n.t('group.renameGroupAria')">✏️</button>
+              }
+              @if (groupService.hasPermissionFor(group.id, 'group.delete')) {
                 <button class="icon-button" (click)="openDeleteGroupConfirm(group.id, group.name)" [attr.aria-label]="i18n.t('group.deleteGroupAria')">🗑</button>
-              } @else {
+              }
+              @if (group.role !== 'owner') {
                 <button class="icon-button" (click)="openLeaveGroupConfirm(group.id, group.name)" [attr.aria-label]="i18n.t('group.leaveGroupAria')">🚪</button>
               }
             </div>
@@ -245,12 +255,14 @@
         {{ i18n.t('group.players') }}
       }
     </h2>
-    @if (groupService.isOwner()) {
+    @if (groupService.hasPermission('player.merge') || groupService.hasPermission('player.repairNamesGroupwide')) {
       <div class="chip-row">
-        @if (mtg.allPlayers().length > 1) {
+        @if (mtg.allPlayers().length > 1 && groupService.hasPermission('player.merge')) {
           <button class="icon-button" (click)="openMergeDialog()" [attr.aria-label]="i18n.t('group.mergePlayersAria')" [title]="i18n.t('group.mergePlayersAria')">🔀</button>
         }
-        <button class="icon-button" (click)="openRepairInfoDialog()" [attr.aria-label]="i18n.t('group.repairCommanderNamesAria')" [title]="i18n.t('group.repairCommanderNamesAria')">🔧</button>
+        @if (groupService.hasPermission('player.repairNamesGroupwide')) {
+          <button class="icon-button" (click)="openRepairInfoDialog()" [attr.aria-label]="i18n.t('group.repairCommanderNamesAria')" [title]="i18n.t('group.repairCommanderNamesAria')">🔧</button>
+        }
       </div>
     }
   </div>
@@ -298,26 +310,26 @@
               >{{ player }}</span
             >
             <span class="player-games">{{ i18n.t('group.gamesCount', { count: gamesPerPlayer().get(player) ?? 0 }) }}</span>
-            @if (!isPlayerLinked(player) && groupService.isOwner()) {
+            @if (!isPlayerLinked(player) && groupService.hasPermission('player.link')) {
               <button class="icon-button" (click)="openLinkDialog(player)" [attr.aria-label]="i18n.t('group.linkWithMemberAria')" [title]="i18n.t('group.linkWithMemberAria')">🪪</button>
             }
-            @if (groupService.isOwner() || player === mtg.myPlayerName()) {
+            @if (groupService.hasPermission('player.renameOthers') || player === mtg.myPlayerName()) {
               <button class="icon-button" (click)="startEditPlayer(player)" [attr.aria-label]="i18n.t('group.renamePlayerAria')">✏️</button>
             }
-            @if (groupService.isOwner()) {
+            @if (groupService.hasPermission('player.delete')) {
               <button class="icon-button" (click)="deletePlayer(player)" [attr.aria-label]="i18n.t('group.deletePlayerAria')">🗑</button>
             }
           }
         </li>
       }
     </ul>
-    @if (!groupService.isOwner()) {
+    @if (!groupService.hasPermission('player.link')) {
       <p class="hint">
         {{ i18n.t('group.unlinkedPlayersHint') }}
       </p>
     }
   }
-  @if (groupService.isOwner()) {
+  @if (groupService.hasPermission('player.repairNamesGroupwide')) {
     @if (repairGroupProgress(); as progress) {
       <p class="hint">{{ i18n.t('group.repairProgress', { done: progress.done, total: progress.total }) }}</p>
     }
@@ -467,6 +479,45 @@
       }
     </ul>
     <button class="glass-button" (click)="closeVisibilityDialog()">{{ i18n.t('group.close') }}</button>
+  </div>
+</div>
+}
+
+@if (showPermissionsDialog()) {
+<div class="options-menu-overlay" (click)="closePermissionsDialog()">
+  <div class="options-menu-sheet choice-sheet" (click)="$event.stopPropagation()">
+    <h3>{{ i18n.t('group.permissionsTitle') }}</h3>
+    <p class="hint">{{ i18n.t('group.permissionsHint') }}</p>
+    @if (permissionsBusy()) {
+      <p class="hint">{{ i18n.t('group.loadingGroups') }}</p>
+    } @else if (permissionsMembers().length === 0) {
+      <p class="hint">{{ i18n.t('group.permissionsNoMembers') }}</p>
+    } @else {
+      <ul class="visibility-list choice-candidate-list">
+        @for (member of permissionsMembers(); track member.userId) {
+        <li>
+          <span class="player-name">{{ member.displayName }}</span>
+          @for (category of permissionCategories; track category.labelKey) {
+            <p class="hint permission-category-label">{{ i18n.t(category.labelKey) }}</p>
+            <div class="chip-row">
+              @for (permission of category.permissions; track permission) {
+                <button
+                  type="button"
+                  class="glass-chip small"
+                  [class.active]="hasPermissionGrant(member.userId, permission)"
+                  [class.danger]="permission === 'group.resetAllData'"
+                  (click)="togglePermissionGrant(member.userId, permission)"
+                >
+                  {{ i18n.t('permission.' + permission) }}
+                </button>
+              }
+            </div>
+          }
+        </li>
+        }
+      </ul>
+    }
+    <button class="glass-button" (click)="closePermissionsDialog()">{{ i18n.t('group.close') }}</button>
   </div>
 </div>
 }

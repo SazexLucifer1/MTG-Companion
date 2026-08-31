@@ -52,7 +52,7 @@
     <section class="glass-card">
       <div class="section-header-row">
         <h2>{{ i18n.t('profile.decks') }}</h2>
-        @if (groupService.isOwner()) {
+        @if (groupService.hasPermission('deck.editOthers')) {
           <div class="chip-row">
             <button class="icon-button" (click)="openRepairInfoDialog()" [attr.aria-label]="i18n.t('profile.autoRepairAria')" [title]="i18n.t('profile.autoRepairAria')">🔧</button>
             <button class="icon-button" (click)="openManualLinkDialogFor(userId)" [attr.aria-label]="i18n.t('profile.manualLinkAria')" [title]="i18n.t('profile.manualLinkAria')">🔗</button>
@@ -60,7 +60,7 @@
         }
       </div>
       @if (viewingDeckOwner(); as owner) {
-        <app-deck-list [owner]="owner" [readonlyMode]="!groupService.isOwner()" [hideStats]="othersStatsHidden()" />
+        <app-deck-list [owner]="owner" [readonlyMode]="!groupService.hasPermission('deck.editOthers')" [hideStats]="othersStatsHidden()" />
       }
     </section>
   }
@@ -114,11 +114,11 @@
     <button class="glass-button small" (click)="profileService.stopViewingProfile()">{{ i18n.t('profile.backToMyProfile') }}</button>
   </div>
 
-  @if (viewingNpcFavoriteCommanders().length > 0 || groupService.isOwner()) {
+  @if (viewingNpcFavoriteCommanders().length > 0 || groupService.hasPermission('npc.favoriteCommanders')) {
     <div class="favorite-commanders-col" data-tutorial="profile-favorites">
       <div class="section-header-row">
         <h3>{{ i18n.t('group.npcFavoriteCommandersTitle') }}</h3>
-        @if (groupService.isOwner()) {
+        @if (groupService.hasPermission('npc.favoriteCommanders')) {
           <button class="icon-button" (click)="openFavoriteCommanderDialog()" [attr.aria-label]="i18n.t('profile.editFavoriteCommandersAria')" [title]="i18n.t('profile.editFavoriteCommandersAria')">✏️</button>
         }
       </div>
@@ -151,7 +151,7 @@
 <section class="glass-card">
   <div class="section-header-row">
     <h2>{{ i18n.t('profile.decks') }}</h2>
-    @if (groupService.isOwner()) {
+    @if (groupService.hasPermission('deck.editOthers')) {
       <div class="chip-row">
         <button class="icon-button" (click)="openRepairInfoDialog()" [attr.aria-label]="i18n.t('profile.autoRepairAria')" [title]="i18n.t('profile.autoRepairAria')">🔧</button>
         <button class="icon-button" (click)="openManualLinkDialogForNpc(npcPlayerId)" [attr.aria-label]="i18n.t('profile.manualLinkAria')" [title]="i18n.t('profile.manualLinkAria')">🔗</button>
@@ -159,7 +159,7 @@
     }
   </div>
   @if (viewingNpcDeckOwner(); as owner) {
-    <app-deck-list [owner]="owner" [readonlyMode]="!groupService.isOwner()" [hideStats]="othersStatsHidden()" />
+    <app-deck-list [owner]="owner" [readonlyMode]="!groupService.hasPermission('deck.editOthers')" [hideStats]="othersStatsHidden()" />
   }
 </section>
 

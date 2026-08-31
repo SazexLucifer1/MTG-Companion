@@ -243,14 +243,20 @@ export class MatchTab {
   readonly borrowOwnerOptions = signal<string[]>([]);
   /** Gewählte leihgebende Person im Borrow-Flow, oder null solange noch die Personen-Auswahl angezeigt wird. */
   readonly borrowFromOwner = signal<string | null>(null);
+  /**
+   * true = der Picker wurde aus dem nachträglichen Commander-Bearbeiten-Panel im Verlauf geöffnet -
+   * selectDeck() schreibt dann in commanderDraft statt in die laufende session (siehe saveCommanders).
+   */
+  readonly deckPickerHistoryMode = signal(false);
 
-  async openOwnDeckPicker(playerName: string): Promise<void> {
+  async openOwnDeckPicker(playerName: string, historyMode = false): Promise<void> {
     const userId = this.mtg.playerUserIds()[playerName];
     const playerId = this.mtg.playerIdFor(playerName);
     if (!userId && !playerId) return;
     const owner: DeckOwner = userId ? { kind: 'user', userId } : { kind: 'player', playerId: playerId! };
 
     this.deckPickerTarget.set(playerName);
+    this.deckPickerHistoryMode.set(historyMode);
     this.deckPickerBorrowMode.set(false);
     this.borrowFromOwner.set(null);
     this.deckPickerMessage.set('');
@@ -275,8 +281,9 @@ export class MatchTab {
     await this.loadDeckPickerCommanders(options);
   }
 
-  openBorrowDeckPicker(playerName: string): void {
+  openBorrowDeckPicker(playerName: string, historyMode = false): void {
     this.deckPickerTarget.set(playerName);
+    this.deckPickerHistoryMode.set(historyMode);
     this.deckPickerBorrowMode.set(true);
     this.borrowFromOwner.set(null);
     this.deckPickerMessage.set('');
@@ -284,10 +291,13 @@ export class MatchTab {
     this.deckPickerSearchQuery.set('');
     this.deckPickerYearFilter.set(null);
 
-    const others = this.session
-      .selectedPlayers()
-      .map((p) => p.name)
-      .filter((name) => name !== playerName && (this.mtg.playerUserIds()[name] || this.mtg.playerIdFor(name)));
+    // Im History-Modus (Verlauf bearbeiten) gibt es keine laufende session-Spielerauswahl mehr -
+    // dort kommen alle Gruppenmitglieder mit eigenem Deck-Bestand als Leihgeber infrage, nicht nur
+    // die (evtl. leere) Auswahl aus dem "Neues Match"-Formular.
+    const candidateNames = historyMode ? this.mtg.allPlayers() : this.session.selectedPlayers().map((p) => p.name);
+    const others = candidateNames.filter(
+      (name) => name !== playerName && (this.mtg.playerUserIds()[name] || this.mtg.playerIdFor(name))
+    );
 
     this.borrowOwnerOptions.set(others);
     if (others.length === 0) {
@@ -381,6 +391,7 @@ export class MatchTab {
 
   closeDeckPicker(): void {
     this.deckPickerTarget.set(null);
+    this.deckPickerHistoryMode.set(false);
     this.deckPickerOptions.set([]);
     this.deckPickerMessage.set('');
     this.deckPickerCards.set({});
@@ -403,7 +414,18 @@ export class MatchTab {
       return;
     }
 
-    this.session.assignDeck(playerName, deckId, commanders[0].cardName, commanders[1]?.cardName);
+    if (this.deckPickerHistoryMode()) {
+      this.commanderDraft.update((draft) => ({
+        ...draft,
+        [playerName]: {
+          commander: commanders[0].cardName,
+          partnerCommander: commanders[1]?.cardName ?? null,
+          deckId,
+        },
+      }));
+    } else {
+      this.session.assignDeck(playerName, deckId, commanders[0].cardName, commanders[1]?.cardName);
+    }
     this.closeDeckPicker();
   }
 
@@ -556,9 +578,13 @@ export class MatchTab {
     this.placementDraft.set(Object.fromEntries(match.players.map((p) => [p.name, p.placement ?? null])));
     this.commanderDraft.set(
       Object.fromEntries(
-        match.players.map((p) => [p.name, { commander: p.commander ?? null, partnerCommander: p.partnerCommander ?? null }])
+        match.players.map((p) => [
+          p.name,
+          { commander: p.commander ?? null, partnerCommander: p.partnerCommander ?? null, deckId: p.deckId },
+        ])
       )
     );
+    this.cubeEditDraft.set(match.cube?.id ?? null);
     this.editingResultMatchId.set(match.id);
   }
 
@@ -569,7 +595,9 @@ export class MatchTab {
 
   // --- Commander nachträglich eintragen/ändern (Teil des Ergebnis-Bearbeiten-Panels) ---
 
-  readonly commanderDraft = signal<Record<string, { commander: string | null; partnerCommander: string | null }>>({});
+  readonly commanderDraft = signal<
+    Record<string, { commander: string | null; partnerCommander: string | null; deckId?: string }>
+  >({});
   readonly commanderEditTarget = signal<{ player: string; slot: 'commander' | 'partner' } | null>(null);
   readonly commanderEditQuery = signal('');
   readonly commanderEditSuggestions = signal<string[]>([]);
@@ -603,6 +631,9 @@ export class MatchTab {
       [target.player]: {
         commander: draft[target.player]?.commander ?? null,
         partnerCommander: draft[target.player]?.partnerCommander ?? null,
+        // Freitext-Commander-Suche ist nicht mehr an ein konkret gewähltes Deck gebunden - eine
+        // evtl. per Deck-Picker gesetzte deckId wird verworfen, damit beim Speichern wieder die
+        // automatische Namens-Zuordnung greift (siehe MtgService.setCommanders).
         [target.slot === 'partner' ? 'partnerCommander' : 'commander']: cardName,
       },
     }));
@@ -631,9 +662,24 @@ export class MatchTab {
         name: p.name,
         commander: draft[p.name]?.commander ?? null,
         partnerCommander: draft[p.name]?.partnerCommander ?? null,
+        deckId: draft[p.name]?.deckId,
       }))
     );
     this.closeCommanderEdit();
+  }
+
+  // --- Cube nachträglich ändern (Teil des Ergebnis-Bearbeiten-Panels, nur bei Cube-Spielen) ---
+
+  readonly cubeEditDraft = signal<string | null>(null);
+
+  setCubeEditDraft(cubeId: string): void {
+    this.cubeEditDraft.set(cubeId);
+  }
+
+  async saveCube(match: Match): Promise<void> {
+    const cubeId = this.cubeEditDraft();
+    if (!cubeId) return;
+    await this.mtg.updateMatchCube(match.id, cubeId);
   }
 
   /**

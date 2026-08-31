@@ -664,7 +664,7 @@
 }
 <!-- NEU: ganz am Ende der Datei anfügen -->
 
-@if (groupService.isOwner()) {
+@if (groupService.hasPermission('group.resetAllData')) {
 <section class="glass-card danger-zone">
   <h2>{{ i18n.t('stats.dangerZone') }}</h2>
   <p class="hint">
