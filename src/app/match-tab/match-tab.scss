@@ -329,6 +329,33 @@
   }
 }
 
+.commander-edit-list {
+  list-style: none;
+  margin: 0 0 10px;
+  padding: 0;
+
+  li {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 6px 0;
+  }
+
+  .placement-name {
+    min-width: 80px;
+    font-weight: 600;
+  }
+
+  .commander-name {
+    color: var(--accent);
+
+    &.partner {
+      color: var(--gold);
+    }
+  }
+}
+
 .spinner {
   width: 16px;
   height: 16px;

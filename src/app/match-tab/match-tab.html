@@ -488,6 +488,79 @@
       }
     </ul>
     <button class="glass-button small primary" (click)="savePlacements(match)">{{ i18n.t('placement.save') }}</button>
+
+    <p class="hint">{{ i18n.t('match.editCommandersTitle') }}</p>
+    <ul class="commander-edit-list">
+      @for (p of match.players; track p.name) {
+      <li>
+        <span class="placement-name">{{ p.name }}</span>
+
+        @if (commanderEditTarget()?.player === p.name && commanderEditTarget()?.slot === 'commander') {
+          <div class="search-box">
+            <input
+              class="glass-input"
+              type="text"
+              [placeholder]="i18n.t('match.searchCardPlaceholder')"
+              [ngModel]="commanderEditQuery()"
+              (ngModelChange)="onCommanderEditSearchInput($event)"
+              autofocus
+            />
+            <button class="icon-button" (click)="closeCommanderEdit()" [attr.aria-label]="i18n.t('match.closeSearch')">✕</button>
+            @if (commanderEditSuggestions().length > 0) {
+              <ul class="suggestions">
+                @for (s of commanderEditSuggestions(); track s) {
+                  <li><button (click)="assignCommanderEditResult(s)">{{ s }}</button></li>
+                }
+              </ul>
+            }
+          </div>
+        } @else {
+          <span class="commander-name">{{ commanderDraft()[p.name]?.commander || i18n.t('match.commanderNotSet') }}</span>
+          <button class="glass-chip small" (click)="openCommanderEdit(p.name, 'commander')">{{ i18n.t('match.searchCommander') }}</button>
+          @if (commanderDraft()[p.name]?.commander) {
+            <button class="icon-button" (click)="clearCommanderDraft(p.name)" [attr.aria-label]="i18n.t('match.removeCommander')">✕</button>
+          }
+        }
+
+        @if (commanderDraft()[p.name]?.commander) {
+          @if (commanderEditTarget()?.player === p.name && commanderEditTarget()?.slot === 'partner') {
+            <div class="search-box">
+              <input
+                class="glass-input"
+                type="text"
+                [placeholder]="i18n.t('match.searchPartnerPlaceholder')"
+                [ngModel]="commanderEditQuery()"
+                (ngModelChange)="onCommanderEditSearchInput($event)"
+                autofocus
+              />
+              <button class="icon-button" (click)="closeCommanderEdit()" [attr.aria-label]="i18n.t('match.closeSearch')">✕</button>
+              @if (commanderEditSuggestions().length > 0) {
+                <ul class="suggestions">
+                  @for (s of commanderEditSuggestions(); track s) {
+                    <li><button (click)="assignCommanderEditResult(s)">{{ s }}</button></li>
+                  }
+                </ul>
+              }
+            </div>
+          } @else if (commanderDraft()[p.name]?.partnerCommander) {
+            <span class="commander-name partner">+ {{ commanderDraft()[p.name]?.partnerCommander }}</span>
+            <button class="icon-button" (click)="clearPartnerCommanderDraft(p.name)" [attr.aria-label]="i18n.t('match.removePartner')">✕</button>
+          } @else {
+            <button
+              class="icon-button add-partner-button"
+              (click)="openCommanderEdit(p.name, 'partner')"
+              [attr.aria-label]="i18n.t('match.addPartnerTitle')"
+              [title]="i18n.t('match.addPartnerTitle')"
+            >
+              ＋
+            </button>
+          }
+        }
+      </li>
+      }
+    </ul>
+    <button class="glass-button small primary" (click)="saveCommanders(match)">{{ i18n.t('match.saveCommanders') }}</button>
+
     <button class="glass-button small" (click)="closeEditResult()">{{ i18n.t('match.cancel') }}</button>
   </div>
 }

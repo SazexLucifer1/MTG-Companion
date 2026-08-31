@@ -500,11 +500,86 @@ export class MatchTab {
       return;
     }
     this.placementDraft.set(Object.fromEntries(match.players.map((p) => [p.name, p.placement ?? null])));
+    this.commanderDraft.set(
+      Object.fromEntries(
+        match.players.map((p) => [p.name, { commander: p.commander ?? null, partnerCommander: p.partnerCommander ?? null }])
+      )
+    );
     this.editingResultMatchId.set(match.id);
   }
 
   closeEditResult(): void {
     this.editingResultMatchId.set(null);
+    this.closeCommanderEdit();
+  }
+
+  // --- Commander nachträglich eintragen/ändern (Teil des Ergebnis-Bearbeiten-Panels) ---
+
+  readonly commanderDraft = signal<Record<string, { commander: string | null; partnerCommander: string | null }>>({});
+  readonly commanderEditTarget = signal<{ player: string; slot: 'commander' | 'partner' } | null>(null);
+  readonly commanderEditQuery = signal('');
+  readonly commanderEditSuggestions = signal<string[]>([]);
+  private commanderEditTimer: ReturnType<typeof setTimeout> | null = null;
+
+  openCommanderEdit(playerName: string, slot: 'commander' | 'partner' = 'commander'): void {
+    this.commanderEditTarget.set({ player: playerName, slot });
+    this.commanderEditQuery.set('');
+    this.commanderEditSuggestions.set([]);
+  }
+
+  closeCommanderEdit(): void {
+    this.commanderEditTarget.set(null);
+    this.commanderEditQuery.set('');
+    this.commanderEditSuggestions.set([]);
+  }
+
+  onCommanderEditSearchInput(value: string): void {
+    this.commanderEditQuery.set(value);
+    if (this.commanderEditTimer) clearTimeout(this.commanderEditTimer);
+    this.commanderEditTimer = setTimeout(async () => {
+      this.commanderEditSuggestions.set(await this.scryfall.autocomplete(value));
+    }, 250);
+  }
+
+  assignCommanderEditResult(cardName: string): void {
+    const target = this.commanderEditTarget();
+    if (!target) return;
+    this.commanderDraft.update((draft) => ({
+      ...draft,
+      [target.player]: {
+        commander: draft[target.player]?.commander ?? null,
+        partnerCommander: draft[target.player]?.partnerCommander ?? null,
+        [target.slot === 'partner' ? 'partnerCommander' : 'commander']: cardName,
+      },
+    }));
+    this.closeCommanderEdit();
+  }
+
+  clearCommanderDraft(playerName: string): void {
+    this.commanderDraft.update((draft) => ({
+      ...draft,
+      [playerName]: { commander: null, partnerCommander: draft[playerName]?.partnerCommander ?? null },
+    }));
+  }
+
+  clearPartnerCommanderDraft(playerName: string): void {
+    this.commanderDraft.update((draft) => ({
+      ...draft,
+      [playerName]: { commander: draft[playerName]?.commander ?? null, partnerCommander: null },
+    }));
+  }
+
+  async saveCommanders(match: Match): Promise<void> {
+    const draft = this.commanderDraft();
+    await this.mtg.setCommanders(
+      match.id,
+      match.players.map((p) => ({
+        name: p.name,
+        commander: draft[p.name]?.commander ?? null,
+        partnerCommander: draft[p.name]?.partnerCommander ?? null,
+      }))
+    );
+    this.closeCommanderEdit();
   }
 
   /**

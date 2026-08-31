@@ -974,6 +974,47 @@ export class MtgService {
     );
   }
 
+  /**
+   * Trägt nachträglich fehlende (oder falsche) Commander samt optionalem Partner/Background
+   * einzelner Spieler eines bereits gespeicherten Matches ein - z.B. wenn das beim Live-Tracking
+   * vergessen wurde. Ist noch keine Deck-Verknüpfung vorhanden, wird - wie beim Anlegen eines
+   * Matches - automatisch versucht, anhand des neuen Commander-Namens ein passendes eigenes Deck
+   * zu finden (siehe resolveAutoDeckLinks); eine bereits bestehende Deck-Verknüpfung bleibt unangetastet.
+   */
+  async setCommanders(
+    matchId: string,
+    entries: { name: string; commander: string | null; partnerCommander: string | null }[]
+  ): Promise<void> {
+    const match = this.history().find((m) => m.id === matchId);
+    if (!match) return;
+
+    for (const entry of entries) {
+      const player = match.players.find((p) => p.name === entry.name);
+      let deckId = player?.deckId;
+
+      if (!deckId && entry.commander) {
+        const [resolved] = await this.resolveAutoDeckLinks([{ name: entry.name, commander: entry.commander }]);
+        deckId = resolved?.deckId;
+      }
+
+      const { error } = await supabase
+        .from('match_players')
+        .update({
+          commander_name: entry.commander,
+          partner_commander_name: entry.partnerCommander,
+          ...(deckId ? { deck_id: deckId } : {}),
+        })
+        .eq('match_id', matchId)
+        .eq('player_name', entry.name);
+
+      if (error) {
+        console.error('Konnte Commander nicht speichern:', error);
+      }
+    }
+
+    await this.refreshHistory();
+  }
+
   /** crypto.randomUUID() existiert nur in sicheren Kontexten (HTTPS/localhost) – daher Fallback. */
   private createId(): string {
     if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
