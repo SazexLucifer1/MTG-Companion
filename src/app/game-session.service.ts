@@ -383,6 +383,10 @@ export class GameSessionService {
       if (archenemies.length !== 1) return false;
     }
 
+    // Das Cube-<select> im Match-Tab hat keinen leeren Platzhalter-Eintrag mehr - ohne diese Prüfung
+    // ließe sich ein Cube-Spiel sonst starten, obwohl (noch) gar kein Cube existiert/ausgewählt ist.
+    if (this.mode() === 'Cube' && !this.selectedCubeId()) return false;
+
     return true;
   });
 
@@ -410,6 +414,21 @@ export class GameSessionService {
   });
 
   constructor() {
+    // Automatische Cube-Vorauswahl: das Cube-<select> im Match-Tab hat keinen leeren
+    // Platzhalter-Eintrag mehr (der war laut Nutzer-Feedback unnötig) - ein natives <select> zeigt
+    // ohne passenden Options-Wert trotzdem immer den ersten Eintrag optisch als ausgewählt an, ohne
+    // dass Angular das automatisch ins Model zurückschreibt. Ohne diesen Effekt würde das Signal
+    // also stumm auf null bleiben, obwohl der erste Cube sichtbar ausgewählt aussieht - canStartGame
+    // würde dann fälschlich blockieren, obwohl der Nutzer denkt, er hätte schon einen Cube gewählt.
+    effect(
+      () => {
+        if (this.mode() !== 'Cube' || this.selectedCubeId()) return;
+        const first = this.mtg.cubes()[0];
+        if (first) this.selectedCubeId.set(first.id);
+      },
+      { allowSignalWrites: true }
+    );
+
     // Automatische Sieger-Vorauswahl: sobald nur noch eine Panel-Einheit
     // lebt, wird sie als Gewinner vorgeschlagen; sterben alle gleichzeitig,
     // wird "Unentschieden" vorgeschlagen. Der Nutzer muss trotzdem immer
