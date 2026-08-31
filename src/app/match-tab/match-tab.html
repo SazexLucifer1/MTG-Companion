@@ -84,10 +84,12 @@
           } @else {
             <div class="chip-row">
               <button class="glass-chip small" (click)="openSearch(p.name)">{{ i18n.t('match.searchCommander') }}</button>
-              @if (mtg.playerUserIds()[p.name] || mtg.playerIdFor(p.name)) {
-                <button class="glass-chip small" (click)="openOwnDeckPicker(p.name)">{{ i18n.t('match.chooseDeck') }}</button>
+              @if (session.mode() !== 'Cube') {
+                @if (mtg.playerUserIds()[p.name] || mtg.playerIdFor(p.name)) {
+                  <button class="glass-chip small" (click)="openOwnDeckPicker(p.name)">{{ i18n.t('match.chooseDeck') }}</button>
+                }
+                <button class="glass-chip small" (click)="openBorrowDeckPicker(p.name)">{{ i18n.t('match.borrowDeck') }}</button>
               }
-              <button class="glass-chip small" (click)="openBorrowDeckPicker(p.name)">{{ i18n.t('match.borrowDeck') }}</button>
             </div>
           }
 
@@ -248,7 +250,6 @@
     } @else {
       <div>
         <select class="glass-input" [ngModel]="session.selectedCubeId()" (ngModelChange)="session.selectedCubeId.set($event)">
-          <option value="">{{ i18n.t('match.chooseCubePlaceholder') }}</option>
           @for (c of mtg.cubes(); track c.id) {
             <option [value]="c.id">{{ c.name }}</option>
           }
