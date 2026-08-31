@@ -470,15 +470,28 @@ export class DeckService {
    * GENAU DIESER Deck-Besitzer (über alle seine Spieler-Einträge in allen Gruppen hinweg) den
    * gleichnamigen Commander gespielt hat, und die noch keinem Deck zugeordnet sind. Absichtlich
    * NICHT namensbasiert über alle Spieler hinweg, damit ein geliehener Commander in einem alten
-   * Match eines anderen Spielers nicht fälschlich diesem Deck zugeschlagen wird.
+   * Match eines anderen Spielers nicht fälschlich diesem Deck zugeschlagen wird. Cube-/Draft-Spiele
+   * werden dabei nie verknüpft (siehe eligibleMatchIdsExcludingCubeDraft), auch wenn dort zufällig
+   * ein commander-ähnlicher Name eingetragen ist - das sind keine Commander-Decks.
    */
   private async backfillDeckLinks(deckId: string, owner: DeckOwner, commanderName: string): Promise<void> {
     const playerIds = await this.resolvePlayerIds(owner);
     if (playerIds.length === 0) return;
 
+    const { data: candidateRows } = await supabase
+      .from('match_players')
+      .select('match_id')
+      .in('player_id', playerIds)
+      .is('deck_id', null)
+      .ilike('commander_name', commanderName);
+
+    const matchIds = await this.eligibleMatchIdsExcludingCubeDraft([...new Set((candidateRows ?? []).map((r) => r.match_id))]);
+    if (matchIds.length === 0) return;
+
     const { error } = await supabase
       .from('match_players')
       .update({ deck_id: deckId })
+      .in('match_id', matchIds)
       .in('player_id', playerIds)
       .is('deck_id', null)
       .ilike('commander_name', commanderName);
@@ -486,6 +499,29 @@ export class DeckService {
     if (error) {
       console.error('Konnte alte Matches nicht nachträglich verknüpfen:', error);
     }
+  }
+
+  /**
+   * Filtert eine Liste von match_id's auf die, deren Spiel NICHT im Cube- oder Draft-Modus
+   * stattfand - für backfillDeckLinks/repairCommanderNames, die niemals Cube-/Draft-Spiele
+   * automatisch mit einem Commander-Deck verknüpfen dürfen (siehe MtgService.resolveAutoDeckLinks
+   * für dieselbe Regel beim Anlegen/nachträglichen Bearbeiten eines Matches).
+   */
+  private async eligibleMatchIdsExcludingCubeDraft(matchIds: string[]): Promise<string[]> {
+    if (matchIds.length === 0) return [];
+
+    const { data, error } = await supabase
+      .from('matches')
+      .select('id')
+      .in('id', matchIds)
+      .not('game_mode', 'in', '(Cube,Draft)');
+
+    if (error) {
+      console.error('Konnte Spielmodus für Deck-Verknüpfung nicht prüfen:', error);
+      return [];
+    }
+
+    return (data ?? []).map((m) => m.id);
   }
 
   /**
@@ -574,16 +610,28 @@ export class DeckService {
         .eq('partner_commander_name', oldName);
     }
 
-    // Jetzt (ggf. korrigierte) Namen mit vorhandenen eigenen Decks abgleichen.
+    // Jetzt (ggf. korrigierte) Namen mit vorhandenen eigenen Decks abgleichen - Cube-/Draft-Spiele
+    // bleiben dabei bewusst unverknüpft (siehe eligibleMatchIdsExcludingCubeDraft).
     const finalNames = new Set(list.map((n) => resolvedNames.get(n) ?? n));
     let linked = 0;
     for (const name of finalNames) {
       const deckId = await this.findDeckIdByCommander(owner, name);
       if (!deckId) continue;
 
+      const { data: candidateRows } = await supabase
+        .from('match_players')
+        .select('match_id')
+        .in('player_id', playerIds)
+        .is('deck_id', null)
+        .ilike('commander_name', name);
+
+      const matchIds = await this.eligibleMatchIdsExcludingCubeDraft([...new Set((candidateRows ?? []).map((r) => r.match_id))]);
+      if (matchIds.length === 0) continue;
+
       const { error: linkError } = await supabase
         .from('match_players')
         .update({ deck_id: deckId })
+        .in('match_id', matchIds)
         .in('player_id', playerIds)
         .is('deck_id', null)
         .ilike('commander_name', name);
