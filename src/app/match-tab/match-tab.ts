@@ -198,10 +198,43 @@ export class MatchTab {
       ownerName?: string;
       commanderName?: string;
       commanderImageUrl?: string | null;
+      createdAt: string;
+      preconReleaseYear: number | null;
     }[]
   >([]);
   readonly deckPickerBusy = signal(false);
   readonly deckPickerMessage = signal('');
+  /** Suchfeld im Deck-Auswahl-Dialog - filtert nach Deck- oder Commander-Name. */
+  readonly deckPickerSearchQuery = signal('');
+  /** Jahresfilter im Deck-Auswahl-Dialog - bei Precons das MTGJSON-Release-Jahr, sonst das Anlage-Jahr des Decks. */
+  readonly deckPickerYearFilter = signal<number | null>(null);
+
+  /** Effektives Jahr eines Deck-Picker-Eintrags für den Jahresfilter: bei Precons das echte Release-Jahr, sonst das Anlage-Jahr. */
+  private deckPickerYear(option: { isPrecon: boolean; preconReleaseYear: number | null; createdAt: string }): number | null {
+    if (option.isPrecon) return option.preconReleaseYear;
+    return option.createdAt ? new Date(option.createdAt).getFullYear() : null;
+  }
+
+  setDeckPickerYearFilter(yearParam: string | number | null): void {
+    if (yearParam === null || yearParam === '') {
+      this.deckPickerYearFilter.set(null);
+      return;
+    }
+    const year = Number(yearParam);
+    if (Number.isNaN(year)) return;
+    this.deckPickerYearFilter.set(year);
+  }
+
+  /** Sichtbare Deck-Optionen im Auswahl-Dialog: alphabetisch sortiert, gefiltert nach Suchtext (Deck- oder Commander-Name) und optionalem Jahr. */
+  readonly filteredDeckPickerOptions = computed(() => {
+    const query = this.deckPickerSearchQuery().trim().toLowerCase();
+    const year = this.deckPickerYearFilter();
+
+    return this.deckPickerOptions()
+      .filter((o) => !query || o.deckName.toLowerCase().includes(query) || (o.commanderName?.toLowerCase().includes(query) ?? false))
+      .filter((o) => year === null || this.deckPickerYear(o) === year)
+      .sort((a, b) => a.deckName.localeCompare(b.deckName));
+  });
   /** Kartenname (lowercase) -> Scryfall-Daten oder null (nicht gefunden) - Fallback fürs Vorschaubild, wenn das Deck kein individuell gewähltes Artwork hinterlegt hat. */
   readonly deckPickerCards = signal<Record<string, ScryfallCard | null>>({});
   /** true = "Deck ausleihen"-Fluss, in dem zuerst die leihgebende Person und erst danach deren Decks gewählt werden. */
@@ -223,9 +256,17 @@ export class MatchTab {
     this.deckPickerMessage.set('');
     this.deckPickerBusy.set(true);
     this.deckPickerCards.set({});
+    this.deckPickerSearchQuery.set('');
+    this.deckPickerYearFilter.set(null);
 
     const decks = await this.deckService.loadDecksForOwner(owner);
-    const options = decks.map((d) => ({ deckId: d.id, deckName: d.name, isPrecon: d.isPrecon }));
+    const options = decks.map((d) => ({
+      deckId: d.id,
+      deckName: d.name,
+      isPrecon: d.isPrecon,
+      createdAt: d.createdAt,
+      preconReleaseYear: d.preconReleaseYear,
+    }));
     this.deckPickerOptions.set(options);
     if (decks.length === 0) {
       this.deckPickerMessage.set(this.i18n.t('match.msg.noOwnDecksImported'));
@@ -240,6 +281,8 @@ export class MatchTab {
     this.borrowFromOwner.set(null);
     this.deckPickerMessage.set('');
     this.deckPickerOptions.set([]);
+    this.deckPickerSearchQuery.set('');
+    this.deckPickerYearFilter.set(null);
 
     const others = this.session
       .selectedPlayers()
@@ -262,7 +305,14 @@ export class MatchTab {
     const playerId = this.mtg.playerIdFor(owner);
     const deckOwner: DeckOwner = userId ? { kind: 'user', userId } : { kind: 'player', playerId: playerId! };
     const decks = await this.deckService.loadDecksForOwner(deckOwner);
-    const options = decks.map((d) => ({ deckId: d.id, deckName: d.name, isPrecon: d.isPrecon, ownerName: owner }));
+    const options = decks.map((d) => ({
+      deckId: d.id,
+      deckName: d.name,
+      isPrecon: d.isPrecon,
+      ownerName: owner,
+      createdAt: d.createdAt,
+      preconReleaseYear: d.preconReleaseYear,
+    }));
     this.deckPickerOptions.set(options);
     if (decks.length === 0) {
       this.deckPickerMessage.set(this.i18n.t('match.msg.noOwnDecksImported'));
@@ -276,6 +326,8 @@ export class MatchTab {
     this.deckPickerOptions.set([]);
     this.deckPickerMessage.set('');
     this.deckPickerCards.set({});
+    this.deckPickerSearchQuery.set('');
+    this.deckPickerYearFilter.set(null);
   }
 
   /** Lädt den hinterlegten Commander je Deck (inkl. individuell gewähltem Artwork) und lädt fehlende Bilder per Scryfall nach, damit die Deck-Auswahl Vorschaubilder statt nur Namen zeigt. */
@@ -335,6 +387,8 @@ export class MatchTab {
     this.deckPickerBorrowMode.set(false);
     this.borrowFromOwner.set(null);
     this.borrowOwnerOptions.set([]);
+    this.deckPickerSearchQuery.set('');
+    this.deckPickerYearFilter.set(null);
   }
 
   async selectDeck(deckId: string): Promise<void> {

@@ -157,8 +157,27 @@
             @if (deckPickerMessage()) {
               <p class="error">{{ deckPickerMessage() }}</p>
             }
+            <div class="deck-picker-filters">
+              <input
+                class="glass-input"
+                type="text"
+                [placeholder]="i18n.t('match.deckPickerSearchPlaceholder')"
+                [ngModel]="deckPickerSearchQuery()"
+                (ngModelChange)="deckPickerSearchQuery.set($event)"
+              />
+              <input
+                class="glass-input"
+                type="number"
+                [placeholder]="i18n.t('match.deckPickerYearPlaceholder')"
+                [ngModel]="deckPickerYearFilter()"
+                (ngModelChange)="setDeckPickerYearFilter($event)"
+              />
+            </div>
+            @if (filteredDeckPickerOptions().length === 0) {
+              <p class="hint">{{ i18n.t('match.deckPickerNoMatch') }}</p>
+            }
             <ul class="player-list deck-picker-list">
-              @for (option of deckPickerOptions(); track option.deckId) {
+              @for (option of filteredDeckPickerOptions(); track option.deckId) {
                 <li>
                   <div class="deck-thumb">
                     @if (deckPickerThumb(option); as img) {
