@@ -98,6 +98,11 @@
     overflow: hidden;
     border: 1px solid rgba(255, 255, 255, 0.15);
     background: rgba(255, 255, 255, 0.06);
+    // Erzwingt eine eigene Compositing-Ebene - ohne das rendert iOS Safari dieses Element (klein,
+    // overflow:hidden + border-radius, unter dem backdrop-filter:blur() von .options-menu-sheet)
+    // manchmal als durchgehend schwarze Fläche, obwohl das <img> erfolgreich geladen hat.
+    transform: translateZ(0);
+    -webkit-transform: translate3d(0, 0, 0);
 
     img {
       width: 100%;

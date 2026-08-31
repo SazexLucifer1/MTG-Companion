@@ -1,5 +1,5 @@
 @if (!failed()) {
-  <img [src]="currentSrc()" [alt]="alt()" loading="lazy" (error)="onImageError()" />
+  <img [src]="currentSrc()" [alt]="alt()" [attr.loading]="eager() ? 'eager' : 'lazy'" (error)="onImageError()" />
 } @else {
   <div class="card-image-fallback">{{ alt() }}</div>
 }

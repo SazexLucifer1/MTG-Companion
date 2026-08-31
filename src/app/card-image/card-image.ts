@@ -26,6 +26,8 @@ export class CardImage {
   readonly alt = input<string | null | undefined>('');
   /** Kleinere Variante des Umdreh-Buttons für sehr schmale Vorschaubilder (z.B. 40px im Match-Tab-Deck-Picker, 48px in Profil-/Stats-Listen). */
   readonly compact = input(false);
+  /** true = lädt sofort statt nativem Lazy-Loading - für kurze Listen in Modals/Overlays (z.B. Deck-Picker), wo Lazy-Loading nichts bringt und auf manchen mobilen Browsern in einem position:fixed-Overlay gar nicht erst auslöst. */
+  readonly eager = input(false);
 
   /**
    * Rein lokaler Anzeige-Zustand - jede @for-Schleifen-Instanz bekommt automatisch ihre eigene
