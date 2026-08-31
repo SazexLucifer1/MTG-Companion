@@ -46,6 +46,11 @@ export class PreconService {
       .sort((a, b) => a.name.localeCompare(b.name));
   }
 
+  /** Kompletter Precon-Katalog über alle Jahre (derselbe gecachte Index wie getPreconsForYear) - für DeckService.backfillPreconReleaseYears, das per Namens-Abgleich das Release-Jahr bereits gespeicherter Precons nachträglich ermitteln muss. */
+  async getAllPrecons(): Promise<PreconSummary[]> {
+    return this.loadIndex();
+  }
+
   /**
    * Baut aus den MTGJSON-Kartendaten eines Precons dieselbe Textform, die
    * DeckService.parseDecklistText erwartet - so läuft der Import über denselben,
