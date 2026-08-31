@@ -818,9 +818,13 @@ export class MtgService {
    * Ergänzt fehlende deck_id-Werte automatisch: falls ein Spieler keine explizite Deck-Auswahl
    * hat (weder eigenes noch geliehenes Deck), aber einen Commander-Namen, der zu einem seiner
    * eigenen Decks passt, wird das Deck automatisch verknüpft - sonst müsste man Alt-Matches ohne
-   * Deck-Auswahl (z.B. aus dem Excel-Import) immer manuell nachpflegen.
+   * Deck-Auswahl (z.B. aus dem Excel-Import) immer manuell nachpflegen. Bei Cube- und Draft-Spielen
+   * bewusst NIE automatisch verknüpft (auch wenn zufällig ein commander-ähnlicher Name eingetragen
+   * ist) - das sind keine Commander-Decks, eine automatische Verknüpfung wäre dort immer falsch.
    */
-  private async resolveAutoDeckLinks(players: MatchPlayer[]): Promise<MatchPlayer[]> {
+  private async resolveAutoDeckLinks(players: MatchPlayer[], mode: GameMode): Promise<MatchPlayer[]> {
+    if (mode === 'Cube' || mode === 'Draft') return players;
+
     const cache = new Map<string, string | null>();
     const resolved: MatchPlayer[] = [];
 
@@ -860,7 +864,7 @@ export class MtgService {
     const groupId = this.groupService.groupId();
     if (!groupId) return null;
 
-    const players = await this.resolveAutoDeckLinks(match.players);
+    const players = await this.resolveAutoDeckLinks(match.players, match.mode);
 
     // Schritt 1: Zeile in "matches" anlegen
     const { data: matchRow, error: matchError } = await supabase
@@ -993,7 +997,7 @@ export class MtgService {
       let deckId = player?.deckId;
 
       if (!deckId && entry.commander) {
-        const [resolved] = await this.resolveAutoDeckLinks([{ name: entry.name, commander: entry.commander }]);
+        const [resolved] = await this.resolveAutoDeckLinks([{ name: entry.name, commander: entry.commander }], match.mode);
         deckId = resolved?.deckId;
       }
 
@@ -1318,9 +1322,14 @@ export class MtgService {
         continue;
       }
 
+      // Cube-/Draft-Spiele nie automatisch mit einem Commander-Deck verknüpfen, auch wenn zufällig
+      // ein commander-ähnlicher Name im Import-Datensatz steht (siehe resolveAutoDeckLinks).
       const resolvedPlayers: MatchPlayer[] = [];
       for (const p of match.players) {
-        const deckId = p.deckId ?? (await resolveDeckId(p.name, p.commander)) ?? undefined;
+        const deckId =
+          p.deckId ??
+          (match.mode !== 'Cube' && match.mode !== 'Draft' ? await resolveDeckId(p.name, p.commander) : null) ??
+          undefined;
         resolvedPlayers.push(deckId ? { ...p, deckId } : p);
       }
 
