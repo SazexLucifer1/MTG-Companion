@@ -9,6 +9,7 @@ import { PlayerAvatar } from '../player-avatar/player-avatar';
 import { I18nService } from '../i18n.service';
 import { DialogService } from '../dialog.service';
 import { GAME_MODES, GameMode } from '../models';
+import { GROUP_PERMISSION_CATEGORIES, GroupPermission } from '../group-permissions';
 
 @Component({
   selector: 'app-group-tab',
@@ -580,5 +581,62 @@ export class GroupTab {
     const parsed = Math.max(0, Math.floor(Number(value)));
     if (!Number.isFinite(parsed)) return;
     await this.mtg.setQualificationThreshold(mode, parsed);
+  }
+
+  // --- Rechte-Verwaltung pro Mitglied (nur Host): einzelne, bisher owner-exklusive Aktionen
+  // gezielt freischalten - siehe GroupService.hasPermission()/grantPermission()/revokePermission(). ---
+
+  readonly permissionCategories = GROUP_PERMISSION_CATEGORIES;
+  readonly showPermissionsDialog = signal(false);
+  readonly permissionsGroupId = signal<string | null>(null);
+  readonly permissionsMembers = signal<{ userId: string; displayName: string; role: string }[]>([]);
+  readonly permissionsBusy = signal(false);
+  /** userId -> Set der für diese Person in dieser Gruppe freigeschalteten Rechte. */
+  readonly permissionGrants = signal<Map<string, Set<GroupPermission>>>(new Map());
+
+  async openPermissionsDialog(groupId: string): Promise<void> {
+    this.permissionsGroupId.set(groupId);
+    this.permissionsBusy.set(true);
+    const [members, grants] = await Promise.all([
+      this.groupService.loadGroupMembers(groupId),
+      this.groupService.loadGroupPermissions(groupId),
+    ]);
+    // Der Owner selbst hat implizit immer alle Rechte (siehe hasPermission) - eine Zeile für ihn in
+    // der Matrix wäre irreführend (Toggle hätte keine Wirkung), deshalb hier ausgeblendet.
+    this.permissionsMembers.set(members.filter((m) => m.role !== 'owner'));
+    this.permissionGrants.set(grants);
+    this.permissionsBusy.set(false);
+    this.showPermissionsDialog.set(true);
+  }
+
+  closePermissionsDialog(): void {
+    this.showPermissionsDialog.set(false);
+    this.permissionsGroupId.set(null);
+    this.permissionsMembers.set([]);
+    this.permissionGrants.set(new Map());
+  }
+
+  hasPermissionGrant(userId: string, permission: GroupPermission): boolean {
+    return this.permissionGrants().get(userId)?.has(permission) ?? false;
+  }
+
+  async togglePermissionGrant(userId: string, permission: GroupPermission): Promise<void> {
+    const groupId = this.permissionsGroupId();
+    if (!groupId) return;
+
+    const granted = this.hasPermissionGrant(userId, permission);
+    const ok = granted
+      ? await this.groupService.revokePermission(groupId, userId, permission)
+      : await this.groupService.grantPermission(groupId, userId, permission);
+    if (!ok) return;
+
+    this.permissionGrants.update((map) => {
+      const next = new Map(map);
+      const set = new Set(next.get(userId) ?? []);
+      if (granted) set.delete(permission);
+      else set.add(permission);
+      next.set(userId, set);
+      return next;
+    });
   }
 }

@@ -2,6 +2,7 @@ import { Injectable, signal, computed, effect, inject } from '@angular/core';
 import { supabase } from './supabase.client';
 import { AuthService } from './auth.service';
 import { chunk } from './array-utils';
+import { GroupPermission } from './group-permissions';
 
 export interface MyGroup {
   id: string;
@@ -40,6 +41,35 @@ export class GroupService {
     return this.myGroups().find((g) => g.id === groupId)?.role === 'owner';
   }
 
+  /**
+   * Einzeln vom Owner freigeschaltete Rechte je Gruppe (group_member_permissions) - keyed by
+   * group_id, für ALLE Gruppen im Voraus geladen (gleiches Muster wie myGroups), damit ein
+   * Gruppenwechsel (switchGroup) keinen zusätzlichen Netzwerk-Roundtrip braucht.
+   */
+  readonly myPermissions = signal<Map<string, Set<GroupPermission>>>(new Map());
+
+  /**
+   * Ob der eingeloggte User in der aktuell aktiven Gruppe die gegebene Aktion ausführen darf - der
+   * Owner hat implizit IMMER alle Rechte, unabhängig davon, ob explizit eine Zeile in
+   * group_member_permissions für ihn existiert. Rein clientseitige UI-Steuerung/Defense-in-Depth -
+   * die eigentliche Durchsetzung passiert serverseitig über die has_group_permission()-Funktion in
+   * den RLS-Policies (siehe sql/group-member-permissions-2026-08-31.sql).
+   */
+  hasPermission(permission: GroupPermission): boolean {
+    const groupId = this.groupId();
+    return !!groupId && this.hasPermissionFor(groupId, permission);
+  }
+
+  /**
+   * Wie hasPermission(), aber für eine beliebige (nicht zwangsläufig aktuell aktive) Gruppe -
+   * für renameGroup/deleteGroup UND für die Gruppenliste im Gruppen-Tab, die pro Zeile eine
+   * potenziell andere (nicht aktive) Gruppe zeigt.
+   */
+  hasPermissionFor(groupId: string, permission: GroupPermission): boolean {
+    if (this.isOwnerOf(groupId)) return true;
+    return this.myPermissions().get(groupId)?.has(permission) ?? false;
+  }
+
   constructor() {
     effect(() => {
       const user = this.auth.currentUser();
@@ -48,6 +78,7 @@ export class GroupService {
       } else {
         this.groupId.set(null);
         this.myGroups.set([]);
+        this.myPermissions.set(new Map());
         this.loading.set(false);
       }
     });
@@ -56,16 +87,20 @@ export class GroupService {
   private async loadMyGroups(userId: string): Promise<void> {
     this.loading.set(true);
 
-    const { data, error } = await supabase
-      .from('group_members')
-      .select('role, groups ( id, name )')
-      .eq('user_id', userId);
+    const [{ data, error }, { data: permissionRows, error: permissionError }] = await Promise.all([
+      supabase.from('group_members').select('role, groups ( id, name )').eq('user_id', userId),
+      supabase.from('group_member_permissions').select('group_id, permission').eq('user_id', userId),
+    ]);
 
     if (error) {
       console.error('Konnte Gruppen nicht laden:', error);
       this.myGroups.set([]);
       this.loading.set(false);
       return;
+    }
+
+    if (permissionError) {
+      console.error('Konnte eigene Rechte nicht laden:', permissionError);
     }
 
     const groups: MyGroup[] = (data as any[])
@@ -78,12 +113,97 @@ export class GroupService {
 
     this.myGroups.set(groups);
 
+    const permissionMap = new Map<string, Set<GroupPermission>>();
+    for (const row of (permissionRows ?? []) as { group_id: string; permission: GroupPermission }[]) {
+      const set = permissionMap.get(row.group_id) ?? new Set<GroupPermission>();
+      set.add(row.permission);
+      permissionMap.set(row.group_id, set);
+    }
+    this.myPermissions.set(permissionMap);
+
     const current = this.groupId();
     if (!current || !groups.some((g) => g.id === current)) {
       this.groupId.set(groups[0]?.id ?? null);
     }
 
     this.loading.set(false);
+  }
+
+  /** Alle einzeln vergebenen Rechte einer Gruppe je Mitglied - für die Rechte-Verwaltung im Gruppen-Tab (nur Owner). */
+  async loadGroupPermissions(groupId: string): Promise<Map<string, Set<GroupPermission>>> {
+    const { data, error } = await supabase
+      .from('group_member_permissions')
+      .select('user_id, permission')
+      .eq('group_id', groupId);
+
+    if (error) {
+      console.error('Konnte Gruppen-Rechte nicht laden:', error);
+      return new Map();
+    }
+
+    const map = new Map<string, Set<GroupPermission>>();
+    for (const row of data as { user_id: string; permission: GroupPermission }[]) {
+      const set = map.get(row.user_id) ?? new Set<GroupPermission>();
+      set.add(row.permission);
+      map.set(row.user_id, set);
+    }
+    return map;
+  }
+
+  /** Nur für den Owner: schaltet einem Mitglied ein einzelnes Recht frei. */
+  async grantPermission(groupId: string, userId: string, permission: GroupPermission): Promise<boolean> {
+    if (!this.isOwnerOf(groupId)) return false;
+
+    const { error } = await supabase
+      .from('group_member_permissions')
+      .upsert(
+        { group_id: groupId, user_id: userId, permission, granted_by: this.auth.currentUser()?.id ?? null },
+        { onConflict: 'group_id,user_id,permission' }
+      );
+
+    if (error) {
+      console.error('Konnte Recht nicht vergeben:', error);
+      return false;
+    }
+
+    if (userId === this.auth.currentUser()?.id) {
+      this.myPermissions.update((map) => {
+        const next = new Map(map);
+        const set = new Set(next.get(groupId) ?? []);
+        set.add(permission);
+        next.set(groupId, set);
+        return next;
+      });
+    }
+    return true;
+  }
+
+  /** Nur für den Owner: entzieht einem Mitglied ein einzelnes Recht wieder. */
+  async revokePermission(groupId: string, userId: string, permission: GroupPermission): Promise<boolean> {
+    if (!this.isOwnerOf(groupId)) return false;
+
+    const { error } = await supabase
+      .from('group_member_permissions')
+      .delete()
+      .eq('group_id', groupId)
+      .eq('user_id', userId)
+      .eq('permission', permission);
+
+    if (error) {
+      console.error('Konnte Recht nicht entziehen:', error);
+      return false;
+    }
+
+    if (userId === this.auth.currentUser()?.id) {
+      this.myPermissions.update((map) => {
+        const next = new Map(map);
+        const set = new Set(next.get(groupId) ?? []);
+        set.delete(permission);
+        next.set(groupId, set);
+        return next;
+      });
+    }
+    return true;
   }
 
   switchGroup(groupId: string): void {
@@ -356,7 +476,7 @@ export class GroupService {
 
 
   async renameGroup(groupId: string, name: string): Promise<boolean> {
-    if (!this.isOwnerOf(groupId)) return false;
+    if (!this.hasPermissionFor(groupId, 'group.rename')) return false;
 
     const trimmed = name.trim();
     if (!trimmed) return false;
@@ -378,7 +498,7 @@ export class GroupService {
    * MtgService.resetAllData.
    */
   async deleteGroup(groupId: string): Promise<boolean> {
-    if (!this.isOwnerOf(groupId)) return false;
+    if (!this.hasPermissionFor(groupId, 'group.delete')) return false;
 
     const { data: matchRows, error: matchesFetchError } = await supabase
       .from('matches')

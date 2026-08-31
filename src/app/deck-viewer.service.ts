@@ -89,7 +89,12 @@ export class DeckViewerService {
     if (!deck) return false;
     const uid = this.auth.currentUser()?.id;
     if (deck.userId && uid && deck.userId === uid) return true;
-    if (deck.playerId && deck.groupId && deck.groupId === this.groupService.groupId() && this.groupService.isOwner()) {
+    if (
+      deck.playerId &&
+      deck.groupId &&
+      deck.groupId === this.groupService.groupId() &&
+      this.groupService.hasPermission('deck.editOthers')
+    ) {
       return true;
     }
     return false;

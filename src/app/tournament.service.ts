@@ -882,7 +882,7 @@ export class TournamentService {
    * neuen Wert.
    */
   async setCountInGeneralStats(tournamentId: string, value: boolean): Promise<boolean> {
-    if (!this.groupService.isOwner()) return false;
+    if (!this.groupService.hasPermission('tournament.manage')) return false;
 
     const { error: tournamentError } = await supabase
       .from('tournaments')
@@ -921,7 +921,7 @@ export class TournamentService {
    * löscht auch die matches-Zeilen selbst, das Turnier verschwindet also komplett aus Verlauf/Statistik.
    */
   async deleteTournament(tournamentId: string, groupId: string): Promise<{ success: boolean; error?: string }> {
-    if (groupId !== this.groupService.groupId() || !this.groupService.isOwner()) {
+    if (groupId !== this.groupService.groupId() || !this.groupService.hasPermission('tournament.manage')) {
       return { success: false, error: 'Keine Berechtigung.' };
     }
 

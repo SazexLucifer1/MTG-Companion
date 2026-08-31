@@ -220,6 +220,24 @@
   .player-name {
     font-weight: 600;
   }
+
+  .permission-category-label {
+    margin: 4px 0 0;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    opacity: 0.65;
+  }
+
+  .glass-chip.danger {
+    border-color: rgba(255, 90, 90, 0.4);
+    color: #ff8a8a;
+
+    &.active {
+      background: rgba(255, 90, 90, 0.25);
+      border-color: rgba(255, 90, 90, 0.7);
+    }
+  }
 }
 
 .glass-button.danger {

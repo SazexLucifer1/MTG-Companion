@@ -3,6 +3,7 @@ import { supabase } from './supabase.client';
 import { ScryfallService, ScryfallCard } from './scryfall.service';
 import { isPlayerWinner } from './match-utils';
 import { sleep } from './array-utils';
+import { GroupService } from './group.service';
 
 export interface Deck {
   id: string;
@@ -132,6 +133,7 @@ function commanderMetadataFrom(
 @Injectable({ providedIn: 'root' })
 export class DeckService {
   private readonly scryfall = inject(ScryfallService);
+  private readonly groupService = inject(GroupService);
 
   /**
    * Löst einen DeckOwner zu den betroffenen players.id auf - bei einem echten Account können das
@@ -605,6 +607,8 @@ export class DeckService {
     groupId: string,
     onProgress?: (done: number, total: number) => void
   ): Promise<{ checked: number; fixed: number }> {
+    if (!this.groupService.hasPermission('player.repairNamesGroupwide')) return { checked: 0, fixed: 0 };
+
     const { data: playerRows } = await supabase.from('players').select('id').eq('group_id', groupId);
     if (!playerRows || playerRows.length === 0) return { checked: 0, fixed: 0 };
     const playerIds = playerRows.map((p) => p.id);
