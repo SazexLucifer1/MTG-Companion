@@ -416,7 +416,7 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     'profile.manualLinkAria': 'Manuell verlinken/entlinken',
 
     'profile.repairTitle': '🔧 Commander überprüfen & verlinken',
-    'profile.repairHint': 'Prüft alle noch offenen Commander-Namen (z.B. aus alten Excel-Importen) neu über Scryfall und verknüpft sie automatisch mit passenden eigenen Decks, wo möglich.',
+    'profile.repairHint': 'Prüft alle noch offenen Commander-Namen (z.B. aus alten Excel-Importen) neu über Scryfall und verknüpft sie automatisch mit passenden eigenen Decks, wo möglich. Ergänzt außerdem bei bereits importierten Precons das fehlende Release-Jahr (wichtig für den Jahresfilter in der Deck-Auswahl).',
     'profile.checking': 'Prüfe …',
     'profile.checkNow': 'Jetzt prüfen',
 
@@ -472,6 +472,7 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     'profile.msg.avatarUploadFailed': 'Profilbild konnte nicht hochgeladen werden.',
     'profile.msg.repairNothingToCheck': 'Nichts zu prüfen – alle Commander sind bereits verknüpft oder es gibt keine offenen Matches.',
     'profile.msg.repairDone': '{{checked}} Commander-Namen geprüft, {{fixed}} korrigiert, {{linked}} mit einem Deck verknüpft.',
+    'profile.msg.repairPreconYears': '{{updated}} Precon-Erscheinungsjahre ergänzt.',
     'profile.msg.linked': 'Verlinkt!',
     'profile.msg.linkFailed': 'Verlinken fehlgeschlagen.',
     'profile.msg.unlinked': 'Verknüpfung gelöst!',
@@ -1677,7 +1678,7 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     'profile.manualLinkAria': 'Link/unlink manually',
 
     'profile.repairTitle': '🔧 Check & link commanders',
-    'profile.repairHint': 'Re-checks all still-unassigned commander names (e.g. from old Excel imports) via Scryfall and automatically links them to matching decks of yours, where possible.',
+    'profile.repairHint': 'Re-checks all still-unassigned commander names (e.g. from old Excel imports) via Scryfall and automatically links them to matching decks of yours, where possible. Also fills in the missing release year for already-imported precons (needed for the year filter in the deck picker).',
     'profile.checking': 'Checking …',
     'profile.checkNow': 'Check now',
 
@@ -1733,6 +1734,7 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     'profile.msg.avatarUploadFailed': 'Profile picture could not be uploaded.',
     'profile.msg.repairNothingToCheck': 'Nothing to check – all commanders are already linked or there are no open matches.',
     'profile.msg.repairDone': '{{checked}} commander names checked, {{fixed}} corrected, {{linked}} linked to a deck.',
+    'profile.msg.repairPreconYears': '{{updated}} precon release years filled in.',
     'profile.msg.linked': 'Linked!',
     'profile.msg.linkFailed': 'Linking failed.',
     'profile.msg.unlinked': 'Link undone!',

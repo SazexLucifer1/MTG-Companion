@@ -4,6 +4,7 @@ import { ScryfallService, ScryfallCard } from './scryfall.service';
 import { isPlayerWinner } from './match-utils';
 import { sleep } from './array-utils';
 import { GroupService } from './group.service';
+import { PreconService } from './precon.service';
 
 export interface Deck {
   id: string;
@@ -134,6 +135,7 @@ function commanderMetadataFrom(
 export class DeckService {
   private readonly scryfall = inject(ScryfallService);
   private readonly groupService = inject(GroupService);
+  private readonly preconService = inject(PreconService);
 
   /**
    * Löst einen DeckOwner zu den betroffenen players.id auf - bei einem echten Account können das
@@ -641,6 +643,48 @@ export class DeckService {
     }
 
     return { checked: list.length, fixed, linked };
+  }
+
+  /**
+   * Reparatur-Werkzeug für Alt-Daten: ermittelt für bereits importierte Precons, deren Release-Jahr
+   * (decks.precon_release_year) noch fehlt, dieses Jahr nachträglich per Namens-Abgleich gegen den
+   * MTGJSON-Precon-Katalog. Betrifft alle Precons, die vor Einführung des Jahresfilters (oder auf
+   * einem anderen Weg als dem Precon-Import-Dialog) angelegt wurden - ohne dieses Nachtragen bleiben
+   * sie für den Jahresfilter in der Deck-Auswahl (Match-Tab) unsichtbar, obwohl sie existieren.
+   * Bei mehrdeutigem Namen (derselbe Precon-Name in mehreren Jahren neu aufgelegt) wird bewusst NICHT
+   * geraten, der Deck bleibt dann unverändert - analog zu findDeckIdByCommander().
+   */
+  async backfillPreconReleaseYears(
+    owner: DeckOwner,
+    onProgress?: (done: number, total: number) => void
+  ): Promise<{ checked: number; updated: number }> {
+    const decks = await this.loadDecksForOwner(owner);
+    const missing = decks.filter((d) => d.isPrecon && d.preconReleaseYear === null);
+    if (missing.length === 0) return { checked: 0, updated: 0 };
+
+    const precons = await this.preconService.getAllPrecons();
+    const yearsByName = new Map<string, Set<number>>();
+    for (const p of precons) {
+      const key = p.name.toLowerCase();
+      const set = yearsByName.get(key) ?? new Set<number>();
+      set.add(p.releaseYear);
+      yearsByName.set(key, set);
+    }
+
+    let updated = 0;
+    let done = 0;
+    for (const deck of missing) {
+      const years = yearsByName.get(deck.name.toLowerCase());
+      if (years && years.size === 1) {
+        const [year] = years;
+        const { error } = await supabase.from('decks').update({ precon_release_year: year }).eq('id', deck.id);
+        if (!error) updated++;
+      }
+      done++;
+      onProgress?.(done, missing.length);
+    }
+
+    return { checked: missing.length, updated };
   }
 
   /**

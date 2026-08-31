@@ -520,18 +520,24 @@ export class ProfileTab {
     const result = await this.deckService.repairCommanderNames(owner, (done, total) =>
       this.repairProgress.set({ done, total })
     );
+    const preconResult = await this.deckService.backfillPreconReleaseYears(owner);
 
     this.repairBusy.set(false);
     this.repairProgress.set(null);
-    this.repairMessage.set(
+
+    const messages = [
       result.checked === 0
         ? this.i18n.t('profile.msg.repairNothingToCheck')
         : this.i18n.t('profile.msg.repairDone', {
             checked: result.checked,
             fixed: result.fixed,
             linked: result.linked,
-          })
-    );
+          }),
+    ];
+    if (preconResult.updated > 0) {
+      messages.push(this.i18n.t('profile.msg.repairPreconYears', { updated: preconResult.updated }));
+    }
+    this.repairMessage.set(messages.join(' '));
 
     if (viewingPlayerId) {
       this.viewingNpcUnassignedCommanderStats.set(await this.deckService.getUnassignedCommanderStats(owner));
