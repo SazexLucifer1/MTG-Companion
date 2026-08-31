@@ -216,7 +216,9 @@ export class DeckImportService {
         name,
         format: FIXED_FORMAT,
         updatedAt: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
         isPrecon: false,
+        preconReleaseYear: null,
         edhrecTag: tag,
         isPrivate: false,
         isOutdated: false,
@@ -298,7 +300,17 @@ export class DeckImportService {
     for (const precon of selected) {
       const text = await this.preconService.loadPreconAsText(precon.fileName);
       const ok =
-        text !== null && (await this.deckService.saveDeck(this.owner, precon.name, 'Commander', text, null, true));
+        text !== null &&
+        (await this.deckService.saveDeck(
+          this.owner,
+          precon.name,
+          'Commander',
+          text,
+          null,
+          true,
+          null,
+          precon.releaseYear
+        ));
       if (!ok) failed++;
       this.preconImportProgress.update((p) => (p ? { ...p, done: p.done + 1 } : p));
     }

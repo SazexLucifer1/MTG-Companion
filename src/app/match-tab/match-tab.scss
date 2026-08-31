@@ -72,6 +72,21 @@
   }
 }
 
+.deck-picker-filters {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+
+  input[type='text'] {
+    flex: 1;
+    min-width: 0;
+  }
+
+  input[type='number'] {
+    width: 90px;
+  }
+}
+
 // Deck-Auswahl-Dialog (eigenes/geliehenes Deck): kleineres Vorschaubild als in der Deck-Liste
 // (deck-list.scss), da der Dialog nur max-width: 300px hat (siehe .options-menu-sheet).
 .deck-picker-list {

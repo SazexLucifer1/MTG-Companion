@@ -15,7 +15,11 @@ export interface Deck {
   name: string;
   format: string | null;
   updatedAt: string;
+  /** Zeitpunkt der Deck-Anlage (unverändert seit dem Import, im Gegensatz zu updatedAt) - für den Jahresfilter in der Deck-Auswahl. */
+  createdAt: string;
   isPrecon: boolean;
+  /** Nur bei Precons gesetzt (aus MTGJSON, siehe PreconService) - das tatsächliche Release-Jahr des Precons, NICHT das Jahr des Imports in diese App. Für den Jahresfilter in der Deck-Auswahl. */
+  preconReleaseYear: number | null;
   /** EDHREC-Theme-Tag-Slug (z.B. "ramp", "aristocrats") - steuert die EDHREC-Vorschläge im Bearbeiten-Modus. */
   edhrecTag: string | null;
   /** Privat gestellte Decks tauchen nicht auf, wenn andere User dieses Profil ansehen - Standard ist sichtbar (opt-in privat, nicht opt-in sichtbar). */
@@ -145,7 +149,7 @@ export class DeckService {
     let query = supabase
       .from('decks')
       .select(
-        'id, user_id, player_id, name, format, updated_at, is_precon, edhrec_tag, is_private, is_outdated, commander_types, players ( group_id )'
+        'id, user_id, player_id, name, format, updated_at, created_at, is_precon, precon_release_year, edhrec_tag, is_private, is_outdated, commander_types, players ( group_id )'
       )
       .order('updated_at', { ascending: false });
     query = owner.kind === 'user' ? query.eq('user_id', owner.userId) : query.eq('player_id', owner.playerId);
@@ -165,7 +169,9 @@ export class DeckService {
       name: row.name,
       format: row.format,
       updatedAt: row.updated_at,
+      createdAt: row.created_at,
       isPrecon: row.is_precon,
+      preconReleaseYear: row.precon_release_year ?? null,
       edhrecTag: row.edhrec_tag,
       isPrivate: row.is_private ?? false,
       isOutdated: row.is_outdated ?? false,
@@ -178,7 +184,7 @@ export class DeckService {
     const { data, error } = await supabase
       .from('decks')
       .select(
-        'id, user_id, player_id, name, format, updated_at, is_precon, edhrec_tag, is_private, is_outdated, commander_types, players ( group_id )'
+        'id, user_id, player_id, name, format, updated_at, created_at, is_precon, precon_release_year, edhrec_tag, is_private, is_outdated, commander_types, players ( group_id )'
       )
       .eq('id', deckId)
       .maybeSingle();
@@ -197,7 +203,9 @@ export class DeckService {
       name: row.name,
       format: row.format,
       updatedAt: row.updated_at,
+      createdAt: row.created_at,
       isPrecon: row.is_precon,
+      preconReleaseYear: row.precon_release_year ?? null,
       edhrecTag: row.edhrec_tag,
       isPrivate: row.is_private ?? false,
       isOutdated: row.is_outdated ?? false,
@@ -314,7 +322,9 @@ export class DeckService {
     rawText: string,
     existingDeckId: string | null,
     isPrecon = false,
-    edhrecTag: string | null = null
+    edhrecTag: string | null = null,
+    /** Nur bei Precons relevant - tatsächliches Release-Jahr aus MTGJSON (siehe PreconSummary.releaseYear), NICHT das Import-Datum. */
+    preconReleaseYear: number | null = null
   ): Promise<string | null> {
     const parsed = this.parseDecklistText(rawText);
     if (parsed.length === 0) return null;
@@ -409,6 +419,7 @@ export class DeckService {
           name,
           format,
           is_precon: isPrecon,
+          precon_release_year: preconReleaseYear,
           edhrec_tag: edhrecTag,
           color_identity: colorIdentity,
           commander_types: commanderTypes,

@@ -1,8 +1,8 @@
-<img
-  [src]="showingBack() && backImageUrl() ? backImageUrl() : imageUrl()"
-  [alt]="alt()"
-  loading="lazy"
-/>
+@if (!failed()) {
+  <img [src]="currentSrc()" [alt]="alt()" loading="lazy" (error)="onImageError()" />
+} @else {
+  <div class="card-image-fallback">{{ alt() }}</div>
+}
 @if (backImageUrl()) {
   <button
     type="button"

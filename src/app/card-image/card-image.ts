@@ -1,4 +1,4 @@
-import { Component, inject, input, signal } from '@angular/core';
+import { Component, computed, effect, inject, input, signal } from '@angular/core';
 import { I18nService } from '../i18n.service';
 
 /**
@@ -33,6 +33,28 @@ export class CardImage {
    * Buchhaltung im Aufrufer (im Unterschied zum älteren, in deck-viewer.service.ts kopierten Muster).
    */
   readonly showingBack = signal(false);
+
+  /** Aktuell gezeigte Bild-URL (Vorder- oder Rückseite je nach Flip-Zustand). */
+  readonly currentSrc = computed(() => (this.showingBack() && this.backImageUrl() ? this.backImageUrl()! : this.imageUrl()));
+
+  /**
+   * true, wenn das <img> nicht geladen werden konnte (z.B. tote/kaputte URL) - zeigt dann statt
+   * eines leeren/kaputten Bildes denselben Text-Platzhalter wie beim gänzlich fehlenden Bild.
+   * Wird bei jedem Wechsel von currentSrc zurückgesetzt, damit ein Umschalten auf die Rückseite
+   * (oder ein neu zugewiesenes Bild, z.B. im Deck-Picker nach dem Nachladen) erneut versucht wird.
+   */
+  readonly failed = signal(false);
+
+  constructor() {
+    effect(() => {
+      this.currentSrc();
+      this.failed.set(false);
+    });
+  }
+
+  onImageError(): void {
+    this.failed.set(true);
+  }
 
   toggleFlip(event: Event): void {
     // Verhindert, dass ein Klick auf den Umdreh-Button eine umschließende klickbare Zeile/Karte
