@@ -185,6 +185,7 @@
                     @if (deckPickerThumb(option); as img) {
                       <app-card-image
                         [compact]="true"
+                        [eager]="true"
                         [imageUrl]="img"
                         [backImageUrl]="deckPickerBackImage(option)"
                         [alt]="option.commanderName ?? option.deckName"

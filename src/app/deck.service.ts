@@ -115,6 +115,11 @@ function parseSubtypes(typeLine: string | undefined): string[] {
   return parts[1].trim().split(/\s+/).filter(Boolean);
 }
 
+/** Für den Precon-Namensabgleich in backfillPreconReleaseYears - fängt zumindest Whitespace-Abweichungen zwischen gespeichertem Decknamen und MTGJSON-Katalogeintrag ab (echte Umbenennungen bleiben davon unberührt, dafür gibt es keine zuverlässige Heuristik). */
+function normalizePreconName(name: string): string {
+  return name.trim().replace(/\s+/g, ' ').toLowerCase();
+}
+
 /** Wie DeckViewerService.saveEdits() für nachträgliche Commander-Wechsel - hier für den Import-/Neuanlage-Pfad in saveDeck(). */
 function commanderMetadataFrom(
   parsed: { name: string; isCommander: boolean }[],
@@ -657,15 +662,22 @@ export class DeckService {
   async backfillPreconReleaseYears(
     owner: DeckOwner,
     onProgress?: (done: number, total: number) => void
-  ): Promise<{ checked: number; updated: number }> {
+  ): Promise<{ checked: number; updated: number; catalogUnavailable: boolean; unmatchedNames: string[] }> {
     const decks = await this.loadDecksForOwner(owner);
     const missing = decks.filter((d) => d.isPrecon && d.preconReleaseYear === null);
-    if (missing.length === 0) return { checked: 0, updated: 0 };
+    if (missing.length === 0) return { checked: 0, updated: 0, catalogUnavailable: false, unmatchedNames: [] };
 
     const precons = await this.preconService.getAllPrecons();
+    if (precons.length === 0) {
+      // MTGJSON nicht erreichbar (siehe PreconService.loadIndex) - ohne Katalog kann kein einziger
+      // Name abgeglichen werden. Klar von "geprüft, aber kein Treffer" unterscheiden, damit die
+      // Rückmeldung im Profil-Tab nicht fälschlich wie ein echtes "0 Treffer"-Ergebnis aussieht.
+      return { checked: missing.length, updated: 0, catalogUnavailable: true, unmatchedNames: [] };
+    }
+
     const yearsByName = new Map<string, Set<number>>();
     for (const p of precons) {
-      const key = p.name.toLowerCase();
+      const key = normalizePreconName(p.name);
       const set = yearsByName.get(key) ?? new Set<number>();
       set.add(p.releaseYear);
       yearsByName.set(key, set);
@@ -673,18 +685,22 @@ export class DeckService {
 
     let updated = 0;
     let done = 0;
+    const unmatchedNames: string[] = [];
     for (const deck of missing) {
-      const years = yearsByName.get(deck.name.toLowerCase());
+      const years = yearsByName.get(normalizePreconName(deck.name));
       if (years && years.size === 1) {
         const [year] = years;
         const { error } = await supabase.from('decks').update({ precon_release_year: year }).eq('id', deck.id);
         if (!error) updated++;
+        else unmatchedNames.push(deck.name);
+      } else {
+        unmatchedNames.push(deck.name);
       }
       done++;
       onProgress?.(done, missing.length);
     }
 
-    return { checked: missing.length, updated };
+    return { checked: missing.length, updated, catalogUnavailable: false, unmatchedNames };
   }
 
   /**

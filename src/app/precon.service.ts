@@ -23,7 +23,10 @@ export class PreconService {
     if (this.indexCache) return this.indexCache;
     try {
       const res = await fetch(DECK_LIST_URL);
-      if (!res.ok) return [];
+      if (!res.ok) {
+        console.error(`Konnte MTGJSON-Precon-Katalog nicht laden: HTTP ${res.status}`);
+        return [];
+      }
       const data = await res.json();
       this.indexCache = ((data.data as any[]) ?? [])
         .filter((d) => d.type === 'Commander Deck')
@@ -34,7 +37,8 @@ export class PreconService {
           releaseYear: new Date(d.releaseDate).getFullYear(),
         }));
       return this.indexCache;
-    } catch {
+    } catch (error) {
+      console.error('Konnte MTGJSON-Precon-Katalog nicht laden:', error);
       return [];
     }
   }

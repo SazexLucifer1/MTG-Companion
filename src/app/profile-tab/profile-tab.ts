@@ -534,8 +534,20 @@ export class ProfileTab {
             linked: result.linked,
           }),
     ];
-    if (preconResult.updated > 0) {
-      messages.push(this.i18n.t('profile.msg.repairPreconYears', { updated: preconResult.updated }));
+    if (preconResult.checked > 0) {
+      if (preconResult.catalogUnavailable) {
+        messages.push(this.i18n.t('profile.msg.repairPreconYearsCatalogUnavailable'));
+      } else if (preconResult.updated < preconResult.checked) {
+        messages.push(
+          this.i18n.t('profile.msg.repairPreconYearsPartial', {
+            updated: preconResult.updated,
+            checked: preconResult.checked,
+            names: preconResult.unmatchedNames.join(', '),
+          })
+        );
+      } else {
+        messages.push(this.i18n.t('profile.msg.repairPreconYears', { updated: preconResult.updated }));
+      }
     }
     this.repairMessage.set(messages.join(' '));
 
