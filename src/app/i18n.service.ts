@@ -91,6 +91,9 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     'match.theOthers': 'Die anderen Spieler',
     'match.draw': '🤝 Unentschieden',
     'match.archenemySuffix': ' (Archenemy)',
+    'match.editCommandersTitle': 'Commander nachtragen/ändern',
+    'match.saveCommanders': 'Commander speichern',
+    'match.commanderNotSet': 'Kein Commander hinterlegt',
 
     // --- Match-Tab: Meldungen (aus match-tab.ts) ---
     'match.msg.noOwnDecksImported': 'Noch keine Decks importiert (im Profil-Tab möglich).',
@@ -1314,6 +1317,9 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     'match.liveSessionJoin': 'View/Join',
     'match.deleteMatch': 'Delete match',
     'match.whoWon': 'Who really won?',
+    'match.editCommandersTitle': 'Add/edit commander',
+    'match.saveCommanders': 'Save commander',
+    'match.commanderNotSet': 'No commander set',
     'match.theOthers': 'The other players',
     'match.draw': '🤝 Draw',
     'match.archenemySuffix': ' (Archenemy)',
