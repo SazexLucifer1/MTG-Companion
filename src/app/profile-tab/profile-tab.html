@@ -355,6 +355,21 @@
               <span class="hint">{{ top.commander }} ({{ top.wins }} / {{ top.games }} · {{ top.winRate | number: '1.0-0' }}%)</span>
             </li>
           }
+          @if (cardAndColorStats()?.mostUsedCard; as card) {
+            <li>
+              <span class="player-name">{{ i18n.t('profile.crossGroupMostUsedCard') }}</span>
+              <span class="hint">{{ card.cardName }}</span>
+            </li>
+          }
+          @if (mostLikedColorLabel(); as colorLabel) {
+            <li>
+              <span class="player-name">{{ i18n.t('profile.crossGroupMostLikedColor') }}</span>
+              <span class="hint color-hint">
+                <span class="color-swatch" [style.background]="mostLikedColorHex()"></span>
+                {{ colorLabel }}
+              </span>
+            </li>
+          }
         </ul>
       </section>
     }

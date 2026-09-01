@@ -74,6 +74,26 @@ export interface CrossGroupPersonalStats {
   topCommander: CommanderGameStats | null;
 }
 
+export interface MostUsedCardStats {
+  cardName: string;
+  imageUrl: string | null;
+  /** Gewichteter Wert (Kartenanzahl im Deck × tatsächlich gespielte Partien mit diesem Deck), keine reine Deckzahl. */
+  count: number;
+}
+
+export interface MostLikedColorStats {
+  color: 'W' | 'U' | 'B' | 'R' | 'G';
+  /** Gewichteter Wert (Anzahl Partien mit Decks, deren Farbidentität diese Farbe enthält). */
+  count: number;
+}
+
+/** Kombinierte "Meistgespielte Karte" (ohne Basic Lands) und "Lieblingsfarbe" über ALLE Gruppen
+ * hinweg - siehe DeckService.getCardAndColorStats(). */
+export interface CardAndColorStats {
+  mostUsedCard: MostUsedCardStats | null;
+  mostLikedColor: MostLikedColorStats | null;
+}
+
 export interface DeckCard {
   cardName: string;
   quantity: number;
@@ -1310,6 +1330,86 @@ export class DeckService {
       winRate: totalGames > 0 ? (totalWins / totalGames) * 100 : 0,
       groupCount,
       topCommander,
+    };
+  }
+
+  /**
+   * "Meistgespielte Karte" (ohne Basic Lands) und "Lieblingsfarbe" über ALLE Gruppen hinweg -
+   * beides gewichtet nach tatsächlich gespielten Partien je Deck (deck_cards.quantity bzw. ein
+   * Zähler je Farbe in decks.color_identity, jeweils multipliziert mit der Partienanzahl des
+   * Decks), damit ein oft gespieltes Deck stärker einfließt als eines, das nur einmal gebaut
+   * wurde. Basic Lands werden wie bei DeckViewerService.nonBasicLandPercent rein anhand der
+   * Typzeile erkannt (Land + Basic) - es gibt kein eigenes "isBasic"-Flag in deck_cards.
+   */
+  async getCardAndColorStats(owner: DeckOwner): Promise<CardAndColorStats> {
+    const empty: CardAndColorStats = { mostUsedCard: null, mostLikedColor: null };
+    const playerIds = await this.resolvePlayerIds(owner);
+    if (playerIds.length === 0) return empty;
+
+    const { data: matchData, error: matchError } = await supabase
+      .from('match_players')
+      .select('deck_id, matches ( counts_in_general_stats )')
+      .in('player_id', playerIds)
+      .not('deck_id', 'is', null);
+
+    if (matchError || !matchData) {
+      console.error('Konnte Deck-Partienanzahl für Karten-/Farbstatistik nicht laden:', matchError);
+      return empty;
+    }
+
+    const gamesPerDeck = new Map<string, number>();
+    for (const row of matchData as any[]) {
+      const deckId = row.deck_id as string | null;
+      if (!deckId || row.matches?.counts_in_general_stats === false) continue;
+      gamesPerDeck.set(deckId, (gamesPerDeck.get(deckId) ?? 0) + 1);
+    }
+
+    const deckIds = [...gamesPerDeck.keys()];
+    if (deckIds.length === 0) return empty;
+
+    const [{ data: deckRows, error: deckError }, { data: cardRows, error: cardError }] = await Promise.all([
+      supabase.from('decks').select('id, color_identity').in('id', deckIds),
+      supabase
+        .from('deck_cards')
+        .select('deck_id, card_name, quantity, image_url, type_line, is_maybeboard, is_token')
+        .in('deck_id', deckIds),
+    ]);
+
+    if (deckError) console.error('Konnte Farbidentität der Decks für die Farbstatistik nicht laden:', deckError);
+    if (cardError) console.error('Konnte Deckkarten für die Kartenstatistik nicht laden:', cardError);
+
+    const colorCounts = new Map<string, number>();
+    for (const row of (deckRows ?? []) as any[]) {
+      const games = gamesPerDeck.get(row.id) ?? 0;
+      if (games === 0) continue;
+      for (const color of (row.color_identity ?? []) as string[]) {
+        colorCounts.set(color, (colorCounts.get(color) ?? 0) + games);
+      }
+    }
+
+    const cardCounts = new Map<string, { count: number; imageUrl: string | null }>();
+    for (const row of (cardRows ?? []) as any[]) {
+      if ((row.is_maybeboard ?? false) || (row.is_token ?? false)) continue;
+      const typeLine = (row.type_line as string | null) ?? '';
+      if (typeLine.includes('Land') && typeLine.includes('Basic')) continue;
+
+      const games = gamesPerDeck.get(row.deck_id) ?? 0;
+      if (games === 0) continue;
+
+      const entry = cardCounts.get(row.card_name) ?? { count: 0, imageUrl: null };
+      entry.count += (row.quantity ?? 1) * games;
+      if (!entry.imageUrl && row.image_url) entry.imageUrl = row.image_url;
+      cardCounts.set(row.card_name, entry);
+    }
+
+    const topColor = [...colorCounts.entries()].sort((a, b) => b[1] - a[1])[0];
+    const topCard = [...cardCounts.entries()].sort((a, b) => b[1].count - a[1].count)[0];
+
+    return {
+      mostLikedColor: topColor ? { color: topColor[0] as MostLikedColorStats['color'], count: topColor[1] } : null,
+      mostUsedCard: topCard
+        ? { cardName: topCard[0], imageUrl: topCard[1].imageUrl, count: topCard[1].count }
+        : null,
     };
   }
 

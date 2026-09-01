@@ -6,7 +6,7 @@ import { ProfileService } from '../profile.service';
 import { MtgService } from '../mtg.service';
 import { GroupService } from '../group.service';
 import { DeckList } from '../deck-list/deck-list';
-import { DeckService, CommanderGameStats, CrossGroupPersonalStats, DeckOwner } from '../deck.service';
+import { DeckService, CommanderGameStats, CrossGroupPersonalStats, CardAndColorStats, DeckOwner } from '../deck.service';
 import { ManualDeckLinkService } from '../manual-deck-link.service';
 import { CardPreviewService } from '../card-preview.service';
 import { AuthService } from '../auth.service';
@@ -123,6 +123,32 @@ export class ProfileTab {
    * bewusst nur fürs eigene Profil, nicht beim Ansehen eines fremden. Das Stats-Tab bleibt unverändert pro aktiver Gruppe. */
   readonly crossGroupStats = signal<CrossGroupPersonalStats | null>(null);
 
+  /** Meistgespielte Karte (ohne Basic Lands) und Lieblingsfarbe über ALLE Gruppen des eigenen
+   * Accounts hinweg (siehe DeckService.getCardAndColorStats) - wie crossGroupStats bewusst nur
+   * fürs eigene Profil. */
+  readonly cardAndColorStats = signal<CardAndColorStats | null>(null);
+
+  /** Hex-Werte je Manafarbe für den Farb-Swatch, abgestimmt auf die Pip-Farben im öffentlichen
+   * Decks-Suchreiter (public-deck-browser.scss) - hier separat, da view-encapsulated CSS-Variablen
+   * nicht komponentenübergreifend geteilt werden können. */
+  private static readonly COLOR_HEX: Record<string, string> = {
+    W: '#c18010',
+    U: '#213ced',
+    B: '#81548c',
+    R: '#ec1313',
+    G: '#0fb345',
+  };
+
+  readonly mostLikedColorHex = computed<string | null>(() => {
+    const color = this.cardAndColorStats()?.mostLikedColor?.color;
+    return color ? ProfileTab.COLOR_HEX[color] : null;
+  });
+
+  readonly mostLikedColorLabel = computed<string | null>(() => {
+    const color = this.cardAndColorStats()?.mostLikedColor?.color;
+    return color ? this.i18n.t(`pip.${color}`) : null;
+  });
+
   private async refreshUnassignedAndDecks(): Promise<void> {
     const userId = this.profileService.profile()?.id;
     if (!userId) return;
@@ -152,6 +178,15 @@ export class ProfileTab {
         return;
       }
       this.deckService.getCrossGroupPersonalStats(userId).then((stats) => this.crossGroupStats.set(stats));
+    });
+
+    effect(() => {
+      const userId = this.profileService.profile()?.id;
+      if (!userId) {
+        this.cardAndColorStats.set(null);
+        return;
+      }
+      this.deckService.getCardAndColorStats({ kind: 'user', userId }).then((stats) => this.cardAndColorStats.set(stats));
     });
 
     effect(() => {
