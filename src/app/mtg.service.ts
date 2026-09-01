@@ -691,9 +691,16 @@ export class MtgService {
     // mindestens einen gesetzt, bleibt dessen Liste unverändert (der Account ist die "Wahrheit"
     // für die Person). Nur wenn der Account noch komplett leer ist, übernimmt er die NPC-Liste -
     // die dann am NPC-Eintrag geleert wird, damit sie nicht doppelt/veraltet irgendwo weiterlebt.
+    //
+    // Der Schreibzugriff auf profiles.favorite_commanders eines ANDEREN Accounts ist nur erlaubt,
+    // wenn die Person sich selbst verknüpft (isSelfLink) oder Developer ist - sonst dürfte ein
+    // Host, der eine NPC mit dem Account eines anderen Spielers verknüpft, sonst unbemerkt in
+    // dessen echtes Profil schreiben (siehe group-permissions.ts: Gruppenrechte decken nur
+    // Stats/NPC-Daten ab, nicht das Profil eines fremden echten Accounts).
+    const isSelfLink = this.auth.currentUser()?.id === userId;
     const npcFavorites = this.playerFavoriteCommanders()[playerName] ?? [];
     const accountFavorites = profile?.favorite_commanders ?? [];
-    if (accountFavorites.length === 0 && npcFavorites.length > 0) {
+    if (accountFavorites.length === 0 && npcFavorites.length > 0 && (isSelfLink || this.profileService.profile()?.isDeveloper)) {
       const { error: favoriteMergeError } = await supabase
         .from('profiles')
         .update({ favorite_commanders: npcFavorites })
