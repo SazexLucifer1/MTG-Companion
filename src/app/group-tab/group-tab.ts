@@ -181,14 +181,21 @@ export class GroupTab {
 
   readonly viewingMembersForGroupId = signal<string | null>(null);
   readonly members = signal<
-    { userId: string; displayName: string; role: string; avatarUrl: string | null }[]
+    { userId: string; displayName: string; role: string; avatarUrl: string | null; customRoleId: string | null }[]
   >([]);
   readonly membersBusy = signal(false);
 
   async openMembers(groupId: string): Promise<void> {
     this.viewingMembersForGroupId.set(groupId);
     this.membersBusy.set(true);
-    this.members.set(await this.groupService.loadGroupMembers(groupId));
+    // Rollen mitladen, damit roleName() (siehe Rollen-Verwaltung weiter unten) hier den
+    // zugewiesenen Rollennamen statt nur "Member" anzeigen kann.
+    const [members, roles] = await Promise.all([
+      this.groupService.loadGroupMembers(groupId),
+      this.groupService.loadGroupRoles(groupId),
+    ]);
+    this.members.set(members);
+    this.groupRoles.set(roles);
     this.membersBusy.set(false);
   }
 
