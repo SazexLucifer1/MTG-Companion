@@ -192,7 +192,7 @@
             <li class="clickable" (click)="openProfileView(m.userId)">
               <app-player-avatar [url]="m.avatarUrl" />
               <span class="player-name">{{ m.displayName }}</span>
-              <span class="hint">{{ m.role === 'owner' ? i18n.t('group.roleAdmin') : i18n.t('group.member') }}</span>
+              <span class="hint">{{ m.role === 'owner' ? i18n.t('group.roleAdmin') : (m.customRoleId ? roleName(m.customRoleId) : i18n.t('group.member')) }}</span>
             </li>
           }
         </ul>
