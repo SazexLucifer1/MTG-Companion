@@ -355,12 +355,6 @@
               <span class="hint">{{ top.commander }} ({{ top.wins }} / {{ top.games }} · {{ top.winRate | number: '1.0-0' }}%)</span>
             </li>
           }
-          @if (cardAndColorStats()?.mostUsedCard; as card) {
-            <li>
-              <span class="player-name">{{ i18n.t('profile.crossGroupMostUsedCard') }}</span>
-              <span class="hint">{{ card.cardName }}</span>
-            </li>
-          }
           @if (mostLikedColorLabel(); as colorLabel) {
             <li>
               <span class="player-name">{{ i18n.t('profile.crossGroupMostLikedColor') }}</span>
@@ -373,6 +367,21 @@
         </ul>
       </section>
     }
+  }
+
+  @if ((cardAndColorStats()?.mostUsedCards?.length ?? 0) > 0) {
+    <section class="glass-card">
+      <h2>{{ i18n.t('profile.mostUsedCardsTitle') }}</h2>
+      <p class="hint">{{ i18n.t('profile.mostUsedCardsHint') }}</p>
+      <ul class="player-list compact-list">
+        @for (card of cardAndColorStats()!.mostUsedCards; track card.cardName; let i = $index) {
+          <li>
+            <span class="player-name">{{ i + 1 }}. {{ card.cardName }}</span>
+            <span class="hint">{{ card.count }}×</span>
+          </li>
+        }
+      </ul>
+    </section>
   }
 
   @if (profileService.profile(); as profile) {

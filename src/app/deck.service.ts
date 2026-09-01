@@ -87,10 +87,10 @@ export interface MostLikedColorStats {
   count: number;
 }
 
-/** Kombinierte "Meistgespielte Karte" (ohne Basic Lands) und "Lieblingsfarbe" über ALLE Gruppen
- * hinweg - siehe DeckService.getCardAndColorStats(). */
+/** Kombinierte "Meistgespielte Karten" (Top 5, ohne Länder) und "Lieblingsfarbe" über ALLE
+ * Gruppen hinweg - siehe DeckService.getCardAndColorStats(). */
 export interface CardAndColorStats {
-  mostUsedCard: MostUsedCardStats | null;
+  mostUsedCards: MostUsedCardStats[];
   mostLikedColor: MostLikedColorStats | null;
 }
 
@@ -1334,15 +1334,15 @@ export class DeckService {
   }
 
   /**
-   * "Meistgespielte Karte" (ohne Basic Lands) und "Lieblingsfarbe" über ALLE Gruppen hinweg -
+   * "Meistgespielte Karten" (Top 5, ohne Länder) und "Lieblingsfarbe" über ALLE Gruppen hinweg -
    * beides gewichtet nach tatsächlich gespielten Partien je Deck (deck_cards.quantity bzw. ein
    * Zähler je Farbe in decks.color_identity, jeweils multipliziert mit der Partienanzahl des
    * Decks), damit ein oft gespieltes Deck stärker einfließt als eines, das nur einmal gebaut
-   * wurde. Basic Lands werden wie bei DeckViewerService.nonBasicLandPercent rein anhand der
-   * Typzeile erkannt (Land + Basic) - es gibt kein eigenes "isBasic"-Flag in deck_cards.
+   * wurde. Länder (Basic wie Nichtbasis) werden rein anhand der Typzeile erkannt (enthält
+   * "Land") - es gibt kein eigenes "isLand"-Flag in deck_cards.
    */
   async getCardAndColorStats(owner: DeckOwner): Promise<CardAndColorStats> {
-    const empty: CardAndColorStats = { mostUsedCard: null, mostLikedColor: null };
+    const empty: CardAndColorStats = { mostUsedCards: [], mostLikedColor: null };
     const playerIds = await this.resolvePlayerIds(owner);
     if (playerIds.length === 0) return empty;
 
@@ -1391,7 +1391,7 @@ export class DeckService {
     for (const row of (cardRows ?? []) as any[]) {
       if ((row.is_maybeboard ?? false) || (row.is_token ?? false)) continue;
       const typeLine = (row.type_line as string | null) ?? '';
-      if (typeLine.includes('Land') && typeLine.includes('Basic')) continue;
+      if (typeLine.includes('Land')) continue;
 
       const games = gamesPerDeck.get(row.deck_id) ?? 0;
       if (games === 0) continue;
@@ -1403,13 +1403,14 @@ export class DeckService {
     }
 
     const topColor = [...colorCounts.entries()].sort((a, b) => b[1] - a[1])[0];
-    const topCard = [...cardCounts.entries()].sort((a, b) => b[1].count - a[1].count)[0];
+    const topCards = [...cardCounts.entries()]
+      .sort((a, b) => b[1].count - a[1].count)
+      .slice(0, 5)
+      .map(([cardName, s]) => ({ cardName, imageUrl: s.imageUrl, count: s.count }));
 
     return {
       mostLikedColor: topColor ? { color: topColor[0] as MostLikedColorStats['color'], count: topColor[1] } : null,
-      mostUsedCard: topCard
-        ? { cardName: topCard[0], imageUrl: topCard[1].imageUrl, count: topCard[1].count }
-        : null,
+      mostUsedCards: topCards,
     };
   }
 
