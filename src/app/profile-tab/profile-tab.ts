@@ -123,9 +123,9 @@ export class ProfileTab {
    * bewusst nur fürs eigene Profil, nicht beim Ansehen eines fremden. Das Stats-Tab bleibt unverändert pro aktiver Gruppe. */
   readonly crossGroupStats = signal<CrossGroupPersonalStats | null>(null);
 
-  /** Meistgespielte Karte (ohne Basic Lands) und Lieblingsfarbe über ALLE Gruppen des eigenen
-   * Accounts hinweg (siehe DeckService.getCardAndColorStats) - wie crossGroupStats bewusst nur
-   * fürs eigene Profil. */
+  /** Meistgespielte Karten (ohne Länder), vollständige Farb-Rangliste und Farbkombinations-Rangliste
+   * über ALLE Gruppen des eigenen Accounts hinweg (siehe DeckService.getCardAndColorStats) - wie
+   * crossGroupStats bewusst nur fürs eigene Profil. Precons fließen dort bewusst nicht mit ein. */
   readonly cardAndColorStats = signal<CardAndColorStats | null>(null);
 
   /** Hex-Werte je Manafarbe für den Farb-Swatch, abgestimmt auf die Pip-Farben im öffentlichen
@@ -139,15 +139,21 @@ export class ProfileTab {
     G: '#0fb345',
   };
 
-  readonly mostLikedColorHex = computed<string | null>(() => {
-    const color = this.cardAndColorStats()?.mostLikedColor?.color;
-    return color ? ProfileTab.COLOR_HEX[color] : null;
-  });
+  readonly colorHex = (color: string): string => ProfileTab.COLOR_HEX[color] ?? '#8a8a8a';
 
-  readonly mostLikedColorLabel = computed<string | null>(() => {
-    const color = this.cardAndColorStats()?.mostLikedColor?.color;
-    return color ? this.i18n.t(`pip.${color}`) : null;
-  });
+  readonly colorLabel = (color: string): string => this.i18n.t(`pip.${color}`);
+
+  /** Anzeigename einer Farbkombination (z.B. "Weiß/Blau") - "Farblos" bei leerer Farbidentität. */
+  readonly colorComboLabel = (colors: string[]): string =>
+    colors.length === 0 ? this.i18n.t('deckView.colorless') : colors.map((c) => this.colorLabel(c)).join(' / ');
+
+  /** Höchster Farb-Zählwert für die relative Balkenbreite in der Farb-Rangliste. */
+  readonly maxColorCount = computed(() => Math.max(1, ...this.cardAndColorStats()?.colorRanking.map((c) => c.count) ?? [1]));
+
+  /** Höchster Zählwert für die relative Balkenbreite in der Farbkombinations-Rangliste. */
+  readonly maxColorComboCount = computed(() =>
+    Math.max(1, ...(this.cardAndColorStats()?.colorComboRanking.map((c) => c.count) ?? [1]))
+  );
 
   private async refreshUnassignedAndDecks(): Promise<void> {
     const userId = this.profileService.profile()?.id;

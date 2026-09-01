@@ -355,15 +355,6 @@
               <span class="hint">{{ top.commander }} ({{ top.wins }} / {{ top.games }} · {{ top.winRate | number: '1.0-0' }}%)</span>
             </li>
           }
-          @if (mostLikedColorLabel(); as colorLabel) {
-            <li>
-              <span class="player-name">{{ i18n.t('profile.crossGroupMostLikedColor') }}</span>
-              <span class="hint color-hint">
-                <span class="color-swatch" [style.background]="mostLikedColorHex()"></span>
-                {{ colorLabel }}
-              </span>
-            </li>
-          }
         </ul>
       </section>
     }
@@ -378,6 +369,53 @@
           <li>
             <span class="player-name">{{ i + 1 }}. {{ card.cardName }}</span>
             <span class="hint">{{ card.count }}×</span>
+          </li>
+        }
+      </ul>
+    </section>
+  }
+
+  @if ((cardAndColorStats()?.colorRanking?.length ?? 0) > 0) {
+    <section class="glass-card">
+      <h2>{{ i18n.t('profile.colorRankingTitle') }}</h2>
+      <p class="hint">{{ i18n.t('profile.colorRankingHint') }}</p>
+      <div class="color-bar-chart">
+        @for (c of cardAndColorStats()!.colorRanking; track c.color) {
+          <div class="color-bar-row">
+            <span class="color-swatch" [style.background]="colorHex(c.color)"></span>
+            <span class="color-bar-label">{{ colorLabel(c.color) }}</span>
+            <div class="color-bar-track">
+              <div
+                class="color-bar-fill"
+                [style.width.%]="(c.count / maxColorCount()) * 100"
+                [style.background]="colorHex(c.color)"
+              ></div>
+            </div>
+            <span class="color-bar-value">{{ c.count }}</span>
+          </div>
+        }
+      </div>
+    </section>
+  }
+
+  @if ((cardAndColorStats()?.colorComboRanking?.length ?? 0) > 0) {
+    <section class="glass-card">
+      <h2>{{ i18n.t('profile.colorComboRankingTitle') }}</h2>
+      <p class="hint">{{ i18n.t('profile.colorComboRankingHint') }}</p>
+      <ul class="player-list compact-list">
+        @for (combo of cardAndColorStats()!.colorComboRanking; track combo.colors.join('') + combo.count) {
+          <li>
+            <span class="player-name combo-name">
+              @if (combo.colors.length === 0) {
+                <span class="color-swatch colorless-swatch"></span>
+              } @else {
+                @for (c of combo.colors; track c) {
+                  <span class="color-swatch" [style.background]="colorHex(c)"></span>
+                }
+              }
+              {{ colorComboLabel(combo.colors) }}
+            </span>
+            <span class="hint">{{ combo.count }}×</span>
           </li>
         }
       </ul>

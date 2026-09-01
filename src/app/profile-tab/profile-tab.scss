@@ -301,18 +301,69 @@
     font-weight: 600;
   }
 
-  .color-hint {
+  .combo-name {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
+    gap: 4px;
+    flex-wrap: wrap;
   }
+}
 
-  .color-swatch {
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    flex-shrink: 0;
-  }
+.color-swatch {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.colorless-swatch {
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+}
+
+// Farb-Rangliste - gleiches Balken-Layout wie der Pip-Chart im öffentlichen Decks-Suchreiter
+// (public-deck-browser.scss), hier separat gehalten, da view-encapsulated Styles nicht
+// komponentenübergreifend geteilt werden können.
+.color-bar-chart {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.color-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.color-bar-label {
+  font-size: 0.82rem;
+  opacity: 0.85;
+  flex: 0 0 62px;
+  white-space: nowrap;
+}
+
+.color-bar-track {
+  flex: 1;
+  height: 12px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.color-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  min-width: 6px;
+  transition: width 0.2s ease;
+}
+
+.color-bar-value {
+  font-size: 0.82rem;
+  font-weight: 600;
+  flex: 0 0 24px;
+  text-align: right;
 }
 
 .qr-code {

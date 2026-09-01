@@ -81,17 +81,27 @@ export interface MostUsedCardStats {
   count: number;
 }
 
-export interface MostLikedColorStats {
+export interface ColorStat {
   color: 'W' | 'U' | 'B' | 'R' | 'G';
   /** Gewichteter Wert (Anzahl Partien mit Decks, deren Farbidentität diese Farbe enthält). */
   count: number;
 }
 
-/** Kombinierte "Meistgespielte Karten" (Top 5, ohne Länder) und "Lieblingsfarbe" über ALLE
- * Gruppen hinweg - siehe DeckService.getCardAndColorStats(). */
+export interface ColorComboStat {
+  /** Farbidentität eines Decks (leer = farblos), sortiert in WUBRG-Reihenfolge. */
+  colors: ('W' | 'U' | 'B' | 'R' | 'G')[];
+  /** Gewichteter Wert (Anzahl Partien mit Decks genau dieser Farbidentität). */
+  count: number;
+}
+
+/** Kombinierte "Meistgespielte Karten" (Top 5, ohne Länder), vollständige Farb-Rangliste (alle 5)
+ * und Rangliste der genutzten Farbkombinationen über ALLE Gruppen hinweg - siehe
+ * DeckService.getCardAndColorStats(). Precon-Decks fließen bewusst in keine dieser Statistiken
+ * ein, da sie nicht selbst zusammengestellt wurden. */
 export interface CardAndColorStats {
   mostUsedCards: MostUsedCardStats[];
-  mostLikedColor: MostLikedColorStats | null;
+  colorRanking: ColorStat[];
+  colorComboRanking: ColorComboStat[];
 }
 
 export interface DeckCard {
@@ -1334,16 +1344,17 @@ export class DeckService {
   }
 
   /**
-   * "Meistgespielte Karten" (Top 5, ohne Länder) und "Lieblingsfarbe" über ALLE Gruppen hinweg -
-   * beides gewichtet nach tatsächlich gespielten Partien je Deck (ein Zähler je Karte bzw. je
-   * Farbe in decks.color_identity, jeweils einmal pro Deck multipliziert mit dessen Partienanzahl),
-   * damit ein oft gespieltes Deck stärker einfließt als eines, das nur einmal gebaut wurde. Eine
-   * Karte zählt dabei je Deck nur 1x, unabhängig von deck_cards.quantity (siehe Kommentar unten).
-   * Länder (Basic wie Nichtbasis) werden rein anhand der Typzeile erkannt (enthält "Land") - es
-   * gibt kein eigenes "isLand"-Flag in deck_cards.
+   * "Meistgespielte Karten" (Top 5, ohne Länder), vollständige Farb-Rangliste (alle 5 Farben) und
+   * Rangliste der genutzten Farbkombinationen über ALLE Gruppen hinweg - alles gewichtet nach
+   * tatsächlich gespielten Partien je Deck (ein Zähler je Karte/Farbe/Farbkombination, einmal pro
+   * Deck multipliziert mit dessen Partienanzahl), damit ein oft gespieltes Deck stärker einfließt
+   * als eines, das nur einmal gebaut wurde. Eine Karte zählt dabei je Deck nur 1x, unabhängig von
+   * deck_cards.quantity. Länder (Basic wie Nichtbasis) werden rein anhand der Typzeile erkannt
+   * (enthält "Land") - es gibt kein eigenes "isLand"-Flag in deck_cards. Precon-Decks (is_precon)
+   * fließen bewusst NICHT ein, da sie nicht selbst zusammengestellt wurden.
    */
   async getCardAndColorStats(owner: DeckOwner): Promise<CardAndColorStats> {
-    const empty: CardAndColorStats = { mostUsedCards: [], mostLikedColor: null };
+    const empty: CardAndColorStats = { mostUsedCards: [], colorRanking: [], colorComboRanking: [] };
     const playerIds = await this.resolvePlayerIds(owner);
     if (playerIds.length === 0) return empty;
 
@@ -1365,27 +1376,44 @@ export class DeckService {
       gamesPerDeck.set(deckId, (gamesPerDeck.get(deckId) ?? 0) + 1);
     }
 
-    const deckIds = [...gamesPerDeck.keys()];
+    const allDeckIds = [...gamesPerDeck.keys()];
+    if (allDeckIds.length === 0) return empty;
+
+    const { data: deckRows, error: deckError } = await supabase
+      .from('decks')
+      .select('id, color_identity, is_precon')
+      .in('id', allDeckIds);
+
+    if (deckError) console.error('Konnte Deck-Metadaten für die Karten-/Farbstatistik nicht laden:', deckError);
+
+    // Precon-Decks bewusst ausgeschlossen - siehe Doc-Kommentar oben.
+    const nonPreconDeckRows = ((deckRows ?? []) as any[]).filter((d) => !d.is_precon);
+    const deckIds = nonPreconDeckRows.map((d) => d.id as string);
     if (deckIds.length === 0) return empty;
 
-    const [{ data: deckRows, error: deckError }, { data: cardRows, error: cardError }] = await Promise.all([
-      supabase.from('decks').select('id, color_identity').in('id', deckIds),
-      supabase
-        .from('deck_cards')
-        .select('deck_id, card_name, quantity, image_url, type_line, is_maybeboard, is_token')
-        .in('deck_id', deckIds),
-    ]);
+    const { data: cardRows, error: cardError } = await supabase
+      .from('deck_cards')
+      .select('deck_id, card_name, quantity, image_url, type_line, is_maybeboard, is_token')
+      .in('deck_id', deckIds);
 
-    if (deckError) console.error('Konnte Farbidentität der Decks für die Farbstatistik nicht laden:', deckError);
     if (cardError) console.error('Konnte Deckkarten für die Kartenstatistik nicht laden:', cardError);
 
+    const WUBRG = ['W', 'U', 'B', 'R', 'G'] as const;
     const colorCounts = new Map<string, number>();
-    for (const row of (deckRows ?? []) as any[]) {
+    const comboCounts = new Map<string, { colors: string[]; count: number }>();
+    for (const row of nonPreconDeckRows) {
       const games = gamesPerDeck.get(row.id) ?? 0;
       if (games === 0) continue;
-      for (const color of (row.color_identity ?? []) as string[]) {
+
+      const colors = WUBRG.filter((c) => ((row.color_identity ?? []) as string[]).includes(c));
+      for (const color of colors) {
         colorCounts.set(color, (colorCounts.get(color) ?? 0) + games);
       }
+
+      const comboKey = colors.join('');
+      const combo = comboCounts.get(comboKey) ?? { colors, count: 0 };
+      combo.count += games;
+      comboCounts.set(comboKey, combo);
     }
 
     const cardCounts = new Map<string, { count: number; imageUrl: string | null }>();
@@ -1406,16 +1434,18 @@ export class DeckService {
       cardCounts.set(row.card_name, entry);
     }
 
-    const topColor = [...colorCounts.entries()].sort((a, b) => b[1] - a[1])[0];
-    const topCards = [...cardCounts.entries()]
+    const colorRanking = WUBRG.map((color) => ({ color, count: colorCounts.get(color) ?? 0 })).sort(
+      (a, b) => b.count - a.count
+    );
+    const colorComboRanking = [...comboCounts.values()]
+      .map((c) => ({ colors: c.colors as ColorComboStat['colors'], count: c.count }))
+      .sort((a, b) => b.count - a.count);
+    const mostUsedCards = [...cardCounts.entries()]
       .sort((a, b) => b[1].count - a[1].count)
       .slice(0, 5)
       .map(([cardName, s]) => ({ cardName, imageUrl: s.imageUrl, count: s.count }));
 
-    return {
-      mostLikedColor: topColor ? { color: topColor[0] as MostLikedColorStats['color'], count: topColor[1] } : null,
-      mostUsedCards: topCards,
-    };
+    return { mostUsedCards, colorRanking, colorComboRanking };
   }
 
   /**
