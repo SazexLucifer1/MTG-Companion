@@ -147,12 +147,43 @@ export class ProfileTab {
   readonly colorComboLabel = (colors: string[]): string =>
     colors.length === 0 ? this.i18n.t('deckView.colorless') : colors.map((c) => this.colorLabel(c)).join(' / ');
 
+  /** Umschalter für Karten-/Farb-/Farbkombinations-Statistik: "games" gewichtet nach tatsächlich
+   * gespielten Partien je Deck (Standard), "decks" zählt jedes Deck nur 1x, unabhängig davon, wie
+   * oft es gespielt wurde. Wirkt auf alle drei Ranglisten gemeinsam, da sie aus derselben Abfrage
+   * (DeckService.getCardAndColorStats) stammen, die beide Zählweisen mitliefert. */
+  readonly statsWeightMode = signal<'games' | 'decks'>('games');
+
+  setStatsWeightMode(mode: 'games' | 'decks'): void {
+    this.statsWeightMode.set(mode);
+  }
+
+  /** Wählt je nach aktivem Modus den passenden Zählwert eines Eintrags aus. */
+  readonly countFor = (entry: { gameCount: number; deckCount: number }): number =>
+    this.statsWeightMode() === 'games' ? entry.gameCount : entry.deckCount;
+
+  /** Top 5 meistgenutzte Karten nach aktivem Modus sortiert - die Rohliste enthält bewusst ALLE
+   * Karten (siehe DeckService.getCardAndColorStats), damit hier ohne Neuladen umsortiert werden kann. */
+  readonly rankedMostUsedCards = computed(() => {
+    const cards = this.cardAndColorStats()?.mostUsedCards ?? [];
+    return [...cards].sort((a, b) => this.countFor(b) - this.countFor(a)).slice(0, 5);
+  });
+
+  readonly rankedColorRanking = computed(() => {
+    const colors = this.cardAndColorStats()?.colorRanking ?? [];
+    return [...colors].sort((a, b) => this.countFor(b) - this.countFor(a));
+  });
+
+  readonly rankedColorComboRanking = computed(() => {
+    const combos = this.cardAndColorStats()?.colorComboRanking ?? [];
+    return [...combos].sort((a, b) => this.countFor(b) - this.countFor(a));
+  });
+
   /** Höchster Farb-Zählwert für die relative Balkenbreite in der Farb-Rangliste. */
-  readonly maxColorCount = computed(() => Math.max(1, ...this.cardAndColorStats()?.colorRanking.map((c) => c.count) ?? [1]));
+  readonly maxColorCount = computed(() => Math.max(1, ...this.rankedColorRanking().map((c) => this.countFor(c))));
 
   /** Höchster Zählwert für die relative Balkenbreite in der Farbkombinations-Rangliste. */
   readonly maxColorComboCount = computed(() =>
-    Math.max(1, ...(this.cardAndColorStats()?.colorComboRanking.map((c) => c.count) ?? [1]))
+    Math.max(1, ...this.rankedColorComboRanking().map((c) => this.countFor(c)))
   );
 
   private async refreshUnassignedAndDecks(): Promise<void> {

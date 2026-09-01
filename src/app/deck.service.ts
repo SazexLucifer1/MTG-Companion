@@ -77,21 +77,27 @@ export interface CrossGroupPersonalStats {
 export interface MostUsedCardStats {
   cardName: string;
   imageUrl: string | null;
-  /** Gewichteter Wert (Kartenanzahl im Deck × tatsächlich gespielte Partien mit diesem Deck), keine reine Deckzahl. */
-  count: number;
+  /** Anzahl tatsächlich gespielter Partien über alle Decks hinweg, die diese Karte enthalten. */
+  gameCount: number;
+  /** Anzahl verschiedener Decks, die diese Karte enthalten (unabhängig von Partienanzahl). */
+  deckCount: number;
 }
 
 export interface ColorStat {
   color: 'W' | 'U' | 'B' | 'R' | 'G';
-  /** Gewichteter Wert (Anzahl Partien mit Decks, deren Farbidentität diese Farbe enthält). */
-  count: number;
+  /** Anzahl tatsächlich gespielter Partien mit Decks, deren Farbidentität diese Farbe enthält. */
+  gameCount: number;
+  /** Anzahl verschiedener Decks, deren Farbidentität diese Farbe enthält. */
+  deckCount: number;
 }
 
 export interface ColorComboStat {
   /** Farbidentität eines Decks (leer = farblos), sortiert in WUBRG-Reihenfolge. */
   colors: ('W' | 'U' | 'B' | 'R' | 'G')[];
-  /** Gewichteter Wert (Anzahl Partien mit Decks genau dieser Farbidentität). */
-  count: number;
+  /** Anzahl tatsächlich gespielter Partien mit Decks genau dieser Farbidentität. */
+  gameCount: number;
+  /** Anzahl verschiedener Decks genau dieser Farbidentität. */
+  deckCount: number;
 }
 
 /** Kombinierte "Meistgespielte Karten" (Top 5, ohne Länder), vollständige Farb-Rangliste (alle 5)
@@ -1344,14 +1350,16 @@ export class DeckService {
   }
 
   /**
-   * "Meistgespielte Karten" (Top 5, ohne Länder), vollständige Farb-Rangliste (alle 5 Farben) und
-   * Rangliste der genutzten Farbkombinationen über ALLE Gruppen hinweg - alles gewichtet nach
-   * tatsächlich gespielten Partien je Deck (ein Zähler je Karte/Farbe/Farbkombination, einmal pro
-   * Deck multipliziert mit dessen Partienanzahl), damit ein oft gespieltes Deck stärker einfließt
-   * als eines, das nur einmal gebaut wurde. Eine Karte zählt dabei je Deck nur 1x, unabhängig von
-   * deck_cards.quantity. Länder (Basic wie Nichtbasis) werden rein anhand der Typzeile erkannt
-   * (enthält "Land") - es gibt kein eigenes "isLand"-Flag in deck_cards. Precon-Decks (is_precon)
-   * fließen bewusst NICHT ein, da sie nicht selbst zusammengestellt wurden.
+   * Meistgespielte Karten (ohne Länder), vollständige Farb-Rangliste (alle 5 Farben) und Rangliste
+   * der genutzten Farbkombinationen über ALLE Gruppen hinweg. Liefert je Eintrag sowohl gameCount
+   * (nach tatsächlich gespielten Partien je Deck gewichtet, ein oft gespieltes Deck zählt stärker)
+   * als auch deckCount (reine Deckanzahl, unabhängig von Partien) - das Profil-Tab lässt den
+   * Nutzer zwischen beiden Sichten umschalten, ohne neu laden zu müssen. Eine Karte zählt dabei je
+   * Deck nur 1x, unabhängig von deck_cards.quantity. Länder (Basic wie Nichtbasis) werden rein
+   * anhand der Typzeile erkannt (enthält "Land") - es gibt kein eigenes "isLand"-Flag in
+   * deck_cards. Precon-Decks (is_precon) fließen bewusst NICHT ein, da sie nicht selbst
+   * zusammengestellt wurden. mostUsedCards liefert die vollständige Liste (nicht nur Top 5) -
+   * das Slicen auf die Top 5 je aktivem Modus übernimmt das Profil-Tab.
    */
   async getCardAndColorStats(owner: DeckOwner): Promise<CardAndColorStats> {
     const empty: CardAndColorStats = { mostUsedCards: [], colorRanking: [], colorComboRanking: [] };
@@ -1399,24 +1407,28 @@ export class DeckService {
     if (cardError) console.error('Konnte Deckkarten für die Kartenstatistik nicht laden:', cardError);
 
     const WUBRG = ['W', 'U', 'B', 'R', 'G'] as const;
-    const colorCounts = new Map<string, number>();
-    const comboCounts = new Map<string, { colors: string[]; count: number }>();
+    const colorCounts = new Map<string, { gameCount: number; deckCount: number }>();
+    const comboCounts = new Map<string, { colors: string[]; gameCount: number; deckCount: number }>();
     for (const row of nonPreconDeckRows) {
       const games = gamesPerDeck.get(row.id) ?? 0;
       if (games === 0) continue;
 
       const colors = WUBRG.filter((c) => ((row.color_identity ?? []) as string[]).includes(c));
       for (const color of colors) {
-        colorCounts.set(color, (colorCounts.get(color) ?? 0) + games);
+        const entry = colorCounts.get(color) ?? { gameCount: 0, deckCount: 0 };
+        entry.gameCount += games;
+        entry.deckCount += 1;
+        colorCounts.set(color, entry);
       }
 
       const comboKey = colors.join('');
-      const combo = comboCounts.get(comboKey) ?? { colors, count: 0 };
-      combo.count += games;
+      const combo = comboCounts.get(comboKey) ?? { colors, gameCount: 0, deckCount: 0 };
+      combo.gameCount += games;
+      combo.deckCount += 1;
       comboCounts.set(comboKey, combo);
     }
 
-    const cardCounts = new Map<string, { count: number; imageUrl: string | null }>();
+    const cardCounts = new Map<string, { gameCount: number; deckCount: number; imageUrl: string | null }>();
     for (const row of (cardRows ?? []) as any[]) {
       if ((row.is_maybeboard ?? false) || (row.is_token ?? false)) continue;
       const typeLine = (row.type_line as string | null) ?? '';
@@ -1428,22 +1440,25 @@ export class DeckService {
       // Zählt pro Deck nur 1x mit, unabhängig von deck_cards.quantity - eine Karte, die mehrfach im
       // selben Deck steckt (z.B. bei Nicht-Singleton-Formaten), soll nicht stärker gewichtet werden
       // als eine, die nur einmal drin ist.
-      const entry = cardCounts.get(row.card_name) ?? { count: 0, imageUrl: null };
-      entry.count += games;
+      const entry = cardCounts.get(row.card_name) ?? { gameCount: 0, deckCount: 0, imageUrl: null };
+      entry.gameCount += games;
+      entry.deckCount += 1;
       if (!entry.imageUrl && row.image_url) entry.imageUrl = row.image_url;
       cardCounts.set(row.card_name, entry);
     }
 
-    const colorRanking = WUBRG.map((color) => ({ color, count: colorCounts.get(color) ?? 0 })).sort(
-      (a, b) => b.count - a.count
-    );
+    const colorRanking = WUBRG.map((color) => ({
+      color,
+      gameCount: colorCounts.get(color)?.gameCount ?? 0,
+      deckCount: colorCounts.get(color)?.deckCount ?? 0,
+    })).sort((a, b) => b.gameCount - a.gameCount);
     const colorComboRanking = [...comboCounts.values()]
-      .map((c) => ({ colors: c.colors as ColorComboStat['colors'], count: c.count }))
-      .sort((a, b) => b.count - a.count);
+      .map((c) => ({ colors: c.colors as ColorComboStat['colors'], gameCount: c.gameCount, deckCount: c.deckCount }))
+      .sort((a, b) => b.gameCount - a.gameCount);
+    // Volle Liste statt nur Top 5 - das Profil-Tab schneidet je nach gewähltem Modus (Partien/Decks) selbst zu.
     const mostUsedCards = [...cardCounts.entries()]
-      .sort((a, b) => b[1].count - a[1].count)
-      .slice(0, 5)
-      .map(([cardName, s]) => ({ cardName, imageUrl: s.imageUrl, count: s.count }));
+      .map(([cardName, s]) => ({ cardName, imageUrl: s.imageUrl, gameCount: s.gameCount, deckCount: s.deckCount }))
+      .sort((a, b) => b.gameCount - a.gameCount);
 
     return { mostUsedCards, colorRanking, colorComboRanking };
   }
