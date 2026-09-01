@@ -1335,11 +1335,12 @@ export class DeckService {
 
   /**
    * "Meistgespielte Karten" (Top 5, ohne Länder) und "Lieblingsfarbe" über ALLE Gruppen hinweg -
-   * beides gewichtet nach tatsächlich gespielten Partien je Deck (deck_cards.quantity bzw. ein
-   * Zähler je Farbe in decks.color_identity, jeweils multipliziert mit der Partienanzahl des
-   * Decks), damit ein oft gespieltes Deck stärker einfließt als eines, das nur einmal gebaut
-   * wurde. Länder (Basic wie Nichtbasis) werden rein anhand der Typzeile erkannt (enthält
-   * "Land") - es gibt kein eigenes "isLand"-Flag in deck_cards.
+   * beides gewichtet nach tatsächlich gespielten Partien je Deck (ein Zähler je Karte bzw. je
+   * Farbe in decks.color_identity, jeweils einmal pro Deck multipliziert mit dessen Partienanzahl),
+   * damit ein oft gespieltes Deck stärker einfließt als eines, das nur einmal gebaut wurde. Eine
+   * Karte zählt dabei je Deck nur 1x, unabhängig von deck_cards.quantity (siehe Kommentar unten).
+   * Länder (Basic wie Nichtbasis) werden rein anhand der Typzeile erkannt (enthält "Land") - es
+   * gibt kein eigenes "isLand"-Flag in deck_cards.
    */
   async getCardAndColorStats(owner: DeckOwner): Promise<CardAndColorStats> {
     const empty: CardAndColorStats = { mostUsedCards: [], mostLikedColor: null };
@@ -1396,8 +1397,11 @@ export class DeckService {
       const games = gamesPerDeck.get(row.deck_id) ?? 0;
       if (games === 0) continue;
 
+      // Zählt pro Deck nur 1x mit, unabhängig von deck_cards.quantity - eine Karte, die mehrfach im
+      // selben Deck steckt (z.B. bei Nicht-Singleton-Formaten), soll nicht stärker gewichtet werden
+      // als eine, die nur einmal drin ist.
       const entry = cardCounts.get(row.card_name) ?? { count: 0, imageUrl: null };
-      entry.count += (row.quantity ?? 1) * games;
+      entry.count += games;
       if (!entry.imageUrl && row.image_url) entry.imageUrl = row.image_url;
       cardCounts.set(row.card_name, entry);
     }
