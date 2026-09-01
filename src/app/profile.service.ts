@@ -10,8 +10,11 @@ export interface Profile {
   language: 'de' | 'en';
   /** IDs der schon gesehenen/übersprungenen Einführungs-Touren (z.B. "intro", "match", "deckDetail", ...) - siehe tutorial.service.ts. */
   tutorialsSeen: string[];
-  /** Darf eingereichte Bugreports/Feedback aller Nutzer einsehen (siehe feedback.service.ts) - manuell in Supabase gesetzt, kein Selbstbedienungs-Feature. */
-  isAppAdmin: boolean;
+  /** Developer-Flag (manuell in Supabase gesetzt, kein Selbstbedienungs-Feature) - nur für den/die
+   * App-Betreiber:in gedacht. Schaltet neben der Feedback-Inbox (siehe feedback.service.ts) auch
+   * per RLS einen Schreibzugriff auf FREMDE profiles-Zeilen frei (siehe sql/roles-permissions-*.sql)
+   * - für Support/Debugging, nicht für normale Gruppen-Admins. */
+  isDeveloper: boolean;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -93,7 +96,7 @@ export class ProfileService {
     this.loading.set(true);
     const { data, error } = await supabase
       .from('profiles')
-      .select('id, display_name, avatar_url, favorite_commanders, language, tutorials_seen, is_app_admin')
+      .select('id, display_name, avatar_url, favorite_commanders, language, tutorials_seen, is_developer')
       .eq('id', userId)
       .single();
 
@@ -110,7 +113,7 @@ export class ProfileService {
         favoriteCommanders: data.favorite_commanders ?? [],
         language: data.language === 'en' ? 'en' : 'de',
         tutorialsSeen: data.tutorials_seen ?? [],
-        isAppAdmin: data.is_app_admin ?? false,
+        isDeveloper: data.is_developer ?? false,
       });
       this.loadedUserId = userId;
     }

@@ -18,7 +18,7 @@ export interface FeedbackEntry {
 
 /**
  * Bugreport-/Feedback-Formular (für alle Nutzer) + Verwaltungsansicht (nur für Accounts mit
- * profiles.is_app_admin) - hält den Zustand global, damit der Einreichen-Dialog als eigene,
+ * profiles.is_developer) - hält den Zustand global, damit der Einreichen-Dialog als eigene,
  * root-level gerenderte Komponente existieren kann (analog DeckPdfService).
  */
 @Injectable({ providedIn: 'root' })
@@ -94,7 +94,7 @@ export class FeedbackService {
   readonly showDoneEntries = signal(false);
 
   async loadEntries(): Promise<void> {
-    if (!this.profileService.profile()?.isAppAdmin) return;
+    if (!this.profileService.profile()?.isDeveloper) return;
 
     this.entriesLoading.set(true);
     const { data, error } = await supabase
@@ -128,7 +128,7 @@ export class FeedbackService {
   }
 
   async setStatus(id: string, status: FeedbackStatus): Promise<void> {
-    if (!this.profileService.profile()?.isAppAdmin) return;
+    if (!this.profileService.profile()?.isDeveloper) return;
 
     const { error } = await supabase.from('feedback').update({ status }).eq('id', id);
     if (error) {

@@ -216,10 +216,10 @@ export class ProfileTab {
       });
     });
 
-    // Lädt die Feedback-Eingänge einmalig nach, sobald erkannt wird, dass der Account App-Admin ist.
+    // Lädt die Feedback-Eingänge einmalig nach, sobald erkannt wird, dass der Account Developer ist.
     let feedbackLoadTriggered = false;
     effect(() => {
-      if (!this.profileService.profile()?.isAppAdmin || feedbackLoadTriggered) return;
+      if (!this.profileService.profile()?.isDeveloper || feedbackLoadTriggered) return;
       feedbackLoadTriggered = true;
       this.feedback.loadEntries();
     });

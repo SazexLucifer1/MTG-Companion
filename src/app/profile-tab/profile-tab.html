@@ -110,6 +110,7 @@
         <span class="avatar-placeholder">👤</span>
       </div>
       <span class="profile-name">{{ profileService.viewingPlayerName() }}</span>
+      <span class="glass-chip small">{{ i18n.t('profile.npcBadge') }}</span>
     </div>
     <button class="glass-button small" (click)="profileService.stopViewingProfile()">{{ i18n.t('profile.backToMyProfile') }}</button>
   </div>
@@ -242,6 +243,9 @@
           @if (!isEditing()) {
             <div class="profile-name-row">
               <span class="profile-name">{{ profileService.profile()?.displayName }}</span>
+              @if (profileService.profile()?.isDeveloper) {
+                <span class="glass-chip small">{{ i18n.t('profile.developerBadge') }}</span>
+              }
               <button class="icon-button" (click)="startEdit()" [attr.aria-label]="i18n.t('profile.editNameAria')">✏️</button>
             </div>
           } @else {
@@ -477,10 +481,10 @@
   </div>
   }
 
-  @if (profileService.profile()?.isAppAdmin) {
+  @if (profileService.profile()?.isDeveloper) {
   <section class="glass-card">
     <div class="section-header-row">
-      <h2>{{ i18n.t('feedback.adminTitle') }}</h2>
+      <h2>{{ i18n.t('feedback.developerTitle') }}</h2>
       <button class="glass-chip small" [class.active]="feedback.showDoneEntries()" (click)="feedback.toggleShowDone()">
         {{ i18n.t('feedback.showDone') }}
       </button>
