@@ -488,34 +488,93 @@
   <div class="options-menu-sheet choice-sheet" (click)="$event.stopPropagation()">
     <h3>{{ i18n.t('group.permissionsTitle') }}</h3>
     <p class="hint">{{ i18n.t('group.permissionsHint') }}</p>
+
     @if (permissionsBusy()) {
       <p class="hint">{{ i18n.t('group.loadingGroups') }}</p>
-    } @else if (permissionsMembers().length === 0) {
-      <p class="hint">{{ i18n.t('group.permissionsNoMembers') }}</p>
     } @else {
-      <ul class="visibility-list choice-candidate-list">
-        @for (member of permissionsMembers(); track member.userId) {
-        <li>
-          <span class="player-name">{{ member.displayName }}</span>
-          @for (category of permissionCategories; track category.labelKey) {
-            <p class="hint permission-category-label">{{ i18n.t(category.labelKey) }}</p>
+      <div class="section-header-row">
+        <h4>{{ i18n.t('group.roles') }}</h4>
+        <button class="glass-button small" (click)="openRoleEditor()">{{ i18n.t('group.newRole') }}</button>
+      </div>
+
+      @if (groupRoles().length === 0) {
+        <p class="hint">{{ i18n.t('group.noRolesYet') }}</p>
+      } @else {
+        <ul class="visibility-list choice-candidate-list">
+          @for (role of groupRoles(); track role.id) {
+          <li>
+            <div class="section-header-row">
+              <span class="player-name">{{ role.name }}</span>
+              <div class="chip-row">
+                <button class="icon-button" (click)="openRoleEditor(role)" [attr.aria-label]="i18n.t('group.editRoleAria')">✏️</button>
+                <button class="icon-button" (click)="deleteRole(role)" [attr.aria-label]="i18n.t('group.deleteRoleAria')">🗑</button>
+              </div>
+            </div>
             <div class="chip-row">
-              @for (permission of category.permissions; track permission) {
-                <button
-                  type="button"
-                  class="glass-chip small"
-                  [class.active]="hasPermissionGrant(member.userId, permission)"
-                  [class.danger]="permission === 'group.resetAllData'"
-                  (click)="togglePermissionGrant(member.userId, permission)"
-                >
-                  {{ i18n.t('permission.' + permission) }}
-                </button>
+              @for (permission of role.permissions; track permission) {
+                <span class="glass-chip small active">{{ i18n.t('permission.' + permission) }}</span>
               }
             </div>
+          </li>
           }
-        </li>
+        </ul>
+      }
+
+      @if (showRoleEditor()) {
+        <div class="add-row">
+          <input
+            class="glass-input"
+            type="text"
+            [placeholder]="i18n.t('group.roleNamePlaceholder')"
+            [ngModel]="roleNameDraft()"
+            (ngModelChange)="roleNameDraft.set($event)"
+          />
+        </div>
+        @for (category of permissionCategories; track category.labelKey) {
+          <p class="hint permission-category-label">{{ i18n.t(category.labelKey) }}</p>
+          <div class="chip-row">
+            @for (permission of category.permissions; track permission) {
+              <button
+                type="button"
+                class="glass-chip small"
+                [class.active]="rolePermissionsDraft().has(permission)"
+                [class.danger]="permission === 'group.resetAllData'"
+                (click)="toggleDraftPermission(permission)"
+              >
+                {{ i18n.t('permission.' + permission) }}
+              </button>
+            }
+          </div>
         }
-      </ul>
+        <div class="chip-row">
+          <button class="glass-button primary small" [disabled]="!roleNameDraft().trim()" (click)="saveRole()">{{ i18n.t('group.saveRole') }}</button>
+          <button class="glass-button small" (click)="closeRoleEditor()">{{ i18n.t('group.close') }}</button>
+        </div>
+      }
+
+      <h4>{{ i18n.t('group.assignRoles') }}</h4>
+      @if (permissionsMembers().length === 0) {
+        <p class="hint">{{ i18n.t('group.permissionsNoMembers') }}</p>
+      } @else {
+        <ul class="visibility-list choice-candidate-list">
+          @for (member of permissionsMembers(); track member.userId) {
+          <li>
+            <span class="player-name">{{ member.displayName }}</span>
+            <select
+              class="glass-input"
+              [attr.aria-label]="i18n.t('group.assignRoleAria')"
+              [ngModel]="member.customRoleId ?? ''"
+              (ngModelChange)="assignRoleToMember(member.userId, $event)"
+            >
+              <option value="">{{ i18n.t('group.noRole') }}</option>
+              @for (role of groupRoles(); track role.id) {
+                <option [value]="role.id">{{ role.name }}</option>
+              }
+            </select>
+          </li>
+          }
+        </ul>
+      }
     }
     <button class="glass-button" (click)="closePermissionsDialog()">{{ i18n.t('group.close') }}</button>
   </div>

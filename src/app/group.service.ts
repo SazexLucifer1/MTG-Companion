@@ -2,7 +2,7 @@ import { Injectable, signal, computed, effect, inject } from '@angular/core';
 import { supabase } from './supabase.client';
 import { AuthService } from './auth.service';
 import { chunk } from './array-utils';
-import { GroupPermission } from './group-permissions';
+import { GroupPermission, GroupRole } from './group-permissions';
 
 export interface MyGroup {
   id: string;
@@ -87,20 +87,16 @@ export class GroupService {
   private async loadMyGroups(userId: string): Promise<void> {
     this.loading.set(true);
 
-    const [{ data, error }, { data: permissionRows, error: permissionError }] = await Promise.all([
-      supabase.from('group_members').select('role, groups ( id, name )').eq('user_id', userId),
-      supabase.from('group_member_permissions').select('group_id, permission').eq('user_id', userId),
-    ]);
+    const { data, error } = await supabase
+      .from('group_members')
+      .select('role, groups ( id, name ), custom_role_id, group_roles ( permissions )')
+      .eq('user_id', userId);
 
     if (error) {
       console.error('Konnte Gruppen nicht laden:', error);
       this.myGroups.set([]);
       this.loading.set(false);
       return;
-    }
-
-    if (permissionError) {
-      console.error('Konnte eigene Rechte nicht laden:', permissionError);
     }
 
     const groups: MyGroup[] = (data as any[])
@@ -113,11 +109,15 @@ export class GroupService {
 
     this.myGroups.set(groups);
 
+    // Die eigenen Rechte ergeben sich jetzt aus der zugewiesenen Rolle (group_roles.permissions)
+    // statt aus einzeln vergebenen Rechten (siehe loadGroupRoles/createRole/assignRole) - der
+    // Owner-Bypass in hasPermission()/hasPermissionFor() bleibt davon unberührt.
     const permissionMap = new Map<string, Set<GroupPermission>>();
-    for (const row of (permissionRows ?? []) as { group_id: string; permission: GroupPermission }[]) {
-      const set = permissionMap.get(row.group_id) ?? new Set<GroupPermission>();
-      set.add(row.permission);
-      permissionMap.set(row.group_id, set);
+    for (const row of data as any[]) {
+      if (!row.groups) continue;
+      const permissions: GroupPermission[] = row.group_roles?.permissions ?? [];
+      if (permissions.length === 0) continue;
+      permissionMap.set(row.groups.id, new Set(permissions));
     }
     this.myPermissions.set(permissionMap);
 
@@ -129,77 +129,87 @@ export class GroupService {
     this.loading.set(false);
   }
 
-  /** Alle einzeln vergebenen Rechte einer Gruppe je Mitglied - für die Rechte-Verwaltung im Gruppen-Tab (nur Owner). */
-  async loadGroupPermissions(groupId: string): Promise<Map<string, Set<GroupPermission>>> {
+  /** Alle in dieser Gruppe definierten Rollen - für die Rollen-Verwaltung im Gruppen-Tab (nur Owner). */
+  async loadGroupRoles(groupId: string): Promise<GroupRole[]> {
     const { data, error } = await supabase
-      .from('group_member_permissions')
-      .select('user_id, permission')
-      .eq('group_id', groupId);
+      .from('group_roles')
+      .select('id, group_id, name, permissions')
+      .eq('group_id', groupId)
+      .order('name');
 
     if (error) {
-      console.error('Konnte Gruppen-Rechte nicht laden:', error);
-      return new Map();
+      console.error('Konnte Rollen nicht laden:', error);
+      return [];
     }
 
-    const map = new Map<string, Set<GroupPermission>>();
-    for (const row of data as { user_id: string; permission: GroupPermission }[]) {
-      const set = map.get(row.user_id) ?? new Set<GroupPermission>();
-      set.add(row.permission);
-      map.set(row.user_id, set);
-    }
-    return map;
+    return (data as any[]).map((row) => ({
+      id: row.id,
+      groupId: row.group_id,
+      name: row.name,
+      permissions: row.permissions ?? [],
+    }));
   }
 
-  /** Nur für den Owner: schaltet einem Mitglied ein einzelnes Recht frei. */
-  async grantPermission(groupId: string, userId: string, permission: GroupPermission): Promise<boolean> {
-    if (!this.isOwnerOf(groupId)) return false;
+  /** Nur für den Owner: legt eine neue benannte Rolle mit den gegebenen Rechten an. */
+  async createRole(groupId: string, name: string, permissions: GroupPermission[]): Promise<GroupRole | null> {
+    if (!this.isOwnerOf(groupId)) return null;
 
-    const { error } = await supabase
-      .from('group_member_permissions')
-      .upsert(
-        { group_id: groupId, user_id: userId, permission, granted_by: this.auth.currentUser()?.id ?? null },
-        { onConflict: 'group_id,user_id,permission' }
-      );
+    const { data, error } = await supabase
+      .from('group_roles')
+      .insert({ group_id: groupId, name, permissions, created_by: this.auth.currentUser()?.id ?? null })
+      .select('id, group_id, name, permissions')
+      .single();
 
-    if (error) {
-      console.error('Konnte Recht nicht vergeben:', error);
-      return false;
+    if (error || !data) {
+      console.error('Konnte Rolle nicht anlegen:', error);
+      return null;
     }
 
-    if (userId === this.auth.currentUser()?.id) {
-      this.myPermissions.update((map) => {
-        const next = new Map(map);
-        const set = new Set(next.get(groupId) ?? []);
-        set.add(permission);
-        next.set(groupId, set);
-        return next;
-      });
+    return { id: data.id, groupId: data.group_id, name: data.name, permissions: data.permissions ?? [] };
+  }
+
+  /** Nur für den Owner: ändert Name und/oder Rechte einer bestehenden Rolle. */
+  async updateRole(roleId: string, changes: { name?: string; permissions?: GroupPermission[] }): Promise<boolean> {
+    const { error } = await supabase.from('group_roles').update(changes).eq('id', roleId);
+
+    if (error) {
+      console.error('Konnte Rolle nicht ändern:', error);
+      return false;
     }
     return true;
   }
 
-  /** Nur für den Owner: entzieht einem Mitglied ein einzelnes Recht wieder. */
-  async revokePermission(groupId: string, userId: string, permission: GroupPermission): Promise<boolean> {
+  /** Nur für den Owner: löscht eine Rolle - Mitglieder mit dieser Rolle fallen automatisch auf "keine Rolle" zurück. */
+  async deleteRole(roleId: string): Promise<boolean> {
+    const { error } = await supabase.from('group_roles').delete().eq('id', roleId);
+
+    if (error) {
+      console.error('Konnte Rolle nicht löschen:', error);
+      return false;
+    }
+    return true;
+  }
+
+  /** Nur für den Owner: weist einem Mitglied eine Rolle zu (oder entzieht sie mit roleId = null). */
+  async assignRole(groupId: string, userId: string, roleId: string | null, permissions: GroupPermission[]): Promise<boolean> {
     if (!this.isOwnerOf(groupId)) return false;
 
     const { error } = await supabase
-      .from('group_member_permissions')
-      .delete()
+      .from('group_members')
+      .update({ custom_role_id: roleId })
       .eq('group_id', groupId)
-      .eq('user_id', userId)
-      .eq('permission', permission);
+      .eq('user_id', userId);
 
     if (error) {
-      console.error('Konnte Recht nicht entziehen:', error);
+      console.error('Konnte Rolle nicht zuweisen:', error);
       return false;
     }
 
     if (userId === this.auth.currentUser()?.id) {
       this.myPermissions.update((map) => {
         const next = new Map(map);
-        const set = new Set(next.get(groupId) ?? []);
-        set.delete(permission);
-        next.set(groupId, set);
+        if (permissions.length === 0) next.delete(groupId);
+        else next.set(groupId, new Set(permissions));
         return next;
       });
     }
@@ -455,10 +465,10 @@ export class GroupService {
 
   async loadGroupMembers(
     groupId: string
-  ): Promise<{ userId: string; displayName: string; role: string; avatarUrl: string | null }[]> {
+  ): Promise<{ userId: string; displayName: string; role: string; avatarUrl: string | null; customRoleId: string | null }[]> {
     const { data, error } = await supabase
       .from('group_members')
-      .select('user_id, role, profiles ( display_name, avatar_url )')
+      .select('user_id, role, custom_role_id, profiles ( display_name, avatar_url )')
       .eq('group_id', groupId);
 
     if (error) {
@@ -471,6 +481,7 @@ export class GroupService {
       displayName: row.profiles?.display_name ?? 'Unbekannt',
       role: row.role,
       avatarUrl: row.profiles?.avatar_url ?? null,
+      customRoleId: row.custom_role_id ?? null,
     }));
   }
 

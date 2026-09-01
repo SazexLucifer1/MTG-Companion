@@ -9,7 +9,7 @@ import { PlayerAvatar } from '../player-avatar/player-avatar';
 import { I18nService } from '../i18n.service';
 import { DialogService } from '../dialog.service';
 import { GAME_MODES, GameMode } from '../models';
-import { GROUP_PERMISSION_CATEGORIES, GroupPermission } from '../group-permissions';
+import { GROUP_PERMISSION_CATEGORIES, GroupPermission, GroupRole } from '../group-permissions';
 
 @Component({
   selector: 'app-group-tab',
@@ -583,28 +583,34 @@ export class GroupTab {
     await this.mtg.setQualificationThreshold(mode, parsed);
   }
 
-  // --- Rechte-Verwaltung pro Mitglied (nur Host): einzelne, bisher owner-exklusive Aktionen
-  // gezielt freischalten - siehe GroupService.hasPermission()/grantPermission()/revokePermission(). ---
+  // --- Rollen-Verwaltung (nur Host): eigene benannte Rechte-Bündel definieren und einzelnen
+  // Mitgliedern zuweisen - siehe GroupService.loadGroupRoles()/createRole()/updateRole()/
+  // deleteRole()/assignRole(). Ersetzt die frühere Einzel-Rechte-Vergabe pro Mitglied. ---
 
   readonly permissionCategories = GROUP_PERMISSION_CATEGORIES;
   readonly showPermissionsDialog = signal(false);
   readonly permissionsGroupId = signal<string | null>(null);
-  readonly permissionsMembers = signal<{ userId: string; displayName: string; role: string }[]>([]);
+  readonly permissionsMembers = signal<{ userId: string; displayName: string; role: string; customRoleId: string | null }[]>([]);
   readonly permissionsBusy = signal(false);
-  /** userId -> Set der für diese Person in dieser Gruppe freigeschalteten Rechte. */
-  readonly permissionGrants = signal<Map<string, Set<GroupPermission>>>(new Map());
+  readonly groupRoles = signal<GroupRole[]>([]);
+
+  /** null = neue Rolle wird angelegt, sonst ID der gerade bearbeiteten Rolle. */
+  readonly showRoleEditor = signal(false);
+  readonly editingRoleId = signal<string | null>(null);
+  readonly roleNameDraft = signal('');
+  readonly rolePermissionsDraft = signal<Set<GroupPermission>>(new Set());
 
   async openPermissionsDialog(groupId: string): Promise<void> {
     this.permissionsGroupId.set(groupId);
     this.permissionsBusy.set(true);
-    const [members, grants] = await Promise.all([
+    const [members, roles] = await Promise.all([
       this.groupService.loadGroupMembers(groupId),
-      this.groupService.loadGroupPermissions(groupId),
+      this.groupService.loadGroupRoles(groupId),
     ]);
     // Der Owner selbst hat implizit immer alle Rechte (siehe hasPermission) - eine Zeile für ihn in
-    // der Matrix wäre irreführend (Toggle hätte keine Wirkung), deshalb hier ausgeblendet.
+    // der Zuweisungsliste wäre irreführend (eine Rolle hätte keine Wirkung), deshalb ausgeblendet.
     this.permissionsMembers.set(members.filter((m) => m.role !== 'owner'));
-    this.permissionGrants.set(grants);
+    this.groupRoles.set(roles);
     this.permissionsBusy.set(false);
     this.showPermissionsDialog.set(true);
   }
@@ -613,30 +619,82 @@ export class GroupTab {
     this.showPermissionsDialog.set(false);
     this.permissionsGroupId.set(null);
     this.permissionsMembers.set([]);
-    this.permissionGrants.set(new Map());
+    this.groupRoles.set([]);
+    this.closeRoleEditor();
   }
 
-  hasPermissionGrant(userId: string, permission: GroupPermission): boolean {
-    return this.permissionGrants().get(userId)?.has(permission) ?? false;
+  roleName(roleId: string | null): string {
+    if (!roleId) return this.i18n.t('group.noRole');
+    return this.groupRoles().find((r) => r.id === roleId)?.name ?? this.i18n.t('group.noRole');
   }
 
-  async togglePermissionGrant(userId: string, permission: GroupPermission): Promise<void> {
+  openRoleEditor(role?: GroupRole): void {
+    this.editingRoleId.set(role?.id ?? null);
+    this.roleNameDraft.set(role?.name ?? '');
+    this.rolePermissionsDraft.set(new Set(role?.permissions ?? []));
+    this.showRoleEditor.set(true);
+  }
+
+  closeRoleEditor(): void {
+    this.showRoleEditor.set(false);
+    this.editingRoleId.set(null);
+    this.roleNameDraft.set('');
+    this.rolePermissionsDraft.set(new Set());
+  }
+
+  toggleDraftPermission(permission: GroupPermission): void {
+    this.rolePermissionsDraft.update((set) => {
+      const next = new Set(set);
+      if (next.has(permission)) next.delete(permission);
+      else next.add(permission);
+      return next;
+    });
+  }
+
+  async saveRole(): Promise<void> {
+    const groupId = this.permissionsGroupId();
+    const name = this.roleNameDraft().trim();
+    if (!groupId || !name) return;
+
+    const permissions = Array.from(this.rolePermissionsDraft());
+    const editingId = this.editingRoleId();
+
+    if (editingId) {
+      const ok = await this.groupService.updateRole(editingId, { name, permissions });
+      if (!ok) return;
+      this.groupRoles.update((roles) => roles.map((r) => (r.id === editingId ? { ...r, name, permissions } : r)));
+    } else {
+      const created = await this.groupService.createRole(groupId, name, permissions);
+      if (!created) return;
+      this.groupRoles.update((roles) => [...roles, created]);
+    }
+    this.closeRoleEditor();
+  }
+
+  async deleteRole(role: GroupRole): Promise<void> {
+    if (!(await this.dialog.confirm(this.i18n.t('group.deleteRoleConfirm', { name: role.name })))) return;
+
+    const ok = await this.groupService.deleteRole(role.id);
+    if (!ok) return;
+
+    this.groupRoles.update((roles) => roles.filter((r) => r.id !== role.id));
+    this.permissionsMembers.update((members) =>
+      members.map((m) => (m.customRoleId === role.id ? { ...m, customRoleId: null } : m))
+    );
+  }
+
+  async assignRoleToMember(userId: string, roleId: string): Promise<void> {
     const groupId = this.permissionsGroupId();
     if (!groupId) return;
 
-    const granted = this.hasPermissionGrant(userId, permission);
-    const ok = granted
-      ? await this.groupService.revokePermission(groupId, userId, permission)
-      : await this.groupService.grantPermission(groupId, userId, permission);
+    const resolvedRoleId = roleId || null;
+    const permissions = resolvedRoleId ? this.groupRoles().find((r) => r.id === resolvedRoleId)?.permissions ?? [] : [];
+
+    const ok = await this.groupService.assignRole(groupId, userId, resolvedRoleId, permissions);
     if (!ok) return;
 
-    this.permissionGrants.update((map) => {
-      const next = new Map(map);
-      const set = new Set(next.get(userId) ?? []);
-      if (granted) set.delete(permission);
-      else set.add(permission);
-      next.set(userId, set);
-      return next;
-    });
+    this.permissionsMembers.update((members) =>
+      members.map((m) => (m.userId === userId ? { ...m, customRoleId: resolvedRoleId } : m))
+    );
   }
 }
