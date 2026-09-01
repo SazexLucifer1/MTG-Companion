@@ -324,118 +324,132 @@
     </div>
   </section>
 
-  @if (placementDistribution().length > 0) {
-    <section class="glass-card">
-      <h2>{{ i18n.t('profile.placementDistribution') }}</h2>
-      <p class="hint">{{ i18n.t('profile.placementDistributionHint') }}</p>
-      <ul class="player-list compact-list">
-        @for (p of placementDistribution(); track p.placement) {
-          <li>
-            <span class="player-name">{{ i18n.t('placement.badge', { placement: p.placement }) }}</span>
-            <span class="hint">{{ p.count }}×</span>
-          </li>
-        }
-      </ul>
-    </section>
+  @if (profileService.profile()) {
+    <div class="chip-row profile-view-toggle">
+      <button class="glass-button" [class.active]="profileViewTab() === 'stats'" (click)="setProfileViewTab('stats')">
+        {{ i18n.t('profile.viewTabStats') }}
+      </button>
+      <button class="glass-button" [class.active]="profileViewTab() === 'decks'" (click)="setProfileViewTab('decks')">
+        {{ i18n.t('profile.viewTabDecks') }}
+      </button>
+    </div>
   }
 
-  @if (crossGroupStats(); as overall) {
-    @if (overall.totalGames > 0) {
+  @if (profileViewTab() === 'stats') {
+    @if (placementDistribution().length > 0) {
       <section class="glass-card">
-        <h2>{{ i18n.t('profile.crossGroupStatsTitle') }}</h2>
-        <p class="hint">{{ i18n.t('profile.crossGroupStatsHint', { groups: overall.groupCount }) }}</p>
+        <h2>{{ i18n.t('profile.placementDistribution') }}</h2>
+        <p class="hint">{{ i18n.t('profile.placementDistributionHint') }}</p>
         <ul class="player-list compact-list">
-          <li>
-            <span class="player-name">{{ i18n.t('profile.crossGroupGames') }}</span>
-            <span class="hint">{{ overall.totalWins }} / {{ overall.totalGames }} {{ i18n.t('stats.wins') }} · {{ overall.winRate | number: '1.0-0' }}%</span>
-          </li>
-          @if (overall.topCommander; as top) {
+          @for (p of placementDistribution(); track p.placement) {
             <li>
-              <span class="player-name">{{ i18n.t('profile.crossGroupTopCommander') }}</span>
-              <span class="hint">{{ top.commander }} ({{ top.wins }} / {{ top.games }} · {{ top.winRate | number: '1.0-0' }}%)</span>
-            </li>
-          }
-        </ul>
-      </section>
-    }
-  }
-
-  @if (cardAndColorStats(); as stats) {
-    @if (stats.mostUsedCards.length > 0 || stats.colorRanking.length > 0 || stats.colorComboRanking.length > 0) {
-      <div class="chip-row sort-toggle">
-        <button class="glass-chip small" [class.active]="statsWeightMode() === 'games'" (click)="setStatsWeightMode('games')">
-          {{ i18n.t('profile.statsWeightByGames') }}
-        </button>
-        <button class="glass-chip small" [class.active]="statsWeightMode() === 'decks'" (click)="setStatsWeightMode('decks')">
-          {{ i18n.t('profile.statsWeightByDecks') }}
-        </button>
-      </div>
-    }
-
-    @if (stats.mostUsedCards.length > 0) {
-      <section class="glass-card">
-        <h2>{{ i18n.t('profile.mostUsedCardsTitle') }}</h2>
-        <p class="hint">{{ i18n.t('profile.mostUsedCardsHint') }}</p>
-        <ul class="player-list compact-list">
-          @for (card of rankedMostUsedCards(); track card.cardName; let i = $index) {
-            <li>
-              <span class="player-name">{{ i + 1 }}. {{ card.cardName }}</span>
-              <span class="hint">{{ countFor(card) }}×</span>
+              <span class="player-name">{{ i18n.t('placement.badge', { placement: p.placement }) }}</span>
+              <span class="hint">{{ p.count }}×</span>
             </li>
           }
         </ul>
       </section>
     }
 
-    @if (stats.colorRanking.length > 0) {
-      <section class="glass-card">
-        <h2>{{ i18n.t('profile.colorRankingTitle') }}</h2>
-        <p class="hint">{{ i18n.t('profile.colorRankingHint') }}</p>
-        <div class="color-bar-chart">
-          @for (c of rankedColorRanking(); track c.color) {
-            <div class="color-bar-row">
-              <span class="color-swatch" [style.background]="colorHex(c.color)"></span>
-              <span class="color-bar-label">{{ colorLabel(c.color) }}</span>
-              <div class="color-bar-track">
-                <div
-                  class="color-bar-fill"
-                  [style.width.%]="(countFor(c) / maxColorCount()) * 100"
-                  [style.background]="colorHex(c.color)"
-                ></div>
-              </div>
-              <span class="color-bar-value">{{ countFor(c) }}</span>
-            </div>
-          }
+    @if (crossGroupStats(); as overall) {
+      @if (overall.totalGames > 0) {
+        <section class="glass-card">
+          <h2>{{ i18n.t('profile.crossGroupStatsTitle') }}</h2>
+          <p class="hint">{{ i18n.t('profile.crossGroupStatsHint', { groups: overall.groupCount }) }}</p>
+          <ul class="player-list compact-list">
+            <li>
+              <span class="player-name">{{ i18n.t('profile.crossGroupGames') }}</span>
+              <span class="hint">{{ overall.totalWins }} / {{ overall.totalGames }} {{ i18n.t('stats.wins') }} · {{ overall.winRate | number: '1.0-0' }}%</span>
+            </li>
+            @if (overall.topCommander; as top) {
+              <li>
+                <span class="player-name">{{ i18n.t('profile.crossGroupTopCommander') }}</span>
+                <span class="hint">{{ top.commander }} ({{ top.wins }} / {{ top.games }} · {{ top.winRate | number: '1.0-0' }}%)</span>
+              </li>
+            }
+          </ul>
+        </section>
+      }
+    }
+
+    @if (cardAndColorStats(); as stats) {
+      @if (stats.mostUsedCards.length > 0 || stats.colorRanking.length > 0 || stats.colorComboRanking.length > 0) {
+        <div class="chip-row sort-toggle">
+          <button class="glass-chip small" [class.active]="statsWeightMode() === 'games'" (click)="setStatsWeightMode('games')">
+            {{ i18n.t('profile.statsWeightByGames') }}
+          </button>
+          <button class="glass-chip small" [class.active]="statsWeightMode() === 'decks'" (click)="setStatsWeightMode('decks')">
+            {{ i18n.t('profile.statsWeightByDecks') }}
+          </button>
         </div>
-      </section>
-    }
+      }
 
-    @if (stats.colorComboRanking.length > 0) {
-      <section class="glass-card">
-        <h2>{{ i18n.t('profile.colorComboRankingTitle') }}</h2>
-        <p class="hint">{{ i18n.t('profile.colorComboRankingHint') }}</p>
-        <ul class="player-list compact-list">
-          @for (combo of rankedColorComboRanking(); track combo.colors.join('')) {
-            <li>
-              <span class="player-name combo-name">
-                @if (combo.colors.length === 0) {
-                  <span class="color-swatch colorless-swatch"></span>
-                } @else {
-                  @for (c of combo.colors; track c) {
-                    <span class="color-swatch" [style.background]="colorHex(c)"></span>
+      @if (stats.mostUsedCards.length > 0) {
+        <section class="glass-card">
+          <h2>{{ i18n.t('profile.mostUsedCardsTitle') }}</h2>
+          <p class="hint">{{ i18n.t('profile.mostUsedCardsHint') }}</p>
+          <ul class="player-list compact-list">
+            @for (card of rankedMostUsedCards(); track card.cardName; let i = $index) {
+              <li>
+                <span class="player-name">{{ i + 1 }}. {{ card.cardName }}</span>
+                <span class="hint">{{ countFor(card) }}×</span>
+              </li>
+            }
+          </ul>
+        </section>
+      }
+
+      @if (stats.colorRanking.length > 0) {
+        <section class="glass-card">
+          <h2>{{ i18n.t('profile.colorRankingTitle') }}</h2>
+          <p class="hint">{{ i18n.t('profile.colorRankingHint') }}</p>
+          <div class="color-bar-chart">
+            @for (c of rankedColorRanking(); track c.color) {
+              <div class="color-bar-row">
+                <span class="color-swatch" [style.background]="colorHex(c.color)"></span>
+                <span class="color-bar-label">{{ colorLabel(c.color) }}</span>
+                <div class="color-bar-track">
+                  <div
+                    class="color-bar-fill"
+                    [style.width.%]="(countFor(c) / maxColorCount()) * 100"
+                    [style.background]="colorHex(c.color)"
+                  ></div>
+                </div>
+                <span class="color-bar-value">{{ countFor(c) }}</span>
+              </div>
+            }
+          </div>
+        </section>
+      }
+
+      @if (stats.colorComboRanking.length > 0) {
+        <section class="glass-card">
+          <h2>{{ i18n.t('profile.colorComboRankingTitle') }}</h2>
+          <p class="hint">{{ i18n.t('profile.colorComboRankingHint') }}</p>
+          <ul class="player-list compact-list">
+            @for (combo of rankedColorComboRanking(); track combo.colors.join('')) {
+              <li>
+                <span class="player-name combo-name">
+                  @if (combo.colors.length === 0) {
+                    <span class="color-swatch colorless-swatch"></span>
+                  } @else {
+                    @for (c of combo.colors; track c) {
+                      <span class="color-swatch" [style.background]="colorHex(c)"></span>
+                    }
                   }
-                }
-                {{ colorComboLabel(combo.colors) }}
-              </span>
-              <span class="hint">{{ countFor(combo) }}×</span>
-            </li>
-          }
-        </ul>
-      </section>
+                  {{ colorComboLabel(combo.colors) }}
+                </span>
+                <span class="hint">{{ countFor(combo) }}×</span>
+              </li>
+            }
+          </ul>
+        </section>
+      }
     }
   }
 
-  @if (profileService.profile(); as profile) {
+  @if (profileService.profile()) {
+  @if (profileViewTab() === 'decks') {
   <section class="glass-card">
     <div class="section-header-row">
       <h2>{{ i18n.t('profile.myDecks') }}</h2>
@@ -463,6 +477,7 @@
         [commanderBackImage]="commanderBackImage"
       />
     </section>
+  }
   }
 
   @if (showBackgroundsDialog()) {

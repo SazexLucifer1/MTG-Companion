@@ -123,6 +123,14 @@ export class ProfileTab {
    * bewusst nur fürs eigene Profil, nicht beim Ansehen eines fremden. Das Stats-Tab bleibt unverändert pro aktiver Gruppe. */
   readonly crossGroupStats = signal<CrossGroupPersonalStats | null>(null);
 
+  /** Umschalter zwischen den Statistik-Sektionen und dem Deck-Bereich im eigenen Profil - ohne den
+   * hätte man immer erst an allen Statistiken vorbeiscrollen müssen, um zu den Decks zu kommen. */
+  readonly profileViewTab = signal<'stats' | 'decks'>('stats');
+
+  setProfileViewTab(tab: 'stats' | 'decks'): void {
+    this.profileViewTab.set(tab);
+  }
+
   /** Meistgespielte Karten (ohne Länder), vollständige Farb-Rangliste und Farbkombinations-Rangliste
    * über ALLE Gruppen des eigenen Accounts hinweg (siehe DeckService.getCardAndColorStats) - wie
    * crossGroupStats bewusst nur fürs eigene Profil. Precons fließen dort bewusst nicht mit ein. */

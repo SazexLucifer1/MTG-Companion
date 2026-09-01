@@ -24,6 +24,19 @@
   margin: 8px 0 4px;
 }
 
+.profile-view-toggle {
+  margin: 4px 0 12px;
+
+  .glass-button {
+    flex: 1;
+  }
+
+  .glass-button.active {
+    background: rgba(138, 180, 255, 0.35);
+    border-color: rgba(138, 180, 255, 0.7);
+  }
+}
+
 .pager {
   align-items: center;
   justify-content: center;
