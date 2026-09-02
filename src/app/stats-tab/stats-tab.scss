@@ -1,3 +1,5 @@
+@use '../../styles/breakpoints' as bp;
+
 .section-header-row {
   display: flex;
   align-items: center;
@@ -396,4 +398,23 @@
   display: block;
   max-width: var(--content-measure);
   margin: 0 auto;
+}
+
+// Ab Tablet passen mehrere Einträge nebeneinander - dasselbe Muster wie die Deck-Liste im Profil
+// (deck-list.scss): Raster statt einer einzelnen, immer breiter werdenden Spalte, Zeilen mit
+// eigenem Rahmen statt Trennlinie. Auf dem Handy bleibt die gewohnte einspaltige Liste.
+@include bp.up(md) {
+  .player-picker-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: var(--sp-5);
+
+    li {
+      padding: var(--sp-5);
+      border-bottom: none;
+      border-radius: var(--r-lg);
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--glass-border);
+    }
+  }
 }

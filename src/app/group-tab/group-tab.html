@@ -297,7 +297,7 @@
   @if (mtg.allPlayers().length === 0) {
     <p class="hint">{{ i18n.t('group.noPlayersYet') }}</p>
   } @else {
-    <ul class="player-list">
+    <ul class="player-list player-grid">
       @for (player of mtg.allPlayers(); track player) {
         <li>
           @if (editingPlayer() === player) {
