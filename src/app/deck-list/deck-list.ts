@@ -200,9 +200,12 @@ export class DeckList {
     // Bei fremden Profilen (readonlyMode) private Decks komplett ausblenden - im eigenen Profil
     // sieht man natürlich weiterhin alle eigenen, auch die privat gestellten.
     let list = this.readonlyMode() ? this.decksWithStats().filter((d) => !d.isPrivate) : this.decksWithStats();
-    if (!this.showOutdated()) {
-      list = list.filter((d) => !d.isOutdated);
-    }
+    // Entweder-oder statt nur Ausblenden: mit eingeschaltetem Schalter waren vorher alle Decks
+    // gemischt zu sehen, wodurch man den Unterschied gar nicht erkannte. Jetzt zeigt der Schalter
+    // ausschließlich die als Outdated markierten Decks.
+    list = this.showOutdated()
+      ? list.filter((d) => d.isOutdated)
+      : list.filter((d) => !d.isOutdated);
     if (query) {
       list = list.filter((d) => d.name.toLowerCase().includes(query));
     }

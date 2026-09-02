@@ -523,7 +523,7 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     'deck.privateBadge': 'Privat - nur für dich sichtbar',
     'deck.preconBadge': 'Precon',
     'deck.outdatedBadge': 'Outdated - aus der normalen Ansicht ausgeblendet',
-    'deck.showOutdated': '🗄️ Outdated anzeigen',
+    'deck.showOutdated': '🗄️ Nur Outdated',
     'deck.msg.confirmDelete': 'Deck „{{name}}" wirklich löschen?',
 
     // --- Deck-Viewer (Deckansicht) ---
@@ -1806,7 +1806,7 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     'deck.privateBadge': 'Private - only visible to you',
     'deck.preconBadge': 'Precon',
     'deck.outdatedBadge': 'Outdated - hidden from the normal view',
-    'deck.showOutdated': '🗄️ Show outdated',
+    'deck.showOutdated': '🗄️ Only outdated',
     'deck.msg.confirmDelete': 'Really delete deck "{{name}}"?',
 
     // --- Deck viewer ---
