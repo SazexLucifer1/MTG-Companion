@@ -416,8 +416,10 @@
   // die Hälfte leer.
   grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
   gap: var(--sp-6);
-  // Kurze Karten sollen nicht auf die Höhe der längsten in ihrer Zeile aufgeblasen werden.
-  align-items: start;
+  // Karten in derselben Zeile bekommen dieselbe Höhe (Grid-Standard). Zwischenzeitlich stand hier
+  // "start", damit kurze Karten nicht aufgeblasen werden - nebeneinander sahen zwei
+  // unterschiedlich hohe Kästen aber unruhig aus.
+  align-items: stretch;
   // Ersetzt den Außenabstand, den .glass-card sonst selbst mitbringt (siehe unten).
   margin: 14px;
 

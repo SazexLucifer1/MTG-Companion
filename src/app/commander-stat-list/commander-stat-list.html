@@ -17,15 +17,18 @@
   <ul class="player-list">
     @for (c of paged(); track c.commander) {
       <li>
-        <span class="player-name card-name-cell">
-          @if (commanderImage()(c.commander); as img) {
+        @if (commanderImage()(c.commander); as img) {
           <button type="button" class="card-thumb" (click)="cardPreview.open(img, commanderBackImage()(c.commander), c.commander)">
             <app-card-image [compact]="true" [imageUrl]="img" [backImageUrl]="commanderBackImage()(c.commander)" [alt]="c.commander" />
           </button>
-          }
-          <span class="card-name-text">{{ c.commander }}</span>
-        </span>
-        <span class="hint">{{ c.wins }} / {{ c.games }} {{ i18n.t('stats.wins') }} · {{ c.winRate | number: '1.0-0' }}%</span>
+        }
+        <!-- Name oben, Werte darunter - genau wie in der Deck-Liste (deck-list.html: .deck-info).
+             Vorher teilten sich beide eine Zeile, wodurch der Name in einer schmalen Rasterspalte
+             abgeschnitten wurde ("Anhelo, th…"). -->
+        <div class="commander-info">
+          <span class="commander-name">{{ c.commander }}</span>
+          <span class="hint">{{ c.wins }} / {{ c.games }} {{ i18n.t('stats.wins') }} · {{ c.winRate | number: '1.0-0' }}%</span>
+        </div>
         <app-meter [value]="c.winRate" />
       </li>
     }

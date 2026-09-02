@@ -1,13 +1,12 @@
 import { Component, inject, signal } from '@angular/core';
 import { AuthService } from '../auth.service';
 import { I18nService } from '../i18n.service';
-import { LegalFooter } from '../legal-footer/legal-footer';
 import { LoginOverlayService } from '../login-overlay.service';
 import { APP_VERSION, APP_COMMIT } from '../version';
 
 @Component({
   selector: 'app-login',
-  imports: [LegalFooter],
+  imports: [],
   templateUrl: './login.html',
   styleUrl: './login.scss',
 })
