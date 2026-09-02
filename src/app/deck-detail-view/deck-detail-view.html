@@ -97,34 +97,45 @@
         </div>
       }
 
+      <!-- Vorher standen hier bis zu sieben gleich aussehende Chips in einer Reihe. Bilder/Text ist
+           ein Ansichtswechsel und gehört in einen segmentierten Umschalter; Bearbeiten ist die
+           primäre Aktion; Verlauf, PDF, Neu-Einlesen und Outdated sind seltene Aktionen und
+           wandern ins ⋮-Menü.
+           data-tutorial bleibt auf der Reihe bzw. am Outdated-Eintrag, damit das Tutorial seine
+           Ziele weiterhin findet. -->
       <div class="chip-row" data-tutorial="deck-view-toggles">
-        <button class="glass-chip small" [class.active]="viewer.viewMode() === 'visual'" (click)="viewer.viewMode.set('visual')">
-          {{ viewer.i18n.t('deckView.images') }}
-        </button>
-        <button class="glass-chip small" [class.active]="viewer.viewMode() === 'text'" (click)="viewer.viewMode.set('text')">
-          {{ viewer.i18n.t('deckView.text') }}
-        </button>
+        <div class="segmented">
+          <button [class.active]="viewer.viewMode() === 'visual'" (click)="viewer.viewMode.set('visual')">
+            {{ viewer.i18n.t('deckView.images') }}
+          </button>
+          <button [class.active]="viewer.viewMode() === 'text'" (click)="viewer.viewMode.set('text')">
+            {{ viewer.i18n.t('deckView.text') }}
+          </button>
+        </div>
         @if (viewer.canEditViewingDeck()) {
-          <button class="glass-chip small" [class.active]="viewer.editMode()" [disabled]="viewer.editMode()" (click)="viewer.toggleEditMode()">
+          <button class="glass-button small primary" [disabled]="viewer.editMode()" (click)="viewer.toggleEditMode()">
             {{ viewer.i18n.t('deckView.edit') }}
           </button>
         }
-        <button class="glass-chip small" [class.active]="viewer.showChangeLog()" (click)="viewer.toggleChangeLog()">
-          {{ viewer.i18n.t('deckView.history') }}
-        </button>
-        <button class="glass-chip small" [disabled]="viewer.analysisBusy()" (click)="openPdfExport()">{{ viewer.i18n.t('deckView.asPdf') }}</button>
-        @if (viewer.canEditViewingDeck()) {
-          <button class="glass-chip small" (click)="reimportDecklist()">{{ viewer.i18n.t('deckView.reimportList') }}</button>
-          <button
-            class="glass-chip small"
-            data-tutorial="deck-outdated-toggle"
-            [class.active]="deck.isOutdated"
-            [disabled]="viewer.outdatedToggleBusy()"
-            (click)="viewer.toggleOutdated()"
-          >
-            {{ deck.isOutdated ? viewer.i18n.t('deckView.unmarkOutdated') : viewer.i18n.t('deckView.markOutdated') }}
+        <app-overflow-menu [heading]="deck.name">
+          <button class="glass-button" (click)="viewer.toggleChangeLog()">
+            {{ viewer.i18n.t('deckView.history') }}
           </button>
-        }
+          <button class="glass-button" [disabled]="viewer.analysisBusy()" (click)="openPdfExport()">
+            {{ viewer.i18n.t('deckView.asPdf') }}
+          </button>
+          @if (viewer.canEditViewingDeck()) {
+            <button class="glass-button" (click)="reimportDecklist()">{{ viewer.i18n.t('deckView.reimportList') }}</button>
+            <button
+              class="glass-button"
+              data-tutorial="deck-outdated-toggle"
+              [disabled]="viewer.outdatedToggleBusy()"
+              (click)="viewer.toggleOutdated()"
+            >
+              {{ deck.isOutdated ? viewer.i18n.t('deckView.unmarkOutdated') : viewer.i18n.t('deckView.markOutdated') }}
+            </button>
+          }
+        </app-overflow-menu>
       </div>
 
       @if (viewer.showChangeLog()) {

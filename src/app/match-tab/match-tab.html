@@ -11,7 +11,9 @@
     }
   </div>
 
-  <button class="glass-chip" (click)="openTournamentPanel()">
+  <!-- Als .glass-chip stand das direkt unter den sechs Spielmodus-Chips und sah aus wie ein
+       siebter Modus-Filter. Es ist aber eine Aktion, die den ganzen Tab wechselt. -->
+  <button class="glass-button" (click)="openTournamentPanel()">
     🏆 {{ tournament.activeTournament() ? i18n.t('tournament.openPanelButton') : i18n.t('tournament.createButton') }}
   </button>
 

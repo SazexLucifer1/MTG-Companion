@@ -9,6 +9,8 @@ import { I18nService } from '../i18n.service';
 import { DialogService } from '../dialog.service';
 import { GoldfishService } from '../goldfish.service';
 import { CardImage } from '../card-image/card-image';
+import { OverflowMenu } from '../ui/overflow-menu/overflow-menu';
+import { Pager } from '../ui/pager/pager';
 
 export type DeckSortMode = 'alpha' | 'winRate' | 'games';
 
@@ -42,7 +44,7 @@ function gridBreakpointPx(): number {
 
 @Component({
   selector: 'app-deck-list',
-  imports: [DecimalPipe, FormsModule, CardImage],
+  imports: [DecimalPipe, FormsModule, CardImage, OverflowMenu, Pager],
   templateUrl: './deck-list.html',
   styleUrl: './deck-list.scss',
 })
@@ -227,9 +229,6 @@ export class DeckList {
     return this.filteredSortedDecks().slice(start, start + size);
   });
 
-  readonly pageRangeEnd = computed(() =>
-    Math.min((this.page() + 1) * this.pageSize(), this.filteredSortedDecks().length)
-  );
 
   setSearchQuery(value: string): void {
     this.searchQuery.set(value);
@@ -246,13 +245,7 @@ export class DeckList {
     this.page.set(0);
   }
 
-  prevPage(): void {
-    this.page.update((p) => Math.max(0, p - 1));
-  }
 
-  nextPage(): void {
-    this.page.update((p) => Math.min(this.totalPages() - 1, p + 1));
-  }
 
   async refreshDecks(): Promise<void> {
     const decks = await this.deckService.loadDecksForOwner(this.owner());

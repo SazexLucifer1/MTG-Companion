@@ -301,8 +301,13 @@ h3 {
   }
 
   // Volle Breite, wenn der Umschalter die Zeile führt (z.B. Unter-Tabs).
+  //
+  // Grid statt Flex, weil beim Umbruch sonst das letzte Segment allein über die ganze Breite geht
+  // (flex: 1 auf einem einzelnen Element in der zweiten Zeile). Mit auto-fit werden daraus auf dem
+  // Handy zwei gleich große Zeilen à zwei Segmenten und auf breiteren Bildschirmen eine Reihe.
   &.block {
-    display: flex;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
     width: 100%;
   }
 }

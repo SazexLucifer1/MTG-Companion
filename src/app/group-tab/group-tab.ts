@@ -10,10 +10,11 @@ import { I18nService } from '../i18n.service';
 import { DialogService } from '../dialog.service';
 import { GAME_MODES, GameMode } from '../models';
 import { GROUP_PERMISSION_CATEGORIES, GroupPermission, GroupRole } from '../group-permissions';
+import { OverflowMenu } from '../ui/overflow-menu/overflow-menu';
 
 @Component({
   selector: 'app-group-tab',
-  imports: [FormsModule, PlayerAvatar],
+  imports: [FormsModule, PlayerAvatar, OverflowMenu],
   templateUrl: './group-tab.html',
   styleUrl: './group-tab.scss',
 })

@@ -11,9 +11,13 @@
       />
     </div>
 
-    <div class="chip-row">
+    <!-- Die fünf Farbfilter sahen aus wie jeder andere graue Chip, obwohl sie Farben BEZEICHNEN.
+         Der Tupfer nimmt die Pip-Farben aus den globalen Tokens. Die Farbe ist dabei Beiwerk: der
+         Name steht daneben und der aktive Zustand hängt weiterhin am Rahmen, nicht am Tupfer. -->
+    <div class="chip-row color-filter-row">
       @for (c of colorOptions; track c) {
-        <button class="glass-chip small" [class.active]="browseColors().has(c)" (click)="toggleColor(c)">
+        <button class="glass-chip small color-chip" [class.active]="browseColors().has(c)" (click)="toggleColor(c)">
+          <span class="color-dot" [style.background]="'var(--pip-' + c.toLowerCase() + ')'"></span>
           {{ i18n.t('pip.' + c) }}
         </button>
       }

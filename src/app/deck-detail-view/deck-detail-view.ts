@@ -8,10 +8,11 @@ import { DeckPdfService } from '../deck-pdf.service';
 import { EdhrecCardlist } from '../edhrec.service';
 import { CardImage } from '../card-image/card-image';
 import { BarChart } from '../ui/bar-chart/bar-chart';
+import { OverflowMenu } from '../ui/overflow-menu/overflow-menu';
 
 @Component({
   selector: 'app-deck-detail-view',
-  imports: [CurrencyPipe, DatePipe, DecimalPipe, PercentPipe, FormsModule, CardImage, BarChart],
+  imports: [CurrencyPipe, DatePipe, DecimalPipe, PercentPipe, FormsModule, CardImage, BarChart, OverflowMenu],
   templateUrl: './deck-detail-view.html',
   styleUrl: './deck-detail-view.scss',
 })

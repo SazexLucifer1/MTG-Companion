@@ -100,11 +100,11 @@
 </div>
 }
 
-<div class="chip-row stats-view-toggle">
-  <button class="glass-chip" [class.active]="viewMode() === 'stats'" (click)="viewMode.set('stats')">
+<div class="stats-view-toggle segmented">
+  <button [class.active]="viewMode() === 'stats'" (click)="viewMode.set('stats')">
     {{ i18n.t('stats.viewStats') }}
   </button>
-  <button class="glass-chip" [class.active]="viewMode() === 'tournaments'" (click)="viewMode.set('tournaments')">
+  <button [class.active]="viewMode() === 'tournaments'" (click)="viewMode.set('tournaments')">
     {{ i18n.t('stats.viewTournaments') }}
   </button>
 </div>
@@ -129,17 +129,6 @@
 <section class="glass-card" data-tutorial="stats-filters">
   <div class="section-header-row">
     <h2>{{ i18n.t('stats.periodAndMode') }}</h2>
-    @if (false && groupService.isOwner()) {
-    <!-- Excel-Import ist aktuell nicht mehr benötigt, Code/Dialog bleiben zur späteren Wiederverwendung erhalten. -->
-    <button
-      class="icon-button"
-      (click)="openImportDialog()"
-      [attr.aria-label]="i18n.t('stats.importOpenAria')"
-      [title]="i18n.t('stats.importOpenAria')"
-    >
-      📥
-    </button>
-    }
   </div>
   <select class="glass-input" [value]="selectedYear()" (change)="setSelectedYear($event)">
     <option value="Alle">{{ i18n.t('stats.allTime') }}</option>
@@ -265,10 +254,10 @@
     {{ showPlayerDecks() ? '▾' : '▸' }} {{ i18n.t('stats.decks') }} ({{ playerDeckStats().length }})
   </button>
   @if (showPlayerDecks()) {
-  <div class="chip-row sort-toggle">
-    <button class="glass-chip small" [class.active]="playerDeckSortMode() === 'winRate'" (click)="playerDeckSortMode.set('winRate')">{{ i18n.t('sort.winRate') }}</button>
-    <button class="glass-chip small" [class.active]="playerDeckSortMode() === 'wins'" (click)="playerDeckSortMode.set('wins')">{{ i18n.t('sort.wins') }}</button>
-    <button class="glass-chip small" [class.active]="playerDeckSortMode() === 'games'" (click)="playerDeckSortMode.set('games')">{{ i18n.t('sort.games') }}</button>
+  <div class="segmented sort-toggle">
+    <button [class.active]="playerDeckSortMode() === 'winRate'" (click)="playerDeckSortMode.set('winRate')">{{ i18n.t('sort.winRate') }}</button>
+    <button [class.active]="playerDeckSortMode() === 'wins'" (click)="playerDeckSortMode.set('wins')">{{ i18n.t('sort.wins') }}</button>
+    <button [class.active]="playerDeckSortMode() === 'games'" (click)="playerDeckSortMode.set('games')">{{ i18n.t('sort.games') }}</button>
   </div>
   <ul class="ranking">
     @for (d of playerDeckStats(); track d.deckId; let i = $index) {
@@ -322,10 +311,10 @@
     {{ showPlayerCommanders() ? '▾' : '▸' }} {{ i18n.t('stats.playedCommanders') }} ({{ playerCommanderStats().length }})
   </button>
   @if (showPlayerCommanders()) {
-  <div class="chip-row sort-toggle">
-    <button class="glass-chip small" [class.active]="playerCommanderSortMode() === 'winRate'" (click)="playerCommanderSortMode.set('winRate')">{{ i18n.t('sort.winRate') }}</button>
-    <button class="glass-chip small" [class.active]="playerCommanderSortMode() === 'wins'" (click)="playerCommanderSortMode.set('wins')">{{ i18n.t('sort.wins') }}</button>
-    <button class="glass-chip small" [class.active]="playerCommanderSortMode() === 'games'" (click)="playerCommanderSortMode.set('games')">{{ i18n.t('sort.games') }}</button>
+  <div class="segmented sort-toggle">
+    <button [class.active]="playerCommanderSortMode() === 'winRate'" (click)="playerCommanderSortMode.set('winRate')">{{ i18n.t('sort.winRate') }}</button>
+    <button [class.active]="playerCommanderSortMode() === 'wins'" (click)="playerCommanderSortMode.set('wins')">{{ i18n.t('sort.wins') }}</button>
+    <button [class.active]="playerCommanderSortMode() === 'games'" (click)="playerCommanderSortMode.set('games')">{{ i18n.t('sort.games') }}</button>
   </div>
   <ul class="ranking">
     @for (c of playerCommanderStats(); track c.commander; let i = $index) {
@@ -399,10 +388,10 @@
 <!-- NEU -->
 <section class="glass-card" data-tutorial="stats-ranking">
   <h2>{{ i18n.t('stats.ranking') }}</h2>
-  <div class="chip-row sort-toggle">
-    <button class="glass-chip small" [class.active]="playerSortMode() === 'winRate'" (click)="playerSortMode.set('winRate')">{{ i18n.t('sort.winRate') }}</button>
-    <button class="glass-chip small" [class.active]="playerSortMode() === 'wins'" (click)="playerSortMode.set('wins')">{{ i18n.t('sort.wins') }}</button>
-    <button class="glass-chip small" [class.active]="playerSortMode() === 'games'" (click)="playerSortMode.set('games')">{{ i18n.t('sort.games') }}</button>
+  <div class="segmented sort-toggle">
+    <button [class.active]="playerSortMode() === 'winRate'" (click)="playerSortMode.set('winRate')">{{ i18n.t('sort.winRate') }}</button>
+    <button [class.active]="playerSortMode() === 'wins'" (click)="playerSortMode.set('wins')">{{ i18n.t('sort.wins') }}</button>
+    <button [class.active]="playerSortMode() === 'games'" (click)="playerSortMode.set('games')">{{ i18n.t('sort.games') }}</button>
   </div>
   @if (rankedPlayerStats().length === 0) {
   <p class="hint">{{ i18n.t('stats.notEnoughGamesForRanking') }}</p>
@@ -562,10 +551,10 @@
   <p class="hint">
     {{ i18n.t('stats.decksAndCommandersHint') }}
   </p>
-  <div class="chip-row sort-toggle">
-    <button class="glass-chip small" [class.active]="deckSortMode() === 'winRate'" (click)="deckSortMode.set('winRate')">{{ i18n.t('sort.winRate') }}</button>
-    <button class="glass-chip small" [class.active]="deckSortMode() === 'wins'" (click)="deckSortMode.set('wins')">{{ i18n.t('sort.wins') }}</button>
-    <button class="glass-chip small" [class.active]="deckSortMode() === 'games'" (click)="deckSortMode.set('games')">{{ i18n.t('sort.games') }}</button>
+  <div class="segmented sort-toggle">
+    <button [class.active]="deckSortMode() === 'winRate'" (click)="deckSortMode.set('winRate')">{{ i18n.t('sort.winRate') }}</button>
+    <button [class.active]="deckSortMode() === 'wins'" (click)="deckSortMode.set('wins')">{{ i18n.t('sort.wins') }}</button>
+    <button [class.active]="deckSortMode() === 'games'" (click)="deckSortMode.set('games')">{{ i18n.t('sort.games') }}</button>
   </div>
   @if (rankedCombinedStats().length === 0) {
   <p class="hint">{{ i18n.t('stats.notEnoughGamesForRankingDecks') }}</p>
