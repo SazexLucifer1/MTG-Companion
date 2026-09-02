@@ -7,7 +7,7 @@ import { I18nService } from '../i18n.service';
 import { CardImage } from '../card-image/card-image';
 import { CARD_EFFECT_FILTERS } from '../card-effect-filters';
 import { ColorFilter } from '../ui/color-filter/color-filter';
-import { ColorSelection } from '../color-filter-match';
+import { ColorSelection, EMPTY_COLOR_SELECTION } from '../color-filter-match';
 import { CmcFilter, CmcFilterValue } from '../ui/cmc-filter/cmc-filter';
 
 /**
@@ -41,7 +41,7 @@ export class PublicCardSearch {
   readonly typeFilter = signal<'all' | string>('all');
   readonly creatureTypeFilter = signal('');
   readonly cmcFilter = signal<CmcFilterValue>('all');
-  readonly colorFilter = signal<ColorSelection>([]);
+  readonly colorFilter = signal<ColorSelection>(EMPTY_COLOR_SELECTION);
   readonly effectFilter = signal<'all' | string>('all');
   readonly keywordFilter = signal<'all' | string>('all');
   readonly sortMode = signal<'name' | 'cmc'>('name');
@@ -135,7 +135,7 @@ export class PublicCardSearch {
       this.typeFilter() !== 'all' ||
       this.creatureTypeFilter().trim() !== '' ||
       this.cmcFilter() !== 'all' ||
-      this.colorFilter().length > 0 ||
+      this.colorFilter().colors.length > 0 ||
       this.effectFilter() !== 'all' ||
       this.keywordFilter() !== 'all'
     );
@@ -145,7 +145,7 @@ export class PublicCardSearch {
     this.typeFilter.set('all');
     this.creatureTypeFilter.set('');
     this.cmcFilter.set('all');
-    this.colorFilter.set([]);
+    this.colorFilter.set(EMPTY_COLOR_SELECTION);
     this.effectFilter.set('all');
     this.keywordFilter.set('all');
     this.gridResults.set([]);

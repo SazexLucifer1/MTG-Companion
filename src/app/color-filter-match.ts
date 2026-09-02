@@ -13,34 +13,55 @@ export const FILTER_COLORS = ['W', 'U', 'B', 'R', 'G'] as const;
 export const COLORLESS = 'C';
 
 /**
- * Gewählte Farben, immer in WUBRG-Reihenfolge. Leer = keine Einschränkung, ['C'] = nur farblose
- * Karten.
+ * Wie die gewählten Farben zu lesen sind:
+ *
+ * - 'exact'   - die Farbidentität ist GENAU diese Auswahl. Blau allein findet nur einfarbig blaue
+ *               Karten, Blau + Grün nur Simic-Karten. Das ist der Standard: wer eine Kombination
+ *               anklickt, meint meistens genau die.
+ * - 'atLeast' - die Farbidentität ENTHÄLT diese Auswahl, darf aber mehr haben. Blau + Grün findet
+ *               dann auch Temur- und Fünffarben-Karten.
  */
-export type ColorSelection = readonly string[];
+export type ColorMatchMode = 'exact' | 'atLeast';
+
+/** Gewählte Farben (immer in WUBRG-Reihenfolge, leer = keine Einschränkung) samt Lesart. */
+export interface ColorSelection {
+  readonly colors: readonly string[];
+  readonly mode: ColorMatchMode;
+}
+
+export const EMPTY_COLOR_SELECTION: ColorSelection = { colors: [], mode: 'exact' };
 
 /**
  * Schaltet eine Farbe an oder aus. "Farblos" und echte Farben schließen sich gegenseitig aus -
- * eine Karte ohne Farbidentität kann nicht gleichzeitig weiß sein, die Kombination wäre immer leer.
+ * eine Karte ohne Farbidentität kann nicht gleichzeitig blau sein, die Kombination wäre immer leer.
  */
-export function toggleColorSelection(selection: ColorSelection, color: string): string[] {
-  if (color === COLORLESS) return selection.includes(COLORLESS) ? [] : [COLORLESS];
-  const withoutColorless = selection.filter((c) => c !== COLORLESS);
+export function toggleColorSelection(selection: ColorSelection, color: string): ColorSelection {
+  const colors = selection.colors;
+  if (color === COLORLESS) {
+    return { ...selection, colors: colors.includes(COLORLESS) ? [] : [COLORLESS] };
+  }
+  const withoutColorless = colors.filter((c) => c !== COLORLESS);
   const next = withoutColorless.includes(color)
     ? withoutColorless.filter((c) => c !== color)
     : [...withoutColorless, color];
-  return FILTER_COLORS.filter((c) => next.includes(c));
+  return { ...selection, colors: FILTER_COLORS.filter((c) => next.includes(c)) };
 }
 
 /**
- * Passt eine Farbidentität zur Auswahl?
+ * Ist die Lesart (genau/enthält) für diese Auswahl überhaupt eine Frage?
  *
- * Mehrere Farben sind UND-verknüpft: Weiß + Blau findet alles, was mindestens Weiß UND Blau in der
- * Identität hat - also genau die mehrfarbigen Karten dieser Kombination. Eine einzelne Farbe
- * bedeutet damit weiterhin "enthält diese Farbe" wie vorher, man kann jetzt nur weiter
- * einschränken.
+ * Bei "farblos" nicht: eine leere Farbidentität enthält nichts, was sie erweitern könnte - genau
+ * und mindestens sind dasselbe. Ohne Auswahl ebenfalls nicht.
  */
+export function colorModeApplies(selection: ColorSelection): boolean {
+  return selection.colors.length > 0 && !selection.colors.includes(COLORLESS);
+}
+
+/** Passt eine Farbidentität zur Auswahl? Die Lesart steckt in selection.mode. */
 export function matchesColorSelection(identity: readonly string[], selection: ColorSelection): boolean {
-  if (selection.length === 0) return true;
-  if (selection.includes(COLORLESS)) return identity.length === 0;
-  return selection.every((color) => identity.includes(color));
+  const { colors, mode } = selection;
+  if (colors.length === 0) return true;
+  if (colors.includes(COLORLESS)) return identity.length === 0;
+  const containsAll = colors.every((color) => identity.includes(color));
+  return mode === 'atLeast' ? containsAll : containsAll && identity.length === colors.length;
 }

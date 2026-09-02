@@ -10,7 +10,7 @@ import { CardImage } from '../card-image/card-image';
 import { PartnerCardImage } from '../partner-card-image/partner-card-image';
 import { COMMANDER_ARCHETYPE_FILTERS } from '../commander-archetype-filters';
 import { ColorFilter } from '../ui/color-filter/color-filter';
-import { ColorSelection } from '../color-filter-match';
+import { ColorSelection, EMPTY_COLOR_SELECTION } from '../color-filter-match';
 
 /** Ein Treffer der Commander-Suche - 1 Karte bei einem Solo-Commander, 2 bei einem Partner-Paar (siehe searchCommanderPairs()). */
 interface CommanderBrowseEntry {
@@ -64,7 +64,7 @@ export class CommanderRecommendations {
 
   // --- Entdecken: Farb-/Mechanik-Filter statt direkter Namenseingabe (über Scryfall, siehe Klassenkommentar) ---
 
-  readonly browseColors = signal<ColorSelection>([]);
+  readonly browseColors = signal<ColorSelection>(EMPTY_COLOR_SELECTION);
   readonly browseArchetype = signal<string | null>(null);
   readonly browseCreatureType = signal<string | null>(null);
   readonly creatureTypeOptions = signal<string[]>([]);
@@ -113,7 +113,7 @@ export class CommanderRecommendations {
   canBrowse(): boolean {
     return (
       this.query().trim().length > 0 ||
-      this.browseColors().length > 0 ||
+      this.browseColors().colors.length > 0 ||
       this.browseArchetype() !== null ||
       this.browseCreatureType() !== null
     );
@@ -124,7 +124,7 @@ export class CommanderRecommendations {
     this.browseBusy.set(true);
     this.browseResults.set([]);
 
-    const colors = [...this.browseColors()];
+    const colors = [...this.browseColors().colors];
     const archetype = this.browseArchetype();
     const archetypeQuery = archetype ? this.archetypeOptions.find((f) => f.value === archetype)?.query : undefined;
     const filters = { name: this.query(), archetypeQuery, creatureType: this.browseCreatureType() };
@@ -145,7 +145,7 @@ export class CommanderRecommendations {
   resetBrowse(): void {
     this.query.set('');
     this.suggestions.set([]);
-    this.browseColors.set([]);
+    this.browseColors.set(EMPTY_COLOR_SELECTION);
     this.browseArchetype.set(null);
     this.browseCreatureType.set(null);
     this.browseResults.set([]);

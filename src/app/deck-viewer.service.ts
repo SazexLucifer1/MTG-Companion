@@ -14,7 +14,7 @@ import { GroupService } from './group.service';
 import { MtgService } from './mtg.service';
 import { I18nService } from './i18n.service';
 import { COMMANDER_ARCHETYPE_FILTERS } from './commander-archetype-filters';
-import { ColorSelection, matchesColorSelection } from './color-filter-match';
+import { ColorSelection, EMPTY_COLOR_SELECTION, matchesColorSelection } from './color-filter-match';
 import { BarChartDatum } from './ui/bar-chart/bar-chart';
 import {
   manaCurveChartData,
@@ -575,7 +575,7 @@ export class DeckViewerService {
   readonly cmcFilter = signal<'all' | number>('all');
   readonly typeFilterValue = signal<'all' | string>('all');
   readonly creatureTypeFilter = signal<'all' | string>('all');
-  readonly colorFilter = signal<ColorSelection>([]);
+  readonly colorFilter = signal<ColorSelection>(EMPTY_COLOR_SELECTION);
   readonly keywordFilter = signal('all');
   readonly effectFilter = signal('all');
   /** Ergebnis der letzten Effekt-Abfrage (lowercase Kartennamen) - null solange kein Effekt-Filter aktiv oder noch nicht geladen. */
@@ -616,7 +616,7 @@ export class DeckViewerService {
     }
 
     const colors = this.colorFilter();
-    if (colors.length > 0) {
+    if (colors.colors.length > 0) {
       const identity = this.viewingCardDetails().get(card.cardName.toLowerCase())?.colorIdentity ?? [];
       if (!matchesColorSelection(identity, colors)) return false;
     }
@@ -658,7 +658,7 @@ export class DeckViewerService {
       this.cmcFilter() !== 'all' ||
       this.typeFilterValue() !== 'all' ||
       this.creatureTypeFilter() !== 'all' ||
-      this.colorFilter().length > 0 ||
+      this.colorFilter().colors.length > 0 ||
       this.keywordFilter() !== 'all' ||
       this.effectFilter() !== 'all'
   );
@@ -668,7 +668,7 @@ export class DeckViewerService {
     this.cmcFilter.set('all');
     this.typeFilterValue.set('all');
     this.creatureTypeFilter.set('all');
-    this.colorFilter.set([]);
+    this.colorFilter.set(EMPTY_COLOR_SELECTION);
     this.keywordFilter.set('all');
     this.effectFilter.set('all');
     this.effectMatchNames.set(null);
@@ -726,7 +726,7 @@ export class DeckViewerService {
   readonly addCardQuery = signal('');
   readonly addCardTypeFilter = signal<'all' | string>('all');
   readonly addCardCreatureTypeFilter = signal('');
-  readonly addCardColorFilter = signal<ColorSelection>([]);
+  readonly addCardColorFilter = signal<ColorSelection>(EMPTY_COLOR_SELECTION);
   readonly addCardCmcFilter = signal<'all' | number>('all');
   readonly addCardEffectFilter = signal('all');
   readonly addCardKeywordFilter = signal('all');
@@ -1357,7 +1357,7 @@ export class DeckViewerService {
     this.addCardQuery.set('');
     this.addCardTypeFilter.set('all');
     this.addCardCreatureTypeFilter.set('');
-    this.addCardColorFilter.set([]);
+    this.addCardColorFilter.set(EMPTY_COLOR_SELECTION);
     this.addCardCmcFilter.set('all');
     this.addCardEffectFilter.set('all');
     this.addCardKeywordFilter.set('all');
@@ -1642,7 +1642,7 @@ export class DeckViewerService {
       !query.trim() &&
       type === 'all' &&
       !creatureType.trim() &&
-      colors.length === 0 &&
+      colors.colors.length === 0 &&
       cmc === 'all' &&
       effect === 'all' &&
       keyword === 'all'

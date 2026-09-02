@@ -1,0 +1,14 @@
+// Trennt die Farbauswahl von ihrer Lesart (genau/enthält). Ein eigenes Element statt eines Rahmens
+// am Knopf, damit der Strich beim Zeilenumbruch mitwandert statt am Zeilenende zu kleben.
+.mode-divider {
+  align-self: stretch;
+  width: 1px;
+  margin: 2px 4px;
+  background: var(--glass-border);
+}
+
+// Kleiner als die Farbnamen-Segmente: die Lesart ist eine Nebenentscheidung zur Farbauswahl.
+.mode-segment {
+  font-size: 0.78rem;
+  padding: var(--sp-2) var(--sp-4);
+}

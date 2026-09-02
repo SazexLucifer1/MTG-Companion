@@ -552,6 +552,11 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     'colorCombo.mono': 'Mono-{{color}}',
     'colorCombo.fiveColor': 'Fünffarbig',
 
+    'colorFilter.modeExact': 'genau',
+    'colorFilter.modeExactTitle': 'Nur Karten mit genau dieser Farbkombination',
+    'colorFilter.modeAtLeast': 'enthält',
+    'colorFilter.modeAtLeastTitle': 'Auch Karten mit weiteren Farben',
+
     'deckViewer.type.Planeswalker': 'Planeswalker',
     'deckViewer.type.Battle': 'Battle',
     'deckViewer.type.Kreatur': 'Kreatur',
@@ -1848,6 +1853,11 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
 
     'colorCombo.mono': 'Mono-{{color}}',
     'colorCombo.fiveColor': 'Five-color',
+
+    'colorFilter.modeExact': 'exactly',
+    'colorFilter.modeExactTitle': 'Only cards with exactly this color combination',
+    'colorFilter.modeAtLeast': 'includes',
+    'colorFilter.modeAtLeastTitle': 'Also cards with additional colors',
 
     'deckViewer.type.Planeswalker': 'Planeswalker',
     'deckViewer.type.Battle': 'Battle',

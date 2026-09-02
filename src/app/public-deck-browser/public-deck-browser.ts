@@ -10,7 +10,7 @@ import { PartnerCardImage } from '../partner-card-image/partner-card-image';
 import { normalizeCardName } from '../array-utils';
 import { BarChart, BarChartDatum } from '../ui/bar-chart/bar-chart';
 import { ColorFilter } from '../ui/color-filter/color-filter';
-import { ColorSelection, matchesColorSelection } from '../color-filter-match';
+import { ColorSelection, EMPTY_COLOR_SELECTION, matchesColorSelection } from '../color-filter-match';
 import {
   manaCurveChartData,
   pipChartData,
@@ -131,7 +131,7 @@ export class PublicDeckBrowser {
   readonly i18n = inject(I18nService);
 
   readonly nameFilter = signal('');
-  readonly browseColors = signal<ColorSelection>([]);
+  readonly browseColors = signal<ColorSelection>(EMPTY_COLOR_SELECTION);
   readonly sort = signal<'recent' | 'winRate'>('recent');
   readonly archetype = signal<string | null>(null);
   readonly archetypeOptions = signal<string[]>([]);
@@ -167,7 +167,7 @@ export class PublicDeckBrowser {
   readonly cmcFilter = signal<'all' | number>('all');
   readonly typeFilterValue = signal<'all' | string>('all');
   readonly creatureTypeFilter = signal<'all' | string>('all');
-  readonly colorFilter = signal<ColorSelection>([]);
+  readonly colorFilter = signal<ColorSelection>(EMPTY_COLOR_SELECTION);
 
   constructor() {
     this.publicDecks.archetypeOptions().then((options) => this.archetypeOptions.set(options));
@@ -198,7 +198,7 @@ export class PublicDeckBrowser {
     this.busy.set(true);
     const { decks, stats } = await this.publicDecks.searchPublicDecks({
       name: this.nameFilter(),
-      colors: [...this.browseColors()],
+      colors: [...this.browseColors().colors],
       archetype: this.archetype(),
       creatureType: this.creatureType(),
       sort: this.sort(),
@@ -231,7 +231,7 @@ export class PublicDeckBrowser {
 
   resetFilters(): void {
     this.nameFilter.set('');
-    this.browseColors.set([]);
+    this.browseColors.set(EMPTY_COLOR_SELECTION);
     this.archetype.set(null);
     this.creatureType.set(null);
     this.sort.set('recent');
@@ -443,7 +443,7 @@ export class PublicDeckBrowser {
       this.cmcFilter() !== 'all' ||
       this.typeFilterValue() !== 'all' ||
       this.creatureTypeFilter() !== 'all' ||
-      this.colorFilter().length > 0
+      this.colorFilter().colors.length > 0
   );
 
   resetCardFilters(): void {
@@ -451,7 +451,7 @@ export class PublicDeckBrowser {
     this.cmcFilter.set('all');
     this.typeFilterValue.set('all');
     this.creatureTypeFilter.set('all');
-    this.colorFilter.set([]);
+    this.colorFilter.set(EMPTY_COLOR_SELECTION);
   }
 
   translateLabel(label: string): string {

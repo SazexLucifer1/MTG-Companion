@@ -11,7 +11,7 @@ import { PartnerCardImage } from '../partner-card-image/partner-card-image';
 import { normalizeCardName } from '../array-utils';
 import { BarChart, BarChartDatum } from '../ui/bar-chart/bar-chart';
 import { ColorFilter } from '../ui/color-filter/color-filter';
-import { ColorSelection, matchesColorSelection } from '../color-filter-match';
+import { ColorSelection, EMPTY_COLOR_SELECTION, matchesColorSelection } from '../color-filter-match';
 import {
   manaCurveChartData,
   pipChartData,
@@ -153,7 +153,7 @@ export class PreconBrowser {
   readonly cmcFilter = signal<'all' | number>('all');
   readonly typeFilterValue = signal<'all' | string>('all');
   readonly creatureTypeFilter = signal<'all' | string>('all');
-  readonly colorFilter = signal<ColorSelection>([]);
+  readonly colorFilter = signal<ColorSelection>(EMPTY_COLOR_SELECTION);
 
   constructor() {
     this.searchPrecons();
@@ -373,7 +373,7 @@ export class PreconBrowser {
       this.cmcFilter() !== 'all' ||
       this.typeFilterValue() !== 'all' ||
       this.creatureTypeFilter() !== 'all' ||
-      this.colorFilter().length > 0
+      this.colorFilter().colors.length > 0
   );
 
   resetCardFilters(): void {
@@ -381,7 +381,7 @@ export class PreconBrowser {
     this.cmcFilter.set('all');
     this.typeFilterValue.set('all');
     this.creatureTypeFilter.set('all');
-    this.colorFilter.set([]);
+    this.colorFilter.set(EMPTY_COLOR_SELECTION);
   }
 
   translateLabel(label: string): string {
