@@ -1,29 +1,35 @@
 <div class="options-menu-overlay login-overlay" (click)="overlay.close()">
 <div class="login-screen" (click)="$event.stopPropagation()">
 <div class="login-card">
-  <button
-    type="button"
-    class="glass-button small login-close"
-    (click)="overlay.close()"
-    [attr.aria-label]="i18n.t('legal.close')"
-  >
-    ✕
-  </button>
-  <button
-    type="button"
-    class="lang-toggle"
-    (click)="i18n.toggleLang()"
-    [attr.aria-label]="i18n.t('header.switchLanguage')"
-    [title]="i18n.t('header.switchLanguage')"
-  >
-    {{ i18n.lang() === 'de' ? 'DE' : 'EN' }}
-  </button>
+  <!-- Eigene Kopfzeile statt float: right auf dem ✕. Die Karte ist ein Flex-Container, und
+       Flex-Elemente ignorieren float - der Schließen-Knopf wurde dadurch als normales Item über
+       die volle Kartenbreite gestreckt (gemessen 318px breit). -->
+  <div class="login-card-header">
+    <button
+      type="button"
+      class="lang-toggle"
+      (click)="i18n.toggleLang()"
+      [attr.aria-label]="i18n.t('header.switchLanguage')"
+      [title]="i18n.t('header.switchLanguage')"
+    >
+      {{ i18n.lang() === 'de' ? 'DE' : 'EN' }}
+    </button>
+    <button
+      type="button"
+      class="icon-button"
+      (click)="overlay.close()"
+      [attr.aria-label]="i18n.t('legal.close')"
+    >
+      ✕
+    </button>
+  </div>
   <h1>Statsfinity <span class="app-version-badge" [title]="appCommit">{{ appVersion }}</span></h1>
   <p class="subtitle">{{ mode() === 'signin' ? i18n.t('login.signInSubtitle') : i18n.t('login.signUpSubtitle') }}</p>
 
   <label>
     {{ i18n.t('login.email') }}
     <input
+      class="glass-input"
       type="email"
       [value]="email()"
       (input)="email.set($any($event.target).value)"
@@ -33,6 +39,7 @@
   <label>
     {{ i18n.t('login.password') }}
     <input
+      class="glass-input"
       type="password"
       [value]="password()"
       (input)="password.set($any($event.target).value)"
@@ -46,7 +53,7 @@
     <p class="success">{{ infoMessage() }}</p>
   }
 
-  <button type="button" class="submit-button" [disabled]="loading()" (click)="submit()">
+  <button type="button" class="glass-button primary submit-button" [disabled]="loading()" (click)="submit()">
     {{ loading() ? i18n.t('login.pleaseWait') : (mode() === 'signin' ? i18n.t('login.signIn') : i18n.t('login.createAccount')) }}
   </button>
 
@@ -58,7 +65,7 @@
     {{ mode() === 'signin' ? i18n.t('login.noAccountYet') : i18n.t('login.alreadyHaveAccount') }}
   </button>
 </div>
-<app-legal-footer />
+<app-legal-footer [compact]="true" />
 </div>
 </div>
 

@@ -48,3 +48,16 @@
     cursor: pointer;
   }
 }
+
+// Im Dialog (Anmeldefenster): kein Freiraum für die Tab-Bar und keine eigene Fläche - der Dialog
+// liegt schon über der Seite und hat seinen eigenen Untergrund.
+.legal-footer.compact {
+  padding: var(--sp-3) 0 0;
+
+  .legal-footer-inner {
+    padding: 0;
+    background: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}

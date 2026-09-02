@@ -8,8 +8,13 @@
   padding: 1rem;
 }
 
-.login-close {
-  float: right;
+.login-card-header {
+  display: flex;
+  align-items: center;
+  // Sprachumschalter links, Schließen rechts - beide bleiben auf ihrer Eigenbreite, statt als
+  // Flex-Item über die Karte gestreckt zu werden.
+  justify-content: space-between;
+  gap: var(--sp-3);
 }
 
 .login-card {
@@ -48,45 +53,41 @@
     font-size: 0.9rem;
   }
 
-  input {
-    padding: 0.6rem 0.75rem;
-    border-radius: 8px;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    background: rgba(255, 255, 255, 0.05);
-    color: inherit;
-    font-size: 1rem;
-  }
-
-  button {
-    padding: 0.6rem 0.75rem;
-    border-radius: 8px;
-    border: none;
-    font-size: 1rem;
-    cursor: pointer;
-  }
-
+  // Eingabefelder und der Primärknopf kommen aus dem globalen Design-System (.glass-input,
+  // .glass-button.primary). Vorher waren beide hier handgebaut - mit eigenem Radius, eigenem
+  // Rahmen und einem hartkodierten #6c4fd6, das sonst nirgends in der App vorkommt. Eine
+  // generische "button"-Regel an dieser Stelle hat zusätzlich border: none gesetzt und damit
+  // jeden Glass-Knopf im Dialog entstellt.
   .submit-button {
-    background: #6c4fd6;
-    color: white;
-    font-weight: 600;
+    margin-top: var(--sp-2);
   }
 
   .switch-mode {
+    padding: var(--sp-3);
+    border: none;
+    border-radius: var(--r-sm);
     background: transparent;
     color: inherit;
+    font: inherit;
+    // Wie im Footer: sparsam benutzte Textlinks, deshalb 40 statt 44px - genug zum Treffen,
+    // ohne den Dialog auseinanderzuziehen.
+    min-height: 40px;
     opacity: 0.8;
     text-decoration: underline;
+    cursor: pointer;
   }
 
   .lang-toggle {
-    align-self: flex-end;
-    width: auto;
-    padding: 0.3rem 0.6rem;
-    font-size: 0.8rem;
+    min-height: 44px;
+    padding: 0 var(--sp-4);
+    border-radius: var(--r-md);
+    font-size: 0.85rem;
     font-weight: 700;
-    background: rgba(255, 255, 255, 0.08);
+    background: var(--surface-tile);
     border: 1px solid rgba(255, 255, 255, 0.15);
     color: inherit;
+    font-family: inherit;
+    cursor: pointer;
   }
 
   .error {
