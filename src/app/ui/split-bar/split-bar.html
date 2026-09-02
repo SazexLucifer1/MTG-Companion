@@ -1,0 +1,18 @@
+<div class="split-bar" [attr.aria-hidden]="'true'">
+  @for (s of visible(); track s.label) {
+    <div class="split-segment" [style.flex-basis.%]="share(s.value)" [style.background]="s.color"></div>
+  }
+  @if (total() === 0) {
+    <div class="split-empty"></div>
+  }
+</div>
+
+<ul class="split-legend">
+  @for (s of segments(); track s.label) {
+    <li>
+      <span class="split-swatch" [style.background]="s.color"></span>
+      <span class="split-legend-label">{{ s.label }}</span>
+      <span class="split-legend-value">{{ s.value }}</span>
+    </li>
+  }
+</ul>

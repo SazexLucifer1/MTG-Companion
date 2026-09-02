@@ -1,0 +1,24 @@
+:host {
+  display: block;
+  min-width: 0;
+}
+
+.meter {
+  height: 6px;
+  border-radius: var(--r-xs);
+  background: var(--surface-track);
+  overflow: hidden;
+
+  &.thick {
+    height: 12px;
+  }
+}
+
+.meter-fill {
+  height: 100%;
+  // Am Nullpunkt eckig, am Datenende gerundet - die Rundung markiert den Messwert, nicht die
+  // Schiene.
+  border-radius: 0 var(--r-xs) var(--r-xs) 0;
+  background: linear-gradient(90deg, var(--accent), var(--gold));
+  transition: width 0.2s ease;
+}

@@ -1,0 +1,27 @@
+@if (orientation() === 'vertical') {
+  <div class="bar-chart vertical">
+    @for (d of data(); track d.label) {
+      <div class="bc-col">
+        <div class="bc-track">
+          <div class="bc-bar" [style.height.%]="percentOf(d.value)" [style.background]="d.color ?? null">
+            <span class="bc-cap">{{ d.value }}{{ valueSuffix() }}</span>
+          </div>
+        </div>
+        <span class="bc-col-label">{{ d.label }}</span>
+      </div>
+    }
+  </div>
+} @else {
+  <div class="bar-chart">
+    @for (d of data(); track d.label) {
+      <div class="bc-row">
+        <span class="bc-label" [style.flex-basis]="labelWidth()">{{ d.label }}</span>
+        <app-meter class="bc-meter" [value]="d.value" [max]="reference()" [color]="d.color ?? null" [thick]="true" />
+        <span class="bc-value">{{ d.value }}{{ valueSuffix() }}</span>
+        @if (d.detail) {
+          <span class="bc-detail hint">{{ d.detail }}</span>
+        }
+      </div>
+    }
+  </div>
+}

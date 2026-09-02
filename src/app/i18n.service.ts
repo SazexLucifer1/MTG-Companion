@@ -10,6 +10,9 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     'dialog.ok': 'OK',
     'dialog.cancel': 'Abbrechen',
 
+    // --- Wiederverwendbare Bausteine (Overflow-Menü, Diagramme) ---
+    'common.moreActions': 'Weitere Aktionen',
+
     // --- Header / Navigation ---
     'search.cardsTab': 'Karten',
     'search.commanderTab': 'Commander',
@@ -1286,6 +1289,9 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     // --- Global confirm dialog (replacement for confirm()/alert()) ---
     'dialog.ok': 'OK',
     'dialog.cancel': 'Cancel',
+
+    // --- Reusable building blocks (overflow menu, charts) ---
+    'common.moreActions': 'More actions',
 
     // --- Header / Navigation ---
     'search.cardsTab': 'Cards',

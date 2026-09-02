@@ -56,6 +56,19 @@
   --success: #7dff9b;
   --live: #5ee88f;
 
+  // --- Diagramm-Serienfarben ---
+  // Nur für Diagramme mit MEHREREN Reihen (heute der Head-to-Head-Balken). Einreihige Balken
+  // benutzen weiterhin --accent.
+  //
+  // Es sind dunklere Stufen von --accent und --gold, keine neuen Töne: die hellen Originale liegen
+  // beide oberhalb des Helligkeitsbands, in dem kategoriale Paletten sitzen sollen, und eine
+  // deutlich hellere Reihe wirkt sonst wichtiger als die andere. Geprüft gegen den Kartengrund:
+  // Farbabstand 24.9 (Protanopie) bzw. 21.2 (Tritanopie) und Kontrast über 3:1.
+  --series-1: #5b8fe0;
+  --series-2: #b8862a;
+  // Neutral, bewusst ohne eigene Farbidentität - für "keiner von beiden"/Unentschieden.
+  --series-neutral: rgba(255, 255, 255, 0.3);
+
   // --- MTG-Farbidentität ---
   // Lag vorher dreifach kopiert in deck-detail-view/precon-browser/public-deck-browser jeweils auf
   // .pip-chart. Global, weil inzwischen auch Farbfilter-Chips und Diagramme dieselben Farben
@@ -215,8 +228,11 @@ h3 {
   }
 
   &.small {
-    padding: 6px 12px;
-    min-height: 34px;
+    padding: var(--sp-2) var(--sp-5);
+    // 40 statt vorher 34: .glass-chip.small ist das meistbenutzte Bedienelement der App und lag
+    // damit unter jeder Empfehlung für Trefferflächen. Die Schrift bleibt klein, nur die Fläche
+    // wächst.
+    min-height: 40px;
     font-size: 0.85rem;
   }
 }
@@ -224,8 +240,71 @@ h3 {
 .chip-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 6px;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-2);
+}
+
+/* --- Segmentierte Umschalter ---
+   Für NAVIGATION und Ansichtswechsel (Unter-Tabs, Sortierung, Bilder/Text), nicht für Filter.
+   Bis hierher sah in dieser App jedes Bedienelement gleich aus - ein Unter-Tab, ein Filterchip und
+   ein Löschen-Knopf waren rein optisch nicht zu unterscheiden. Das ist der eigentliche Grund,
+   warum die Oberfläche nach "zu vielen Buttons" aussieht. Ein zusammenhängender Block sagt: das
+   hier sind Alternativen, von denen genau eine gilt.
+
+   Rollen im Überblick:
+     .segmented    - Navigation/Ansicht, genau eine Auswahl aktiv
+     .glass-chip   - Filter und Umschalter, mehrere gleichzeitig möglich
+     .glass-button - Aktionen (.primary hervorgehoben, .danger destruktiv) */
+
+.segmented {
+  display: inline-flex;
+  flex-wrap: wrap;
+  padding: 3px;
+  gap: 3px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--glass-border);
+  background: rgba(0, 0, 0, 0.22);
+  backdrop-filter: blur(12px) saturate(160%);
+  -webkit-backdrop-filter: blur(12px) saturate(160%);
+  max-width: 100%;
+
+  button {
+    flex: 1 1 auto;
+    min-height: 38px;
+    padding: var(--sp-2) var(--sp-5);
+    border: none;
+    border-radius: var(--r-sm);
+    background: transparent;
+    color: var(--text);
+    font: inherit;
+    font-size: 0.88rem;
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background 0.15s ease, opacity 0.15s ease;
+    // Nicht ausgewählte Segmente treten zurück, statt gleichberechtigt zu leuchten.
+    opacity: 0.7;
+
+    &:active {
+      transform: scale(0.97);
+    }
+
+    &.active {
+      background: rgba(138, 180, 255, 0.32);
+      opacity: 1;
+    }
+
+    &:disabled {
+      opacity: 0.35;
+      cursor: default;
+    }
+  }
+
+  // Volle Breite, wenn der Umschalter die Zeile führt (z.B. Unter-Tabs).
+  &.block {
+    display: flex;
+    width: 100%;
+  }
 }
 
 .card-name-cell {
@@ -293,17 +372,35 @@ h3 {
 }
 
 .icon-button {
-  min-width: 38px;
-  min-height: 38px;
-  border-radius: 12px;
+  // 44 statt vorher 38 - unter 44px sind Icon-Knöpfe auf dem Handy unzuverlässig zu treffen, und
+  // dies ist der globale Icon-Knopf der App (Pager, Umbenennen, Löschen, Verknüpfen ...).
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--r-md);
   border: 1px solid rgba(255, 255, 255, 0.15);
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--surface-tile);
   color: var(--text);
   font-size: 1rem;
   cursor: pointer;
 
   &:active {
     background: rgba(255, 255, 255, 0.18);
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: default;
+  }
+
+  // Für Icons, die AUF einem Kartenbild sitzen: dort ist 44px nicht unterzubringen, ohne das Bild
+  // zu verdecken. 32px ist die bewusste Untergrenze für diesen Sonderfall.
+  &.on-image {
+    min-width: 32px;
+    min-height: 32px;
+    border-radius: var(--r-sm);
   }
 }
 
