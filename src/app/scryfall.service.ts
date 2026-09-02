@@ -407,7 +407,8 @@ export class ScryfallService {
       type?: string;
       creatureType?: string;
       cmc?: number | null;
-      color?: string | null;
+      /** Gewählte Farben des Farbfilters (leer = keine Einschränkung, ['C'] = farblos). */
+      colors?: readonly string[];
       colorIdentitySubset?: string[] | null;
       /** Fertiges Scryfall-Query-Fragment für eine Effekt-Kategorie, z.B. "otag:removal" - siehe effectFilters in deck-viewer.service.ts. */
       effectQuery?: string;
@@ -426,7 +427,7 @@ export class ScryfallService {
       !filters.type &&
       !creatureType &&
       filters.cmc == null &&
-      !filters.color &&
+      !filters.colors?.length &&
       !filters.effectQuery &&
       !filters.keyword
     ) {
@@ -438,7 +439,11 @@ export class ScryfallService {
     if (filters.type) parts.push(`type:"${filters.type}"`);
     if (creatureType) parts.push(`type:"${creatureType.replace(/"/g, '')}"`);
     if (filters.cmc != null) parts.push(filters.cmc >= 7 ? 'cmc>=7' : `cmc:${filters.cmc}`);
-    if (filters.color) parts.push(filters.color === 'C' ? 'id:c' : `id:${filters.color}`);
+    if (filters.colors?.length) {
+      // id>= statt id: - "Farbidentität enthält mindestens diese Farben". Bei einer Farbe ist das
+      // dasselbe wie vorher, bei mehreren genau die Mehrfarbigen dieser Kombination.
+      parts.push(filters.colors.includes('C') ? 'id:c' : `id>=${filters.colors.join('')}`);
+    }
     if (filters.effectQuery) parts.push(filters.effectQuery);
     if (filters.keyword) parts.push(`keyword:"${filters.keyword.replace(/"/g, '')}"`);
     if (filters.colorIdentitySubset) {

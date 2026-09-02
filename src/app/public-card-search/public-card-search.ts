@@ -6,7 +6,8 @@ import { CardPreviewService } from '../card-preview.service';
 import { I18nService } from '../i18n.service';
 import { CardImage } from '../card-image/card-image';
 import { CARD_EFFECT_FILTERS } from '../card-effect-filters';
-import { ColorFilter, ColorFilterValue } from '../ui/color-filter/color-filter';
+import { ColorFilter } from '../ui/color-filter/color-filter';
+import { ColorSelection } from '../color-filter-match';
 import { CmcFilter, CmcFilterValue } from '../ui/cmc-filter/cmc-filter';
 
 /**
@@ -40,7 +41,7 @@ export class PublicCardSearch {
   readonly typeFilter = signal<'all' | string>('all');
   readonly creatureTypeFilter = signal('');
   readonly cmcFilter = signal<CmcFilterValue>('all');
-  readonly colorFilter = signal<ColorFilterValue>('all');
+  readonly colorFilter = signal<ColorSelection>([]);
   readonly effectFilter = signal<'all' | string>('all');
   readonly keywordFilter = signal<'all' | string>('all');
   readonly sortMode = signal<'name' | 'cmc'>('name');
@@ -134,7 +135,7 @@ export class PublicCardSearch {
       this.typeFilter() !== 'all' ||
       this.creatureTypeFilter().trim() !== '' ||
       this.cmcFilter() !== 'all' ||
-      this.colorFilter() !== 'all' ||
+      this.colorFilter().length > 0 ||
       this.effectFilter() !== 'all' ||
       this.keywordFilter() !== 'all'
     );
@@ -144,7 +145,7 @@ export class PublicCardSearch {
     this.typeFilter.set('all');
     this.creatureTypeFilter.set('');
     this.cmcFilter.set('all');
-    this.colorFilter.set('all');
+    this.colorFilter.set([]);
     this.effectFilter.set('all');
     this.keywordFilter.set('all');
     this.gridResults.set([]);
@@ -166,7 +167,7 @@ export class PublicCardSearch {
     this.runFilterSearch();
   }
 
-  setColorFilter(value: ColorFilterValue): void {
+  setColorFilter(value: ColorSelection): void {
     this.colorFilter.set(value);
     this.runFilterSearch();
   }
@@ -198,7 +199,7 @@ export class PublicCardSearch {
     const results = await this.scryfall.searchCards(this.query(), {
       type: type === 'all' ? undefined : (PublicCardSearch.TYPE_TO_SCRYFALL[type] ?? type.toLowerCase()),
       creatureType: this.creatureTypeFilter().trim() || undefined,
-      color: this.colorFilter() === 'all' ? null : this.colorFilter(),
+      colors: this.colorFilter(),
       cmc: this.cmcFilter() === 'all' ? null : (this.cmcFilter() as number),
       effectQuery:
         this.effectFilter() === 'all' ? undefined : this.effectFilters.find((f) => f.value === this.effectFilter())?.query,

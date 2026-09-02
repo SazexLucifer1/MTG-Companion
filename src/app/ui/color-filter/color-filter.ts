@@ -1,21 +1,23 @@
-import { Component, inject, model } from '@angular/core';
+import { Component, computed, inject, input, model } from '@angular/core';
 import { I18nService } from '../../i18n.service';
 import { ManaSymbol } from '../mana-symbol/mana-symbol';
-
-export type ColorFilterValue = 'all' | 'W' | 'U' | 'B' | 'R' | 'G' | 'C';
+import { COLORLESS, ColorSelection, FILTER_COLORS, toggleColorSelection } from '../../color-filter-match';
 
 /**
- * Farbfilter als Reihe echter Manasymbole - ersetzt das <select> mit den ausgeschriebenen
- * Farbnamen, das an fünf Stellen (Kartensuche, Deckbau, Deck-Kartenliste, Precon-Browser,
- * Deck-Browser) wortgleich stand.
+ * Farbfilter als Reihe echter Manasymbole - ersetzt sowohl die Auswahllisten mit ausgeschriebenen
+ * Farbnamen (Kartensuche, Deckbau, Deck- und Precon-Kartenliste) als auch die Chip-Reihen mit
+ * Farbnamen (Commander-Suche, Deck-Suche).
  *
- * Ein natives <option> kann keine Symbole tragen: der Browser zeichnet die Auswahlliste selbst und
- * nimmt nur reinen Text. Deshalb Knöpfe statt Auswahlliste.
+ * Ein natives <option> kann keine Symbole tragen (der Browser zeichnet die Auswahlliste selbst und
+ * nimmt nur reinen Text) und konnte immer nur eine Farbe - beides der Grund für Knöpfe.
  *
- * .segmented und nicht .glass-chip, obwohl es ein Filter ist: es gilt immer genau eine Auswahl,
- * und genau dafür steht der zusammenhängende Block (siehe Rollenübersicht in styles.scss). Die
- * Farbfilter im Commander-Vorschlag und im Deck-Browser bleiben Chips, weil man dort mehrere
- * Farben gleichzeitig anhaken kann.
+ * Mehrfachauswahl, weil man sonst nicht nach einer Farbkombination filtern kann: erst zwei
+ * angeklickte Farben ergeben "mehrfarbig, und zwar diese". Was die Auswahl bedeutet, steht in
+ * color-filter-match.ts.
+ *
+ * .segmented statt einzelner .glass-chips, obwohl mehrere Segmente gleichzeitig aktiv sein können:
+ * die sechs Symbole gehören sichtbar zusammen und tragen im Block ihre Überschrift ("Farbe: alle")
+ * gleich mit - einzeln stünden sechs Farbtupfer ohne Beschriftung in der Filterzeile.
  */
 @Component({
   selector: 'app-color-filter',
@@ -26,11 +28,27 @@ export type ColorFilterValue = 'all' | 'W' | 'U' | 'B' | 'R' | 'G' | 'C';
 export class ColorFilter {
   readonly i18n = inject(I18nService);
 
-  readonly value = model.required<ColorFilterValue>();
+  readonly value = model.required<ColorSelection>();
 
-  readonly colors: readonly ColorFilterValue[] = ['W', 'U', 'B', 'R', 'G', 'C'];
+  /**
+   * "Farblos" als eigene Auswahl anbieten. Aus für die Deck- und Commander-Suche: dort filtert die
+   * Auswahl eine Farbidentität, und "keine Farbe" ist dort kein Suchziel, sondern das leere Feld.
+   */
+  readonly withColorless = input(true);
 
-  label(color: ColorFilterValue): string {
-    return color === 'C' ? this.i18n.t('deckView.colorless') : this.i18n.t(`pip.${color}`);
+  readonly options = computed<string[]>(() =>
+    this.withColorless() ? [...FILTER_COLORS, COLORLESS] : [...FILTER_COLORS],
+  );
+
+  isActive(color: string): boolean {
+    return this.value().includes(color);
+  }
+
+  toggle(color: string): void {
+    this.value.set(toggleColorSelection(this.value(), color));
+  }
+
+  label(color: string): string {
+    return color === COLORLESS ? this.i18n.t('deckView.colorless') : this.i18n.t(`pip.${color}`);
   }
 }

@@ -185,10 +185,3 @@
 .stat-tiles {
   margin: var(--sp-4) 0;
 }
-
-// Farbfilter-Chips: kleiner Farbtupfer vor dem Namen, damit "Blau" auch blau aussieht.
-.color-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--sp-2);
-}

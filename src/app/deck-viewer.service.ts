@@ -14,6 +14,7 @@ import { GroupService } from './group.service';
 import { MtgService } from './mtg.service';
 import { I18nService } from './i18n.service';
 import { COMMANDER_ARCHETYPE_FILTERS } from './commander-archetype-filters';
+import { ColorSelection, matchesColorSelection } from './color-filter-match';
 import { BarChartDatum } from './ui/bar-chart/bar-chart';
 import {
   manaCurveChartData,
@@ -574,7 +575,7 @@ export class DeckViewerService {
   readonly cmcFilter = signal<'all' | number>('all');
   readonly typeFilterValue = signal<'all' | string>('all');
   readonly creatureTypeFilter = signal<'all' | string>('all');
-  readonly colorFilter = signal<'all' | 'W' | 'U' | 'B' | 'R' | 'G' | 'C'>('all');
+  readonly colorFilter = signal<ColorSelection>([]);
   readonly keywordFilter = signal('all');
   readonly effectFilter = signal('all');
   /** Ergebnis der letzten Effekt-Abfrage (lowercase Kartennamen) - null solange kein Effekt-Filter aktiv oder noch nicht geladen. */
@@ -614,10 +615,10 @@ export class DeckViewerService {
       return false;
     }
 
-    const color = this.colorFilter();
-    if (color !== 'all') {
+    const colors = this.colorFilter();
+    if (colors.length > 0) {
       const identity = this.viewingCardDetails().get(card.cardName.toLowerCase())?.colorIdentity ?? [];
-      if (color === 'C' ? identity.length > 0 : !identity.includes(color)) return false;
+      if (!matchesColorSelection(identity, colors)) return false;
     }
 
     const keyword = this.keywordFilter();
@@ -657,7 +658,7 @@ export class DeckViewerService {
       this.cmcFilter() !== 'all' ||
       this.typeFilterValue() !== 'all' ||
       this.creatureTypeFilter() !== 'all' ||
-      this.colorFilter() !== 'all' ||
+      this.colorFilter().length > 0 ||
       this.keywordFilter() !== 'all' ||
       this.effectFilter() !== 'all'
   );
@@ -667,7 +668,7 @@ export class DeckViewerService {
     this.cmcFilter.set('all');
     this.typeFilterValue.set('all');
     this.creatureTypeFilter.set('all');
-    this.colorFilter.set('all');
+    this.colorFilter.set([]);
     this.keywordFilter.set('all');
     this.effectFilter.set('all');
     this.effectMatchNames.set(null);
@@ -725,7 +726,7 @@ export class DeckViewerService {
   readonly addCardQuery = signal('');
   readonly addCardTypeFilter = signal<'all' | string>('all');
   readonly addCardCreatureTypeFilter = signal('');
-  readonly addCardColorFilter = signal<'all' | 'W' | 'U' | 'B' | 'R' | 'G' | 'C'>('all');
+  readonly addCardColorFilter = signal<ColorSelection>([]);
   readonly addCardCmcFilter = signal<'all' | number>('all');
   readonly addCardEffectFilter = signal('all');
   readonly addCardKeywordFilter = signal('all');
@@ -1356,7 +1357,7 @@ export class DeckViewerService {
     this.addCardQuery.set('');
     this.addCardTypeFilter.set('all');
     this.addCardCreatureTypeFilter.set('');
-    this.addCardColorFilter.set('all');
+    this.addCardColorFilter.set([]);
     this.addCardCmcFilter.set('all');
     this.addCardEffectFilter.set('all');
     this.addCardKeywordFilter.set('all');
@@ -1602,7 +1603,7 @@ export class DeckViewerService {
     this.triggerAddCardSearch();
   }
 
-  setAddCardColorFilter(value: 'all' | 'W' | 'U' | 'B' | 'R' | 'G' | 'C'): void {
+  setAddCardColorFilter(value: ColorSelection): void {
     this.addCardColorFilter.set(value);
     this.triggerAddCardSearch();
   }
@@ -1632,7 +1633,7 @@ export class DeckViewerService {
     const query = this.addCardQuery();
     const type = this.addCardTypeFilter();
     const creatureType = this.addCardCreatureTypeFilter();
-    const color = this.addCardColorFilter();
+    const colors = this.addCardColorFilter();
     const cmc = this.addCardCmcFilter();
     const effect = this.addCardEffectFilter();
     const keyword = this.addCardKeywordFilter();
@@ -1641,7 +1642,7 @@ export class DeckViewerService {
       !query.trim() &&
       type === 'all' &&
       !creatureType.trim() &&
-      color === 'all' &&
+      colors.length === 0 &&
       cmc === 'all' &&
       effect === 'all' &&
       keyword === 'all'
@@ -1656,7 +1657,7 @@ export class DeckViewerService {
       const results = await this.scryfall.searchCards(query, {
         type: type === 'all' ? undefined : DeckViewerService.TYPE_TO_SCRYFALL[type] ?? type.toLowerCase(),
         creatureType: creatureType.trim() || undefined,
-        color: color === 'all' ? null : color,
+        colors,
         cmc: cmc === 'all' ? null : cmc,
         effectQuery: effect === 'all' ? undefined : this.effectFilters.find((f) => f.value === effect)?.query,
         keyword: keyword === 'all' ? undefined : keyword,
