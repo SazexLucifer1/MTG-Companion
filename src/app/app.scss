@@ -104,17 +104,27 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  // Auf 320px passen Titel und die drei Kopf-Knöpfe nicht in eine Zeile - ohne Umbruch schob die
+  // Knopfgruppe die Seite nach rechts hinaus.
+  flex-wrap: wrap;
+  gap: var(--sp-3);
 }
 
 .header-actions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  flex-wrap: wrap;
+  gap: var(--sp-3);
 }
 
 .feedback-toggle,
 .lang-toggle,
 .logout-btn {
+  // Ergaben mit 0.4rem Innenabstand bei 0.85rem Schrift nur ~30px Höhe - und das sind die drei
+  // Knöpfe, die auf JEDEM Bildschirm der App oben stehen.
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
   padding: 0.4rem 0.8rem;
   border: none;
   border-radius: 6px;

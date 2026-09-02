@@ -17,11 +17,16 @@
 
 .guest-name-row {
   display: flex;
-  gap: 8px;
-  margin-bottom: 10px;
+  flex-wrap: wrap;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-4);
 
   input {
     flex: 1;
+    // Ohne min-width: 0 schrumpft ein Flex-Element nicht unter seine inhaltsbedingte Mindestbreite.
+    // Das Eingabefeld blieb dadurch zu breit und schob den "Hinzufügen"-Knopf auf einem 390px-Handy
+    // über den rechten Bildschirmrand hinaus - die Seite ließ sich seitlich scrollen.
+    min-width: 0;
   }
 }
 
@@ -195,7 +200,7 @@
   backdrop-filter: blur(20px) saturate(160%);
   -webkit-backdrop-filter: blur(20px) saturate(160%);
   border: 1px solid rgba(255, 255, 255, 0.18);
-  max-height: 220px;
+  max-height: min(220px, 40dvh);
   overflow-y: auto;
 
   button {
@@ -389,4 +394,16 @@
   to {
     transform: rotate(360deg);
   }
+}
+
+// Obergrenze für die Inhaltsbreite dieses Tabs.
+//
+// .content deckelt zwar bei 1600px, das ist für Listen und Fließtext aber zu breit: auf einem
+// 1920px-Schirm lief eine Ranglisten-Zeile auf ~1570px auseinander, Name ganz links, Prozentwert
+// ganz rechts, dazwischen Leere. Karten-Raster (Deck-Suche, Precons) behalten bewusst die volle
+// Breite, die profitieren von mehr Spalten.
+:host {
+  display: block;
+  max-width: var(--content-measure);
+  margin: 0 auto;
 }

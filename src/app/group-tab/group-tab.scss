@@ -254,3 +254,15 @@
 a {
   color: var(--accent);
 }
+
+// Obergrenze für die Inhaltsbreite dieses Tabs.
+//
+// .content deckelt zwar bei 1600px, das ist für Listen und Fließtext aber zu breit: auf einem
+// 1920px-Schirm lief eine Ranglisten-Zeile auf ~1570px auseinander, Name ganz links, Prozentwert
+// ganz rechts, dazwischen Leere. Karten-Raster (Deck-Suche, Precons) behalten bewusst die volle
+// Breite, die profitieren von mehr Spalten.
+:host {
+  display: block;
+  max-width: var(--content-measure);
+  margin: 0 auto;
+}

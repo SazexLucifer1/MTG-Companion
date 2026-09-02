@@ -365,8 +365,10 @@
 .bg-thumb-share {
   position: absolute;
   top: 4px;
-  width: 22px;
-  height: 22px;
+  // 32 statt 22 - eine der beiden Aktionen löscht ein Bild endgültig, und sie lagen direkt
+  // nebeneinander auf einer 90px-Miniatur.
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   border: none;
   background: rgba(0, 0, 0, 0.6);
@@ -385,4 +387,15 @@
 
 .bg-thumb-share {
   left: 4px;
+}
+// Obergrenze für die Inhaltsbreite dieses Tabs.
+//
+// .content deckelt zwar bei 1600px, das ist für Listen und Fließtext aber zu breit: auf einem
+// 1920px-Schirm lief eine Ranglisten-Zeile auf ~1570px auseinander, Name ganz links, Prozentwert
+// ganz rechts, dazwischen Leere. Karten-Raster (Deck-Suche, Precons) behalten bewusst die volle
+// Breite, die profitieren von mehr Spalten.
+:host {
+  display: block;
+  max-width: var(--content-measure);
+  margin: 0 auto;
 }

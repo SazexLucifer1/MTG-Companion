@@ -29,7 +29,7 @@
   list-style: none;
   margin: 0 0 12px;
   padding: 6px;
-  max-height: 320px;
+  max-height: min(320px, 45dvh);
   overflow-y: auto;
   border-radius: 14px;
   background: rgba(20, 16, 38, 0.85);

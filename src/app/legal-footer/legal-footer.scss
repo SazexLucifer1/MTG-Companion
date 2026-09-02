@@ -28,8 +28,15 @@
     margin: 0.15rem 0;
   }
 
+  // Datenquellen und Rechtstexte sind auf dem Handy als reiner Inline-Text nur ~14px hoch und
+  // damit kaum zu treffen. 36px statt der sonst üblichen 44: es sind selten benutzte Links am
+  // Seitenende, und 44px würden den Footer sichtbar auseinanderziehen.
   a,
   button {
+    display: inline-flex;
+    align-items: center;
+    min-height: 36px;
+    padding: 0 var(--sp-1);
     color: inherit;
     text-decoration: underline;
   }
@@ -37,11 +44,6 @@
   button {
     background: none;
     border: none;
-    // Etwas vertikale Fläche, damit die drei Rechtstexte auf dem Handy überhaupt treffbar sind -
-    // als reiner Inline-Text waren sie nur ~11px hoch. Kein 44px hier: das würde den Footer
-    // auseinanderziehen, und es sind selten benutzte Links, keine primären Aktionen.
-    display: inline-block;
-    padding: var(--sp-2) var(--sp-1);
     font: inherit;
     cursor: pointer;
   }

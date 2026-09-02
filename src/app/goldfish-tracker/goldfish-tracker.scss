@@ -24,8 +24,10 @@
   // Überschreibt die globalen .glass-button-Maße (min-height 44px, großzügiges Padding) - im
   // Kopfbereich zählt jeder Pixel, den das restliche Spielfeld sonst nicht bekommt.
   .glass-button {
-    min-height: 0;
-    padding: 4px 10px;
+    // 36 statt 0 (ergab ~20px) - eine einzelne Kopfzeile über dem Spielfeld, die kostet nicht so
+    // viel Platz, dass sie unbedienbar sein müsste.
+    min-height: 36px;
+    padding: var(--sp-1) var(--sp-4);
     font-size: 0.78rem;
   }
 }
@@ -175,7 +177,9 @@
   // Überschreibt die globale .glass-chip-Mindesthöhe (40px) - sonst sprengen 3 Reihen jede
   // vernünftige Höhe, die dieser kompakten Aktionen-Spalte zur Verfügung steht.
   .glass-chip {
-    min-height: 0;
+    // 30 statt 0 (ergab ~17px, das kleinste Bedienelement der ganzen App). Sechs Stück in einer
+    // 128px-Spalte, deshalb bleibt es unter 44 - aber 17px war nicht zu treffen.
+    min-height: 30px;
     font-size: 0.66rem;
     padding: 3px 5px;
     white-space: nowrap;
@@ -231,8 +235,9 @@
   position: absolute;
   top: 2px;
   right: 2px;
-  width: 18px;
-  height: 18px;
+  // 24 statt 18 - sitzt auf einer kleinen Kartenkachel, mehr verdeckt die Karte.
+  width: 24px;
+  height: 24px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -252,8 +257,9 @@
   position: absolute;
   top: 2px;
   left: 2px;
-  width: 18px;
-  height: 18px;
+  // 24 statt 18 - sitzt auf einer kleinen Kartenkachel, mehr verdeckt die Karte.
+  width: 24px;
+  height: 24px;
   display: flex;
   align-items: center;
   justify-content: center;
