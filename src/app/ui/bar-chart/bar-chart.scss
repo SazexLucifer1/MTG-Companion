@@ -29,6 +29,10 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+
+  app-mana-symbol {
+    margin-right: 5px;
+  }
 }
 
 .bc-meter {

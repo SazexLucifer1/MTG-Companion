@@ -1,0 +1,35 @@
+/* --- Manasymbole (Mana-Schriftart von Andrew Gioia, https://mana.andrewgioia.com, MIT) ---
+
+   Ersetzt die selbstgebauten Farbtupfer: ein farbiger Kreis sagt nur "irgendeine Farbe", das echte
+   Manasymbol ist für jeden Magic-Spieler auf einen Blick eindeutig - und bleibt es auch, wenn
+   jemand Rot und Grün nicht unterscheiden kann.
+
+   Bewusst NICHT das fertige mana-font/css/mana.css eingebunden, sondern nur die drei gebrauchten
+   Sass-Teile plus ein eigenes @font-face:
+
+   - Das Paket-Stylesheet lädt über _path.scss vier Schriftformate (eot/woff/ttf/svg, zusammen gut
+     3 MB) und zusätzlich die Textschrift MPlantin, die wir nirgends benutzen. Hier reicht woff2
+     (187 KB), das jeder Browser seit 2016 kann.
+   - Von den Sass-Teilen brauchen wir "core" (Grundklasse .ms), "icons" (Zeichenzuordnung) und
+     "cost" (runder Symbolhintergrund je Farbe). Größenklassen, Duo-Symbole, Loyalitätszähler,
+     Gilden-Aliasse und Ähnliches bleiben draußen. Das kostet trotzdem gut
+     4 KB im ausgelieferten CSS, weil "icons" die Zeichen ALLER Symbole mitbringt - dafür stimmen
+     sie garantiert zur Schriftdatei, und die sechs Farbsymbole von Hand einzutragen hieße, eine
+     zweite Quelle für dieselbe Zuordnung zu pflegen.
+
+   Die Schriftdatei selbst wird nicht ins Repo kopiert, sondern in angular.json aus dem Paket nach
+   /fonts kopiert - so bleibt npm die einzige Quelle für Datei UND Zeichenzuordnung. */
+
+@use 'mana-font/sass/core';
+@use 'mana-font/sass/icons';
+@use 'mana-font/sass/cost';
+
+@font-face {
+  font-family: 'Mana';
+  src: url('/fonts/mana.woff2') format('woff2');
+  font-weight: normal;
+  font-style: normal;
+  // Bis die Schrift da ist, lieber nichts anzeigen als ein Ersatzzeichen: die Symbole stehen überall
+  // neben ihrem ausgeschriebenen Namen, es fehlt also nie eine Information.
+  font-display: block;
+}

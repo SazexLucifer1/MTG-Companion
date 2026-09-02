@@ -1,6 +1,7 @@
 /* Globales Liquid-Glass-Theme für die Statsfinity App */
 
 @use 'styles/breakpoints' as bp;
+@use 'styles/mana';
 
 :root {
   @include bp.custom-properties;

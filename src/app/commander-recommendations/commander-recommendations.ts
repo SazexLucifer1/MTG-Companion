@@ -9,6 +9,7 @@ import { I18nService } from '../i18n.service';
 import { CardImage } from '../card-image/card-image';
 import { PartnerCardImage } from '../partner-card-image/partner-card-image';
 import { COMMANDER_ARCHETYPE_FILTERS } from '../commander-archetype-filters';
+import { ManaSymbol } from '../ui/mana-symbol/mana-symbol';
 
 /** Ein Treffer der Commander-Suche - 1 Karte bei einem Solo-Commander, 2 bei einem Partner-Paar (siehe searchCommanderPairs()). */
 interface CommanderBrowseEntry {
@@ -34,7 +35,7 @@ interface CommanderBrowseEntry {
  */
 @Component({
   selector: 'app-commander-recommendations',
-  imports: [FormsModule, CardImage, PartnerCardImage, PercentPipe],
+  imports: [FormsModule, CardImage, PartnerCardImage, PercentPipe, ManaSymbol],
   templateUrl: './commander-recommendations.html',
   styleUrl: './commander-recommendations.scss',
 })

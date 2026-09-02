@@ -15,7 +15,12 @@
   <div class="bar-chart">
     @for (d of data(); track d.label) {
       <div class="bc-row">
-        <span class="bc-label" [style.flex-basis]="labelWidth()">{{ d.label }}</span>
+        <span class="bc-label" [style.flex-basis]="labelWidth()">
+          @if (d.symbol) {
+            <app-mana-symbol [symbol]="d.symbol" />
+          }
+          {{ d.label }}
+        </span>
         <app-meter class="bc-meter" [value]="d.value" [max]="reference()" [color]="d.color ?? null" [thick]="true" />
         <span class="bc-value">{{ d.value }}{{ valueSuffix() }}</span>
         @if (d.detail) {

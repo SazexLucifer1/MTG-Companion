@@ -27,6 +27,7 @@ export function pipChartData(
       label: p.label,
       value: p.count,
       color: `var(--pip-${p.color.toLowerCase()})`,
+      symbol: p.color,
     }));
 }
 

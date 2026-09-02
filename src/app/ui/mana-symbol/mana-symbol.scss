@@ -1,0 +1,8 @@
+:host {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  // Die Symbole stehen fast immer neben etwas Text. .ms-cost bemisst sich in em, ein leicht
+  // größerer Wert als die Textzeile lässt sie wie ein Icon wirken statt wie ein Buchstabe.
+  font-size: 1.05em;
+}

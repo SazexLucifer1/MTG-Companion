@@ -394,7 +394,7 @@
         <section class="glass-card">
           <h2>{{ i18n.t('profile.colorRankingTitle') }}</h2>
           <p class="hint">{{ i18n.t('profile.colorRankingHint') }}</p>
-          <app-bar-chart [data]="colorRankingChart()" labelWidth="62px" />
+          <app-bar-chart [data]="colorRankingChart()" labelWidth="86px" />
         </section>
       }
 
@@ -410,10 +410,10 @@
               <li>
                 <span class="player-name combo-name">
                   @if (combo.colors.length === 0) {
-                    <span class="color-swatch colorless-swatch"></span>
+                    <app-mana-symbol symbol="C" />
                   } @else {
                     @for (c of combo.colors; track c) {
-                      <span class="color-swatch" [style.background]="colorVar(c)"></span>
+                      <app-mana-symbol [symbol]="c" />
                     }
                   }
                   {{ colorComboLabel(combo.colors) }}

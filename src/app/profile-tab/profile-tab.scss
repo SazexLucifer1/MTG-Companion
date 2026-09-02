@@ -353,20 +353,6 @@
   }
 }
 
-.color-swatch {
-  display: inline-block;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.colorless-swatch {
-  background: rgba(255, 255, 255, 0.15);
-  border: 1px solid rgba(255, 255, 255, 0.35);
-}
-
-
 .qr-code {
   display: block;
   width: 100%;

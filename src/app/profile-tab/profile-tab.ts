@@ -21,10 +21,11 @@ import { CommanderStatList } from '../commander-stat-list/commander-stat-list';
 import { FavoriteCommanderEditor } from '../favorite-commander-editor/favorite-commander-editor';
 import { BarChart, BarChartDatum } from '../ui/bar-chart/bar-chart';
 import { Meter } from '../ui/meter/meter';
+import { ManaSymbol } from '../ui/mana-symbol/mana-symbol';
 
 @Component({
   selector: 'app-profile-tab',
-  imports: [FormsModule, DatePipe, DecimalPipe, DeckList, CardImage, CommanderStatList, FavoriteCommanderEditor, BarChart, Meter],
+  imports: [FormsModule, DatePipe, DecimalPipe, DeckList, CardImage, CommanderStatList, FavoriteCommanderEditor, BarChart, Meter, ManaSymbol],
   templateUrl: './profile-tab.html',
   styleUrl: './profile-tab.scss',
 })
@@ -198,6 +199,7 @@ export class ProfileTab {
       label: this.colorLabel(c.color),
       value: this.countFor(c),
       color: this.colorVar(c.color),
+      symbol: c.color,
     })),
   );
 
