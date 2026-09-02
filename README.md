@@ -44,3 +44,9 @@ Der Key wird ausschließlich lokal auf dem Gerät gespeichert. Ohne Key funktion
 1. Seite in Safari öffnen.
 2. Teilen-Menü → **„Zum Home-Bildschirm“**.
 3. Die App startet dann im Vollbild ohne Browser-Leiste. Die Kamera wird über den normalen iOS-Foto-Dialog geöffnet – es sind keine besonderen Berechtigungen nötig.
+
+## Manasymbole
+
+Die Manasymbole (W/U/B/R/G und farblos) stammen aus der [Mana-Schriftart](https://mana.andrewgioia.com/) von Andrew Gioia (npm-Paket `mana-font`, MIT-Lizenz). Eingebunden ist sie in `src/styles/_mana.scss`; im Markup rendert sie die Komponente `app-mana-symbol` (`src/app/ui/mana-symbol/`).
+
+Die Symbole selbst sind Eigentum von Wizards of the Coast – Statsfinity ist ein inoffizielles Fan-Projekt und steht in keiner Verbindung zu Wizards of the Coast.

@@ -76,7 +76,7 @@
       <app-bar-chart [data]="manaCurveChart()" orientation="vertical" />
 
       <h4 class="deck-section-title">{{ i18n.t('deckView.pipDistTitle') }}</h4>
-      <app-bar-chart [data]="pipDistributionChart()" labelWidth="62px" />
+      <app-bar-chart [data]="pipDistributionChart()" labelWidth="22px" />
 
       <h4 class="deck-section-title">{{ i18n.t('deckView.typeBreakdownTitle') }}</h4>
       <app-bar-chart [data]="typeBreakdownChart()" labelWidth="110px" />
@@ -109,15 +109,7 @@
             }
           </select>
         }
-        <select class="glass-input small" [ngModel]="colorFilter()" (ngModelChange)="colorFilter.set($event)">
-          <option [ngValue]="'all'">{{ i18n.t('deckView.colorAll') }}</option>
-          <option [ngValue]="'W'">{{ i18n.t('pip.W') }}</option>
-          <option [ngValue]="'U'">{{ i18n.t('pip.U') }}</option>
-          <option [ngValue]="'B'">{{ i18n.t('pip.B') }}</option>
-          <option [ngValue]="'R'">{{ i18n.t('pip.R') }}</option>
-          <option [ngValue]="'G'">{{ i18n.t('pip.G') }}</option>
-          <option [ngValue]="'C'">{{ i18n.t('deckView.colorless') }}</option>
-        </select>
+        <app-color-filter [(value)]="colorFilter" />
         @if (hasActiveCardFilters()) {
           <button class="glass-chip small" (click)="resetCardFilters()">{{ i18n.t('deckView.resetFilters') }}</button>
         }

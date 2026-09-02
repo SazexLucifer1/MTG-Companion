@@ -1,0 +1,17 @@
+<button type="button" [class.active]="value() === 'all'" (click)="value.set('all')">
+  {{ i18n.t('deckView.colorAll') }}
+</button>
+@for (color of colors; track color) {
+  <!-- Der Farbname steht nur noch im Tooltip und im aria-label: das Symbol IST der Name, und
+       sechs ausgeschriebene Farben nebeneinander sprengen jede Filterzeile. -->
+  <button
+    type="button"
+    class="symbol-only"
+    [class.active]="value() === color"
+    (click)="value.set(color)"
+    [title]="label(color)"
+    [attr.aria-label]="label(color)"
+  >
+    <app-mana-symbol [symbol]="color" />
+  </button>
+}

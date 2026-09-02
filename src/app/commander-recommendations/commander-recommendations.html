@@ -22,12 +22,12 @@
     <p class="hint commander-rec-browse-hint">{{ i18n.t('commanderRec.browseHint') }}</p>
 
     <!-- Die fünf Farbfilter sahen aus wie jeder andere graue Chip, obwohl sie Farben BEZEICHNEN.
-         Der Tupfer nimmt die Pip-Farben aus den globalen Tokens. Die Farbe ist dabei Beiwerk: der
-         Name steht daneben und der aktive Zustand hängt weiterhin am Rahmen, nicht am Tupfer. -->
+         Statt eines selbstgebauten Farbtupfers steht hier das echte Manasymbol. Es ist dabei
+         Beiwerk: der Name steht daneben und der aktive Zustand hängt weiterhin am Rahmen. -->
     <div class="chip-row color-filter-row">
       @for (c of colorOptions; track c) {
         <button class="glass-chip small color-chip" [class.active]="browseColors().has(c)" (click)="toggleBrowseColor(c)">
-          <span class="color-dot" [style.background]="'var(--pip-' + c.toLowerCase() + ')'"></span>
+          <app-mana-symbol [symbol]="c" />
           {{ i18n.t('pip.' + c) }}
         </button>
       }

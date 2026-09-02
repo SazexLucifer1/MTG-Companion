@@ -29,6 +29,12 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+
+  // Nur das Symbol in der Spalte: der Rahmen der Symbole (.ms-shadow) ragt einen Pixel über den
+  // Textkasten hinaus und würde vom overflow:hidden der Textvariante abgeschnitten.
+  &.symbol-only {
+    overflow: visible;
+  }
 }
 
 .bc-meter {

@@ -50,6 +50,11 @@
               {
                 "glob": "**/*",
                 "input": "public"
+              },
+              {
+                "glob": "mana.woff2",
+                "input": "node_modules/mana-font/fonts",
+                "output": "fonts"
               }
             ],
             "styles": ["src/styles.scss"],

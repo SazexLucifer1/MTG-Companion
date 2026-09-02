@@ -1,6 +1,7 @@
 /* Globales Liquid-Glass-Theme für die Statsfinity App */
 
 @use 'styles/breakpoints' as bp;
+@use 'styles/mana';
 
 :root {
   @include bp.custom-properties;
@@ -298,6 +299,25 @@ h3 {
       opacity: 0.35;
       cursor: default;
     }
+  }
+
+  // Die Symbolfilter (Farbe, Manawert) brauchen so viele Segmente, dass sie auf dem Handy
+  // umbrechen. Ohne diese Zeile teilen sich die Segmente der letzten Zeile deren Restbreite auf
+  // (flex: 1) und ein einzelnes übriges Symbol steht mittig im Nichts.
+  &.mana-filter button {
+    flex: 0 0 auto;
+    // Etwas flacher als ein Unter-Tab: die Symbolfilter stehen in einer Zeile mit den kleinen
+    // Auswahllisten (.glass-input.small, 34px) und sollen nicht aus ihr herausragen.
+    min-height: 32px;
+  }
+
+  // Segment, das nur ein Manasymbol trägt (Farb- und Manawert-Filter). Ohne den waagerechten
+  // Innenabstand für Text passen sechs bis acht davon nebeneinander auch aufs Handy.
+  button.symbol-only {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--sp-2) var(--sp-3);
   }
 
   // Volle Breite, wenn der Umschalter die Zeile führt (z.B. Unter-Tabs).

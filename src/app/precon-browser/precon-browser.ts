@@ -10,6 +10,7 @@ import { CardImage } from '../card-image/card-image';
 import { PartnerCardImage } from '../partner-card-image/partner-card-image';
 import { normalizeCardName } from '../array-utils';
 import { BarChart, BarChartDatum } from '../ui/bar-chart/bar-chart';
+import { ColorFilter } from '../ui/color-filter/color-filter';
 import {
   manaCurveChartData,
   pipChartData,
@@ -115,7 +116,7 @@ function sortByCmc(a: PreconCardEntry, b: PreconCardEntry): number {
  */
 @Component({
   selector: 'app-precon-browser',
-  imports: [FormsModule, CardImage, PartnerCardImage, DecimalPipe, CurrencyPipe, BarChart],
+  imports: [FormsModule, CardImage, PartnerCardImage, DecimalPipe, CurrencyPipe, BarChart, ColorFilter],
   templateUrl: './precon-browser.html',
   styleUrl: './precon-browser.scss',
 })

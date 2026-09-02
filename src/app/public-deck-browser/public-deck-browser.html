@@ -12,12 +12,12 @@
     </div>
 
     <!-- Die fünf Farbfilter sahen aus wie jeder andere graue Chip, obwohl sie Farben BEZEICHNEN.
-         Der Tupfer nimmt die Pip-Farben aus den globalen Tokens. Die Farbe ist dabei Beiwerk: der
-         Name steht daneben und der aktive Zustand hängt weiterhin am Rahmen, nicht am Tupfer. -->
+         Statt eines selbstgebauten Farbtupfers steht hier das echte Manasymbol. Es ist dabei
+         Beiwerk: der Name steht daneben und der aktive Zustand hängt weiterhin am Rahmen. -->
     <div class="chip-row color-filter-row">
       @for (c of colorOptions; track c) {
         <button class="glass-chip small color-chip" [class.active]="browseColors().has(c)" (click)="toggleColor(c)">
-          <span class="color-dot" [style.background]="'var(--pip-' + c.toLowerCase() + ')'"></span>
+          <app-mana-symbol [symbol]="c" />
           {{ i18n.t('pip.' + c) }}
         </button>
       }
@@ -136,7 +136,7 @@
       <app-bar-chart [data]="manaCurveChart()" orientation="vertical" />
 
       <h4 class="deck-section-title">{{ i18n.t('deckView.pipDistTitle') }}</h4>
-      <app-bar-chart [data]="pipDistributionChart()" labelWidth="62px" />
+      <app-bar-chart [data]="pipDistributionChart()" labelWidth="22px" />
 
       <h4 class="deck-section-title">{{ i18n.t('deckView.typeBreakdownTitle') }}</h4>
       <app-bar-chart [data]="typeBreakdownChart()" labelWidth="110px" />
@@ -169,15 +169,7 @@
             }
           </select>
         }
-        <select class="glass-input small" [ngModel]="colorFilter()" (ngModelChange)="colorFilter.set($event)">
-          <option [ngValue]="'all'">{{ i18n.t('deckView.colorAll') }}</option>
-          <option [ngValue]="'W'">{{ i18n.t('pip.W') }}</option>
-          <option [ngValue]="'U'">{{ i18n.t('pip.U') }}</option>
-          <option [ngValue]="'B'">{{ i18n.t('pip.B') }}</option>
-          <option [ngValue]="'R'">{{ i18n.t('pip.R') }}</option>
-          <option [ngValue]="'G'">{{ i18n.t('pip.G') }}</option>
-          <option [ngValue]="'C'">{{ i18n.t('deckView.colorless') }}</option>
-        </select>
+        <app-color-filter [(value)]="colorFilter" />
         @if (hasActiveCardFilters()) {
           <button class="glass-chip small" (click)="resetCardFilters()">{{ i18n.t('deckView.resetFilters') }}</button>
         }

@@ -547,6 +547,11 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     'pip.R': 'Rot',
     'pip.G': 'Grün',
 
+    // Namen der Farbkombinationen (Azorius, Grixis, ...) stehen bewusst NICHT hier: sie sind
+    // Eigennamen aus dem Spiel und in jeder Sprache gleich (siehe color-combo-names.ts).
+    'colorCombo.mono': 'Mono-{{color}}',
+    'colorCombo.fiveColor': 'Fünffarbig',
+
     'deckViewer.type.Planeswalker': 'Planeswalker',
     'deckViewer.type.Battle': 'Battle',
     'deckViewer.type.Kreatur': 'Kreatur',
@@ -654,6 +659,7 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     'deckView.typeAll': 'Typ: alle',
     'deckView.creatureTypePlaceholder': 'Kreaturtyp (z.B. Goblin)',
     'deckView.cmcAll': 'Manawert: alle',
+    'deckView.cmcValueAria': 'Manawert {{value}}',
     'deckView.colorAll': 'Farbe: alle',
     'deckView.colorless': 'Farblos',
     'deckView.effectAll': 'Effekt: alle',
@@ -1840,6 +1846,9 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     'pip.R': 'Red',
     'pip.G': 'Green',
 
+    'colorCombo.mono': 'Mono-{{color}}',
+    'colorCombo.fiveColor': 'Five-color',
+
     'deckViewer.type.Planeswalker': 'Planeswalker',
     'deckViewer.type.Battle': 'Battle',
     'deckViewer.type.Kreatur': 'Creature',
@@ -1947,6 +1956,7 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     'deckView.typeAll': 'Type: all',
     'deckView.creatureTypePlaceholder': 'Creature type (e.g. Goblin)',
     'deckView.cmcAll': 'Mana value: all',
+    'deckView.cmcValueAria': 'Mana value {{value}}',
     'deckView.colorAll': 'Color: all',
     'deckView.colorless': 'Colorless',
     'deckView.effectAll': 'Effect: all',

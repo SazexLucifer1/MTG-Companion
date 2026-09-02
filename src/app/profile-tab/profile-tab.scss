@@ -26,6 +26,25 @@
   margin: 8px 0 4px;
 }
 
+// Der Umschalter "Nach Partien / Nach Decks" steht als Kind im .profile-grid und bekam dort bisher
+// eine eigene Rasterzelle: auf dem Desktop also eine volle 360px-Spalte, die zusätzlich auf die
+// Höhe der Nachbarkarte gestreckt wurde - mehrere hundert Pixel Fläche für zwei Knöpfe. Er
+// leitet die Sektionen darunter ein, gehört also in eine eigene Zeile über die ganze Breite, nimmt
+// darin aber nur seine Eigenbreite und -höhe ein.
+.profile-grid > .sort-toggle {
+  grid-column: 1 / -1;
+  justify-self: start;
+  margin: 0;
+
+  // Ein nachgeordneter Ansichtswechsel, kein Haupt-Reiter: etwas flacher als die Unter-Tabs oben,
+  // damit er die Sektionen darunter nicht optisch überstimmt.
+  button {
+    min-height: 32px;
+    padding: var(--sp-1) var(--sp-4);
+    font-size: 0.82rem;
+  }
+}
+
 .profile-view-toggle {
   margin: 4px 0 12px;
 }
@@ -334,20 +353,6 @@
   }
 }
 
-.color-swatch {
-  display: inline-block;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.colorless-swatch {
-  background: rgba(255, 255, 255, 0.15);
-  border: 1px solid rgba(255, 255, 255, 0.35);
-}
-
-
 .qr-code {
   display: block;
   width: 100%;
@@ -454,10 +459,13 @@
   // die Hälfte leer.
   grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
   gap: var(--sp-6);
-  // Karten in derselben Zeile bekommen dieselbe Höhe (Grid-Standard). Zwischenzeitlich stand hier
-  // "start", damit kurze Karten nicht aufgeblasen werden - nebeneinander sahen zwei
-  // unterschiedlich hohe Kästen aber unruhig aus.
-  align-items: stretch;
+  // Jede Karte nur so hoch wie ihr Inhalt. Zwischenzeitlich stand hier "stretch", damit Karten
+  // derselben Zeile bündig abschließen - das ging aber nur gut, solange die Nachbarn ähnlich viel
+  // Inhalt hatten. Neben einer offenen Liste (die Farbkombinationen können zwei Dutzend Zeilen
+  // haben) wurde aus den "Lieblingsfarben" mit ihren fixen fünf Balken ein Kasten, der zu vier
+  // Fünfteln leer war. Ein ungleicher unterer Rand ist das kleinere Übel als ein riesiges leeres
+  // Glasfeld.
+  align-items: start;
   // Ersetzt den Außenabstand, den .glass-card sonst selbst mitbringt (siehe unten).
   margin: 14px;
 

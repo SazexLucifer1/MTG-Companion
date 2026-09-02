@@ -15,7 +15,16 @@
   <div class="bar-chart">
     @for (d of data(); track d.label) {
       <div class="bc-row">
-        <span class="bc-label" [style.flex-basis]="labelWidth()">{{ d.label }}</span>
+        <!-- Mit Symbol ersetzt es den Namen, statt ihn zu begleiten: "Weiß" neben dem weißen
+             Manasymbol sagt dasselbe zweimal und kostet die halbe Zeile. Der Name bleibt als
+             Vorlesebeschriftung am Symbol hängen. -->
+        <span class="bc-label" [class.symbol-only]="!!d.symbol" [style.flex-basis]="labelWidth()">
+          @if (d.symbol) {
+            <app-mana-symbol [symbol]="d.symbol" [label]="d.label" />
+          } @else {
+            {{ d.label }}
+          }
+        </span>
         <app-meter class="bc-meter" [value]="d.value" [max]="reference()" [color]="d.color ?? null" [thick]="true" />
         <span class="bc-value">{{ d.value }}{{ valueSuffix() }}</span>
         @if (d.detail) {

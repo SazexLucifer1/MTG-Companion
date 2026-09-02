@@ -21,10 +21,12 @@ import { CommanderStatList } from '../commander-stat-list/commander-stat-list';
 import { FavoriteCommanderEditor } from '../favorite-commander-editor/favorite-commander-editor';
 import { BarChart, BarChartDatum } from '../ui/bar-chart/bar-chart';
 import { Meter } from '../ui/meter/meter';
+import { ManaSymbol } from '../ui/mana-symbol/mana-symbol';
+import { colorComboName, sortColors } from '../color-combo-names';
 
 @Component({
   selector: 'app-profile-tab',
-  imports: [FormsModule, DatePipe, DecimalPipe, DeckList, CardImage, CommanderStatList, FavoriteCommanderEditor, BarChart, Meter],
+  imports: [FormsModule, DatePipe, DecimalPipe, DeckList, CardImage, CommanderStatList, FavoriteCommanderEditor, BarChart, Meter, ManaSymbol],
   templateUrl: './profile-tab.html',
   styleUrl: './profile-tab.scss',
 })
@@ -162,9 +164,21 @@ export class ProfileTab {
 
   readonly colorLabel = (color: string): string => this.i18n.t(`pip.${color}`);
 
-  /** Anzeigename einer Farbkombination (z.B. "Weiß/Blau") - "Farblos" bei leerer Farbidentität. */
-  readonly colorComboLabel = (colors: string[]): string =>
-    colors.length === 0 ? this.i18n.t('deckView.colorless') : colors.map((c) => this.colorLabel(c)).join(' / ');
+  /**
+   * Anzeigename einer Farbkombination: der Eigenname aus dem Spiel ("Azorius", "Grixis",
+   * "Yore-Tiller"). Vorher standen hier die aneinandergereihten Farbnamen ("Blau / Schwarz /
+   * Rot") - die sagen neben den Symbolen dasselbe zweimal, während der Eigenname etwas
+   * hinzufügt. Für die Fälle ohne Eigennamen (eine Farbe, farblos, fünffarbig) bleibt Text.
+   */
+  readonly colorComboLabel = (colors: string[]): string => {
+    if (colors.length === 0) return this.i18n.t('deckView.colorless');
+    if (colors.length === 1) return this.i18n.t('colorCombo.mono', { color: this.colorLabel(colors[0]) });
+    if (colors.length >= 5) return this.i18n.t('colorCombo.fiveColor');
+    return colorComboName(colors) ?? colors.map((c) => this.colorLabel(c)).join(' / ');
+  };
+
+  /** Farben einer Kombination in der üblichen WUBRG-Reihenfolge - so, wie der Eigenname sie liest. */
+  readonly comboColors = (colors: string[]): string[] => sortColors(colors);
 
   /** Umschalter für Karten-/Farb-/Farbkombinations-Statistik: "games" gewichtet nach tatsächlich
    * gespielten Partien je Deck (Standard), "decks" zählt jedes Deck nur 1x, unabhängig davon, wie
@@ -198,6 +212,7 @@ export class ProfileTab {
       label: this.colorLabel(c.color),
       value: this.countFor(c),
       color: this.colorVar(c.color),
+      symbol: c.color,
     })),
   );
 

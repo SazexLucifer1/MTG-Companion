@@ -1,5 +1,6 @@
 import { Component, computed, input } from '@angular/core';
 import { Meter } from '../meter/meter';
+import { ManaSymbol } from '../mana-symbol/mana-symbol';
 import { barPercent, maxValue } from '../chart-scale';
 
 export interface BarChartDatum {
@@ -10,6 +11,12 @@ export interface BarChartDatum {
   detail?: string;
   /** Eigene Balkenfarbe, z.B. eine Pip-Farbe. Ohne Angabe der Akzentton. */
   color?: string;
+  /**
+   * Manafarbe (W/U/B/R/G/C), die vor der Beschriftung als Symbol steht - nur bei waagerechten
+   * Balken. Die Balkenfarbe allein trägt die Farbidentität nicht: sie ist für Rot-Grün-Blinde
+   * mehrdeutig und ohne Legende überhaupt nur zu erraten. Das Symbol sagt es eindeutig.
+   */
+  symbol?: string;
 }
 
 /**
@@ -25,7 +32,7 @@ export interface BarChartDatum {
  */
 @Component({
   selector: 'app-bar-chart',
-  imports: [Meter],
+  imports: [Meter, ManaSymbol],
   templateUrl: './bar-chart.html',
   styleUrl: './bar-chart.scss',
 })

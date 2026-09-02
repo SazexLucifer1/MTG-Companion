@@ -1,0 +1,18 @@
+<button type="button" [class.active]="value() === 'all'" (click)="value.set('all')">
+  {{ i18n.t('deckView.cmcAll') }}
+</button>
+@for (n of values; track n) {
+  <button
+    type="button"
+    class="symbol-only"
+    [class.active]="value() === n"
+    (click)="value.set(n)"
+    [title]="label(n)"
+    [attr.aria-label]="label(n)"
+  >
+    <app-mana-symbol [symbol]="'' + n" />
+    @if (isOpenEnd(n)) {
+      <span class="cmc-open-end" aria-hidden="true">+</span>
+    }
+  </button>
+}
