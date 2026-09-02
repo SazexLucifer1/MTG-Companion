@@ -11,15 +11,44 @@ export class AuthService {
 
   constructor() {
     supabase.auth.getSession().then(({ data }) => {
-      this.currentUser.set(data.session?.user ?? null);
+      this.applyUser(data.session?.user ?? null);
     });
 
     supabase.auth.onAuthStateChange((event, session) => {
-      this.currentUser.set(session?.user ?? null);
+      this.applyUser(session?.user ?? null);
       if (event === 'PASSWORD_RECOVERY') {
         this.passwordRecovery.set(true);
       }
     });
+  }
+
+  /**
+   * Setzt currentUser nur dann neu, wenn sich am Account wirklich etwas geändert hat.
+   *
+   * Supabase erneuert den Token unter anderem genau dann, wenn der Tab aus dem Hintergrund
+   * zurückkommt, und feuert dabei TOKEN_REFRESHED/SIGNED_IN mit einem NEUEN User-Objekt für
+   * denselben Account. Signale vergleichen per Referenz - ohne diese Prüfung würde also jeder
+   * Tab-Wechsel sämtliche Effects auf currentUser() erneut auslösen (Gruppen, Hintergründe,
+   * Turnierdaten, Profil ...) und eine Welle paralleler Abfragen samt Neuaufbau ganzer Listen
+   * starten. Genau in diesem Moment ist die Seite am anfälligsten dafür, vom Browser wegen
+   * Speicherdrucks abgeräumt zu werden - und das endet als weißer Bildschirm.
+   *
+   * Verglichen wird nicht nur die id: bei einer echten Änderung am Account (E-Mail bestätigt,
+   * Passwort geändert -> USER_UPDATED) wandert updated_at mit, das Signal wird dann also sehr wohl
+   * aktualisiert.
+   */
+  private applyUser(user: User | null): void {
+    const current = this.currentUser();
+    if (
+      current &&
+      user &&
+      current.id === user.id &&
+      current.email === user.email &&
+      current.updated_at === user.updated_at
+    ) {
+      return;
+    }
+    this.currentUser.set(user);
   }
 
   /** Gibt zurück, ob die E-Mail-Adresse erst noch bestätigt werden muss, bevor ein Login möglich ist. */

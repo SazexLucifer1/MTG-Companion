@@ -28,6 +28,7 @@ import { I18nService } from './i18n.service';
 import { FeedbackService } from './feedback.service';
 import { TournamentService } from './tournament.service';
 import { LoginOverlayService } from './login-overlay.service';
+import { AppRecoveryService } from './app-recovery.service';
 import { APP_VERSION, APP_COMMIT } from './version';
 
 @Component({
@@ -67,6 +68,10 @@ export class App {
   readonly feedback = inject(FeedbackService);
   readonly tournament = inject(TournamentService);
   readonly loginOverlay = inject(LoginOverlayService);
+
+  /** Nur injiziert, damit der Dienst überhaupt existiert: er hängt sich an den Tab-Wechsel und holt
+   * die Ansicht zurück, falls nach dem Zurückkommen nichts mehr gerendert wird (weißer Bildschirm). */
+  private readonly recovery = inject(AppRecoveryService);
 
   /** Bei jedem Build automatisch erzeugt (siehe scripts/generate-version.js) - Anzahl Commits als Versionsnummer + kurzer Commit-Hash, damit im Browser sofort sichtbar ist, ob ein Merge/Deploy schon angekommen ist. */
   readonly appVersion = APP_VERSION;
