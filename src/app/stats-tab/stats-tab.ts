@@ -29,6 +29,9 @@ import {
 import { I18nService } from '../i18n.service';
 import { TournamentHistory } from '../tournament-history/tournament-history';
 import { isPlayerWinner as isMatchWinner } from '../match-utils';
+import { Meter } from '../ui/meter/meter';
+import { Pager } from '../ui/pager/pager';
+import { SplitBar, SplitSegment } from '../ui/split-bar/split-bar';
 
 export type RankSortMode = 'wins' | 'winRate' | 'games';
 export type StatsViewMode = 'stats' | 'tournaments';
@@ -59,7 +62,7 @@ interface ImportMappingRow {
 
 @Component({
   selector: 'app-stats-tab',
-  imports: [DecimalPipe, PlayerAvatar, FormsModule, TournamentHistory, CardImage],
+  imports: [DecimalPipe, PlayerAvatar, FormsModule, TournamentHistory, CardImage, Meter, Pager, SplitBar],
   templateUrl: './stats-tab.html',
   styleUrl: './stats-tab.scss',
 })
@@ -183,6 +186,39 @@ export class StatsTab {
   readonly deckSortMode = signal<RankSortMode>('winRate');
   readonly playerDeckSortMode = signal<RankSortMode>('winRate');
   readonly playerCommanderSortMode = signal<RankSortMode>('winRate');
+
+  // --- Balken der Ranglisten ---
+  //
+  // Die Balken hingen bisher fest an der Winrate, auch wenn nach Siegen oder Spielen sortiert war.
+  // Die Liste war dann nach der einen Größe geordnet und der Balken zeigte eine andere - dadurch
+  // sahen die Balken willkürlich aus, mal länger, mal kürzer, ohne erkennbaren Bezug zur
+  // Reihenfolge. Jetzt zeigt der Balken immer die Größe, nach der gerade sortiert wird.
+
+  /** Der Wert, den der Balken einer Zeile darstellt - passend zur aktiven Sortierung. */
+  barValue(entry: { wins: number; games: number; winRate: number }, mode: RankSortMode): number {
+    switch (mode) {
+      case 'wins':
+        return entry.wins;
+      case 'games':
+        return entry.games;
+      case 'winRate':
+        return entry.winRate;
+    }
+  }
+
+  /**
+   * Bezugsgröße für die Balken einer Liste.
+   *
+   * Bei Winrate fest 100, damit 40% in jeder Liste gleich lang aussieht. Bei Absolutwerten der
+   * Größtwert der Liste, sonst wäre bei lauter kleinen Zahlen jeder Balken ein Stummel.
+   */
+  barMax(
+    list: readonly { wins: number; games: number; winRate: number }[],
+    mode: RankSortMode,
+  ): number {
+    if (mode === 'winRate') return 100;
+    return Math.max(1, ...list.map((e) => this.barValue(e, mode)));
+  }
 
   // --- Stats-Sichtbarkeit ---
 
@@ -347,17 +383,8 @@ export class StatsTab {
     const start = this.playerEffectivePage() * PAGE_SIZE;
     return this.rankedPlayerStats().slice(start, start + PAGE_SIZE);
   });
-  readonly playerPageRangeEnd = computed(() =>
-    Math.min((this.playerEffectivePage() + 1) * PAGE_SIZE, this.rankedPlayerStats().length)
-  );
 
-  prevPlayerPage(): void {
-    this.playerPage.update((p) => Math.max(0, p - 1));
-  }
 
-  nextPlayerPage(): void {
-    this.playerPage.update((p) => Math.min(this.playerTotalPages() - 1, p + 1));
-  }
 
   /** Spieler unterhalb der Schwelle, mit Anzeige wie viele Spiele noch bis zur Qualifikation fehlen. */
   readonly playersInQualification = computed(() =>
@@ -379,17 +406,8 @@ export class StatsTab {
     const start = this.playerQualEffectivePage() * PAGE_SIZE;
     return this.playersInQualification().slice(start, start + PAGE_SIZE);
   });
-  readonly playerQualPageRangeEnd = computed(() =>
-    Math.min((this.playerQualEffectivePage() + 1) * PAGE_SIZE, this.playersInQualification().length)
-  );
 
-  prevPlayerQualPage(): void {
-    this.playerQualPage.update((p) => Math.max(0, p - 1));
-  }
 
-  nextPlayerQualPage(): void {
-    this.playerQualPage.update((p) => Math.min(this.playerQualTotalPages() - 1, p + 1));
-  }
 
   /** Ob die Spielerliste in "Spiele bis zur Qualifikation" ausgeklappt ist - analog zu showPlayerDecks/showPlayerCommanders. */
   readonly showQualification = signal(false);
@@ -580,17 +598,8 @@ export class StatsTab {
     const start = this.combinedEffectivePage() * PAGE_SIZE;
     return this.rankedCombinedStats().slice(start, start + PAGE_SIZE);
   });
-  readonly combinedPageRangeEnd = computed(() =>
-    Math.min((this.combinedEffectivePage() + 1) * PAGE_SIZE, this.rankedCombinedStats().length)
-  );
 
-  prevCombinedPage(): void {
-    this.combinedPage.update((p) => Math.max(0, p - 1));
-  }
 
-  nextCombinedPage(): void {
-    this.combinedPage.update((p) => Math.min(this.combinedTotalPages() - 1, p + 1));
-  }
 
   /** Decks/Commander unterhalb der Schwelle, mit Anzeige wie viele Spiele noch bis zur Qualifikation fehlen. */
   readonly combinedInQualification = computed(() =>
@@ -612,20 +621,8 @@ export class StatsTab {
     const start = this.combinedQualEffectivePage() * PAGE_SIZE;
     return this.combinedInQualification().slice(start, start + PAGE_SIZE);
   });
-  readonly combinedQualPageRangeEnd = computed(() =>
-    Math.min(
-      (this.combinedQualEffectivePage() + 1) * PAGE_SIZE,
-      this.combinedInQualification().length
-    )
-  );
 
-  prevCombinedQualPage(): void {
-    this.combinedQualPage.update((p) => Math.max(0, p - 1));
-  }
 
-  nextCombinedQualPage(): void {
-    this.combinedQualPage.update((p) => Math.min(this.combinedQualTotalPages() - 1, p + 1));
-  }
 
   /** Ob die nicht-qualifizierten Decks/Commander (Qualifikations-Liste) eingeblendet sind. */
   readonly showDeckQualification = signal(false);
@@ -913,6 +910,23 @@ export class StatsTab {
   readonly h2hWinsOther = computed(
     () => this.h2hGames() - this.h2hWinsA() - this.h2hWinsB()
   );
+
+  /**
+   * Der Direktvergleich als ein geteilter Balken.
+   *
+   * Vorher standen hier drei getrennte Zahlenkacheln (Spiele, Siege A, Siege B) plus ein Satz für
+   * die übrigen Sieger. Drei Kacheln nebeneinander zeigen aber nicht, was die Frage ist: wer liegt
+   * vorn und wie deutlich. Als ein Balken mit drei Abschnitten ist genau das der erste Eindruck.
+   */
+  readonly h2hSegments = computed<SplitSegment[]>(() => [
+    { label: this.h2hPlayerA() ?? '', value: this.h2hWinsA(), color: 'var(--series-1)' },
+    { label: this.h2hPlayerB() ?? '', value: this.h2hWinsB(), color: 'var(--series-2)' },
+    {
+      label: this.i18n.t('stats.h2h.otherWinner'),
+      value: this.h2hWinsOther(),
+      color: 'var(--series-neutral)',
+    },
+  ]);
 
   private h2hCommanderStatsFor(player: string): { commander: string; games: number; wins: number; winRate: number }[] {
     const stats = new Map<string, { games: number; wins: number }>();

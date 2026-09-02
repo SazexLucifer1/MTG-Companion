@@ -19,10 +19,11 @@ import { DialogService } from '../dialog.service';
 import { CardImage } from '../card-image/card-image';
 import { CommanderStatList } from '../commander-stat-list/commander-stat-list';
 import { FavoriteCommanderEditor } from '../favorite-commander-editor/favorite-commander-editor';
+import { BarChart, BarChartDatum } from '../ui/bar-chart/bar-chart';
 
 @Component({
   selector: 'app-profile-tab',
-  imports: [FormsModule, DatePipe, DecimalPipe, DeckList, CardImage, CommanderStatList, FavoriteCommanderEditor],
+  imports: [FormsModule, DatePipe, DecimalPipe, DeckList, CardImage, CommanderStatList, FavoriteCommanderEditor, BarChart],
   templateUrl: './profile-tab.html',
   styleUrl: './profile-tab.scss',
 })
@@ -111,6 +112,20 @@ export class ProfileTab {
     }
     return [...counts.entries()].sort((a, b) => a[0] - b[0]).map(([placement, count]) => ({ placement, count }));
   });
+
+  /**
+   * Die Platzierungsverteilung als Säulendiagramm.
+   *
+   * Das ist ein klassisches Histogramm (1. Platz: 12x, 2. Platz: 7x, ...) und stand vorher an drei
+   * Stellen im Profil als reine Aufzählung - eine Form, aus der sich die Verteilung erst durch
+   * Kopfrechnen ergibt.
+   */
+  readonly placementChart = computed<BarChartDatum[]>(() =>
+    this.placementDistribution().map((p) => ({
+      label: this.i18n.t('placement.badge', { placement: p.placement }),
+      value: p.count,
+    })),
+  );
 
   readonly unassignedCommanderStats = signal<CommanderGameStats[]>([]);
   /** Gleiches wie unassignedCommanderStats, aber für ein FREMDES Profil - rein zum Ansehen, ohne Reparieren/Verlinken (das kann nur der Account-Besitzer selbst). */

@@ -48,3 +48,19 @@ ul.tournament-history-list li {
     opacity: 0.8;
   }
 }
+
+// Die drei Feinwertungen (OMW/GW/OGW) standen bisher nur als Prozenttext in einer Zeile - drei
+// Zahlen nebeneinander, aus denen sich der Abstand zum Nachbarn erst durch Vergleichen ergibt.
+// Als drei schmale Balken darunter ist das Kräfteverhältnis sofort sichtbar. Der Text bleibt, die
+// Balken kommen dazu; die genaue Zahl geht also nicht verloren.
+.tiebreaker-meters {
+  // Die Liste ist eine umbrechende Flex-Zeile, deshalb erzwingt flex-basis: 100% die eigene Zeile
+  // (grid-column würde hier nicht greifen).
+  flex: 0 0 100%;
+  display: flex;
+  gap: var(--sp-2);
+
+  app-meter {
+    flex: 1;
+  }
+}

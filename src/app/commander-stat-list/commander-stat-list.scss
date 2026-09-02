@@ -14,14 +14,21 @@
   padding: 0;
 
   li {
-    display: flex;
+    // Grid statt Flex, damit der Balken eine eigene Zeile über die volle Breite bekommt: Name und
+    // Zahlenwert oben, Balken darunter. Vorher war das hier eine reine Textliste ohne jede Grafik.
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
     align-items: center;
-    gap: 8px;
-    padding: 10px 0;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    gap: var(--sp-2) var(--sp-3);
+    padding: var(--sp-4) 0;
+    border-bottom: 1px solid var(--divider);
 
     &:last-child {
       border-bottom: none;
+    }
+
+    app-meter {
+      grid-column: 1 / -1;
     }
   }
 }

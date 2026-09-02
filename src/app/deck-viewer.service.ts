@@ -14,6 +14,12 @@ import { GroupService } from './group.service';
 import { MtgService } from './mtg.service';
 import { I18nService } from './i18n.service';
 import { COMMANDER_ARCHETYPE_FILTERS } from './commander-archetype-filters';
+import { BarChartDatum } from './ui/bar-chart/bar-chart';
+import {
+  manaCurveChartData,
+  pipChartData,
+  typeChartData,
+} from './ui/bar-chart/deck-chart-data';
 
 export interface ManaCurveBucket {
   label: string;
@@ -275,6 +281,20 @@ export class DeckViewerService {
   closeEffectCategoryPopup(): void {
     this.effectCategoryPopup.set(null);
   }
+
+  // --- Fertige Diagramm-Reihen für <app-bar-chart> ---
+  //
+  // Die Abbildung selbst liegt in ui/bar-chart/deck-chart-data.ts, weil precon-browser und
+  // public-deck-browser dieselben drei Diagramme aus eigenen Signalen speisen. Vorher hatte jede
+  // der drei Komponenten eigene curveBarHeight/pipBarWidth/typeBarWidth-Methoden mit identischem
+  // Rumpf - dreimal dieselbe Skalierungsformel.
+  readonly manaCurveChart = computed<BarChartDatum[]>(() => manaCurveChartData(this.manaCurve()));
+  readonly pipDistributionChart = computed<BarChartDatum[]>(() =>
+    pipChartData(this.pipDistribution()),
+  );
+  readonly typeBreakdownChart = computed<BarChartDatum[]>(() =>
+    typeChartData(this.typeBreakdown()),
+  );
 
   private static readonly PIP_COLORS: PipCount['color'][] = ['W', 'U', 'B', 'R', 'G'];
 

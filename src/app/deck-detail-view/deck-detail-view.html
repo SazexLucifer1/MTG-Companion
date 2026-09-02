@@ -579,7 +579,7 @@
             @if (viewer.analysisBusy()) {
               <p class="hint">{{ viewer.i18n.t('deckView.loadingAnalysis') }}</p>
             } @else {
-              <div class="stat-tiles deck-analysis-tiles">
+              <div class="stat-tiles">
                 <div class="stat-tile">
                   <span class="stat-value">{{ viewer.averageCmc() != null ? ((viewer.averageCmc() | number: '1.1-2')) : '–' }}</span>
                   <span class="stat-label">{{ viewer.i18n.t('deckView.avgCmcTile') }}</span>
@@ -605,53 +605,15 @@
               </div>
 
               <h4 class="deck-section-title">{{ viewer.i18n.t('deckView.manaCurveTitle') }}</h4>
-              <div class="curve-chart">
-                @for (bucket of viewer.manaCurve(); track bucket.label) {
-                  <div class="curve-bar-col">
-                    <div class="curve-bar-track">
-                      <div class="curve-bar" [style.height.%]="curveBarHeight(bucket.count)">
-                        @if (bucket.count > 0) {
-                          <span class="curve-bar-value">{{ bucket.count }}</span>
-                        }
-                      </div>
-                    </div>
-                    <span class="curve-bar-label">{{ bucket.label }}</span>
-                  </div>
-                }
-              </div>
+              <app-bar-chart [data]="viewer.manaCurveChart()" orientation="vertical" />
 
               <h4 class="deck-section-title">{{ viewer.i18n.t('deckView.pipDistTitle') }}</h4>
               @if (viewer.pipDistribution().length > 0) {
-                <div class="pip-chart">
-                  @for (pip of viewer.pipDistribution(); track pip.color) {
-                    @if (pip.count > 0) {
-                      <div class="pip-row">
-                        <span class="pip-swatch" [class]="'pip-' + pip.color"></span>
-                        <span class="pip-label">{{ pip.label }}</span>
-                        <div class="pip-bar-track">
-                          <div class="pip-bar-fill" [class]="'pip-' + pip.color" [style.width.%]="pipBarWidth(pip.count)"></div>
-                        </div>
-                        <span class="pip-value">{{ pip.count }}</span>
-                      </div>
-                    }
-                  }
-                </div>
+                <app-bar-chart [data]="viewer.pipDistributionChart()" labelWidth="62px" />
               }
 
               <h4 class="deck-section-title">{{ viewer.i18n.t('deckView.typeBreakdownTitle') }}</h4>
-              <div class="pip-chart">
-                @for (t of viewer.typeBreakdown(); track t.type) {
-                  @if (t.count > 0) {
-                    <div class="pip-row">
-                      <span class="pip-label type-label">{{ t.label }}</span>
-                      <div class="pip-bar-track">
-                        <div class="pip-bar-fill type-bar" [style.width.%]="typeBarWidth(t.count)"></div>
-                      </div>
-                      <span class="pip-value">{{ t.count }}</span>
-                    </div>
-                  }
-                }
-              </div>
+              <app-bar-chart [data]="viewer.typeBreakdownChart()" labelWidth="110px" />
 
               <h4 class="deck-section-title">{{ viewer.i18n.t('deckView.effectCategoriesTitle') }}</h4>
               @if (viewer.effectCategoryCountsBusy()) {
@@ -662,7 +624,7 @@
                 }
               } @else if (viewer.effectCategoryStats(); as stats) {
                 <p class="hint">{{ viewer.i18n.t('deckView.effectCategoriesHint') }}</p>
-                <div class="stat-tiles deck-analysis-tiles">
+                <div class="stat-tiles">
                   @for (stat of stats; track stat.key) {
                     <button
                       class="stat-tile stat-tile-button"

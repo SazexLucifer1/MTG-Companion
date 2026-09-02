@@ -183,7 +183,7 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     'stats.h2h.noGames': '{{a}} und {{b}} haben noch nicht gemeinsam gespielt.',
     'stats.h2h.gamesTogether': 'Gemeinsame Spiele',
     'stats.h2h.winsOf': 'Siege {{name}}',
-    'stats.h2h.otherWinnerHint': 'In {{count}} dieser Spiele hat ein anderer Mitspieler gewonnen.',
+    'stats.h2h.otherWinner': 'Andere',
     'stats.h2h.commandersOf': 'Commander von {{name}} in diesen Spielen',
 
     // --- Stats-Tab: Gesamt/Rangliste ---
@@ -1463,7 +1463,7 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     'stats.h2h.noGames': "{{a}} and {{b}} haven't played together yet.",
     'stats.h2h.gamesTogether': 'Games together',
     'stats.h2h.winsOf': 'Wins {{name}}',
-    'stats.h2h.otherWinnerHint': 'Another player won {{count}} of these games.',
+    'stats.h2h.otherWinner': 'Others',
     'stats.h2h.commandersOf': "{{name}}'s commanders in these games",
 
     // --- Stats tab: overall/ranking ---

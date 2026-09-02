@@ -26,15 +26,10 @@
           <span class="card-name-text">{{ c.commander }}</span>
         </span>
         <span class="hint">{{ c.wins }} / {{ c.games }} {{ i18n.t('stats.wins') }} · {{ c.winRate | number: '1.0-0' }}%</span>
+        <app-meter [value]="c.winRate" />
       </li>
     }
   </ul>
 
-  @if (totalPages() > 1) {
-    <div class="chip-row pager">
-      <button class="icon-button" (click)="prevPage()" [disabled]="page() === 0" [attr.aria-label]="i18n.t('stats.previousPage')">◀</button>
-      <span class="hint">{{ pageRangeStart() }}–{{ pageRangeEnd() }} {{ i18n.t('stats.of') }} {{ filteredSorted().length }}</span>
-      <button class="icon-button" (click)="nextPage()" [disabled]="page() >= totalPages() - 1" [attr.aria-label]="i18n.t('stats.nextPage')">▶</button>
-    </div>
-  }
+  <app-pager [page]="page()" [totalItems]="filteredSorted().length" (pageChange)="page.set($event)" />
 }

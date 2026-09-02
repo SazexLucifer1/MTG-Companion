@@ -91,14 +91,7 @@
     <section class="glass-card">
       <h2>{{ i18n.t('profile.placementDistribution') }}</h2>
       <p class="hint">{{ i18n.t('profile.placementDistributionHint') }}</p>
-      <ul class="player-list compact-list">
-        @for (p of placementDistribution(); track p.placement) {
-          <li>
-            <span class="player-name">{{ i18n.t('placement.badge', { placement: p.placement }) }}</span>
-            <span class="hint">{{ p.count }}×</span>
-          </li>
-        }
-      </ul>
+      <app-bar-chart [data]="placementChart()" orientation="vertical" />
     </section>
   }
 } @else if (profileService.viewingPlayerId(); as npcPlayerId) {
@@ -190,14 +183,7 @@
   <section class="glass-card">
     <h2>{{ i18n.t('profile.placementDistribution') }}</h2>
     <p class="hint">{{ i18n.t('profile.placementDistributionHint') }}</p>
-    <ul class="player-list compact-list">
-      @for (p of placementDistribution(); track p.placement) {
-        <li>
-          <span class="player-name">{{ i18n.t('placement.badge', { placement: p.placement }) }}</span>
-          <span class="hint">{{ p.count }}×</span>
-        </li>
-      }
-    </ul>
+    <app-bar-chart [data]="placementChart()" orientation="vertical" />
   </section>
 }
 } @else {
@@ -328,14 +314,7 @@
     <section class="glass-card">
       <h2>{{ i18n.t('profile.placementDistribution') }}</h2>
       <p class="hint">{{ i18n.t('profile.placementDistributionHint') }}</p>
-      <ul class="player-list compact-list">
-        @for (p of placementDistribution(); track p.placement) {
-          <li>
-            <span class="player-name">{{ i18n.t('placement.badge', { placement: p.placement }) }}</span>
-            <span class="hint">{{ p.count }}×</span>
-          </li>
-        }
-      </ul>
+      <app-bar-chart [data]="placementChart()" orientation="vertical" />
     </section>
   }
 

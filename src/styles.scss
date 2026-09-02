@@ -404,6 +404,60 @@ h3 {
   }
 }
 
+/* --- Kennzahlen-Kacheln ---
+   Lag viermal identisch in stats-tab, deck-detail-view, precon-browser und public-deck-browser.
+   Dabei von festen drei Spalten auf auto-fit umgestellt: bei 320px Breite waren drei Kacheln nur
+   ~80px breit und mussten darin eine 1.6rem-Zahl unterbringen, bei 1600px wurden dieselben drei
+   Kacheln ~520px breit für je eine einzige Zahl. deck-detail-view machte das mit
+   .deck-analysis-tiles bereits richtig - jetzt gilt es überall. */
+
+.stat-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+  gap: var(--sp-4);
+}
+
+.stat-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 14px var(--sp-3);
+  border-radius: var(--r-lg);
+  background: var(--surface-tile);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+
+  // Reset für den Fall, dass die Klasse auf einem <button> statt <div> sitzt (die
+  // Effekt-Kategorie-Kacheln in der Deck-Analyse sind anklickbar) - Browser-Standardstile für
+  // Buttons würden sonst durchschlagen.
+  &.stat-tile-button {
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
+    -webkit-appearance: none;
+    appearance: none;
+
+    &:hover:not(:disabled) {
+      background: rgba(255, 255, 255, 0.14);
+    }
+
+    &:disabled {
+      cursor: default;
+      opacity: 0.5;
+    }
+  }
+
+  .stat-value {
+    font-size: 1.6rem;
+    font-weight: 700;
+  }
+
+  .stat-label {
+    font-size: 0.78rem;
+    opacity: 0.8;
+    text-align: center;
+  }
+}
+
 /* --- Status-Texte --- */
 
 .hint {
