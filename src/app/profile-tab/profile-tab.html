@@ -1,5 +1,6 @@
 @if (profileService.viewingUserId()) {
-  <section class="glass-card">
+<div class="profile-grid">
+  <section class="glass-card span-full">
     @if (profileService.viewingBusy()) {
       <p class="hint">{{ i18n.t('profile.loadingProfile') }}</p>
       <button class="glass-button small" (click)="profileService.stopViewingProfile()">{{ i18n.t('profile.backToMyProfile') }}</button>
@@ -49,7 +50,7 @@
   </section>
 
   @if (profileService.viewingUserId(); as userId) {
-    <section class="glass-card">
+    <section class="glass-card span-full">
       <div class="section-header-row">
         <h2>{{ i18n.t('profile.decks') }}</h2>
         @if (groupService.hasPermission('deck.editOthers')) {
@@ -72,7 +73,7 @@
   }
 
   @if (!othersStatsHidden() && viewingUnassignedCommanderStats().length > 0) {
-    <section class="glass-card">
+    <section class="glass-card span-full">
       <h2>{{ i18n.t('profile.commanderStats') }}</h2>
       <p class="hint">
         {{ i18n.t('profile.commanderStatsHint') }}
@@ -94,9 +95,11 @@
       <app-bar-chart [data]="placementChart()" orientation="vertical" />
     </section>
   }
+</div>
 } @else if (profileService.viewingPlayerId(); as npcPlayerId) {
+<div class="profile-grid">
 
-<section class="glass-card">
+<section class="glass-card span-full">
   <div class="viewing-profile-header-row">
     <div class="avatar-row">
       <div class="avatar-circle">
@@ -142,7 +145,7 @@
   }
 </section>
 
-<section class="glass-card">
+<section class="glass-card span-full">
   <div class="section-header-row">
     <h2>{{ i18n.t('profile.decks') }}</h2>
     @if (groupService.hasPermission('deck.editOthers')) {
@@ -164,7 +167,7 @@
 }
 
 @if (!othersStatsHidden() && viewingNpcUnassignedCommanderStats().length > 0) {
-  <section class="glass-card">
+  <section class="glass-card span-full">
     <h2>{{ i18n.t('profile.commanderStats') }}</h2>
     <p class="hint">
       {{ i18n.t('profile.commanderStatsHint') }}
@@ -186,9 +189,11 @@
     <app-bar-chart [data]="placementChart()" orientation="vertical" />
   </section>
 }
+</div>
 } @else {
+<div class="profile-grid">
 
-<section class="glass-card">
+<section class="glass-card span-full">
     <div class="profile-main-row">
       <div class="profile-left" data-tutorial="profile-header">
         <h2>{{ i18n.t('profile.myProfile') }}</h2>
@@ -340,7 +345,7 @@
   }
 
   @if (profileService.profile(); as profile) {
-  <section class="glass-card">
+  <section class="glass-card span-full">
     <div class="section-header-row">
       <h2>{{ i18n.t('profile.myDecks') }}</h2>
       <div class="chip-row">
@@ -354,7 +359,7 @@
   </section>
 
   @if (unassignedCommanderStats().length > 0) {
-    <section class="glass-card">
+    <section class="glass-card span-full">
       <h2>{{ i18n.t('profile.commanderWithoutDeck') }}</h2>
       <p class="hint">
         {{ i18n.t('profile.commanderWithoutDeckHint') }}
@@ -461,7 +466,7 @@
   }
 
   @if (profileService.profile()?.isDeveloper) {
-  <section class="glass-card">
+  <section class="glass-card span-full">
     <div class="section-header-row">
       <h2>{{ i18n.t('feedback.developerTitle') }}</h2>
       <button class="glass-chip small" [class.active]="feedback.showDoneEntries()" (click)="feedback.toggleShowDone()">
@@ -543,6 +548,7 @@
   </div>
   }
 
+</div>
 }
 
 @if (showFavoriteCommanderDialog()) {

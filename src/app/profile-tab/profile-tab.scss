@@ -399,3 +399,42 @@
   max-width: var(--content-measure);
   margin: 0 auto;
 }
+
+/* --- Mehrspaltige Anordnung der Profil-Sektionen ---
+   Vorher lag jede Sektion als volle Breite unter der vorigen, auch die inhaltlich winzigen
+   (Platzierungen, gruppenübergreifende Summe, Daten-Export, Danger Zone: je zwei Zeilen und ein
+   Knopf). Man musste durch die halbe Seite scrollen, um alles zu sehen. */
+.profile-grid {
+  display: grid;
+  // Zwei Spalten ab Tablet, eine auf dem Handy - über auto-fit statt fester Spaltenzahl, damit die
+  // Sektionen auch dann sauber sitzen, wenn welche fehlen (je nach Zustand bleiben von acht nur
+  // vier übrig).
+  //
+  // Warum nicht mehr Spalten: die kleinen Sektionen treten in zwei Paaren auf (Platzierungen +
+  // Gesamtwerte oben, Daten-Export + Danger Zone unten), zwischen denen die vollbreiten Listen
+  // stehen. Bei zwei Spalten füllt jedes Paar seine Zeile vollständig; bei drei oder vier bliebe
+  // die Hälfte leer.
+  grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+  gap: var(--sp-6);
+  // Kurze Karten sollen nicht auf die Höhe der längsten in ihrer Zeile aufgeblasen werden.
+  align-items: start;
+  // Ersetzt den Außenabstand, den .glass-card sonst selbst mitbringt (siehe unten).
+  margin: 14px;
+
+  // Die 14px Eigenmargin jeder Karte würden sich sonst zum gap addieren.
+  > .glass-card {
+    margin: 0;
+  }
+
+  // Sektionen, die die Breite wirklich brauchen: Profil-Kopf (nutzt sie über .profile-main-row
+  // bereits selbst), Deck-Listen (eigenes 300px-Kartenraster), Commander-Statistik (Suchfeld,
+  // Sortierung, zehn Zeilen, Pager) und die Feedback-Liste.
+  > .span-full {
+    grid-column: 1 / -1;
+  }
+}
+
+// Bewusst KEIN grid-auto-flow: dense. Das würde jede Lücke füllen, zieht dafür aber spätere
+// Sektionen nach vorn - im Test landete die Danger Zone mit "Account löschen" in der zweiten Zeile
+// ganz oben auf der Seite, obwohl sie im Markup zuletzt steht. Die Reihenfolge der Seite ist hier
+// wichtiger als das letzte bisschen Dichte.
