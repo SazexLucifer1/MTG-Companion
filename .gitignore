@@ -51,5 +51,11 @@ Thumbs.db
 # sich bei jedem Commit, deshalb nicht eingecheckt.
 src/app/version.ts
 
-# Claude Code Tooling (lokal, nicht Teil des Projekts)
-.claude/
+# Claude Code Tooling: die geteilte Konfiguration (Projekt-Karte, Slash-Commands,
+# Permissions) ist eingecheckt, damit sie auch in Web-Sessions greift - dort wird das
+# Repo frisch geklont, lokal abgelegte Dateien existieren also nicht.
+# Persoenliches/Lokales bleibt draussen.
+.claude/*
+!.claude/commands/
+!.claude/settings.json
+.claude/settings.local.json
