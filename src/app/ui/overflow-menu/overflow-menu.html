@@ -10,7 +10,8 @@
   ⋮
 </button>
 
-@if (open()) {
+<!-- Wird beim Öffnen an den <body> gehängt statt hier gerendert - Begründung in overflow-menu.ts. -->
+<ng-template cdkPortal>
   <div class="options-menu-overlay" (click)="close()">
     <div
       class="options-menu-sheet"
@@ -27,4 +28,4 @@
       <button type="button" class="glass-button" (click)="close()">{{ i18n.t('dialog.cancel') }}</button>
     </div>
   </div>
-}
+</ng-template>
