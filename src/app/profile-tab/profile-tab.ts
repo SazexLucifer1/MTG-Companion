@@ -20,13 +20,24 @@ import { CardImage } from '../card-image/card-image';
 import { CommanderStatList } from '../commander-stat-list/commander-stat-list';
 import { FavoriteCommanderEditor } from '../favorite-commander-editor/favorite-commander-editor';
 import { BarChart, BarChartDatum } from '../ui/bar-chart/bar-chart';
+import { RadarChart, RadarChartDatum } from '../ui/radar-chart/radar-chart';
 import { Meter } from '../ui/meter/meter';
 import { ManaSymbol } from '../ui/mana-symbol/mana-symbol';
 import { colorComboName, sortColors } from '../color-combo-names';
+import { COLORLESS, FILTER_COLORS } from '../color-filter-match';
+
+/**
+ * Achsen des Farb-Netzdiagramms: die fünf Manafarben in WUBRG-Reihenfolge, farblos als sechste.
+ *
+ * Bewusst fest und NIE nach Häufigkeit sortiert - ein Netz, dessen Achsen die Plätze tauschen,
+ * ist weder mit dem eigenen Diagramm von letzter Woche noch mit dem eines anderen Spielers
+ * vergleichbar, und genau die Form ist der Punkt an dieser Darstellung.
+ */
+const COLOR_RADAR_AXES: readonly string[] = [...FILTER_COLORS, COLORLESS];
 
 @Component({
   selector: 'app-profile-tab',
-  imports: [FormsModule, DatePipe, DecimalPipe, DeckList, CardImage, CommanderStatList, FavoriteCommanderEditor, BarChart, Meter, ManaSymbol],
+  imports: [FormsModule, DatePipe, DecimalPipe, DeckList, CardImage, CommanderStatList, FavoriteCommanderEditor, BarChart, RadarChart, Meter, ManaSymbol],
   templateUrl: './profile-tab.html',
   styleUrl: './profile-tab.scss',
 })
@@ -162,7 +173,10 @@ export class ProfileTab {
   readonly colorVar = (color: string): string =>
     'WUBRG'.includes(color) ? `var(--pip-${color.toLowerCase()})` : 'var(--series-neutral)';
 
-  readonly colorLabel = (color: string): string => this.i18n.t(`pip.${color}`);
+  /** Anzeigename einer Achse. Farblos hat bewusst keinen pip-Schlüssel, sondern denselben Namen
+   * wie im Farbfilter und in der Farbkombinations-Rangliste. */
+  readonly colorLabel = (color: string): string =>
+    color === COLORLESS ? this.i18n.t('deckView.colorless') : this.i18n.t(`pip.${color}`);
 
   /**
    * Anzeigename einer Farbkombination: der Eigenname aus dem Spiel ("Azorius", "Grixis",
@@ -201,20 +215,23 @@ export class ProfileTab {
     return [...cards].sort((a, b) => this.countFor(b) - this.countFor(a)).slice(0, 5);
   });
 
-  readonly rankedColorRanking = computed(() => {
-    const colors = this.cardAndColorStats()?.colorRanking ?? [];
-    return [...colors].sort((a, b) => this.countFor(b) - this.countFor(a));
+  /**
+   * Farbverteilung als Netzdiagramm. Sucht die Werte über die feste Achsenliste, statt die
+   * Rangliste durchzureichen: die kommt nach Häufigkeit sortiert aus dem Service, und genau diese
+   * Reihenfolge darf hier nicht durchschlagen. Eine Achse ohne Daten steht mit 0 im Netz.
+   */
+  readonly colorRadarChart = computed<RadarChartDatum[]>(() => {
+    const stats = this.cardAndColorStats()?.colorRanking ?? [];
+    return COLOR_RADAR_AXES.map((color) => {
+      const stat = stats.find((c) => c.color === color);
+      return {
+        label: this.colorLabel(color),
+        value: stat ? this.countFor(stat) : 0,
+        color: this.colorVar(color),
+        symbol: color,
+      };
+    });
   });
-
-  /** Farb-Rangliste als Balkendiagramm - ersetzt die vierte handgebaute Kopie des Pip-Charts. */
-  readonly colorRankingChart = computed<BarChartDatum[]>(() =>
-    this.rankedColorRanking().map((c) => ({
-      label: this.colorLabel(c.color),
-      value: this.countFor(c),
-      color: this.colorVar(c.color),
-      symbol: c.color,
-    })),
-  );
 
   readonly rankedColorComboRanking = computed(() => {
     const combos = this.cardAndColorStats()?.colorComboRanking ?? [];

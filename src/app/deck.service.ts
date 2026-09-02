@@ -5,6 +5,7 @@ import { isPlayerWinner } from './match-utils';
 import { sleep } from './array-utils';
 import { GroupService } from './group.service';
 import { PreconService } from './precon.service';
+import { COLORLESS, FILTER_COLORS } from './color-filter-match';
 
 export interface Deck {
   id: string;
@@ -84,7 +85,14 @@ export interface MostUsedCardStats {
 }
 
 export interface ColorStat {
-  color: 'W' | 'U' | 'B' | 'R' | 'G';
+  /**
+   * Eine der fünf Manafarben oder 'C' für farblos (Deck mit leerer Farbidentität).
+   *
+   * Farblos ist eine eigene Achse, keine sechste Farbe: ein farbloses Deck zählt auf 'C' und auf
+   * keine der fünf Farben, genau wie im Farbfilter (color-filter-match.ts) und in der
+   * Farbkombinations-Rangliste, wo es als leere Farbliste auftaucht.
+   */
+  color: 'W' | 'U' | 'B' | 'R' | 'G' | 'C';
   /** Anzahl tatsächlich gespielter Partien mit Decks, deren Farbidentität diese Farbe enthält. */
   gameCount: number;
   /** Anzahl verschiedener Decks, deren Farbidentität diese Farbe enthält. */
@@ -100,10 +108,10 @@ export interface ColorComboStat {
   deckCount: number;
 }
 
-/** Kombinierte "Meistgespielte Karten" (Top 5, ohne Länder), vollständige Farb-Rangliste (alle 5)
- * und Rangliste der genutzten Farbkombinationen über ALLE Gruppen hinweg - siehe
- * DeckService.getCardAndColorStats(). Precon-Decks fließen bewusst in keine dieser Statistiken
- * ein, da sie nicht selbst zusammengestellt wurden. */
+/** Kombinierte "Meistgespielte Karten" (Top 5, ohne Länder), vollständige Farb-Rangliste (alle
+ * fünf Farben plus farblos) und Rangliste der genutzten Farbkombinationen über ALLE Gruppen
+ * hinweg - siehe DeckService.getCardAndColorStats(). Precon-Decks fließen bewusst in keine dieser
+ * Statistiken ein, da sie nicht selbst zusammengestellt wurden. */
 export interface CardAndColorStats {
   mostUsedCards: MostUsedCardStats[];
   colorRanking: ColorStat[];
@@ -1350,15 +1358,15 @@ export class DeckService {
   }
 
   /**
-   * Meistgespielte Karten (ohne Länder), vollständige Farb-Rangliste (alle 5 Farben) und Rangliste
-   * der genutzten Farbkombinationen über ALLE Gruppen hinweg. Liefert je Eintrag sowohl gameCount
-   * (nach tatsächlich gespielten Partien je Deck gewichtet, ein oft gespieltes Deck zählt stärker)
-   * als auch deckCount (reine Deckanzahl, unabhängig von Partien) - das Profil-Tab lässt den
-   * Nutzer zwischen beiden Sichten umschalten, ohne neu laden zu müssen. Eine Karte zählt dabei je
-   * Deck nur 1x, unabhängig von deck_cards.quantity. Länder (Basic wie Nichtbasis) werden rein
-   * anhand der Typzeile erkannt (enthält "Land") - es gibt kein eigenes "isLand"-Flag in
-   * deck_cards. Precon-Decks (is_precon) fließen bewusst NICHT ein, da sie nicht selbst
-   * zusammengestellt wurden. mostUsedCards liefert die vollständige Liste (nicht nur Top 5) -
+   * Meistgespielte Karten (ohne Länder), vollständige Farb-Rangliste (alle 5 Farben plus farblos)
+   * und Rangliste der genutzten Farbkombinationen über ALLE Gruppen hinweg. Liefert je Eintrag
+   * sowohl gameCount (nach tatsächlich gespielten Partien je Deck gewichtet, ein oft gespieltes
+   * Deck zählt stärker) als auch deckCount (reine Deckanzahl, unabhängig von Partien) - das
+   * Profil-Tab lässt den Nutzer zwischen beiden Sichten umschalten, ohne neu laden zu müssen. Eine
+   * Karte zählt dabei je Deck nur 1x, unabhängig von deck_cards.quantity. Länder (Basic wie
+   * Nichtbasis) werden rein anhand der Typzeile erkannt (enthält "Land") - es gibt kein eigenes
+   * "isLand"-Flag in deck_cards. Precon-Decks (is_precon) fließen bewusst NICHT ein, da sie nicht
+   * selbst zusammengestellt wurden. mostUsedCards liefert die vollständige Liste (nicht nur Top 5) -
    * das Slicen auf die Top 5 je aktivem Modus übernimmt das Profil-Tab.
    */
   async getCardAndColorStats(owner: DeckOwner): Promise<CardAndColorStats> {
@@ -1406,15 +1414,23 @@ export class DeckService {
 
     if (cardError) console.error('Konnte Deckkarten für die Kartenstatistik nicht laden:', cardError);
 
-    const WUBRG = ['W', 'U', 'B', 'R', 'G'] as const;
+    /**
+     * Achsen der Farbstatistik. 'C' ist keine sechste Manafarbe, sondern der Gegenfall: Decks ganz
+     * OHNE Farbidentität. Mehrfarbige Decks zählen weiterhin auf mehreren Achsen, die sechs Werte
+     * summieren sich also nicht auf die Deckanzahl.
+     */
+    const COLOR_AXES: readonly ColorStat['color'][] = [...FILTER_COLORS, COLORLESS];
     const colorCounts = new Map<string, { gameCount: number; deckCount: number }>();
     const comboCounts = new Map<string, { colors: string[]; gameCount: number; deckCount: number }>();
     for (const row of nonPreconDeckRows) {
       const games = gamesPerDeck.get(row.id) ?? 0;
       if (games === 0) continue;
 
-      const colors = WUBRG.filter((c) => ((row.color_identity ?? []) as string[]).includes(c));
-      for (const color of colors) {
+      const colors = FILTER_COLORS.filter((c) => ((row.color_identity ?? []) as string[]).includes(c));
+      // Ein farbloses Deck (leere Farbidentität) zählt auf die eigene Achse 'C' statt auf gar
+      // keine - sonst fehlte es in der Farbstatistik komplett, obwohl es in der
+      // Farbkombinations-Rangliste darunter längst auftaucht.
+      for (const color of colors.length > 0 ? colors : [COLORLESS]) {
         const entry = colorCounts.get(color) ?? { gameCount: 0, deckCount: 0 };
         entry.gameCount += games;
         entry.deckCount += 1;
@@ -1447,7 +1463,9 @@ export class DeckService {
       cardCounts.set(row.card_name, entry);
     }
 
-    const colorRanking = WUBRG.map((color) => ({
+    // Immer alle sechs Achsen, auch die mit 0 - das Netzdiagramm im Profil braucht eine feste
+    // Achsenmenge, sonst ändert es je nach Deckbestand die Form.
+    const colorRanking = COLOR_AXES.map((color) => ({
       color,
       gameCount: colorCounts.get(color)?.gameCount ?? 0,
       deckCount: colorCounts.get(color)?.deckCount ?? 0,

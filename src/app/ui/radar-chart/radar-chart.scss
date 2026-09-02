@@ -1,0 +1,85 @@
+:host {
+  display: block;
+}
+
+/* Quadratischer Rahmen für Zeichnung UND Beschriftungen. Quadratisch, weil nur dann eine
+   viewBox-Einheit waagerecht so lang ist wie senkrecht - erst dadurch liegen die in Prozent
+   gesetzten Beschriftungen auf denselben Achsen wie die gezeichneten Punkte.
+
+   Gedeckelt, weil das Netz bei voller Kartenbreite nur größer, aber nicht aussagekräftiger wird -
+   dieselbe Überlegung wie die max-width des Balkendiagramms. Auf dem Handy greift der Deckel nie. */
+.radar {
+  position: relative;
+  width: min(300px, 100%);
+  aspect-ratio: 1;
+  margin: var(--sp-3) auto 0;
+}
+
+/* Füllt den Rahmen ganz aus; den Abstand zum Rand macht der kleinere Radius im Diagramm selbst
+   (PLOT_RADIUS), nicht eine Einrückung des SVG - sonst hätte die Zeichnung ein zweites,
+   verschobenes Koordinatensystem gegenüber den Beschriftungen. */
+.radar-plot {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.radar-ring {
+  fill: none;
+  stroke: var(--divider);
+  stroke-width: 0.4;
+}
+
+.radar-spoke {
+  stroke: var(--divider);
+  stroke-width: 0.3;
+}
+
+.radar-area {
+  fill: var(--accent);
+  // Die Fläche liegt über dem Gitter: durchscheinend, damit die Ringe darunter lesbar bleiben.
+  fill-opacity: 0.24;
+  stroke: var(--accent);
+  // Strichstärken in viewBox-Einheiten statt in Pixeln: das Netz wird auf einer schmalen Karte
+  // vollständig mit-verkleinert, statt dort plump zu wirken.
+  stroke-width: 0.9;
+  stroke-linejoin: round;
+}
+
+.radar-dot {
+  // Derselbe dünne dunkle Rand wie an den Manasymbolen - ohne ihn verschwindet der weiße Punkt auf
+  // dem hellen Teil der Fläche.
+  stroke: rgba(0, 0, 0, 0.45);
+  stroke-width: 0.35;
+}
+
+.radar-label {
+  position: absolute;
+  // Der Ankerpunkt aus der Geometrie ist die Mitte der Beschriftung, nicht ihre linke obere Ecke.
+  transform: translate(-50%, -50%);
+  // Symbol und Zahl nebeneinander, nicht übereinander: bei einem stehenden Sechseck haben die
+  // Beschriftungen oben und unten am wenigsten Luft nach außen, seitlich am meisten.
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  line-height: 1;
+  white-space: nowrap;
+
+  // Achse ohne Wert: bleibt sichtbar (die Achsenmenge ist fest und soll vollständig ablesbar
+  // bleiben), tritt aber zurück.
+  &.empty {
+    opacity: 0.45;
+  }
+}
+
+.radar-name {
+  font-size: 0.72rem;
+  opacity: 0.85;
+}
+
+.radar-value {
+  font-size: 0.78rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}

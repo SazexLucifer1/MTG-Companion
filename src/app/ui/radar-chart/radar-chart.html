@@ -1,0 +1,40 @@
+<div class="radar">
+  <!-- Rein dekorativ: welche Farbe wie oft gespielt wurde, sagt die Zeichnung niemandem - das sagen
+       die Beschriftungen darunter als echter Text. -->
+  <svg class="radar-plot" viewBox="0 0 100 100" aria-hidden="true" focusable="false">
+    @for (ring of rings(); track ring) {
+      <polygon class="radar-ring" [attr.points]="ring" />
+    }
+    @for (spoke of spokes(); track $index) {
+      <line class="radar-spoke" x1="50" y1="50" [attr.x2]="spoke.x" [attr.y2]="spoke.y" />
+    }
+    @if (hasValues()) {
+      <polygon class="radar-area" [attr.points]="area()" />
+      @for (vertex of vertices(); track vertex.label) {
+        <circle
+          class="radar-dot"
+          [attr.cx]="vertex.x"
+          [attr.cy]="vertex.y"
+          r="1.6"
+          [style.fill]="vertex.color"
+        />
+      }
+    }
+  </svg>
+
+  @for (axis of labels(); track axis.label) {
+    <span
+      class="radar-label"
+      [class.empty]="axis.value === 0"
+      [style.left.%]="axis.x"
+      [style.top.%]="axis.y"
+    >
+      @if (axis.symbol) {
+        <app-mana-symbol [symbol]="axis.symbol" [label]="axis.label" />
+      } @else {
+        <span class="radar-name">{{ axis.label }}</span>
+      }
+      <span class="radar-value">{{ axis.value }}</span>
+    </span>
+  }
+</div>
