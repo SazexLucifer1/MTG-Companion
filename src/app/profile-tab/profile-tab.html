@@ -394,7 +394,7 @@
         <section class="glass-card">
           <h2>{{ i18n.t('profile.colorRankingTitle') }}</h2>
           <p class="hint">{{ i18n.t('profile.colorRankingHint') }}</p>
-          <app-bar-chart [data]="colorRankingChart()" labelWidth="86px" />
+          <app-bar-chart [data]="colorRankingChart()" labelWidth="22px" />
         </section>
       }
 
@@ -403,7 +403,7 @@
           <h2>{{ i18n.t('profile.colorComboRankingTitle') }}</h2>
           <p class="hint">{{ i18n.t('profile.colorComboRankingHint') }}</p>
           <!-- Bleibt eine Liste: eine Zeile trägt mehrere Farben, das kann ein einfarbiger
-               Balken nicht ausdrücken. Die Farbtupfer übernehmen die Identität, der Balken
+               Balken nicht ausdrücken. Die Manasymbole übernehmen die Identität, der Balken
                darunter die Häufigkeit. -->
           <ul class="player-list compact-list ranked-list">
             @for (combo of rankedColorComboRanking(); track combo.colors.join('')) {
@@ -412,7 +412,7 @@
                   @if (combo.colors.length === 0) {
                     <app-mana-symbol symbol="C" />
                   } @else {
-                    @for (c of combo.colors; track c) {
+                    @for (c of comboColors(combo.colors); track c) {
                       <app-mana-symbol [symbol]="c" />
                     }
                   }

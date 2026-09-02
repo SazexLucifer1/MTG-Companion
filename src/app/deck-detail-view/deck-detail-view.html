@@ -303,29 +303,14 @@
               [ngModel]="viewer.addCardCreatureTypeFilter()"
               (ngModelChange)="viewer.onAddCardCreatureTypeInput($event)"
             />
-            <select
-              class="glass-input small"
-              [ngModel]="viewer.addCardCmcFilter()"
-              (ngModelChange)="viewer.setAddCardCmcFilter($event)"
-            >
-              <option [ngValue]="'all'">{{ viewer.i18n.t('deckView.cmcAll') }}</option>
-              @for (n of [0, 1, 2, 3, 4, 5, 6, 7]; track n) {
-                <option [ngValue]="n">{{ n === 7 ? '7+' : n }}</option>
-              }
-            </select>
-            <select
-              class="glass-input small"
-              [ngModel]="viewer.addCardColorFilter()"
-              (ngModelChange)="viewer.setAddCardColorFilter($event)"
-            >
-              <option [ngValue]="'all'">{{ viewer.i18n.t('deckView.colorAll') }}</option>
-              <option [ngValue]="'W'">{{ viewer.i18n.t('pip.W') }}</option>
-              <option [ngValue]="'U'">{{ viewer.i18n.t('pip.U') }}</option>
-              <option [ngValue]="'B'">{{ viewer.i18n.t('pip.B') }}</option>
-              <option [ngValue]="'R'">{{ viewer.i18n.t('pip.R') }}</option>
-              <option [ngValue]="'G'">{{ viewer.i18n.t('pip.G') }}</option>
-              <option [ngValue]="'C'">{{ viewer.i18n.t('deckView.colorless') }}</option>
-            </select>
+            <app-cmc-filter
+              [value]="viewer.addCardCmcFilter()"
+              (valueChange)="viewer.setAddCardCmcFilter($event)"
+            />
+            <app-color-filter
+              [value]="viewer.addCardColorFilter()"
+              (valueChange)="viewer.setAddCardColorFilter($event)"
+            />
             <select
               class="glass-input small"
               [ngModel]="viewer.addCardEffectFilter()"
@@ -620,7 +605,7 @@
 
               <h4 class="deck-section-title">{{ viewer.i18n.t('deckView.pipDistTitle') }}</h4>
               @if (viewer.pipDistribution().length > 0) {
-                <app-bar-chart [data]="viewer.pipDistributionChart()" labelWidth="86px" />
+                <app-bar-chart [data]="viewer.pipDistributionChart()" labelWidth="22px" />
               }
 
               <h4 class="deck-section-title">{{ viewer.i18n.t('deckView.typeBreakdownTitle') }}</h4>
@@ -783,19 +768,7 @@
             }
           </select>
         }
-        <select
-          class="glass-input small"
-          [ngModel]="viewer.colorFilter()"
-          (ngModelChange)="viewer.colorFilter.set($event)"
-        >
-          <option [ngValue]="'all'">{{ viewer.i18n.t('deckView.colorAll') }}</option>
-          <option [ngValue]="'W'">{{ viewer.i18n.t('pip.W') }}</option>
-          <option [ngValue]="'U'">{{ viewer.i18n.t('pip.U') }}</option>
-          <option [ngValue]="'B'">{{ viewer.i18n.t('pip.B') }}</option>
-          <option [ngValue]="'R'">{{ viewer.i18n.t('pip.R') }}</option>
-          <option [ngValue]="'G'">{{ viewer.i18n.t('pip.G') }}</option>
-          <option [ngValue]="'C'">{{ viewer.i18n.t('deckView.colorless') }}</option>
-        </select>
+        <app-color-filter [(value)]="viewer.colorFilter" />
         <select
           class="glass-input small"
           [ngModel]="viewer.keywordFilter()"

@@ -6,6 +6,8 @@ import { CardPreviewService } from '../card-preview.service';
 import { I18nService } from '../i18n.service';
 import { CardImage } from '../card-image/card-image';
 import { CARD_EFFECT_FILTERS } from '../card-effect-filters';
+import { ColorFilter, ColorFilterValue } from '../ui/color-filter/color-filter';
+import { CmcFilter, CmcFilterValue } from '../ui/cmc-filter/cmc-filter';
 
 /**
  * Öffentliche Kartensuche - ohne Account nutzbar (Fan-Content-Policy). Nutzt bewusst
@@ -17,7 +19,7 @@ import { CARD_EFFECT_FILTERS } from '../card-effect-filters';
  */
 @Component({
   selector: 'app-public-card-search',
-  imports: [FormsModule, CardImage],
+  imports: [FormsModule, CardImage, ColorFilter, CmcFilter],
   templateUrl: './public-card-search.html',
   styleUrl: './public-card-search.scss',
 })
@@ -37,8 +39,8 @@ export class PublicCardSearch {
 
   readonly typeFilter = signal<'all' | string>('all');
   readonly creatureTypeFilter = signal('');
-  readonly cmcFilter = signal<'all' | number>('all');
-  readonly colorFilter = signal<'all' | string>('all');
+  readonly cmcFilter = signal<CmcFilterValue>('all');
+  readonly colorFilter = signal<ColorFilterValue>('all');
   readonly effectFilter = signal<'all' | string>('all');
   readonly keywordFilter = signal<'all' | string>('all');
   readonly sortMode = signal<'name' | 'cmc'>('name');
@@ -159,12 +161,12 @@ export class PublicCardSearch {
     this.searchTimer = setTimeout(() => this.runFilterSearch(), 300);
   }
 
-  setCmcFilter(value: 'all' | number): void {
+  setCmcFilter(value: CmcFilterValue): void {
     this.cmcFilter.set(value);
     this.runFilterSearch();
   }
 
-  setColorFilter(value: string): void {
+  setColorFilter(value: ColorFilterValue): void {
     this.colorFilter.set(value);
     this.runFilterSearch();
   }

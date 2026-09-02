@@ -9,10 +9,12 @@ import { EdhrecCardlist } from '../edhrec.service';
 import { CardImage } from '../card-image/card-image';
 import { BarChart } from '../ui/bar-chart/bar-chart';
 import { OverflowMenu } from '../ui/overflow-menu/overflow-menu';
+import { ColorFilter } from '../ui/color-filter/color-filter';
+import { CmcFilter } from '../ui/cmc-filter/cmc-filter';
 
 @Component({
   selector: 'app-deck-detail-view',
-  imports: [CurrencyPipe, DatePipe, DecimalPipe, PercentPipe, FormsModule, CardImage, BarChart, OverflowMenu],
+  imports: [CurrencyPipe, DatePipe, DecimalPipe, PercentPipe, FormsModule, CardImage, BarChart, OverflowMenu, ColorFilter, CmcFilter],
   templateUrl: './deck-detail-view.html',
   styleUrl: './deck-detail-view.scss',
 })
