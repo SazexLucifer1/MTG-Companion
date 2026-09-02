@@ -5,6 +5,7 @@ import { GroupService } from './group.service';
 import { MtgService } from './mtg.service';
 import { GameSessionService, SelectedDraftSet } from './game-session.service';
 import { GameMode } from './models';
+import { PageVisibilityService } from './page-visibility.service';
 import { chunk } from './array-utils';
 import {
   ParticipantStatus,
@@ -37,6 +38,7 @@ export class TournamentService {
   private readonly groupService = inject(GroupService);
   private readonly mtg = inject(MtgService);
   private readonly session = inject(GameSessionService);
+  private readonly pageVisibility = inject(PageVisibilityService);
 
   /** Steuert die Sichtbarkeit des globalen Turnier-Overlays (TournamentPanel), unabhängig davon, ob schon ein Turnier existiert (Erstellungs-Wizard nutzt dasselbe Overlay). */
   readonly panelExpanded = signal(false);
@@ -109,6 +111,9 @@ export class TournamentService {
 
   private pollTimer: ReturnType<typeof setInterval> | null = null;
 
+  /** True, sobald der Tab einmal im Hintergrund lag - siehe Poll-Effect im Konstruktor. */
+  private missedPollsWhileHidden = false;
+
   /** Verhindert, dass dieselbe fertig gespielte Partie (matchRowId) innerhalb derselben Sitzung mehrfach verarbeitet wird - zusätzliche Absicherung neben der ohnehin idempotenten Neuberechnung in recordGameResult(). */
   private readonly processedGameResults = new Set<string>();
 
@@ -129,13 +134,29 @@ export class TournamentService {
     // dann für diese Person nie auf, ohne dass sie die Seite manuell neu lädt).
     effect(() => {
       const groupId = this.groupService.groupId();
+      // Im Hintergrund pausieren: der Browser drosselt Timer in versteckten Tabs ohnehin auf ~1x pro
+      // Minute, die Abfragen kommen dort also nur unregelmäßig durch - kosten aber Akku und
+      // Datenvolumen, und beim Zurückkommen prasseln die aufgestauten Antworten auf einmal herein.
+      // Stattdessen wird beim Zurückkommen genau einmal frisch geladen und danach normal weiter
+      // gepollt.
+      const visible = this.pageVisibility.visible();
       if (this.pollTimer) {
         clearInterval(this.pollTimer);
         this.pollTimer = null;
       }
-      if (groupId) {
-        this.pollTimer = setInterval(() => this.loadForGroup(groupId), 2_000);
+      if (!groupId || !visible) return;
+
+      if (this.missedPollsWhileHidden) {
+        this.missedPollsWhileHidden = false;
+        this.loadForGroup(groupId);
       }
+      this.pollTimer = setInterval(() => this.loadForGroup(groupId), 2_000);
+    });
+
+    // Merkt sich, dass der Tab zwischendurch weg war - nur dann lohnt das sofortige Nachladen oben
+    // (beim allerersten Durchlauf erledigt das schon der Effect auf groupId).
+    effect(() => {
+      if (!this.pageVisibility.visible()) this.missedPollsWhileHidden = true;
     });
 
     // Bridge: ein im Turnier-Kontext gespieltes Spiel fließt automatisch ins Tisch-Ergebnis ein.

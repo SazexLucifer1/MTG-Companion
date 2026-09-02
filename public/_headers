@@ -7,3 +7,14 @@
   Cross-Origin-Opener-Policy: same-origin
   Cross-Origin-Resource-Policy: same-origin
   Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: https://cards.scryfall.io https://jkkelwpnrgzbvopszwrl.supabase.co; connect-src 'self' https://api.scryfall.com https://json.edhrec.com https://mtgjson.com https://jkkelwpnrgzbvopszwrl.supabase.co wss://jkkelwpnrgzbvopszwrl.supabase.co; frame-ancestors 'none'
+
+# Der Einstiegspunkt darf nicht im Browser-Cache festhängen: index.html verweist auf Dateinamen mit
+# Build-Hash, die es nach dem nächsten Deploy nicht mehr gibt. Eine alte index.html aus dem Cache
+# laedt dann nicht mehr existierende Dateien - Ergebnis ist eine weiße Seite, bis der Nutzer von
+# Hand neu laedt. must-revalidate laesst den Browser die Datei zwar weiter behalten, aber vor jeder
+# Nutzung beim Server nachfragen. Die gehashten Dateien selbst bleiben beliebig lange cachebar.
+/
+  Cache-Control: public, max-age=0, must-revalidate
+
+/index.html
+  Cache-Control: public, max-age=0, must-revalidate
