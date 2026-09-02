@@ -1,16 +1,70 @@
 /* Globales Liquid-Glass-Theme für die Statsfinity App */
 
+@use 'styles/breakpoints' as bp;
+
 :root {
+  @include bp.custom-properties;
+
   --accent: #8ab4ff;
   --gold: #ffd166;
   --text: #f4f2fa;
-  --glass-bg: rgba(255, 255, 255, 0.1);
+  // Angehoben von 0.1 - die Karten liegen auf einem kontrastreichen Fantasy-Bild, bei 0.1 schlug
+  // das Motiv so stark durch, dass die Lesbarkeit je nach Bildstelle schwankte.
+  --glass-bg: rgba(255, 255, 255, 0.14);
   --glass-border: rgba(255, 255, 255, 0.22);
   --glass-highlight: rgba(255, 255, 255, 0.35);
   // Obergrenze für die Breite des Hauptinhalts (app.scss, deck-detail-view.scss) - eine einzige
   // Stelle statt mehrfach desselben Zahlenwerts, damit alle Container im Gleichschritt breiter
   // werden, wenn dieser Wert sich mal ändert.
   --content-max-width: 1600px;
+  // Engere Obergrenze für textlastige Tabs (Statistik, Match, Gruppe, Profil, Turnier). Bei den
+  // vollen 1600px reißt es dort Listenzeilen auseinander - Name links, Prozentwert 1400px weiter
+  // rechts. Karten-Raster dürfen weiterhin die volle Breite nutzen.
+  --content-measure: 1100px;
+
+  // --- Abstände ---
+  // Die App benutzte bisher die Literale 4/6/8/10/12/14/16/18/20/24px kreuz und quer. Diese Skala
+  // ist die Zusammenfassung davon; neue Regeln greifen darauf zu statt neue Zwischenwerte zu
+  // erfinden.
+  --sp-1: 4px;
+  --sp-2: 6px;
+  --sp-3: 8px;
+  --sp-4: 10px;
+  --sp-5: 12px;
+  --sp-6: 16px;
+  --sp-7: 24px;
+
+  // --- Radien ---
+  --r-xs: 4px;
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 16px;
+  --r-xl: 20px;
+  --r-2xl: 24px;
+  --r-pill: 999px;
+
+  // --- Flächen ---
+  // Wiederkehrende Hintergründe, die vorher als rohe rgba()-Literale in bis zu 6 Dateien standen.
+  --surface-page: #0c0817;
+  --surface-sheet: rgba(20, 16, 38, 0.96);
+  --surface-tile: rgba(255, 255, 255, 0.08);
+  --surface-track: rgba(255, 255, 255, 0.08);
+  --divider: rgba(255, 255, 255, 0.1);
+
+  // --- Statusfarben ---
+  --danger: #ff8f8f;
+  --success: #7dff9b;
+  --live: #5ee88f;
+
+  // --- MTG-Farbidentität ---
+  // Lag vorher dreifach kopiert in deck-detail-view/precon-browser/public-deck-browser jeweils auf
+  // .pip-chart. Global, weil inzwischen auch Farbfilter-Chips und Diagramme dieselben Farben
+  // brauchen. Auf Kontrast und Farbfehlsichtigkeit vor dunklem Grund abgestimmt.
+  --pip-w: #c18010;
+  --pip-u: #213ced;
+  --pip-b: #81548c;
+  --pip-r: #ec1313;
+  --pip-g: #0fb345;
 }
 
 * {
@@ -51,13 +105,16 @@ body::before {
   background: url('/assets/background.jpg') center / cover no-repeat;
 }
 
-/* Leichte Abdunklung für Lesbarkeit */
+/* Abdunklung für Lesbarkeit.
+   Verstärkt von 0.25/0.55 - bei den alten Werten schlug das Hintergrundmotiv stellenweise so weit
+   durch, dass Text ohne eigene Karte darunter (vor allem der Footer) kaum noch lesbar war. Das
+   Bild selbst bleibt deutlich sichtbar. */
 body::after {
   content: '';
   position: fixed;
   inset: 0;
   z-index: -1;
-  background: linear-gradient(180deg, rgba(12, 8, 23, 0.25) 0%, rgba(12, 8, 23, 0.55) 100%);
+  background: linear-gradient(180deg, rgba(12, 8, 23, 0.45) 0%, rgba(12, 8, 23, 0.72) 100%);
 }
 
 h1,

@@ -1,3 +1,5 @@
+@use '../../styles/breakpoints' as bp;
+
 .deck-detail-fullscreen {
   position: fixed;
   inset: 0;
@@ -397,19 +399,19 @@
   margin: 0 0 16px;
 }
 
-@media (min-width: 480px) {
+@include bp.up(sm) {
   .deck-visual-grid {
     grid-template-columns: repeat(4, 1fr);
   }
 }
 
-@media (min-width: 700px) {
+@include bp.up(md) {
   .deck-visual-grid {
     grid-template-columns: repeat(5, 1fr);
   }
 }
 
-@media (min-width: 1000px) {
+@include bp.up(lg) {
   .deck-visual-grid {
     grid-template-columns: repeat(6, 1fr);
   }
@@ -777,19 +779,19 @@
   margin: 10px 0 16px;
 }
 
-@media (min-width: 480px) {
+@include bp.up(sm) {
   .card-pick-grid {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
 
-@media (min-width: 700px) {
+@include bp.up(md) {
   .card-pick-grid {
     grid-template-columns: repeat(5, minmax(0, 1fr));
   }
 }
 
-@media (min-width: 1000px) {
+@include bp.up(lg) {
   .card-pick-grid {
     grid-template-columns: repeat(8, minmax(0, 1fr));
   }

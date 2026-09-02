@@ -26,7 +26,19 @@ const PAGE_SIZE_CAP = 10;
 /** Muss zu deck-list.scss (.deck-list Grid) passen: grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px. */
 const GRID_MIN_COLUMN_PX = 300;
 const GRID_GAP_PX = 12;
-const GRID_BREAKPOINT_QUERY = '(min-width: 640px)';
+
+/**
+ * Breite, ab der deck-list.scss auf das mehrspaltige Karten-Grid umschaltet.
+ *
+ * Wird aus der CSS-Custom-Property --bp-md gelesen (gesetzt in styles/_breakpoints.scss), damit
+ * hier NICHT dieselbe Zahl ein zweites Mal steht: vorher war das ein hartkodiertes
+ * '(min-width: 640px)', das still auseinanderlaufen konnte, sobald jemand nur das SCSS anfasst.
+ * Der Fallback greift nur, wenn das Stylesheet noch nicht geladen ist.
+ */
+function gridBreakpointPx(): number {
+  const raw = getComputedStyle(document.documentElement).getPropertyValue('--bp-md');
+  return Number.parseFloat(raw) || 700;
+}
 
 @Component({
   selector: 'app-deck-list',
@@ -148,7 +160,7 @@ export class DeckList {
   }
 
   private measureColumns(el: HTMLElement): void {
-    if (!window.matchMedia(GRID_BREAKPOINT_QUERY).matches) {
+    if (window.innerWidth < gridBreakpointPx()) {
       this.columnsPerRow.set(1);
       return;
     }

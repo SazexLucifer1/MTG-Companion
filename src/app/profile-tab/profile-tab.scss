@@ -1,3 +1,5 @@
+@use '../../styles/breakpoints' as bp;
+
 .profile-name-row {
     display: flex;
     align-items: center;
@@ -30,22 +32,31 @@
   margin-top: 10px;
 }
 
+// Profil-Kopf als Grid statt Flex+absolut. Vorher lag .header-icon-col auf Handy-Breiten
+// position:absolute in der oberen rechten Ecke und die Überschrift musste sich den Platz dafür mit
+// einem hartkodierten margin-right: 150px freihalten - bei drei 48px-Buttons plus Abständen sind
+// das aber 160px, die Überschrift lief also unter die Icons. Im Grid reserviert die Icon-Spalte
+// ihren Platz selbst und der Wert kann gar nicht mehr auseinanderlaufen.
 .profile-main-row {
-  display: flex;
-  gap: 16px;
-  align-items: flex-start;
-  flex-wrap: wrap;
+  display: grid;
+  // Handy: Überschrift links, Icons rechts daneben, Lieblingscommander darunter über volle Breite.
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--sp-6);
+  align-items: start;
 }
 
 .profile-left {
-  flex: 0 1 260px;
-  min-width: 200px;
+  grid-column: 1;
+  grid-row: 1;
+  min-width: 0;
 }
 
 .header-icon-col {
+  grid-column: 2;
+  grid-row: 1;
   display: flex;
-  flex-direction: column;
-  gap: 8px;
+  flex-direction: row;
+  gap: var(--sp-3);
 }
 
 .icon-button.large {
@@ -56,8 +67,10 @@
 }
 
 .favorite-commanders-col {
-  flex: 1;
-  min-width: 220px;
+  // Handy: eigene Zeile über die volle Breite, unter Überschrift und Icon-Spalte.
+  grid-column: 1 / -1;
+  grid-row: 2;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   align-items: stretch;
@@ -71,14 +84,14 @@
 .favorite-commanders-row {
   display: flex;
   justify-content: center;
-  gap: 16px;
+  gap: var(--sp-4);
   width: 100%;
 }
 
 .favorite-commander-card {
   flex: 1 1 0;
   max-width: 190px;
-  min-width: 100px;
+  min-width: 0;
   border-radius: 12px;
   border: 1px solid var(--glass-border);
   background: rgba(255, 255, 255, 0.05);
@@ -116,37 +129,32 @@
   word-break: break-word;
 }
 
-@media (max-width: 640px) {
+// Handy-Basis oben: eine Inhaltsspalte, Icons daneben. Ab Tablet passen Profil, Lieblingscommander
+// und Icon-Spalte nebeneinander in eine Zeile.
+// (Vorher war das eine max-width: 640px-Query - die einzige desktop-first geschriebene Stelle der
+// App, dazu mit einem Wert, den sonst niemand benutzte.)
+@include bp.up(md) {
   .profile-main-row {
-    flex-direction: column;
-    position: relative;
+    grid-template-columns: minmax(0, 260px) minmax(0, 1fr) auto;
   }
 
-  .profile-left,
   .favorite-commanders-col {
-    flex-basis: auto;
-    min-width: 0;
-    width: 100%;
-  }
-
-  .profile-left h2 {
-    margin-right: 150px;
+    grid-column: 2;
+    grid-row: 1;
   }
 
   .header-icon-col {
-    position: absolute;
-    top: 0;
-    right: 0;
-    flex-direction: row;
-    width: auto;
-  }
-
-  .favorite-commander-card {
-    min-width: 0;
+    grid-column: 3;
+    grid-row: 1;
+    flex-direction: column;
   }
 
   .favorite-commanders-row {
-    gap: 10px;
+    gap: var(--sp-6);
+  }
+
+  .favorite-commander-card {
+    min-width: 100px;
   }
 }
 

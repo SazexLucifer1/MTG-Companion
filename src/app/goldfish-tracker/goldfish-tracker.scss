@@ -1,3 +1,5 @@
+@use '../../styles/breakpoints' as bp;
+
 .goldfish-fullscreen {
   position: fixed;
   inset: 0;
@@ -300,13 +302,13 @@
   margin: 0 0 16px;
 }
 
-@media (min-width: 700px) {
+@include bp.up(md) {
   .deck-visual-grid {
     grid-template-columns: repeat(6, 1fr);
   }
 }
 
-@media (min-width: 1000px) {
+@include bp.up(lg) {
   .deck-visual-grid {
     grid-template-columns: repeat(9, 1fr);
   }

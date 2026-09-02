@@ -1,10 +1,12 @@
+@use '../../styles/breakpoints' as bp;
+
 .public-deck-browser-content {
   max-width: 720px;
   margin: 0 auto;
   text-align: left;
 }
 
-@media (min-width: 1000px) {
+@include bp.up(lg) {
   .public-deck-browser-content {
     max-width: 1100px;
   }
@@ -64,19 +66,19 @@
   margin: 10px 0 16px;
 }
 
-@media (min-width: 480px) {
+@include bp.up(sm) {
   .card-pick-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
-@media (min-width: 700px) {
+@include bp.up(md) {
   .card-pick-grid {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
 
-@media (min-width: 1000px) {
+@include bp.up(lg) {
   .card-pick-grid {
     grid-template-columns: repeat(5, minmax(0, 1fr));
   }
