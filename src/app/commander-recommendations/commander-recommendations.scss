@@ -145,10 +145,3 @@
   justify-content: center;
   margin-top: 10px;
 }
-
-// Farbfilter-Chips: kleiner Farbtupfer vor dem Namen, damit "Blau" auch blau aussieht.
-.color-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--sp-2);
-}

@@ -9,7 +9,8 @@ import { I18nService } from '../i18n.service';
 import { CardImage } from '../card-image/card-image';
 import { PartnerCardImage } from '../partner-card-image/partner-card-image';
 import { COMMANDER_ARCHETYPE_FILTERS } from '../commander-archetype-filters';
-import { ManaSymbol } from '../ui/mana-symbol/mana-symbol';
+import { ColorFilter } from '../ui/color-filter/color-filter';
+import { ColorSelection, EMPTY_COLOR_SELECTION } from '../color-filter-match';
 
 /** Ein Treffer der Commander-Suche - 1 Karte bei einem Solo-Commander, 2 bei einem Partner-Paar (siehe searchCommanderPairs()). */
 interface CommanderBrowseEntry {
@@ -35,7 +36,7 @@ interface CommanderBrowseEntry {
  */
 @Component({
   selector: 'app-commander-recommendations',
-  imports: [FormsModule, CardImage, PartnerCardImage, PercentPipe, ManaSymbol],
+  imports: [FormsModule, CardImage, PartnerCardImage, PercentPipe, ColorFilter],
   templateUrl: './commander-recommendations.html',
   styleUrl: './commander-recommendations.scss',
 })
@@ -63,8 +64,7 @@ export class CommanderRecommendations {
 
   // --- Entdecken: Farb-/Mechanik-Filter statt direkter Namenseingabe (über Scryfall, siehe Klassenkommentar) ---
 
-  readonly colorOptions = ['W', 'U', 'B', 'R', 'G'];
-  readonly browseColors = signal<Set<string>>(new Set());
+  readonly browseColors = signal<ColorSelection>(EMPTY_COLOR_SELECTION);
   readonly browseArchetype = signal<string | null>(null);
   readonly browseCreatureType = signal<string | null>(null);
   readonly creatureTypeOptions = signal<string[]>([]);
@@ -101,13 +101,6 @@ export class CommanderRecommendations {
     return this.i18n.t(`archetypeFilter.${value}`);
   }
 
-  toggleBrowseColor(color: string): void {
-    const next = new Set(this.browseColors());
-    if (next.has(color)) next.delete(color);
-    else next.add(color);
-    this.browseColors.set(next);
-  }
-
   setBrowseArchetype(value: string): void {
     this.browseArchetype.set(value === 'all' ? null : value);
   }
@@ -120,7 +113,7 @@ export class CommanderRecommendations {
   canBrowse(): boolean {
     return (
       this.query().trim().length > 0 ||
-      this.browseColors().size > 0 ||
+      this.browseColors().colors.length > 0 ||
       this.browseArchetype() !== null ||
       this.browseCreatureType() !== null
     );
@@ -131,7 +124,7 @@ export class CommanderRecommendations {
     this.browseBusy.set(true);
     this.browseResults.set([]);
 
-    const colors = [...this.browseColors()];
+    const colors = [...this.browseColors().colors];
     const archetype = this.browseArchetype();
     const archetypeQuery = archetype ? this.archetypeOptions.find((f) => f.value === archetype)?.query : undefined;
     const filters = { name: this.query(), archetypeQuery, creatureType: this.browseCreatureType() };
@@ -152,7 +145,7 @@ export class CommanderRecommendations {
   resetBrowse(): void {
     this.query.set('');
     this.suggestions.set([]);
-    this.browseColors.set(new Set());
+    this.browseColors.set(EMPTY_COLOR_SELECTION);
     this.browseArchetype.set(null);
     this.browseCreatureType.set(null);
     this.browseResults.set([]);

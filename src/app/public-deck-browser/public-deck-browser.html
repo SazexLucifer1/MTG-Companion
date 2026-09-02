@@ -11,16 +11,11 @@
       />
     </div>
 
-    <!-- Die fünf Farbfilter sahen aus wie jeder andere graue Chip, obwohl sie Farben BEZEICHNEN.
-         Statt eines selbstgebauten Farbtupfers steht hier das echte Manasymbol. Es ist dabei
-         Beiwerk: der Name steht daneben und der aktive Zustand hängt weiterhin am Rahmen. -->
+    <!-- Derselbe Farbfilter wie in der Kartensuche, nur ohne "farblos": die Auswahl sucht hier
+         die exakte Farbidentität eines Decks, und die leere Identität ist kein Suchziel, sondern
+         schlicht keine Auswahl. -->
     <div class="chip-row color-filter-row">
-      @for (c of colorOptions; track c) {
-        <button class="glass-chip small color-chip" [class.active]="browseColors().has(c)" (click)="toggleColor(c)">
-          <app-mana-symbol [symbol]="c" />
-          {{ i18n.t('pip.' + c) }}
-        </button>
-      }
+      <app-color-filter [(value)]="browseColors" [withColorless]="false" [withMode]="false" />
     </div>
 
     <div class="chip-row public-deck-filter-row">

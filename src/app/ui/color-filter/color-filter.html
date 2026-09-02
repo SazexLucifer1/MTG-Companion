@@ -1,17 +1,43 @@
-<button type="button" [class.active]="value() === 'all'" (click)="value.set('all')">
+<!-- Kein eigener "alle"-Zustand im Modell: keine Farbe gewählt IST "alle". Der Knopf setzt die
+     Auswahl zurück und zeigt an, dass gerade nicht eingeschränkt wird. -->
+<button type="button" [class.active]="value().colors.length === 0" (click)="reset()">
   {{ i18n.t('deckView.colorAll') }}
 </button>
-@for (color of colors; track color) {
+@for (color of options(); track color) {
   <!-- Der Farbname steht nur noch im Tooltip und im aria-label: das Symbol IST der Name, und
        sechs ausgeschriebene Farben nebeneinander sprengen jede Filterzeile. -->
   <button
     type="button"
     class="symbol-only"
-    [class.active]="value() === color"
-    (click)="value.set(color)"
+    [class.active]="isActive(color)"
+    (click)="toggle(color)"
     [title]="label(color)"
     [attr.aria-label]="label(color)"
+    [attr.aria-pressed]="isActive(color)"
   >
     <app-mana-symbol [symbol]="color" />
+  </button>
+}
+@if (showMode()) {
+  <!-- Zwei Lesarten derselben Auswahl, deshalb im selben Block - aber durch einen Strich
+       abgesetzt, damit sie nicht wie eine siebte Farbe aussehen. -->
+  <span class="mode-divider" aria-hidden="true"></span>
+  <button
+    type="button"
+    class="mode-segment"
+    [class.active]="isMode('exact')"
+    (click)="setMode('exact')"
+    [title]="i18n.t('colorFilter.modeExactTitle')"
+  >
+    {{ i18n.t('colorFilter.modeExact') }}
+  </button>
+  <button
+    type="button"
+    class="mode-segment"
+    [class.active]="isMode('atLeast')"
+    (click)="setMode('atLeast')"
+    [title]="i18n.t('colorFilter.modeAtLeastTitle')"
+  >
+    {{ i18n.t('colorFilter.modeAtLeast') }}
   </button>
 }

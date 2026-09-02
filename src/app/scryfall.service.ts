@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
 import { sleep, normalizeCardName } from './array-utils';
+import { ColorSelection } from './color-filter-match';
 
 export interface ScryfallCard {
   name: string;
@@ -407,7 +408,8 @@ export class ScryfallService {
       type?: string;
       creatureType?: string;
       cmc?: number | null;
-      color?: string | null;
+      /** Auswahl des Farbfilters samt Lesart (siehe color-filter-match.ts). */
+      colors?: ColorSelection;
       colorIdentitySubset?: string[] | null;
       /** Fertiges Scryfall-Query-Fragment für eine Effekt-Kategorie, z.B. "otag:removal" - siehe effectFilters in deck-viewer.service.ts. */
       effectQuery?: string;
@@ -426,7 +428,7 @@ export class ScryfallService {
       !filters.type &&
       !creatureType &&
       filters.cmc == null &&
-      !filters.color &&
+      !filters.colors?.colors.length &&
       !filters.effectQuery &&
       !filters.keyword
     ) {
@@ -438,7 +440,14 @@ export class ScryfallService {
     if (filters.type) parts.push(`type:"${filters.type}"`);
     if (creatureType) parts.push(`type:"${creatureType.replace(/"/g, '')}"`);
     if (filters.cmc != null) parts.push(filters.cmc >= 7 ? 'cmc>=7' : `cmc:${filters.cmc}`);
-    if (filters.color) parts.push(filters.color === 'C' ? 'id:c' : `id:${filters.color}`);
+    if (filters.colors?.colors.length) {
+      // Bewusst id= bzw. id>= statt des mehrdeutigen id: - das ist bei Scryfall die
+      // Teilmengen-Suche (id:U findet blaue UND farblose Karten, aber keine simic-farbenen) und
+      // trifft damit keine der beiden Lesarten des Filters.
+      const { colors, mode } = filters.colors;
+      const operator = mode === 'atLeast' ? '>=' : '=';
+      parts.push(colors.includes('C') ? 'id:c' : `id${operator}${colors.join('')}`);
+    }
     if (filters.effectQuery) parts.push(filters.effectQuery);
     if (filters.keyword) parts.push(`keyword:"${filters.keyword.replace(/"/g, '')}"`);
     if (filters.colorIdentitySubset) {

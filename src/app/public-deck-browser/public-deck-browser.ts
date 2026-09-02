@@ -9,8 +9,8 @@ import { CardImage } from '../card-image/card-image';
 import { PartnerCardImage } from '../partner-card-image/partner-card-image';
 import { normalizeCardName } from '../array-utils';
 import { BarChart, BarChartDatum } from '../ui/bar-chart/bar-chart';
-import { ManaSymbol } from '../ui/mana-symbol/mana-symbol';
 import { ColorFilter } from '../ui/color-filter/color-filter';
+import { ColorSelection, EMPTY_COLOR_SELECTION, matchesColorSelection } from '../color-filter-match';
 import {
   manaCurveChartData,
   pipChartData,
@@ -120,7 +120,7 @@ function sortByCmc(a: PublicDeckCardEntry, b: PublicDeckCardEntry): number {
  */
 @Component({
   selector: 'app-public-deck-browser',
-  imports: [FormsModule, CardImage, PartnerCardImage, DecimalPipe, CurrencyPipe, BarChart, ManaSymbol, ColorFilter],
+  imports: [FormsModule, CardImage, PartnerCardImage, DecimalPipe, CurrencyPipe, BarChart, ColorFilter],
   templateUrl: './public-deck-browser.html',
   styleUrl: './public-deck-browser.scss',
 })
@@ -131,8 +131,7 @@ export class PublicDeckBrowser {
   readonly i18n = inject(I18nService);
 
   readonly nameFilter = signal('');
-  readonly colorOptions = ['W', 'U', 'B', 'R', 'G'];
-  readonly browseColors = signal<Set<string>>(new Set());
+  readonly browseColors = signal<ColorSelection>(EMPTY_COLOR_SELECTION);
   readonly sort = signal<'recent' | 'winRate'>('recent');
   readonly archetype = signal<string | null>(null);
   readonly archetypeOptions = signal<string[]>([]);
@@ -168,7 +167,7 @@ export class PublicDeckBrowser {
   readonly cmcFilter = signal<'all' | number>('all');
   readonly typeFilterValue = signal<'all' | string>('all');
   readonly creatureTypeFilter = signal<'all' | string>('all');
-  readonly colorFilter = signal<'all' | 'W' | 'U' | 'B' | 'R' | 'G' | 'C'>('all');
+  readonly colorFilter = signal<ColorSelection>(EMPTY_COLOR_SELECTION);
 
   constructor() {
     this.publicDecks.archetypeOptions().then((options) => this.archetypeOptions.set(options));
@@ -180,13 +179,6 @@ export class PublicDeckBrowser {
     this.creatureTypesLoading.set(true);
     this.creatureTypeOptions.set(await this.scryfall.creatureTypes());
     this.creatureTypesLoading.set(false);
-  }
-
-  toggleColor(color: string): void {
-    const next = new Set(this.browseColors());
-    if (next.has(color)) next.delete(color);
-    else next.add(color);
-    this.browseColors.set(next);
   }
 
   setSort(value: string): void {
@@ -206,7 +198,7 @@ export class PublicDeckBrowser {
     this.busy.set(true);
     const { decks, stats } = await this.publicDecks.searchPublicDecks({
       name: this.nameFilter(),
-      colors: [...this.browseColors()],
+      colors: [...this.browseColors().colors],
       archetype: this.archetype(),
       creatureType: this.creatureType(),
       sort: this.sort(),
@@ -239,7 +231,7 @@ export class PublicDeckBrowser {
 
   resetFilters(): void {
     this.nameFilter.set('');
-    this.browseColors.set(new Set());
+    this.browseColors.set(EMPTY_COLOR_SELECTION);
     this.archetype.set(null);
     this.creatureType.set(null);
     this.sort.set('recent');
@@ -432,11 +424,7 @@ export class PublicDeckBrowser {
     const creatureType = this.creatureTypeFilter();
     if (creatureType !== 'all' && !parseSubtypes(e.card.typeLine).includes(creatureType)) return false;
 
-    const color = this.colorFilter();
-    if (color !== 'all') {
-      const identity = e.card.colorIdentity ?? [];
-      if (color === 'C' ? identity.length > 0 : !identity.includes(color)) return false;
-    }
+    if (!matchesColorSelection(e.card.colorIdentity ?? [], this.colorFilter())) return false;
 
     return true;
   }
@@ -455,7 +443,7 @@ export class PublicDeckBrowser {
       this.cmcFilter() !== 'all' ||
       this.typeFilterValue() !== 'all' ||
       this.creatureTypeFilter() !== 'all' ||
-      this.colorFilter() !== 'all'
+      this.colorFilter().colors.length > 0
   );
 
   resetCardFilters(): void {
@@ -463,7 +451,7 @@ export class PublicDeckBrowser {
     this.cmcFilter.set('all');
     this.typeFilterValue.set('all');
     this.creatureTypeFilter.set('all');
-    this.colorFilter.set('all');
+    this.colorFilter.set(EMPTY_COLOR_SELECTION);
   }
 
   translateLabel(label: string): string {
