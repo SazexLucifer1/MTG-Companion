@@ -9,6 +9,8 @@ import { I18nService } from '../i18n.service';
 import { DialogService } from '../dialog.service';
 import { GoldfishService } from '../goldfish.service';
 import { CardImage } from '../card-image/card-image';
+import { OverflowMenu } from '../ui/overflow-menu/overflow-menu';
+import { Pager } from '../ui/pager/pager';
 
 export type DeckSortMode = 'alpha' | 'winRate' | 'games';
 
@@ -26,11 +28,23 @@ const PAGE_SIZE_CAP = 10;
 /** Muss zu deck-list.scss (.deck-list Grid) passen: grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px. */
 const GRID_MIN_COLUMN_PX = 300;
 const GRID_GAP_PX = 12;
-const GRID_BREAKPOINT_QUERY = '(min-width: 640px)';
+
+/**
+ * Breite, ab der deck-list.scss auf das mehrspaltige Karten-Grid umschaltet.
+ *
+ * Wird aus der CSS-Custom-Property --bp-md gelesen (gesetzt in styles/_breakpoints.scss), damit
+ * hier NICHT dieselbe Zahl ein zweites Mal steht: vorher war das ein hartkodiertes
+ * '(min-width: 640px)', das still auseinanderlaufen konnte, sobald jemand nur das SCSS anfasst.
+ * Der Fallback greift nur, wenn das Stylesheet noch nicht geladen ist.
+ */
+function gridBreakpointPx(): number {
+  const raw = getComputedStyle(document.documentElement).getPropertyValue('--bp-md');
+  return Number.parseFloat(raw) || 700;
+}
 
 @Component({
   selector: 'app-deck-list',
-  imports: [DecimalPipe, FormsModule, CardImage],
+  imports: [DecimalPipe, FormsModule, CardImage, OverflowMenu, Pager],
   templateUrl: './deck-list.html',
   styleUrl: './deck-list.scss',
 })
@@ -148,7 +162,7 @@ export class DeckList {
   }
 
   private measureColumns(el: HTMLElement): void {
-    if (!window.matchMedia(GRID_BREAKPOINT_QUERY).matches) {
+    if (window.innerWidth < gridBreakpointPx()) {
       this.columnsPerRow.set(1);
       return;
     }
@@ -186,9 +200,12 @@ export class DeckList {
     // Bei fremden Profilen (readonlyMode) private Decks komplett ausblenden - im eigenen Profil
     // sieht man natürlich weiterhin alle eigenen, auch die privat gestellten.
     let list = this.readonlyMode() ? this.decksWithStats().filter((d) => !d.isPrivate) : this.decksWithStats();
-    if (!this.showOutdated()) {
-      list = list.filter((d) => !d.isOutdated);
-    }
+    // Entweder-oder statt nur Ausblenden: mit eingeschaltetem Schalter waren vorher alle Decks
+    // gemischt zu sehen, wodurch man den Unterschied gar nicht erkannte. Jetzt zeigt der Schalter
+    // ausschließlich die als Outdated markierten Decks.
+    list = this.showOutdated()
+      ? list.filter((d) => d.isOutdated)
+      : list.filter((d) => !d.isOutdated);
     if (query) {
       list = list.filter((d) => d.name.toLowerCase().includes(query));
     }
@@ -215,9 +232,6 @@ export class DeckList {
     return this.filteredSortedDecks().slice(start, start + size);
   });
 
-  readonly pageRangeEnd = computed(() =>
-    Math.min((this.page() + 1) * this.pageSize(), this.filteredSortedDecks().length)
-  );
 
   setSearchQuery(value: string): void {
     this.searchQuery.set(value);
@@ -234,13 +248,7 @@ export class DeckList {
     this.page.set(0);
   }
 
-  prevPage(): void {
-    this.page.update((p) => Math.max(0, p - 1));
-  }
 
-  nextPage(): void {
-    this.page.update((p) => Math.min(this.totalPages() - 1, p + 1));
-  }
 
   async refreshDecks(): Promise<void> {
     const decks = await this.deckService.loadDecksForOwner(this.owner());

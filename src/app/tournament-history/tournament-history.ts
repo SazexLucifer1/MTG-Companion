@@ -5,6 +5,7 @@ import { GroupService } from '../group.service';
 import { I18nService } from '../i18n.service';
 import { DialogService } from '../dialog.service';
 import { StandingsRow, Tournament, TournamentMatch } from '../tournament.models';
+import { Meter } from '../ui/meter/meter';
 
 /**
  * Historie abgeschlossener (und laufender) Turniere einer Gruppe - eigener Nav-Tab, getrennt vom
@@ -14,7 +15,7 @@ import { StandingsRow, Tournament, TournamentMatch } from '../tournament.models'
  */
 @Component({
   selector: 'app-tournament-history',
-  imports: [DatePipe],
+  imports: [DatePipe, Meter],
   templateUrl: './tournament-history.html',
   styleUrl: './tournament-history.scss',
 })

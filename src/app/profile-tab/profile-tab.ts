@@ -6,7 +6,7 @@ import { ProfileService } from '../profile.service';
 import { MtgService } from '../mtg.service';
 import { GroupService } from '../group.service';
 import { DeckList } from '../deck-list/deck-list';
-import { DeckService, CommanderGameStats, CrossGroupPersonalStats, DeckOwner } from '../deck.service';
+import { DeckService, CommanderGameStats, CrossGroupPersonalStats, CardAndColorStats, DeckOwner } from '../deck.service';
 import { ManualDeckLinkService } from '../manual-deck-link.service';
 import { CardPreviewService } from '../card-preview.service';
 import { AuthService } from '../auth.service';
@@ -19,10 +19,12 @@ import { DialogService } from '../dialog.service';
 import { CardImage } from '../card-image/card-image';
 import { CommanderStatList } from '../commander-stat-list/commander-stat-list';
 import { FavoriteCommanderEditor } from '../favorite-commander-editor/favorite-commander-editor';
+import { BarChart, BarChartDatum } from '../ui/bar-chart/bar-chart';
+import { Meter } from '../ui/meter/meter';
 
 @Component({
   selector: 'app-profile-tab',
-  imports: [FormsModule, DatePipe, DecimalPipe, DeckList, CardImage, CommanderStatList, FavoriteCommanderEditor],
+  imports: [FormsModule, DatePipe, DecimalPipe, DeckList, CardImage, CommanderStatList, FavoriteCommanderEditor, BarChart, Meter],
   templateUrl: './profile-tab.html',
   styleUrl: './profile-tab.scss',
 })
@@ -112,6 +114,20 @@ export class ProfileTab {
     return [...counts.entries()].sort((a, b) => a[0] - b[0]).map(([placement, count]) => ({ placement, count }));
   });
 
+  /**
+   * Die Platzierungsverteilung als Säulendiagramm.
+   *
+   * Das ist ein klassisches Histogramm (1. Platz: 12x, 2. Platz: 7x, ...) und stand vorher an drei
+   * Stellen im Profil als reine Aufzählung - eine Form, aus der sich die Verteilung erst durch
+   * Kopfrechnen ergibt.
+   */
+  readonly placementChart = computed<BarChartDatum[]>(() =>
+    this.placementDistribution().map((p) => ({
+      label: this.i18n.t('placement.badge', { placement: p.placement }),
+      value: p.count,
+    })),
+  );
+
   readonly unassignedCommanderStats = signal<CommanderGameStats[]>([]);
   /** Gleiches wie unassignedCommanderStats, aber für ein FREMDES Profil - rein zum Ansehen, ohne Reparieren/Verlinken (das kann nur der Account-Besitzer selbst). */
   readonly viewingUnassignedCommanderStats = signal<CommanderGameStats[]>([]);
@@ -122,6 +138,83 @@ export class ProfileTab {
   /** Gesamt-Statistik über ALLE Gruppen des eigenen Accounts hinweg (siehe DeckService.getCrossGroupPersonalStats) -
    * bewusst nur fürs eigene Profil, nicht beim Ansehen eines fremden. Das Stats-Tab bleibt unverändert pro aktiver Gruppe. */
   readonly crossGroupStats = signal<CrossGroupPersonalStats | null>(null);
+
+  /** Umschalter zwischen den Statistik-Sektionen und dem Deck-Bereich im eigenen Profil - ohne den
+   * hätte man immer erst an allen Statistiken vorbeiscrollen müssen, um zu den Decks zu kommen. */
+  readonly profileViewTab = signal<'stats' | 'decks'>('stats');
+
+  setProfileViewTab(tab: 'stats' | 'decks'): void {
+    this.profileViewTab.set(tab);
+  }
+
+  /** Meistgespielte Karten (ohne Länder), vollständige Farb-Rangliste und Farbkombinations-Rangliste
+   * über ALLE Gruppen des eigenen Accounts hinweg (siehe DeckService.getCardAndColorStats) - wie
+   * crossGroupStats bewusst nur fürs eigene Profil. Precons fließen dort bewusst nicht mit ein. */
+  readonly cardAndColorStats = signal<CardAndColorStats | null>(null);
+
+  /** CSS-Farbe einer Manafarbe, für Farbtupfer und Balken.
+   *
+   * Kommt aus den globalen --pip-*-Tokens (styles.scss). Hier stand vorher eine eigene Hex-Tabelle
+   * mit exakt denselben fünf Werten - dieselbe Palette ein zweites Mal zu pflegen ist genau die
+   * Duplizierung, die die Tokens abschaffen. Farblos bekommt den neutralen Serienton. */
+  readonly colorVar = (color: string): string =>
+    'WUBRG'.includes(color) ? `var(--pip-${color.toLowerCase()})` : 'var(--series-neutral)';
+
+  readonly colorLabel = (color: string): string => this.i18n.t(`pip.${color}`);
+
+  /** Anzeigename einer Farbkombination (z.B. "Weiß/Blau") - "Farblos" bei leerer Farbidentität. */
+  readonly colorComboLabel = (colors: string[]): string =>
+    colors.length === 0 ? this.i18n.t('deckView.colorless') : colors.map((c) => this.colorLabel(c)).join(' / ');
+
+  /** Umschalter für Karten-/Farb-/Farbkombinations-Statistik: "games" gewichtet nach tatsächlich
+   * gespielten Partien je Deck (Standard), "decks" zählt jedes Deck nur 1x, unabhängig davon, wie
+   * oft es gespielt wurde. Wirkt auf alle drei Ranglisten gemeinsam, da sie aus derselben Abfrage
+   * (DeckService.getCardAndColorStats) stammen, die beide Zählweisen mitliefert. */
+  readonly statsWeightMode = signal<'games' | 'decks'>('games');
+
+  setStatsWeightMode(mode: 'games' | 'decks'): void {
+    this.statsWeightMode.set(mode);
+  }
+
+  /** Wählt je nach aktivem Modus den passenden Zählwert eines Eintrags aus. */
+  readonly countFor = (entry: { gameCount: number; deckCount: number }): number =>
+    this.statsWeightMode() === 'games' ? entry.gameCount : entry.deckCount;
+
+  /** Top 5 meistgenutzte Karten nach aktivem Modus sortiert - die Rohliste enthält bewusst ALLE
+   * Karten (siehe DeckService.getCardAndColorStats), damit hier ohne Neuladen umsortiert werden kann. */
+  readonly rankedMostUsedCards = computed(() => {
+    const cards = this.cardAndColorStats()?.mostUsedCards ?? [];
+    return [...cards].sort((a, b) => this.countFor(b) - this.countFor(a)).slice(0, 5);
+  });
+
+  readonly rankedColorRanking = computed(() => {
+    const colors = this.cardAndColorStats()?.colorRanking ?? [];
+    return [...colors].sort((a, b) => this.countFor(b) - this.countFor(a));
+  });
+
+  /** Farb-Rangliste als Balkendiagramm - ersetzt die vierte handgebaute Kopie des Pip-Charts. */
+  readonly colorRankingChart = computed<BarChartDatum[]>(() =>
+    this.rankedColorRanking().map((c) => ({
+      label: this.colorLabel(c.color),
+      value: this.countFor(c),
+      color: this.colorVar(c.color),
+    })),
+  );
+
+  readonly rankedColorComboRanking = computed(() => {
+    const combos = this.cardAndColorStats()?.colorComboRanking ?? [];
+    return [...combos].sort((a, b) => this.countFor(b) - this.countFor(a));
+  });
+
+  /** Höchster Zählwert für die relative Balkenbreite in der Karten-Rangliste. */
+  readonly maxMostUsedCardCount = computed(() =>
+    Math.max(1, ...this.rankedMostUsedCards().map((c) => this.countFor(c)))
+  );
+
+  /** Höchster Zählwert für die relative Balkenbreite in der Farbkombinations-Rangliste. */
+  readonly maxColorComboCount = computed(() =>
+    Math.max(1, ...this.rankedColorComboRanking().map((c) => this.countFor(c)))
+  );
 
   private async refreshUnassignedAndDecks(): Promise<void> {
     const userId = this.profileService.profile()?.id;
@@ -152,6 +245,15 @@ export class ProfileTab {
         return;
       }
       this.deckService.getCrossGroupPersonalStats(userId).then((stats) => this.crossGroupStats.set(stats));
+    });
+
+    effect(() => {
+      const userId = this.profileService.profile()?.id;
+      if (!userId) {
+        this.cardAndColorStats.set(null);
+        return;
+      }
+      this.deckService.getCardAndColorStats({ kind: 'user', userId }).then((stats) => this.cardAndColorStats.set(stats));
     });
 
     effect(() => {

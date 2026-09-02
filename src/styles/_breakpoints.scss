@@ -1,0 +1,44 @@
+// Zentrale Breakpoints.
+//
+// Vorher standen 26 Media Queries mit hartkodierten px-Werten verstreut in 8 Dateien. Die Werte
+// 480/700/1000 waren bereits konsistent (immer dieselbe Aufgabe: Spaltenzahl von Karten-Rastern),
+// 640 war ein Ausreißer, der zusätzlich in zwei Dateien in ENTGEGENGESETZTER Richtung benutzt
+// wurde (min-width in deck-list, max-width in profile-tab) und nach TypeScript dupliziert war.
+//
+// Benutzung in Komponenten-SCSS:
+//   @use '../../styles/breakpoints' as bp;
+//   @include bp.up(md) { ... }
+//
+// Nur min-width - die App ist mobile-first aufgebaut, die Basis-Regeln gelten fürs Handy und
+// Breakpoints erweitern nach oben. Eine max-width-Variante gibt es bewusst nicht, damit nicht
+// wieder in beide Richtungen gedacht wird.
+
+@use 'sass:map';
+
+$sm: 480px; // große Handys quer, kleine Tablets hochkant
+$md: 700px; // Tablets hochkant
+$lg: 1000px; // Tablets quer und Desktop
+
+$-map: (
+  sm: $sm,
+  md: $md,
+  lg: $lg,
+);
+
+@mixin up($name) {
+  @if not map.has-key($-map, $name) {
+    @error "Unbekannter Breakpoint '#{$name}'. Erlaubt: #{map.keys($-map)}.";
+  }
+  @media (min-width: map.get($-map, $name)) {
+    @content;
+  }
+}
+
+// Dieselben Werte als CSS-Custom-Properties, damit TypeScript sie über getComputedStyle lesen kann
+// statt sie ein zweites Mal zu hinterlegen (deck-list.ts brauchte vorher eine eigene Kopie von
+// "640px" - dieselbe Zahl an zwei Orten, die still auseinanderlaufen konnte).
+@mixin custom-properties {
+  --bp-sm: #{$sm};
+  --bp-md: #{$md};
+  --bp-lg: #{$lg};
+}

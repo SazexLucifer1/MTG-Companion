@@ -7,10 +7,12 @@ import { DeckImportService } from '../deck-import.service';
 import { DeckPdfService } from '../deck-pdf.service';
 import { EdhrecCardlist } from '../edhrec.service';
 import { CardImage } from '../card-image/card-image';
+import { BarChart } from '../ui/bar-chart/bar-chart';
+import { OverflowMenu } from '../ui/overflow-menu/overflow-menu';
 
 @Component({
   selector: 'app-deck-detail-view',
-  imports: [CurrencyPipe, DatePipe, DecimalPipe, PercentPipe, FormsModule, CardImage],
+  imports: [CurrencyPipe, DatePipe, DecimalPipe, PercentPipe, FormsModule, CardImage, BarChart, OverflowMenu],
   templateUrl: './deck-detail-view.html',
   styleUrl: './deck-detail-view.scss',
 })
@@ -74,20 +76,8 @@ export class DeckDetailView {
     return cards.reduce((sum, c) => sum + c.quantity, 0);
   }
 
-  curveBarHeight(count: number): number {
-    const max = Math.max(1, ...this.viewer.manaCurve().map((b) => b.count));
-    return count === 0 ? 0 : Math.max(6, (count / max) * 100);
-  }
 
-  pipBarWidth(count: number): number {
-    const max = Math.max(1, ...this.viewer.pipDistribution().map((p) => p.count));
-    return count === 0 ? 0 : Math.max(6, (count / max) * 100);
-  }
 
-  typeBarWidth(count: number): number {
-    const max = Math.max(1, ...this.viewer.typeBreakdown().map((t) => t.count));
-    return count === 0 ? 0 : Math.max(6, (count / max) * 100);
-  }
 
   private readonly expandedEdhrecCategories = new Set<string>();
 

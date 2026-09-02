@@ -11,7 +11,9 @@
     }
   </div>
 
-  <button class="glass-chip" (click)="openTournamentPanel()">
+  <!-- Als .glass-chip stand das direkt unter den sechs Spielmodus-Chips und sah aus wie ein
+       siebter Modus-Filter. Es ist aber eine Aktion, die den ganzen Tab wechselt. -->
+  <button class="glass-button" (click)="openTournamentPanel()">
     🏆 {{ tournament.activeTournament() ? i18n.t('tournament.openPanelButton') : i18n.t('tournament.createButton') }}
   </button>
 
@@ -130,89 +132,6 @@
         </li>
       }
     </ul>
-  }
-
-  @if (deckPickerTarget()) {
-    <div class="options-menu-overlay" (click)="closeDeckPicker()">
-      <div class="options-menu-sheet" (click)="$event.stopPropagation()">
-        @if (deckPickerBorrowMode() && !borrowFromOwner()) {
-          <h3>{{ i18n.t('match.borrowFrom', { name: deckPickerTarget() ?? '' }) }}</h3>
-          @if (borrowOwnerOptions().length === 0) {
-            <p class="hint">{{ deckPickerMessage() || i18n.t('match.noOtherDecksFound') }}</p>
-          } @else {
-            <ul class="player-list">
-              @for (owner of borrowOwnerOptions(); track owner) {
-                <li>
-                  <span class="player-name">{{ owner }}</span>
-                  <button class="glass-button small" (click)="selectBorrowOwner(owner)">{{ i18n.t('match.choose') }}</button>
-                </li>
-              }
-            </ul>
-          }
-        } @else {
-          <h3>{{ i18n.t('match.deckFor', { name: deckPickerTarget() ?? '' }) }}</h3>
-          @if (deckPickerBusy()) {
-            <p class="hint">{{ i18n.t('match.loadingDecks') }}</p>
-          } @else if (deckPickerOptions().length === 0) {
-            <p class="hint">{{ deckPickerMessage() || i18n.t('match.noDecksFound') }}</p>
-          } @else {
-            @if (deckPickerMessage()) {
-              <p class="error">{{ deckPickerMessage() }}</p>
-            }
-            <div class="deck-picker-filters">
-              <input
-                class="glass-input"
-                type="text"
-                [placeholder]="i18n.t('match.deckPickerSearchPlaceholder')"
-                [ngModel]="deckPickerSearchQuery()"
-                (ngModelChange)="deckPickerSearchQuery.set($event)"
-              />
-              <input
-                class="glass-input"
-                type="number"
-                [placeholder]="i18n.t('match.deckPickerYearPlaceholder')"
-                [ngModel]="deckPickerYearFilter()"
-                (ngModelChange)="setDeckPickerYearFilter($event)"
-              />
-            </div>
-            @if (filteredDeckPickerOptions().length === 0) {
-              <p class="hint">{{ i18n.t('match.deckPickerNoMatch') }}</p>
-            }
-            <ul class="player-list deck-picker-list">
-              @for (option of filteredDeckPickerOptions(); track option.deckId) {
-                <li>
-                  <div class="deck-thumb">
-                    @if (deckPickerThumb(option); as img) {
-                      <app-card-image
-                        [compact]="true"
-                        [eager]="true"
-                        [imageUrl]="img"
-                        [backImageUrl]="deckPickerBackImage(option)"
-                        [alt]="option.commanderName ?? option.deckName"
-                      />
-                    } @else {
-                      <div class="deck-thumb-placeholder">{{ option.deckName }}</div>
-                    }
-                  </div>
-                  <span class="player-name">
-                    @if (option.isPrecon) {<span title="Precon">📦</span>}
-                    {{ option.deckName }}
-                  </span>
-                  @if (option.ownerName) {
-                    <span class="hint">{{ i18n.t('match.from', { name: option.ownerName }) }}</span>
-                  }
-                  <button class="glass-button small" (click)="selectDeck(option.deckId)">{{ i18n.t('match.choose') }}</button>
-                </li>
-              }
-            </ul>
-          }
-          @if (deckPickerBorrowMode()) {
-            <button class="glass-button" (click)="backToBorrowOwners()">{{ i18n.t('match.back') }}</button>
-          }
-        }
-        <button class="glass-button" (click)="closeDeckPicker()">{{ i18n.t('match.cancel') }}</button>
-      </div>
-    </div>
   }
 
   @if (session.isTwoHeadedGiantMode() && session.selectedPlayers().length > 0) {
@@ -615,3 +534,93 @@
 }
   </li>
 </ng-template>
+
+
+<!-- Die Deck-Auswahl steht bewusst auf oberster Ebene statt in der <section class="glass-card">
+     weiter oben, in der sie ursprünglich lag: .glass-card hat backdrop-filter, und das macht die
+     Karte zum Bezugsrahmen für position:fixed-Nachfahren. Das Sheet war dadurch nicht am
+     Viewport ausgerichtet, sondern in der Karte gefangen - abgeschnitten und hinter benachbarter
+     Oberfläche. Alle anderen handgebauten Sheets dieser App stehen aus demselben Grund hier
+     unten. -->
+@if (deckPickerTarget()) {
+  <div class="options-menu-overlay" (click)="closeDeckPicker()">
+    <div class="options-menu-sheet" (click)="$event.stopPropagation()">
+      @if (deckPickerBorrowMode() && !borrowFromOwner()) {
+        <h3>{{ i18n.t('match.borrowFrom', { name: deckPickerTarget() ?? '' }) }}</h3>
+        @if (borrowOwnerOptions().length === 0) {
+          <p class="hint">{{ deckPickerMessage() || i18n.t('match.noOtherDecksFound') }}</p>
+        } @else {
+          <ul class="player-list">
+            @for (owner of borrowOwnerOptions(); track owner) {
+              <li>
+                <span class="player-name">{{ owner }}</span>
+                <button class="glass-button small" (click)="selectBorrowOwner(owner)">{{ i18n.t('match.choose') }}</button>
+              </li>
+            }
+          </ul>
+        }
+      } @else {
+        <h3>{{ i18n.t('match.deckFor', { name: deckPickerTarget() ?? '' }) }}</h3>
+        @if (deckPickerBusy()) {
+          <p class="hint">{{ i18n.t('match.loadingDecks') }}</p>
+        } @else if (deckPickerOptions().length === 0) {
+          <p class="hint">{{ deckPickerMessage() || i18n.t('match.noDecksFound') }}</p>
+        } @else {
+          @if (deckPickerMessage()) {
+            <p class="error">{{ deckPickerMessage() }}</p>
+          }
+          <div class="deck-picker-filters">
+            <input
+              class="glass-input"
+              type="text"
+              [placeholder]="i18n.t('match.deckPickerSearchPlaceholder')"
+              [ngModel]="deckPickerSearchQuery()"
+              (ngModelChange)="deckPickerSearchQuery.set($event)"
+            />
+            <input
+              class="glass-input"
+              type="number"
+              [placeholder]="i18n.t('match.deckPickerYearPlaceholder')"
+              [ngModel]="deckPickerYearFilter()"
+              (ngModelChange)="setDeckPickerYearFilter($event)"
+            />
+          </div>
+          @if (filteredDeckPickerOptions().length === 0) {
+            <p class="hint">{{ i18n.t('match.deckPickerNoMatch') }}</p>
+          }
+          <ul class="player-list deck-picker-list">
+            @for (option of filteredDeckPickerOptions(); track option.deckId) {
+              <li>
+                <div class="deck-thumb">
+                  @if (deckPickerThumb(option); as img) {
+                    <app-card-image
+                      [compact]="true"
+                      [eager]="true"
+                      [imageUrl]="img"
+                      [backImageUrl]="deckPickerBackImage(option)"
+                      [alt]="option.commanderName ?? option.deckName"
+                    />
+                  } @else {
+                    <div class="deck-thumb-placeholder">{{ option.deckName }}</div>
+                  }
+                </div>
+                <span class="player-name">
+                  @if (option.isPrecon) {<span title="Precon">📦</span>}
+                  {{ option.deckName }}
+                </span>
+                @if (option.ownerName) {
+                  <span class="hint">{{ i18n.t('match.from', { name: option.ownerName }) }}</span>
+                }
+                <button class="glass-button small" (click)="selectDeck(option.deckId)">{{ i18n.t('match.choose') }}</button>
+              </li>
+            }
+          </ul>
+        }
+        @if (deckPickerBorrowMode()) {
+          <button class="glass-button" (click)="backToBorrowOwners()">{{ i18n.t('match.back') }}</button>
+        }
+      }
+      <button class="glass-button" (click)="closeDeckPicker()">{{ i18n.t('match.cancel') }}</button>
+    </div>
+  </div>
+}

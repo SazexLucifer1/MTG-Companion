@@ -1,3 +1,5 @@
+@use '../../styles/breakpoints' as bp;
+
 .deck-list {
   list-style: none;
   margin: 12px 0 0;
@@ -19,7 +21,7 @@
 // Ab hier passen mehrere Decks nebeneinander (Querformat/Tablet/Desktop) - echtes Karten-Grid
 // statt einer einzelnen, immer breiter werdenden Liste. Unterhalb bleibt die gewohnte
 // Hochformat-Handy-Liste unverändert (Media Query wirkt sich dort gar nicht aus).
-@media (min-width: 640px) {
+@include bp.up(md) {
   .deck-list {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));

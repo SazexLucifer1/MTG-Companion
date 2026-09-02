@@ -1,0 +1,12 @@
+<div
+  class="meter"
+  [class.thick]="thick()"
+  [attr.role]="ariaLabel() ? 'progressbar' : null"
+  [attr.aria-label]="ariaLabel()"
+  [attr.aria-valuenow]="ariaLabel() ? value() : null"
+  [attr.aria-valuemin]="ariaLabel() ? 0 : null"
+  [attr.aria-valuemax]="ariaLabel() ? max() : null"
+  [attr.aria-hidden]="ariaLabel() ? null : 'true'"
+>
+  <div class="meter-fill" [style.width.%]="percent()" [style.background]="color()"></div>
+</div>

@@ -34,34 +34,43 @@
                 {{ group.role === 'owner' ? i18n.t('group.roleAdmin') : i18n.t('group.roleMember') }}
               </span>
             </div>
+            <!-- Sichtbar bleiben nur die beiden Aktionen, die man tatsächlich häufig braucht.
+                 Verwaltung (Mitglieder, Rechte, Sichtbarkeit, Qualifikation, Umbenennen, Löschen,
+                 Verlassen) wandert ins ⋮-Menü - vorher standen hier bis zu neun gleich aussehende
+                 Knöpfe pro Gruppe, bei drei Gruppen also 27 auf einem Bildschirm. -->
             <div class="group-card-actions">
               @if (groupService.groupId() === group.id) {
                 <span class="glass-chip small active">{{ i18n.t('group.active') }}</span>
               } @else {
-                <button class="glass-button small" (click)="selectGroup(group.id)">{{ i18n.t('group.setActive') }}</button>
+                <button class="glass-button small primary" (click)="selectGroup(group.id)">{{ i18n.t('group.setActive') }}</button>
               }
               @if (group.role === 'owner') {
                 <button class="glass-button small" (click)="openInvite(group.id)">{{ i18n.t('group.invite') }}</button>
               }
-              <button class="glass-button small" (click)="openMembers(group.id)">{{ i18n.t('group.members') }}</button>
-              @if (group.role === 'owner') {
-                <button class="glass-button small" (click)="openPermissionsDialog(group.id)">{{ i18n.t('group.permissions') }}</button>
-              }
-              @if (groupService.hasPermissionFor(group.id, 'stats.visibility')) {
-                <button class="glass-button small" (click)="openVisibilityDialog(group.id)">{{ i18n.t('group.visibility') }}</button>
-              }
-              @if (groupService.hasPermissionFor(group.id, 'stats.qualificationThreshold')) {
-                <button class="glass-button small" (click)="openQualificationDialog(group.id)">{{ i18n.t('group.qualification') }}</button>
-              }
-              @if (groupService.hasPermissionFor(group.id, 'group.rename')) {
-                <button class="icon-button" (click)="startRenameGroup(group.id, group.name)" [attr.aria-label]="i18n.t('group.renameGroupAria')">✏️</button>
-              }
-              @if (groupService.hasPermissionFor(group.id, 'group.delete')) {
-                <button class="icon-button" (click)="openDeleteGroupConfirm(group.id, group.name)" [attr.aria-label]="i18n.t('group.deleteGroupAria')">🗑</button>
-              }
-              @if (group.role !== 'owner') {
-                <button class="icon-button" (click)="openLeaveGroupConfirm(group.id, group.name)" [attr.aria-label]="i18n.t('group.leaveGroupAria')">🚪</button>
-              }
+              <app-overflow-menu
+                [label]="i18n.t('group.groupActionsAria', { name: group.name })"
+                [heading]="group.name"
+              >
+                <button class="glass-button" (click)="openMembers(group.id)">{{ i18n.t('group.members') }}</button>
+                @if (group.role === 'owner') {
+                  <button class="glass-button" (click)="openPermissionsDialog(group.id)">{{ i18n.t('group.permissions') }}</button>
+                }
+                @if (groupService.hasPermissionFor(group.id, 'stats.visibility')) {
+                  <button class="glass-button" (click)="openVisibilityDialog(group.id)">{{ i18n.t('group.visibility') }}</button>
+                }
+                @if (groupService.hasPermissionFor(group.id, 'stats.qualificationThreshold')) {
+                  <button class="glass-button" (click)="openQualificationDialog(group.id)">{{ i18n.t('group.qualification') }}</button>
+                }
+                @if (groupService.hasPermissionFor(group.id, 'group.rename')) {
+                  <button class="glass-button" (click)="startRenameGroup(group.id, group.name)">✏️ {{ i18n.t('group.renameGroupAria') }}</button>
+                }
+                @if (groupService.hasPermissionFor(group.id, 'group.delete')) {
+                  <button class="glass-button danger" (click)="openDeleteGroupConfirm(group.id, group.name)">🗑 {{ i18n.t('group.deleteGroupAria') }}</button>
+                }
+                @if (group.role !== 'owner') {
+                  <button class="glass-button danger" (click)="openLeaveGroupConfirm(group.id, group.name)">🚪 {{ i18n.t('group.leaveGroupAria') }}</button>
+                }
+              </app-overflow-menu>
             </div>
           }
         </li>
@@ -288,7 +297,7 @@
   @if (mtg.allPlayers().length === 0) {
     <p class="hint">{{ i18n.t('group.noPlayersYet') }}</p>
   } @else {
-    <ul class="player-list">
+    <ul class="player-list player-grid">
       @for (player of mtg.allPlayers(); track player) {
         <li>
           @if (editingPlayer() === player) {
@@ -309,16 +318,26 @@
               (click)="isPlayerLinked(player) ? openProfileView(mtg.playerUserIds()[player]!) : openNpcProfileView(player)"
               >{{ player }}</span
             >
+            <!-- Unverknüpfte Spieler sind sonst nicht von echten Accounts zu unterscheiden. Bis eben
+                 war der 🪪-Knopf der einzige Hinweis, und der steckt jetzt im ⋮-Menü. Gleiches
+                 Abzeichen wie im NPC-Profil (profile.npcBadge). -->
+            @if (!isPlayerLinked(player)) {
+              <span class="role-badge npc">{{ i18n.t('profile.npcBadge') }}</span>
+            }
             <span class="player-games">{{ i18n.t('group.gamesCount', { count: gamesPerPlayer().get(player) ?? 0 }) }}</span>
-            @if (!isPlayerLinked(player) && groupService.hasPermission('player.link')) {
-              <button class="icon-button" (click)="openLinkDialog(player)" [attr.aria-label]="i18n.t('group.linkWithMemberAria')" [title]="i18n.t('group.linkWithMemberAria')">🪪</button>
-            }
-            @if (groupService.hasPermission('player.renameOthers') || player === mtg.myPlayerName()) {
-              <button class="icon-button" (click)="startEditPlayer(player)" [attr.aria-label]="i18n.t('group.renamePlayerAria')">✏️</button>
-            }
-            @if (groupService.hasPermission('player.delete')) {
-              <button class="icon-button" (click)="deletePlayer(player)" [attr.aria-label]="i18n.t('group.deletePlayerAria')">🗑</button>
-            }
+            <!-- Drei Icon-Knöpfe pro Spielerzeile ergaben bei acht Spielern 24 Knöpfe untereinander;
+                 alle drei sind seltene Verwaltungsaktionen. -->
+            <app-overflow-menu [label]="i18n.t('group.playerActionsAria', { name: player })" [heading]="player">
+              @if (!isPlayerLinked(player) && groupService.hasPermission('player.link')) {
+                <button class="glass-button" (click)="openLinkDialog(player)">🪪 {{ i18n.t('group.linkWithMemberAria') }}</button>
+              }
+              @if (groupService.hasPermission('player.renameOthers') || player === mtg.myPlayerName()) {
+                <button class="glass-button" (click)="startEditPlayer(player)">✏️ {{ i18n.t('group.renamePlayerAria') }}</button>
+              }
+              @if (groupService.hasPermission('player.delete')) {
+                <button class="glass-button danger" (click)="deletePlayer(player)">🗑 {{ i18n.t('group.deletePlayerAria') }}</button>
+              }
+            </app-overflow-menu>
           }
         </li>
       }

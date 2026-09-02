@@ -41,6 +41,11 @@
             <span class="player-name">{{ s.playerName }}</span>
             <span class="hint">{{ i18n.t('tournament.pointsLabel', { points: s.points, wins: s.wins, losses: s.losses }) }}</span>
             <span class="hint">{{ i18n.t('tournament.tiebreakerLabel', { omw: pct(s.omwPercent), gw: pct(s.gwPercent), ogw: pct(s.ogwPercent) }) }}</span>
+            <div class="tiebreaker-meters">
+              <app-meter [value]="pct(s.omwPercent)" [ariaLabel]="'OMW ' + pct(s.omwPercent) + '%'" />
+              <app-meter [value]="pct(s.gwPercent)" [ariaLabel]="'GW ' + pct(s.gwPercent) + '%'" />
+              <app-meter [value]="pct(s.ogwPercent)" [ariaLabel]="'OGW ' + pct(s.ogwPercent) + '%'" />
+            </div>
           </li>
         }
       </ol>

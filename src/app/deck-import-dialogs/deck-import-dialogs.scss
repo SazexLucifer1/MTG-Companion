@@ -79,7 +79,7 @@
   list-style: none;
   margin: 6px 0 0;
   padding: 0;
-  max-height: 200px;
+  max-height: min(200px, 40dvh);
   overflow-y: auto;
 
   li {

@@ -47,7 +47,7 @@
     } @else {
       <p class="hint">{{ i18n.t('deckView.cardsCount', { count: sectionCardCount(allCards()) }) }}</p>
 
-      <div class="stat-tiles deck-analysis-tiles">
+      <div class="stat-tiles">
         <div class="stat-tile">
           <span class="stat-value">{{ averageCmc() != null ? (averageCmc() | number: '1.1-2') : '–' }}</span>
           <span class="stat-label">{{ i18n.t('deckView.avgCmcTile') }}</span>
@@ -73,51 +73,13 @@
       </div>
 
       <h4 class="deck-section-title">{{ i18n.t('deckView.manaCurveTitle') }}</h4>
-      <div class="curve-chart">
-        @for (bucket of manaCurve(); track bucket.label) {
-          <div class="curve-bar-col">
-            <div class="curve-bar-track">
-              <div class="curve-bar" [style.height.%]="curveBarHeight(bucket.count)">
-                @if (bucket.count > 0) {
-                  <span class="curve-bar-value">{{ bucket.count }}</span>
-                }
-              </div>
-            </div>
-            <span class="curve-bar-label">{{ bucket.label }}</span>
-          </div>
-        }
-      </div>
+      <app-bar-chart [data]="manaCurveChart()" orientation="vertical" />
 
       <h4 class="deck-section-title">{{ i18n.t('deckView.pipDistTitle') }}</h4>
-      <div class="pip-chart">
-        @for (pip of pipDistribution(); track pip.color) {
-          @if (pip.count > 0) {
-            <div class="pip-row">
-              <span class="pip-swatch" [class]="'pip-' + pip.color"></span>
-              <span class="pip-label">{{ pip.label }}</span>
-              <div class="pip-bar-track">
-                <div class="pip-bar-fill" [class]="'pip-' + pip.color" [style.width.%]="pipBarWidth(pip.count)"></div>
-              </div>
-              <span class="pip-value">{{ pip.count }}</span>
-            </div>
-          }
-        }
-      </div>
+      <app-bar-chart [data]="pipDistributionChart()" labelWidth="62px" />
 
       <h4 class="deck-section-title">{{ i18n.t('deckView.typeBreakdownTitle') }}</h4>
-      <div class="pip-chart">
-        @for (t of typeBreakdown(); track t.type) {
-          @if (t.count > 0) {
-            <div class="pip-row">
-              <span class="pip-label type-label">{{ t.label }}</span>
-              <div class="pip-bar-track">
-                <div class="pip-bar-fill type-bar" [style.width.%]="typeBarWidth(t.count)"></div>
-              </div>
-              <span class="pip-value">{{ t.count }}</span>
-            </div>
-          }
-        }
-      </div>
+      <app-bar-chart [data]="typeBreakdownChart()" labelWidth="110px" />
 
       <input
         class="glass-input"

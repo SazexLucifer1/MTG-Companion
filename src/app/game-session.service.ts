@@ -390,7 +390,40 @@ export class GameSessionService {
     return true;
   });
 
-  readonly ingameColumns = computed(() => (this.ingameUnits().length <= 2 ? 1 : 2));
+  /**
+   * Ob das Fenster breit genug für zwei nebeneinanderliegende Spieler-Panels ist.
+   *
+   * Der Ingame-Tracker war bis hierher die einzige Vollbild-Ansicht der App, die die Fensterbreite
+   * überhaupt nicht kannte (in 747 Zeilen SCSS keine einzige Media Query). Der Schwellwert kommt
+   * aus derselben Quelle wie die SCSS-Breakpoints (--bp-lg), damit hier nicht wieder eine zweite
+   * Zahl gepflegt werden muss.
+   */
+  private readonly wideViewport = signal(false);
+
+  private watchViewportWidth(): void {
+    if (typeof window === 'undefined') return;
+    const px = Number.parseFloat(
+      getComputedStyle(document.documentElement).getPropertyValue('--bp-lg'),
+    );
+    const query = window.matchMedia(`(min-width: ${px || 1000}px)`);
+    this.wideViewport.set(query.matches);
+    query.addEventListener('change', (e) => this.wideViewport.set(e.matches));
+  }
+
+  /**
+   * Spaltenanzahl des Ingame-Rasters.
+   *
+   * Hing vorher ausschließlich an der Spielerzahl. Bei zwei Spielern hieß das: eine Spalte, also
+   * zwei sehr breite flache Panels übereinander - auf einem Tablet im Querformat oder am Desktop
+   * verschenkt das die halbe Höhe, obwohl nebeneinander offensichtlich besser passt. Ab drei
+   * Spielern bleibt es bei zwei Spalten wie bisher.
+   */
+  readonly ingameColumns = computed(() => {
+    const units = this.ingameUnits().length;
+    if (units <= 1) return 1;
+    if (units === 2) return this.wideViewport() ? 2 : 1;
+    return 2;
+  });
 
   // NEU
   /** Gibt es bei der aktuellen Panel-Anzahl einen Sonderslot unten (ungerade Anzahl im 2-Spalten-Grid)? */
@@ -414,6 +447,8 @@ export class GameSessionService {
   });
 
   constructor() {
+    this.watchViewportWidth();
+
     // Automatische Cube-Vorauswahl: das Cube-<select> im Match-Tab hat keinen leeren
     // Platzhalter-Eintrag mehr (der war laut Nutzer-Feedback unnötig) - ein natives <select> zeigt
     // ohne passenden Options-Wert trotzdem immer den ersten Eintrag optisch als ausgewählt an, ohne

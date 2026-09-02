@@ -1,3 +1,5 @@
+@use '../../styles/breakpoints' as bp;
+
 .deck-detail-fullscreen {
   position: fixed;
   inset: 0;
@@ -95,60 +97,6 @@
   right: 0;
 }
 
-.stat-tiles {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
-}
-
-// NEU - Anzahl der Kacheln variiert (4 Deck-Kennzahlen, 5 Effekt-Kategorien) und passt anders als die
-// feste 3er-Spielstatistik-Reihe oben nicht immer glatt in 3 Spalten - auto-fit vermeidet eine
-// einzelne, unausgewogen wirkende Kachel allein in der letzten Zeile.
-.deck-analysis-tiles {
-  grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
-}
-
-.stat-tile {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 14px 8px;
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-
-  // NEU - Reset für den Fall, dass die Klasse auf einem <button> statt <div> sitzt (Effekt-Kategorie-
-  // Kacheln sind anklickbar, siehe openEffectCategoryPopup()) - Browser-Standardstile für Buttons
-  // (Schriftart, Cursor, teils abweichendes Rendering unter Safari/iOS) würden sonst durchschlagen.
-  &.stat-tile-button {
-    font: inherit;
-    color: inherit;
-    cursor: pointer;
-    -webkit-appearance: none;
-    appearance: none;
-
-    &:hover:not(:disabled) {
-      background: rgba(255, 255, 255, 0.14);
-    }
-
-    &:disabled {
-      cursor: default;
-      opacity: 0.5;
-    }
-  }
-
-  .stat-value {
-    font-size: 1.6rem;
-    font-weight: 700;
-  }
-
-  .stat-label {
-    font-size: 0.78rem;
-    opacity: 0.8;
-    text-align: center;
-  }
-}
-
 .deck-section-title {
   margin: 16px 0 8px;
 
@@ -168,112 +116,6 @@
   --pip-b: #81548c;
   --pip-r: #ec1313;
   --pip-g: #0fb345;
-}
-
-.curve-chart {
-  display: flex;
-  align-items: flex-end;
-  gap: 4px;
-  height: 120px;
-  padding-top: 20px;
-}
-
-.curve-bar-col {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  height: 100%;
-}
-
-.curve-bar-track {
-  flex: 1;
-  width: 100%;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-}
-
-.curve-bar {
-  width: 100%;
-  max-width: 24px;
-  min-height: 0;
-  background: var(--accent);
-  border-radius: 4px 4px 0 0;
-  position: relative;
-  transition: height 0.2s ease;
-}
-
-.curve-bar-value {
-  position: absolute;
-  top: -18px;
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: 0.72rem;
-  font-weight: 600;
-  white-space: nowrap;
-}
-
-.curve-bar-label {
-  font-size: 0.72rem;
-  opacity: 0.75;
-}
-
-.pip-chart {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.pip-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.pip-swatch {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.pip-label {
-  font-size: 0.82rem;
-  opacity: 0.85;
-  flex: 0 0 62px;
-  white-space: nowrap;
-}
-
-.pip-bar-track {
-  flex: 1;
-  height: 12px;
-  border-radius: 4px;
-  background: rgba(255, 255, 255, 0.08);
-  overflow: hidden;
-}
-
-.pip-bar-fill {
-  height: 100%;
-  border-radius: 4px;
-  min-width: 6px;
-  transition: width 0.2s ease;
-}
-
-.pip-value {
-  font-size: 0.82rem;
-  font-weight: 600;
-  flex: 0 0 24px;
-  text-align: right;
-}
-
-.type-label {
-  flex-basis: 110px;
-}
-
-.type-bar {
-  background: var(--accent);
 }
 
 .pip-W {
@@ -397,19 +239,19 @@
   margin: 0 0 16px;
 }
 
-@media (min-width: 480px) {
+@include bp.up(sm) {
   .deck-visual-grid {
     grid-template-columns: repeat(4, 1fr);
   }
 }
 
-@media (min-width: 700px) {
+@include bp.up(md) {
   .deck-visual-grid {
     grid-template-columns: repeat(5, 1fr);
   }
 }
 
-@media (min-width: 1000px) {
+@include bp.up(lg) {
   .deck-visual-grid {
     grid-template-columns: repeat(6, 1fr);
   }
@@ -543,8 +385,11 @@
   }
 
   button {
-    width: 20px;
-    height: 20px;
+    // 32 statt 20: das ist der Knopf, mit dem im Bearbeiten-Modus Kartenmengen geändert werden -
+    // die meistbenutzte Bedienung dort, und zwei davon standen 4px auseinander. 44px gehen hier
+    // nicht, der Knopf sitzt mitten auf einem Kartenbild.
+    width: 32px;
+    height: 32px;
     min-width: 0;
     padding: 0;
     border-radius: 50%;
@@ -722,7 +567,7 @@
   list-style: none;
   margin: 0 0 10px;
   padding: 0;
-  max-height: 160px;
+  max-height: min(160px, 35dvh);
   overflow-y: auto;
 
   li {
@@ -777,19 +622,19 @@
   margin: 10px 0 16px;
 }
 
-@media (min-width: 480px) {
+@include bp.up(sm) {
   .card-pick-grid {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
 
-@media (min-width: 700px) {
+@include bp.up(md) {
   .card-pick-grid {
     grid-template-columns: repeat(5, minmax(0, 1fr));
   }
 }
 
-@media (min-width: 1000px) {
+@include bp.up(lg) {
   .card-pick-grid {
     grid-template-columns: repeat(8, minmax(0, 1fr));
   }

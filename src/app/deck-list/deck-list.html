@@ -15,11 +15,13 @@
     (ngModelChange)="setSearchQuery($event)"
   />
   <div class="chip-row sort-toggle">
-    <button class="glass-chip small" [class.active]="sortMode() === 'alpha' || hideStats()" (click)="setSortMode('alpha')">{{ i18n.t('deck.sortAlpha') }}</button>
-    @if (!hideStats()) {
-      <button class="glass-chip small" [class.active]="sortMode() === 'winRate'" (click)="setSortMode('winRate')">{{ i18n.t('sort.winRate') }}</button>
-      <button class="glass-chip small" [class.active]="sortMode() === 'games'" (click)="setSortMode('games')">{{ i18n.t('profile.sortMostPlayed') }}</button>
-    }
+    <div class="segmented">
+      <button [class.active]="sortMode() === 'alpha' || hideStats()" (click)="setSortMode('alpha')">{{ i18n.t('deck.sortAlpha') }}</button>
+      @if (!hideStats()) {
+        <button [class.active]="sortMode() === 'winRate'" (click)="setSortMode('winRate')">{{ i18n.t('sort.winRate') }}</button>
+        <button [class.active]="sortMode() === 'games'" (click)="setSortMode('games')">{{ i18n.t('profile.sortMostPlayed') }}</button>
+      }
+    </div>
     <button class="glass-chip small" [class.active]="showOutdated()" (click)="toggleShowOutdated()">{{ i18n.t('deck.showOutdated') }}</button>
   </div>
 }
@@ -61,21 +63,20 @@
               <span class="hint">{{ i18n.t('deck.notPlayedYet') }}</span>
             }
           }
+          <!-- Ansehen ist die Aktion, die man auf einer Deck-Zeile praktisch immer will; Goldfisch,
+               Sichtbarkeit und Löschen wandern ins ⋮. Bei zehn Decks waren das vorher 40 Knöpfe,
+               und im Profil-Tab steckt diese Liste gleich dreimal. -->
           <div class="deck-actions">
-            <button class="glass-button small" (click)="openDeckDetail(deck)">{{ i18n.t('deck.view') }}</button>
+            <button class="glass-button small primary" (click)="openDeckDetail(deck)">{{ i18n.t('deck.view') }}</button>
             @if (!readonlyMode()) {
-              <button class="glass-button small" (click)="openGoldfish(deck)" [attr.aria-label]="i18n.t('deck.goldfishAria')">
-                🐟 {{ i18n.t('deck.goldfish') }}
-              </button>
-              <button
-                class="icon-button"
-                (click)="toggleDeckPrivate(deck)"
-                [attr.aria-label]="deck.isPrivate ? i18n.t('deck.makeVisibleAgain') : i18n.t('deck.makePrivate')"
-                [title]="deck.isPrivate ? i18n.t('deck.makeVisibleAgain') : i18n.t('deck.makePrivateHint')"
-              >
-                {{ deck.isPrivate ? '🔒' : '🔓' }}
-              </button>
-              <button class="icon-button" (click)="deleteDeck(deck)" [attr.aria-label]="i18n.t('deck.deleteAria')">🗑</button>
+              <app-overflow-menu [label]="i18n.t('deck.deckActionsAria', { name: deck.name })" [heading]="deck.name">
+                <button class="glass-button" (click)="openGoldfish(deck)">🐟 {{ i18n.t('deck.goldfish') }}</button>
+                <button class="glass-button" (click)="toggleDeckPrivate(deck)">
+                  {{ deck.isPrivate ? '🔒' : '🔓' }}
+                  {{ deck.isPrivate ? i18n.t('deck.makeVisibleAgain') : i18n.t('deck.makePrivate') }}
+                </button>
+                <button class="glass-button danger" (click)="deleteDeck(deck)">🗑 {{ i18n.t('deck.deleteAria') }}</button>
+              </app-overflow-menu>
             }
           </div>
         </div>
@@ -83,11 +84,10 @@
     }
   </ul>
 
-  @if (totalPages() > 1) {
-    <div class="chip-row pager">
-      <button class="icon-button" (click)="prevPage()" [disabled]="page() === 0" [attr.aria-label]="i18n.t('stats.previousPage')">◀</button>
-      <span class="hint">{{ page() * pageSize() + 1 }}–{{ pageRangeEnd() }} {{ i18n.t('stats.of') }} {{ filteredSortedDecks().length }}</span>
-      <button class="icon-button" (click)="nextPage()" [disabled]="page() >= totalPages() - 1" [attr.aria-label]="i18n.t('stats.nextPage')">▶</button>
-    </div>
-  }
+  <app-pager
+    [page]="page()"
+    [totalItems]="filteredSortedDecks().length"
+    [pageSize]="pageSize()"
+    (pageChange)="page.set($event)"
+  />
 }

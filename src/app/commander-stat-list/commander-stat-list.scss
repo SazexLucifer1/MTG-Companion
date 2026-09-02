@@ -1,3 +1,5 @@
+@use '../../styles/breakpoints' as bp;
+
 .sort-toggle {
   margin: 8px 0 4px;
 }
@@ -14,14 +16,60 @@
   padding: 0;
 
   li {
-    display: flex;
+    // Kartenbild links, rechts daneben Name und Werte untereinander, der Balken darunter über die
+    // volle Zeilenbreite. Aufbau bewusst wie in der Deck-Liste (deck-list.scss).
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
     align-items: center;
-    gap: 8px;
-    padding: 10px 0;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    gap: var(--sp-2) var(--sp-3);
+    padding: var(--sp-4) 0;
+    border-bottom: 1px solid var(--divider);
 
     &:last-child {
       border-bottom: none;
+    }
+
+    // Ohne Kartenbild rutscht der Textblock in die erste Spalte, sonst bliebe sie leer stehen.
+    .commander-info:first-child {
+      grid-column: 1 / -1;
+    }
+
+    app-meter {
+      grid-column: 1 / -1;
+    }
+  }
+
+  .commander-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  .commander-name {
+    font-weight: 600;
+    // Bewusst NICHT die globale .card-name-text: die schneidet mit white-space: nowrap ab. Hier
+    // darf der Name umbrechen, damit er in einer schmalen Rasterspalte vollständig lesbar bleibt.
+    // anywhere für sehr lange Doppelkarten-Namen ("… // …") ohne Leerzeichen zum Umbrechen.
+    overflow-wrap: anywhere;
+  }
+}
+
+// Ab Tablet passen mehrere Einträge nebeneinander - dasselbe Muster wie die Deck-Liste im Profil
+// (deck-list.scss): Raster statt einer einzelnen, immer breiter werdenden Spalte, Zeilen mit
+// eigenem Rahmen statt Trennlinie. Auf dem Handy bleibt die gewohnte einspaltige Liste.
+@include bp.up(md) {
+  .player-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: var(--sp-5);
+
+    li {
+      padding: var(--sp-5);
+      border-bottom: none;
+      border-radius: var(--r-lg);
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--glass-border);
     }
   }
 }

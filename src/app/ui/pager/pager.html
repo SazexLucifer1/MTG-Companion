@@ -1,0 +1,23 @@
+@if (totalPages() > 1) {
+  <div class="pager">
+    <button
+      type="button"
+      class="icon-button"
+      (click)="prev()"
+      [disabled]="effectivePage() === 0"
+      [attr.aria-label]="i18n.t('stats.previousPage')"
+    >
+      ◀
+    </button>
+    <span class="hint">{{ rangeStart() }}–{{ rangeEnd() }} {{ i18n.t('stats.of') }} {{ totalItems() }}</span>
+    <button
+      type="button"
+      class="icon-button"
+      (click)="next()"
+      [disabled]="effectivePage() >= totalPages() - 1"
+      [attr.aria-label]="i18n.t('stats.nextPage')"
+    >
+      ▶
+    </button>
+  </div>
+}

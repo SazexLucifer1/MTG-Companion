@@ -9,6 +9,12 @@ import { I18nService } from '../i18n.service';
 import { CardImage } from '../card-image/card-image';
 import { PartnerCardImage } from '../partner-card-image/partner-card-image';
 import { normalizeCardName } from '../array-utils';
+import { BarChart, BarChartDatum } from '../ui/bar-chart/bar-chart';
+import {
+  manaCurveChartData,
+  pipChartData,
+  typeChartData,
+} from '../ui/bar-chart/deck-chart-data';
 
 interface PreconCardEntry {
   card: ScryfallCard;
@@ -109,7 +115,7 @@ function sortByCmc(a: PreconCardEntry, b: PreconCardEntry): number {
  */
 @Component({
   selector: 'app-precon-browser',
-  imports: [FormsModule, CardImage, PartnerCardImage, DecimalPipe, CurrencyPipe],
+  imports: [FormsModule, CardImage, PartnerCardImage, DecimalPipe, CurrencyPipe, BarChart],
   templateUrl: './precon-browser.html',
   styleUrl: './precon-browser.scss',
 })
@@ -285,20 +291,18 @@ export class PreconBrowser {
     return PIP_COLORS.map((color) => ({ color, label: this.i18n.t(`pip.${color}`), count: counts[color] }));
   });
 
-  curveBarHeight(count: number): number {
-    const max = Math.max(1, ...this.manaCurve().map((b) => b.count));
-    return count === 0 ? 0 : Math.max(6, (count / max) * 100);
-  }
+  // --- Diagramm-Reihen für <app-bar-chart> ---
+  // Abbildung geteilt mit deck-detail-view und der jeweils anderen Browser-Ansicht.
+  readonly manaCurveChart = computed<BarChartDatum[]>(() => manaCurveChartData(this.manaCurve()));
+  readonly pipDistributionChart = computed<BarChartDatum[]>(() =>
+    pipChartData(this.pipDistribution()),
+  );
+  readonly typeBreakdownChart = computed<BarChartDatum[]>(() =>
+    typeChartData(this.typeBreakdown()),
+  );
 
-  pipBarWidth(count: number): number {
-    const max = Math.max(1, ...this.pipDistribution().map((p) => p.count));
-    return count === 0 ? 0 : Math.max(6, (count / max) * 100);
-  }
 
-  typeBarWidth(count: number): number {
-    const max = Math.max(1, ...this.typeBreakdown().map((t) => t.count));
-    return count === 0 ? 0 : Math.max(6, (count / max) * 100);
-  }
+
 
   // --- Karten-Filter/Gruppierung für die Kartenliste (Commander bewusst ausgeschlossen - der wird
   // schon prominent im Kopfbereich gezeigt). ---

@@ -1,3 +1,5 @@
+@use '../../styles/breakpoints' as bp;
+
 .section-header-row {
   display: flex;
   align-items: center;
@@ -80,7 +82,7 @@
   list-style: none;
   margin: 8px 0 0;
   padding: 0;
-  max-height: 320px;
+  max-height: min(320px, 45dvh);
   overflow-y: auto;
 
   li {
@@ -112,33 +114,6 @@
   font-weight: 600;
   color: var(--gold);
   margin-left: 6px;
-}
-
-.stat-tiles {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
-}
-
-.stat-tile {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 14px 8px;
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-
-  .stat-value {
-    font-size: 1.6rem;
-    font-weight: 700;
-  }
-
-  .stat-label {
-    font-size: 0.78rem;
-    opacity: 0.8;
-    text-align: center;
-  }
 }
 
 .ranking {
@@ -188,19 +163,10 @@
     color: var(--accent);
   }
 
-  .bar {
+  // Der Balken selbst steckt jetzt in <app-meter> (ui/meter); hier bleibt nur seine Platzierung
+  // im Zeilen-Grid.
+  app-meter {
     grid-area: bar;
-    height: 6px;
-    border-radius: 3px;
-    background: rgba(255, 255, 255, 0.12);
-    overflow: hidden;
-  }
-
-  // NEU
-  .bar-fill {
-    height: 100%;
-    border-radius: 3px;
-    background: linear-gradient(90deg, var(--accent), var(--gold));
   }
 
   .commander-row {
@@ -228,10 +194,16 @@
   }
 
   .commander-detail-row {
-    display: flex;
-    justify-content: space-between;
+    // Zweispaltiges Grid: Text in der ersten Zeile, Balken darunter über die volle Breite.
+    display: grid;
+    grid-template-columns: 1fr auto auto;
     align-items: center;
+    gap: 2px var(--sp-3);
     font-size: 0.85rem;
+
+    app-meter {
+      grid-column: 1 / -1;
+    }
 
     .mode-name {
       font-weight: 600;
@@ -377,29 +349,35 @@
   padding: 0;
 
   li {
-    display: flex;
+    // Grid statt Flex: Name, Zähler und "noch X nötig" in der ersten Zeile, der Fortschrittsbalken
+    // darunter über die volle Breite. Als Flex-Zeile waren die beiden rechten Spalten
+    // white-space: nowrap und flex: 0 0 auto, konnten also nicht schrumpfen - auf schmalen Handys
+    // drückten sie den Namen zusammen.
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
     align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-    padding: 10px 0;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    gap: var(--sp-2) var(--sp-3);
+    padding: var(--sp-4) 0;
+    border-bottom: 1px solid var(--divider);
 
     &:last-child {
       border-bottom: none;
     }
   }
 
+  app-meter {
+    grid-column: 1 / -1;
+  }
+
   .name {
     font-weight: 600;
     min-width: 0;
-    flex: 1 1 auto;
   }
 
   .detail {
     font-size: 0.82rem;
     opacity: 0.75;
     white-space: nowrap;
-    flex: 0 0 auto;
   }
 
   .needed {
@@ -407,6 +385,36 @@
     color: var(--gold);
     font-size: 0.85rem;
     white-space: nowrap;
-    flex: 0 0 auto;
+  }
+}
+
+// Obergrenze für die Inhaltsbreite dieses Tabs.
+//
+// .content deckelt zwar bei 1600px, das ist für Listen und Fließtext aber zu breit: auf einem
+// 1920px-Schirm lief eine Ranglisten-Zeile auf ~1570px auseinander, Name ganz links, Prozentwert
+// ganz rechts, dazwischen Leere. Karten-Raster (Deck-Suche, Precons) behalten bewusst die volle
+// Breite, die profitieren von mehr Spalten.
+:host {
+  display: block;
+  max-width: var(--content-measure);
+  margin: 0 auto;
+}
+
+// Ab Tablet passen mehrere Einträge nebeneinander - dasselbe Muster wie die Deck-Liste im Profil
+// (deck-list.scss): Raster statt einer einzelnen, immer breiter werdenden Spalte, Zeilen mit
+// eigenem Rahmen statt Trennlinie. Auf dem Handy bleibt die gewohnte einspaltige Liste.
+@include bp.up(md) {
+  .player-picker-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: var(--sp-5);
+
+    li {
+      padding: var(--sp-5);
+      border-bottom: none;
+      border-radius: var(--r-lg);
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--glass-border);
+    }
   }
 }

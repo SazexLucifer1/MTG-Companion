@@ -1,0 +1,17 @@
+:host {
+  display: inline-flex;
+  flex: 0 0 auto;
+}
+
+.overflow-trigger {
+  // Etwas schmaler als hoch - das Zeichen ist eine senkrechte Punktreihe und braucht keine
+  // quadratische Fläche, die Trefferfläche bleibt über min-height trotzdem voll.
+  padding: 0 var(--sp-2);
+  font-size: 1.15rem;
+  line-height: 1;
+}
+
+.overflow-heading {
+  margin: 0 0 var(--sp-1);
+  text-align: center;
+}

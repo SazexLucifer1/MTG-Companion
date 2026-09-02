@@ -5,6 +5,8 @@ import { CardImage } from '../card-image/card-image';
 import { CardPreviewService } from '../card-preview.service';
 import { I18nService } from '../i18n.service';
 import { CommanderGameStats } from '../deck.service';
+import { Meter } from '../ui/meter/meter';
+import { Pager } from '../ui/pager/pager';
 
 export type CommanderStatSortMode = 'alpha' | 'winRate' | 'games';
 
@@ -20,7 +22,7 @@ const PAGE_SIZE = 10;
  */
 @Component({
   selector: 'app-commander-stat-list',
-  imports: [FormsModule, DecimalPipe, CardImage],
+  imports: [FormsModule, DecimalPipe, CardImage, Meter, Pager],
   templateUrl: './commander-stat-list.html',
   styleUrl: './commander-stat-list.scss',
 })
@@ -57,15 +59,16 @@ export class CommanderStatList {
     return list;
   });
 
-  readonly totalPages = computed(() => Math.max(1, Math.ceil(this.filteredSorted().length / PAGE_SIZE)));
-
   readonly paged = computed<CommanderGameStats[]>(() => {
-    const start = this.page() * PAGE_SIZE;
-    return this.filteredSorted().slice(start, start + PAGE_SIZE);
+    // Auf die letzte vorhandene Seite begrenzen: app-pager zeigt zwar nie eine Seite hinter dem
+    // Ende an, die Liste kann aber durch Suche oder gefilterte Daten schrumpfen, während page()
+    // noch auf einer hohen Zahl steht - ohne die Klammer wäre die Liste dann leer.
+    const list = this.filteredSorted();
+    const lastPage = Math.max(0, Math.ceil(list.length / PAGE_SIZE) - 1);
+    const start = Math.min(this.page(), lastPage) * PAGE_SIZE;
+    return list.slice(start, start + PAGE_SIZE);
   });
 
-  readonly pageRangeStart = computed(() => this.page() * PAGE_SIZE + 1);
-  readonly pageRangeEnd = computed(() => Math.min((this.page() + 1) * PAGE_SIZE, this.filteredSorted().length));
 
   setSearchQuery(value: string): void {
     this.searchQuery.set(value);
@@ -77,13 +80,7 @@ export class CommanderStatList {
     this.page.set(0);
   }
 
-  prevPage(): void {
-    this.page.update((p) => Math.max(0, p - 1));
-  }
 
-  nextPage(): void {
-    this.page.update((p) => Math.min(this.totalPages() - 1, p + 1));
-  }
 
   /** Setzt Suche/Sortierung/Seite zurück - für den Aufrufer, wenn `stats` auf eine andere Liste
    * wechselt (z.B. Wechsel des angesehenen Profils), damit z.B. nicht die Suche vom vorherigen

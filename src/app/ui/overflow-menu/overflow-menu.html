@@ -1,0 +1,31 @@
+<button
+  #trigger
+  type="button"
+  class="icon-button overflow-trigger"
+  (click)="toggle()"
+  [attr.aria-label]="label() || i18n.t('common.moreActions')"
+  [attr.aria-expanded]="open()"
+  aria-haspopup="menu"
+>
+  ⋮
+</button>
+
+<!-- Wird beim Öffnen an den <body> gehängt statt hier gerendert - Begründung in overflow-menu.ts. -->
+<ng-template cdkPortal>
+  <div class="options-menu-overlay" (click)="close()">
+    <div
+      class="options-menu-sheet"
+      cdkTrapFocus
+      [cdkTrapFocusAutoCapture]="true"
+      role="menu"
+      (keydown.escape)="close()"
+      (click)="close()"
+    >
+      @if (heading()) {
+        <h3 class="overflow-heading">{{ heading() }}</h3>
+      }
+      <ng-content />
+      <button type="button" class="glass-button" (click)="close()">{{ i18n.t('dialog.cancel') }}</button>
+    </div>
+  </div>
+</ng-template>

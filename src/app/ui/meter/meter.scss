@@ -1,0 +1,27 @@
+:host {
+  display: block;
+  min-width: 0;
+}
+
+.meter {
+  height: 6px;
+  border-radius: var(--r-xs);
+  background: var(--surface-track);
+  overflow: hidden;
+
+  &.thick {
+    height: 12px;
+  }
+}
+
+.meter-fill {
+  height: 100%;
+  // Am Nullpunkt eckig, am Datenende gerundet - die Rundung markiert den Messwert, nicht die
+  // Schiene.
+  border-radius: 0 var(--r-xs) var(--r-xs) 0;
+  // Einfarbig statt des früheren Blau-nach-Gold-Verlaufs: ein Verlauf über den Balken sieht aus,
+  // als würde die Farbe etwas bedeuten (eine Skala, eine Schwelle), tut sie aber nicht. Bei
+  // mehrfarbigen Diagrammen wie der Farbverteilung setzt der Aufrufer color= und übersteuert das.
+  background: var(--accent);
+  transition: width 0.2s ease;
+}

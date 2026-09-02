@@ -100,11 +100,11 @@
 </div>
 }
 
-<div class="chip-row stats-view-toggle">
-  <button class="glass-chip" [class.active]="viewMode() === 'stats'" (click)="viewMode.set('stats')">
+<div class="stats-view-toggle segmented">
+  <button [class.active]="viewMode() === 'stats'" (click)="viewMode.set('stats')">
     {{ i18n.t('stats.viewStats') }}
   </button>
-  <button class="glass-chip" [class.active]="viewMode() === 'tournaments'" (click)="viewMode.set('tournaments')">
+  <button [class.active]="viewMode() === 'tournaments'" (click)="viewMode.set('tournaments')">
     {{ i18n.t('stats.viewTournaments') }}
   </button>
 </div>
@@ -129,17 +129,6 @@
 <section class="glass-card" data-tutorial="stats-filters">
   <div class="section-header-row">
     <h2>{{ i18n.t('stats.periodAndMode') }}</h2>
-    @if (false && groupService.isOwner()) {
-    <!-- Excel-Import ist aktuell nicht mehr benötigt, Code/Dialog bleiben zur späteren Wiederverwendung erhalten. -->
-    <button
-      class="icon-button"
-      (click)="openImportDialog()"
-      [attr.aria-label]="i18n.t('stats.importOpenAria')"
-      [title]="i18n.t('stats.importOpenAria')"
-    >
-      📥
-    </button>
-    }
   </div>
   <select class="glass-input" [value]="selectedYear()" (change)="setSelectedYear($event)">
     <option value="Alle">{{ i18n.t('stats.allTime') }}</option>
@@ -256,9 +245,7 @@
       <span class="name">{{ m.mode }}</span>
       <span class="detail">{{ m.wins }} / {{ m.games }} {{ i18n.t('stats.wins') }}</span>
       <span class="rate">{{ m.winRate | number: '1.0-0' }}%</span>
-      <div class="bar">
-        <div class="bar-fill" [style.width.%]="m.winRate"></div>
-      </div>
+      <app-meter [value]="m.winRate" />
     </li>
     }
   </ul>
@@ -267,10 +254,10 @@
     {{ showPlayerDecks() ? '▾' : '▸' }} {{ i18n.t('stats.decks') }} ({{ playerDeckStats().length }})
   </button>
   @if (showPlayerDecks()) {
-  <div class="chip-row sort-toggle">
-    <button class="glass-chip small" [class.active]="playerDeckSortMode() === 'winRate'" (click)="playerDeckSortMode.set('winRate')">{{ i18n.t('sort.winRate') }}</button>
-    <button class="glass-chip small" [class.active]="playerDeckSortMode() === 'wins'" (click)="playerDeckSortMode.set('wins')">{{ i18n.t('sort.wins') }}</button>
-    <button class="glass-chip small" [class.active]="playerDeckSortMode() === 'games'" (click)="playerDeckSortMode.set('games')">{{ i18n.t('sort.games') }}</button>
+  <div class="segmented sort-toggle">
+    <button [class.active]="playerDeckSortMode() === 'winRate'" (click)="playerDeckSortMode.set('winRate')">{{ i18n.t('sort.winRate') }}</button>
+    <button [class.active]="playerDeckSortMode() === 'wins'" (click)="playerDeckSortMode.set('wins')">{{ i18n.t('sort.wins') }}</button>
+    <button [class.active]="playerDeckSortMode() === 'games'" (click)="playerDeckSortMode.set('games')">{{ i18n.t('sort.games') }}</button>
   </div>
   <ul class="ranking">
     @for (d of playerDeckStats(); track d.deckId; let i = $index) {
@@ -298,9 +285,10 @@
       </span>
       <span class="detail">{{ d.wins }} / {{ d.games }} {{ i18n.t('stats.wins') }}</span>
       <span class="rate">{{ d.winRate | number: '1.0-0' }}%</span>
-      <div class="bar">
-        <div class="bar-fill" [style.width.%]="d.winRate"></div>
-      </div>
+      <app-meter
+        [value]="barValue(d, playerDeckSortMode())"
+        [max]="barMax(playerDeckStats(), playerDeckSortMode())"
+      />
 
       @if (isSingleMode() === null && selectedDeckDetail() === d.deckId) {
       <div class="commander-detail">
@@ -309,6 +297,7 @@
           <span class="mode-name">{{ m.mode }}</span>
           <span class="mode-detail">{{ m.wins }} / {{ m.games }} {{ i18n.t('stats.wins') }}</span>
           <span class="mode-rate">{{ m.winRate | number: '1.0-0' }}%</span>
+          <app-meter [value]="m.winRate" />
         </div>
         }
       </div>
@@ -322,10 +311,10 @@
     {{ showPlayerCommanders() ? '▾' : '▸' }} {{ i18n.t('stats.playedCommanders') }} ({{ playerCommanderStats().length }})
   </button>
   @if (showPlayerCommanders()) {
-  <div class="chip-row sort-toggle">
-    <button class="glass-chip small" [class.active]="playerCommanderSortMode() === 'winRate'" (click)="playerCommanderSortMode.set('winRate')">{{ i18n.t('sort.winRate') }}</button>
-    <button class="glass-chip small" [class.active]="playerCommanderSortMode() === 'wins'" (click)="playerCommanderSortMode.set('wins')">{{ i18n.t('sort.wins') }}</button>
-    <button class="glass-chip small" [class.active]="playerCommanderSortMode() === 'games'" (click)="playerCommanderSortMode.set('games')">{{ i18n.t('sort.games') }}</button>
+  <div class="segmented sort-toggle">
+    <button [class.active]="playerCommanderSortMode() === 'winRate'" (click)="playerCommanderSortMode.set('winRate')">{{ i18n.t('sort.winRate') }}</button>
+    <button [class.active]="playerCommanderSortMode() === 'wins'" (click)="playerCommanderSortMode.set('wins')">{{ i18n.t('sort.wins') }}</button>
+    <button [class.active]="playerCommanderSortMode() === 'games'" (click)="playerCommanderSortMode.set('games')">{{ i18n.t('sort.games') }}</button>
   </div>
   <ul class="ranking">
     @for (c of playerCommanderStats(); track c.commander; let i = $index) {
@@ -349,9 +338,10 @@
       </span>
       <span class="detail">{{ c.wins }} / {{ c.games }} {{ i18n.t('stats.wins') }}</span>
       <span class="rate">{{ c.winRate | number: '1.0-0' }}%</span>
-      <div class="bar">
-        <div class="bar-fill" [style.width.%]="c.winRate"></div>
-      </div>
+      <app-meter
+        [value]="barValue(c, playerCommanderSortMode())"
+        [max]="barMax(playerCommanderStats(), playerCommanderSortMode())"
+      />
 
       @if (isSingleMode() === null && selectedCommanderDetail() === c.commander) {
       <div class="commander-detail">
@@ -360,6 +350,7 @@
           <span class="mode-name">{{ m.mode }}</span>
           <span class="mode-detail">{{ m.wins }} / {{ m.games }} {{ i18n.t('stats.wins') }}</span>
           <span class="mode-rate">{{ m.winRate | number: '1.0-0' }}%</span>
+          <app-meter [value]="m.winRate" />
         </div>
         }
       </div>
@@ -397,10 +388,10 @@
 <!-- NEU -->
 <section class="glass-card" data-tutorial="stats-ranking">
   <h2>{{ i18n.t('stats.ranking') }}</h2>
-  <div class="chip-row sort-toggle">
-    <button class="glass-chip small" [class.active]="playerSortMode() === 'winRate'" (click)="playerSortMode.set('winRate')">{{ i18n.t('sort.winRate') }}</button>
-    <button class="glass-chip small" [class.active]="playerSortMode() === 'wins'" (click)="playerSortMode.set('wins')">{{ i18n.t('sort.wins') }}</button>
-    <button class="glass-chip small" [class.active]="playerSortMode() === 'games'" (click)="playerSortMode.set('games')">{{ i18n.t('sort.games') }}</button>
+  <div class="segmented sort-toggle">
+    <button [class.active]="playerSortMode() === 'winRate'" (click)="playerSortMode.set('winRate')">{{ i18n.t('sort.winRate') }}</button>
+    <button [class.active]="playerSortMode() === 'wins'" (click)="playerSortMode.set('wins')">{{ i18n.t('sort.wins') }}</button>
+    <button [class.active]="playerSortMode() === 'games'" (click)="playerSortMode.set('games')">{{ i18n.t('sort.games') }}</button>
   </div>
   @if (rankedPlayerStats().length === 0) {
   <p class="hint">{{ i18n.t('stats.notEnoughGamesForRanking') }}</p>
@@ -415,19 +406,18 @@
       </span>
       <span class="detail">{{ p.wins }} / {{ p.games }} {{ i18n.t('stats.wins') }}</span>
       <span class="rate">{{ p.winRate | number: '1.0-0' }}%</span>
-      <div class="bar">
-        <div class="bar-fill" [style.width.%]="p.winRate"></div>
-      </div>
+      <app-meter
+        [value]="barValue(p, playerSortMode())"
+        [max]="barMax(rankedPlayerStats(), playerSortMode())"
+      />
     </li>
     }
   </ul>
-  @if (playerTotalPages() > 1) {
-  <div class="chip-row pager">
-    <button class="icon-button" (click)="prevPlayerPage()" [disabled]="playerEffectivePage() === 0" [attr.aria-label]="i18n.t('stats.previousPage')">◀</button>
-    <span class="hint">{{ playerEffectivePage() * 10 + 1 }}–{{ playerPageRangeEnd() }} {{ i18n.t('stats.of') }} {{ rankedPlayerStats().length }}</span>
-    <button class="icon-button" (click)="nextPlayerPage()" [disabled]="playerEffectivePage() >= playerTotalPages() - 1" [attr.aria-label]="i18n.t('stats.nextPage')">▶</button>
-  </div>
-  }
+  <app-pager
+    [page]="playerPage()"
+    [totalItems]="rankedPlayerStats().length"
+    (pageChange)="playerPage.set($event)"
+  />
 </section>
 
 @if (playersInQualification().length > 0) {
@@ -449,16 +439,15 @@
       </span>
       <span class="detail">{{ p.games }} / {{ qualificationThreshold() }} {{ i18n.t('stats.games') }}</span>
       <span class="needed">{{ i18n.t('stats.stillNeeded', { count: p.gamesNeeded }) }}</span>
+      <app-meter [value]="p.games" [max]="qualificationThreshold()" />
     </li>
     }
   </ul>
-  @if (playerQualTotalPages() > 1) {
-  <div class="chip-row pager">
-    <button class="icon-button" (click)="prevPlayerQualPage()" [disabled]="playerQualEffectivePage() === 0" [attr.aria-label]="i18n.t('stats.previousPage')">◀</button>
-    <span class="hint">{{ playerQualEffectivePage() * 10 + 1 }}–{{ playerQualPageRangeEnd() }} {{ i18n.t('stats.of') }} {{ playersInQualification().length }}</span>
-    <button class="icon-button" (click)="nextPlayerQualPage()" [disabled]="playerQualEffectivePage() >= playerQualTotalPages() - 1" [attr.aria-label]="i18n.t('stats.nextPage')">▶</button>
-  </div>
-  }
+  <app-pager
+    [page]="playerQualPage()"
+    [totalItems]="playersInQualification().length"
+    (pageChange)="playerQualPage.set($event)"
+  />
   }
 </section>
 }
@@ -507,23 +496,8 @@
   } @else if (h2hGames() === 0) {
   <p class="hint">{{ i18n.t('stats.h2h.noGames', { a: h2hPlayerA() ?? '', b: h2hPlayerB() ?? '' }) }}</p>
   } @else {
-  <div class="stat-tiles">
-    <div class="stat-tile">
-      <span class="stat-value">{{ h2hGames() }}</span>
-      <span class="stat-label">{{ i18n.t('stats.h2h.gamesTogether') }}</span>
-    </div>
-    <div class="stat-tile">
-      <span class="stat-value">{{ h2hWinsA() }}</span>
-      <span class="stat-label">{{ i18n.t('stats.h2h.winsOf', { name: h2hPlayerA() ?? '' }) }}</span>
-    </div>
-    <div class="stat-tile">
-      <span class="stat-value">{{ h2hWinsB() }}</span>
-      <span class="stat-label">{{ i18n.t('stats.h2h.winsOf', { name: h2hPlayerB() ?? '' }) }}</span>
-    </div>
-  </div>
-  @if (h2hWinsOther() > 0) {
-  <p class="hint">{{ i18n.t('stats.h2h.otherWinnerHint', { count: h2hWinsOther() }) }}</p>
-  }
+  <p class="hint h2h-total">{{ i18n.t('stats.h2h.gamesTogether') }}: <strong>{{ h2hGames() }}</strong></p>
+  <app-split-bar [segments]="h2hSegments()" />
 
   @if (h2hCommanderStatsA().length > 0) {
   <h3>{{ i18n.t('stats.h2h.commandersOf', { name: h2hPlayerA() ?? '' }) }}</h3>
@@ -541,9 +515,7 @@
       </span>
       <span class="detail">{{ c.wins }} / {{ c.games }} {{ i18n.t('stats.wins') }}</span>
       <span class="rate">{{ c.winRate | number: '1.0-0' }}%</span>
-      <div class="bar">
-        <div class="bar-fill" [style.width.%]="c.winRate"></div>
-      </div>
+      <app-meter [value]="c.winRate" />
     </li>
     }
   </ul>
@@ -564,9 +536,7 @@
       </span>
       <span class="detail">{{ c.wins }} / {{ c.games }} {{ i18n.t('stats.wins') }}</span>
       <span class="rate">{{ c.winRate | number: '1.0-0' }}%</span>
-      <div class="bar">
-        <div class="bar-fill" [style.width.%]="c.winRate"></div>
-      </div>
+      <app-meter [value]="c.winRate" />
     </li>
     }
   </ul>
@@ -581,10 +551,10 @@
   <p class="hint">
     {{ i18n.t('stats.decksAndCommandersHint') }}
   </p>
-  <div class="chip-row sort-toggle">
-    <button class="glass-chip small" [class.active]="deckSortMode() === 'winRate'" (click)="deckSortMode.set('winRate')">{{ i18n.t('sort.winRate') }}</button>
-    <button class="glass-chip small" [class.active]="deckSortMode() === 'wins'" (click)="deckSortMode.set('wins')">{{ i18n.t('sort.wins') }}</button>
-    <button class="glass-chip small" [class.active]="deckSortMode() === 'games'" (click)="deckSortMode.set('games')">{{ i18n.t('sort.games') }}</button>
+  <div class="segmented sort-toggle">
+    <button [class.active]="deckSortMode() === 'winRate'" (click)="deckSortMode.set('winRate')">{{ i18n.t('sort.winRate') }}</button>
+    <button [class.active]="deckSortMode() === 'wins'" (click)="deckSortMode.set('wins')">{{ i18n.t('sort.wins') }}</button>
+    <button [class.active]="deckSortMode() === 'games'" (click)="deckSortMode.set('games')">{{ i18n.t('sort.games') }}</button>
   </div>
   @if (rankedCombinedStats().length === 0) {
   <p class="hint">{{ i18n.t('stats.notEnoughGamesForRankingDecks') }}</p>
@@ -616,19 +586,18 @@
         }
       </span>
       <span class="rate">{{ e.winRate | number: '1.0-0' }}%</span>
-      <div class="bar">
-        <div class="bar-fill" [style.width.%]="e.winRate"></div>
-      </div>
+      <app-meter
+        [value]="barValue(e, deckSortMode())"
+        [max]="barMax(rankedCombinedStats(), deckSortMode())"
+      />
     </li>
     }
   </ul>
-  @if (combinedTotalPages() > 1) {
-  <div class="chip-row pager">
-    <button class="icon-button" (click)="prevCombinedPage()" [disabled]="combinedEffectivePage() === 0" [attr.aria-label]="i18n.t('stats.previousPage')">◀</button>
-    <span class="hint">{{ combinedEffectivePage() * 10 + 1 }}–{{ combinedPageRangeEnd() }} {{ i18n.t('stats.of') }} {{ rankedCombinedStats().length }}</span>
-    <button class="icon-button" (click)="nextCombinedPage()" [disabled]="combinedEffectivePage() >= combinedTotalPages() - 1" [attr.aria-label]="i18n.t('stats.nextPage')">▶</button>
-  </div>
-  }
+  <app-pager
+    [page]="combinedPage()"
+    [totalItems]="rankedCombinedStats().length"
+    (pageChange)="combinedPage.set($event)"
+  />
   @if (combinedInQualification().length > 0) {
   <button class="glass-chip" (click)="toggleDeckQualification()">
     {{ showDeckQualification() ? i18n.t('stats.qualificationToggleExpanded', { count: combinedInQualification().length }) : i18n.t('stats.qualificationToggle', { count: combinedInQualification().length }) }}
@@ -647,16 +616,15 @@
       </span>
       <span class="detail">{{ e.games }} / {{ deckQualificationThreshold() }} {{ i18n.t('stats.games') }}</span>
       <span class="needed">{{ i18n.t('stats.stillNeeded', { count: e.gamesNeeded }) }}</span>
+      <app-meter [value]="e.games" [max]="deckQualificationThreshold()" />
     </li>
     }
   </ul>
-  @if (combinedQualTotalPages() > 1) {
-  <div class="chip-row pager">
-    <button class="icon-button" (click)="prevCombinedQualPage()" [disabled]="combinedQualEffectivePage() === 0" [attr.aria-label]="i18n.t('stats.previousPage')">◀</button>
-    <span class="hint">{{ combinedQualEffectivePage() * 10 + 1 }}–{{ combinedQualPageRangeEnd() }} {{ i18n.t('stats.of') }} {{ combinedInQualification().length }}</span>
-    <button class="icon-button" (click)="nextCombinedQualPage()" [disabled]="combinedQualEffectivePage() >= combinedQualTotalPages() - 1" [attr.aria-label]="i18n.t('stats.nextPage')">▶</button>
-  </div>
-  }
+  <app-pager
+    [page]="combinedQualPage()"
+    [totalItems]="combinedInQualification().length"
+    (pageChange)="combinedQualPage.set($event)"
+  />
   }
 </section>
 } }

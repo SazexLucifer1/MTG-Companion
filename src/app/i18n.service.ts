@@ -10,6 +10,9 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     'dialog.ok': 'OK',
     'dialog.cancel': 'Abbrechen',
 
+    // --- Wiederverwendbare Bausteine (Overflow-Menü, Diagramme) ---
+    'common.moreActions': 'Weitere Aktionen',
+
     // --- Header / Navigation ---
     'search.cardsTab': 'Karten',
     'search.commanderTab': 'Commander',
@@ -180,7 +183,7 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     'stats.h2h.noGames': '{{a}} und {{b}} haben noch nicht gemeinsam gespielt.',
     'stats.h2h.gamesTogether': 'Gemeinsame Spiele',
     'stats.h2h.winsOf': 'Siege {{name}}',
-    'stats.h2h.otherWinnerHint': 'In {{count}} dieser Spiele hat ein anderer Mitspieler gewonnen.',
+    'stats.h2h.otherWinner': 'Andere',
     'stats.h2h.commandersOf': 'Commander von {{name}} in diesen Spielen',
 
     // --- Stats-Tab: Gesamt/Rangliste ---
@@ -243,6 +246,8 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     'group.lockAllPlayers': '🔒 Alle Spieler sperren',
     'group.unlockAllPlayers': '🔓 Alle Spieler freigeben',
     'group.lockAllPlayersHint': 'Setzt die Sichtbarkeit unten für alle Spieler auf einmal - danach kannst du einzelne Zellen gezielt wieder freigeben, z.B. für dich selbst.',
+    'group.groupActionsAria': 'Weitere Aktionen für Gruppe {{name}}',
+    'group.playerActionsAria': 'Weitere Aktionen für {{name}}',
     'group.renameGroupAria': 'Gruppe umbenennen',
     'group.deleteGroupAria': 'Gruppe löschen',
     'group.leaveGroupAria': 'Gruppe verlassen',
@@ -416,6 +421,16 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     'profile.crossGroupStatsHint': 'Zusammengefasst aus {{groups}} Gruppe(n), in denen du Mitglied bist.',
     'profile.crossGroupGames': 'Spiele gesamt',
     'profile.crossGroupTopCommander': 'Meistgespielter Commander',
+    'profile.viewTabStats': '📊 Statistiken',
+    'profile.viewTabDecks': '🗂️ Decks',
+    'profile.statsWeightByGames': 'Nach Partien',
+    'profile.statsWeightByDecks': 'Nach Decks',
+    'profile.mostUsedCardsTitle': '🃏 Meistgespielte Karten',
+    'profile.mostUsedCardsHint': 'Top 5, ohne Länder - Precons zählen nicht mit.',
+    'profile.colorRankingTitle': '🎨 Lieblingsfarben',
+    'profile.colorRankingHint': 'Alle 5 Farben nach Häufigkeit in deinen Decks - Precons zählen nicht mit.',
+    'profile.colorComboRankingTitle': '🌈 Farbkombinationen',
+    'profile.colorComboRankingHint': 'Wie oft welche Farbkombination in deinen Decks vorkommt - Precons zählen nicht mit.',
     'profile.autofillFavoriteCommanders': '🔁 Meistgespielte automatisch übernehmen',
     'profile.removeAria': 'Entfernen',
     'profile.searchCardPlaceholder': 'Kartenname suchen …',
@@ -513,11 +528,12 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     'deck.makeVisibleAgain': 'Wieder sichtbar machen',
     'deck.makePrivate': 'Privat stellen',
     'deck.makePrivateHint': 'Privat stellen - andere sehen dieses Deck dann nicht mehr auf deinem Profil',
+    'deck.deckActionsAria': 'Weitere Aktionen für {{name}}',
     'deck.deleteAria': 'Deck löschen',
     'deck.privateBadge': 'Privat - nur für dich sichtbar',
     'deck.preconBadge': 'Precon',
     'deck.outdatedBadge': 'Outdated - aus der normalen Ansicht ausgeblendet',
-    'deck.showOutdated': '🗄️ Outdated anzeigen',
+    'deck.showOutdated': '🗄️ Nur Outdated',
     'deck.msg.confirmDelete': 'Deck „{{name}}" wirklich löschen?',
 
     // --- Deck-Viewer (Deckansicht) ---
@@ -1287,6 +1303,9 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     'dialog.ok': 'OK',
     'dialog.cancel': 'Cancel',
 
+    // --- Reusable building blocks (overflow menu, charts) ---
+    'common.moreActions': 'More actions',
+
     // --- Header / Navigation ---
     'search.cardsTab': 'Cards',
     'search.commanderTab': 'Commander',
@@ -1457,7 +1476,7 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     'stats.h2h.noGames': "{{a}} and {{b}} haven't played together yet.",
     'stats.h2h.gamesTogether': 'Games together',
     'stats.h2h.winsOf': 'Wins {{name}}',
-    'stats.h2h.otherWinnerHint': 'Another player won {{count}} of these games.',
+    'stats.h2h.otherWinner': 'Others',
     'stats.h2h.commandersOf': "{{name}}'s commanders in these games",
 
     // --- Stats tab: overall/ranking ---
@@ -1520,6 +1539,8 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     'group.lockAllPlayers': '🔒 Lock all players',
     'group.unlockAllPlayers': '🔓 Unlock all players',
     'group.lockAllPlayersHint': 'Sets visibility below for all players at once - you can then selectively unlock individual cells afterwards, e.g. for yourself.',
+    'group.groupActionsAria': 'More actions for group {{name}}',
+    'group.playerActionsAria': 'More actions for {{name}}',
     'group.renameGroupAria': 'Rename group',
     'group.deleteGroupAria': 'Delete group',
     'group.leaveGroupAria': 'Leave group',
@@ -1693,6 +1714,16 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     'profile.crossGroupStatsHint': 'Combined from {{groups}} group(s) you are a member of.',
     'profile.crossGroupGames': 'Total games',
     'profile.crossGroupTopCommander': 'Most played commander',
+    'profile.viewTabStats': '📊 Stats',
+    'profile.viewTabDecks': '🗂️ Decks',
+    'profile.statsWeightByGames': 'By games',
+    'profile.statsWeightByDecks': 'By decks',
+    'profile.mostUsedCardsTitle': '🃏 Most played cards',
+    'profile.mostUsedCardsHint': 'Top 5, excluding lands - precons are excluded.',
+    'profile.colorRankingTitle': '🎨 Favorite colors',
+    'profile.colorRankingHint': 'All 5 colors by frequency in your decks - precons are excluded.',
+    'profile.colorComboRankingTitle': '🌈 Color combinations',
+    'profile.colorComboRankingHint': 'How often each color combination appears in your decks - precons are excluded.',
     'profile.autofillFavoriteCommanders': '🔁 Auto-fill most played',
     'profile.removeAria': 'Remove',
     'profile.searchCardPlaceholder': 'Search card name …',
@@ -1790,11 +1821,12 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     'deck.makeVisibleAgain': 'Make visible again',
     'deck.makePrivate': 'Make private',
     'deck.makePrivateHint': "Make private - others won't see this deck on your profile anymore",
+    'deck.deckActionsAria': 'More actions for {{name}}',
     'deck.deleteAria': 'Delete deck',
     'deck.privateBadge': 'Private - only visible to you',
     'deck.preconBadge': 'Precon',
     'deck.outdatedBadge': 'Outdated - hidden from the normal view',
-    'deck.showOutdated': '🗄️ Show outdated',
+    'deck.showOutdated': '🗄️ Only outdated',
     'deck.msg.confirmDelete': 'Really delete deck "{{name}}"?',
 
     // --- Deck viewer ---

@@ -11,14 +11,32 @@
   text-align: center;
   font-size: 0.75rem;
   line-height: 1.4;
-  opacity: 0.65;
+
+  // Eigene Fläche, weil der Footer als einziger Textblock der App KEINE .glass-card über sich hat
+  // und damit direkt auf dem Hintergrundbild steht - je nach Bildstelle war er dort praktisch
+  // unlesbar. Bewusst schwächer als .glass-card, der Footer soll nicht wie Inhalt wirken.
+  .legal-footer-inner {
+    padding: var(--sp-4) var(--sp-6);
+    border-radius: var(--r-lg);
+    background: rgba(12, 8, 23, 0.42);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    opacity: 0.82;
+  }
 
   p {
     margin: 0.15rem 0;
   }
 
+  // Datenquellen und Rechtstexte sind auf dem Handy als reiner Inline-Text nur ~14px hoch und
+  // damit kaum zu treffen. 36px statt der sonst üblichen 44: es sind selten benutzte Links am
+  // Seitenende, und 44px würden den Footer sichtbar auseinanderziehen.
   a,
   button {
+    display: inline-flex;
+    align-items: center;
+    min-height: 36px;
+    padding: 0 var(--sp-1);
     color: inherit;
     text-decoration: underline;
   }
@@ -26,8 +44,8 @@
   button {
     background: none;
     border: none;
-    padding: 0;
     font: inherit;
     cursor: pointer;
   }
 }
+

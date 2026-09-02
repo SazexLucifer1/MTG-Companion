@@ -1,0 +1,61 @@
+:host {
+  display: block;
+}
+
+.split-bar {
+  display: flex;
+  // Die Trennung zwischen den Abschnitten macht eine Lücke in der Flächenfarbe, kein Rahmen -
+  // ein Rahmen würde Tinte hinzufügen, die keine Daten trägt.
+  gap: 2px;
+  height: 14px;
+  border-radius: var(--r-xs);
+  overflow: hidden;
+  background: var(--surface-track);
+}
+
+.split-segment {
+  flex-grow: 0;
+  flex-shrink: 0;
+  min-width: 2px;
+  transition: flex-basis 0.2s ease;
+}
+
+.split-empty {
+  flex: 1;
+}
+
+.split-legend {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-3) var(--sp-6);
+  margin: var(--sp-4) 0 0;
+  padding: 0;
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    min-width: 0;
+    font-size: 0.85rem;
+  }
+}
+
+.split-swatch {
+  flex: 0 0 auto;
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+}
+
+.split-legend-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  opacity: 0.85;
+}
+
+.split-legend-value {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
