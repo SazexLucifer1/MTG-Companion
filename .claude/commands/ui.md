@@ -15,6 +15,7 @@ Ablauf:
 3. **Style-Budget beachten:** 6 kB Warnung / 12 kB Fehler pro Komponenten-`.scss`. Die großen Dateien (`deck-detail-view.scss` 796, `ingame-tracker.scss` 747) nicht weiter aufblähen — dort eher aufräumen als anhängen.
 4. Nur das Aussehen ändern. Logik, Datenfluss und Services bleiben unangetastet, sofern nicht ausdrücklich anders gefragt.
 5. `npm run build` (prüft auch die Budgets).
-6. Committen, pushen, PR anlegen (siehe `CLAUDE.md`).
+6. **Screenshot als Nachweis.** Die Änderung in der laufenden App anschauen, nicht nur bauen: `npm start`, dann per Playwright im iPhone-Viewport einloggen und den geänderten Bereich aufnehmen. Der genaue Ablauf inklusive der vier bekannten Stolpersteine steht in `CLAUDE.md` unter „Test-Accounts". Das Projekt hat kein Lint, keine Build-CI und praktisch keine Tests — der Screenshot ist der einzige echte Nachweis.
+7. Committen, pushen, PR anlegen (siehe `CLAUDE.md`).
 
 Im PR darauf hinweisen, dass die Cloudflare-Preview am besten auf dem iPhone geprüft wird.
