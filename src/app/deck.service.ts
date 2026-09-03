@@ -1236,6 +1236,35 @@ export class DeckService {
   }
 
   /**
+   * Farbidentität einer Liste von Decks, geschlüsselt nach Deck-ID - für Statistiken, die (anders
+   * als getCardAndColorStats) nicht auf einen einzelnen DeckOwner beschränkt sind, sondern gegen
+   * bereits anderweitig geladene Matches rechnen (siehe stats-tab.ts groupColorAndComboStats).
+   *
+   * Liefert für private Decks anderer Nutzer keinen Eintrag (RLS blendet sie aus, siehe
+   * sql/security-fixes-2026-08-26.sql) - das ist dieselbe stille Auslassung, die deckStats()/
+   * commanderStats() im Stats-Tab beim deckName-Join schon länger haben, kein neuer Sonderfall.
+   */
+  async getColorIdentities(deckIds: string[]): Promise<Map<string, string[]>> {
+    const result = new Map<string, string[]>();
+    if (deckIds.length === 0) return result;
+
+    const { data, error } = await supabase
+      .from('decks')
+      .select('id, color_identity')
+      .in('id', deckIds);
+
+    if (error || !data) {
+      console.error('Konnte Farbidentität der Decks nicht laden:', error);
+      return result;
+    }
+
+    for (const row of data) {
+      result.set(row.id, (row.color_identity as string[] | null) ?? []);
+    }
+    return result;
+  }
+
+  /**
    * Commander-Statistik über ALLE Gruppen hinweg für Matches OHNE Deck-Zuordnung (z.B. alte
    * Excel-Importe oder live getrackte Spiele, bei denen kein eigenes Deck ausgewählt wurde) -
    * ergänzt getDeckStats() im Profil, wo sonst nur deck-gebundene Spiele auftauchen würden.

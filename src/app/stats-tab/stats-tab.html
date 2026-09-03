@@ -627,7 +627,48 @@
   />
   }
 </section>
-} }
+}
+
+@if (rankedGroupColorCombos().length > 0) {
+<div class="segmented sort-toggle">
+  <button [class.active]="colorStatsWeightMode() === 'games'" (click)="setColorStatsWeightMode('games')">
+    {{ i18n.t('stats.colorStatsWeightByGames') }}
+  </button>
+  <button [class.active]="colorStatsWeightMode() === 'decks'" (click)="setColorStatsWeightMode('decks')">
+    {{ i18n.t('stats.colorStatsWeightByDecks') }}
+  </button>
+</div>
+
+<section class="glass-card">
+  <h2>{{ i18n.t('stats.colorRankingTitle') }}</h2>
+  <p class="hint">{{ i18n.t('stats.colorRankingHint') }}</p>
+  <app-radar-chart [data]="groupColorRadarChart()" />
+</section>
+
+<section class="glass-card">
+  <h2>{{ i18n.t('stats.colorComboRankingTitle') }}</h2>
+  <p class="hint">{{ i18n.t('stats.colorComboRankingHint') }}</p>
+  <ul class="combo-grid">
+    @for (combo of rankedGroupColorCombos(); track combo.colors.join('')) {
+      <li>
+        <span class="combo-name">
+          @if (combo.colors.length === 0) {
+            <app-mana-symbol symbol="C" />
+          } @else {
+            @for (c of comboColors(combo.colors); track c) {
+              <app-mana-symbol [symbol]="c" />
+            }
+          }
+          {{ colorComboLabel(combo.colors) }}
+        </span>
+        <span class="detail">{{ colorCountFor(combo) }}×</span>
+        <app-meter [value]="colorCountFor(combo)" [max]="maxGroupColorComboCount()" />
+      </li>
+    }
+  </ul>
+</section>
+}
+}
 } } }
 }
 <!-- NEU: ganz am Ende der Datei anfügen -->

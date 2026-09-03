@@ -32,11 +32,37 @@ import { isPlayerWinner as isMatchWinner } from '../match-utils';
 import { Meter } from '../ui/meter/meter';
 import { Pager } from '../ui/pager/pager';
 import { SplitBar, SplitSegment } from '../ui/split-bar/split-bar';
+import { RadarChart, RadarChartDatum } from '../ui/radar-chart/radar-chart';
+import { ManaSymbol } from '../ui/mana-symbol/mana-symbol';
+import { colorComboName, sortColors } from '../color-combo-names';
+import { COLORLESS, FILTER_COLORS } from '../color-filter-match';
 
 export type RankSortMode = 'wins' | 'winRate' | 'games';
 export type StatsViewMode = 'stats' | 'tournaments';
+export type ColorStatsWeightMode = 'games' | 'decks';
 
 const PAGE_SIZE = 10;
+
+/**
+ * Achsen des Farb-Netzdiagramms: die fünf Manafarben in WUBRG-Reihenfolge, farblos als sechste.
+ * Bewusst fest und NIE nach Häufigkeit sortiert - dieselbe Begründung wie in profile-tab.ts, von
+ * wo diese Konstante 1:1 übernommen ist (Komponenten-Styles/Konstanten sind gekapselt, eine
+ * gemeinsame Datei für eine Zeile wäre hier Overengineering).
+ */
+const COLOR_RADAR_AXES: readonly string[] = [...FILTER_COLORS, COLORLESS];
+
+/** Farb- und Kombinations-Zählung für die Gruppen-Statistik - siehe groupColorAndComboStats(). */
+interface GroupColorEntry {
+  color: (typeof COLOR_RADAR_AXES)[number];
+  gameCount: number;
+  deckCount: number;
+}
+
+interface GroupColorComboEntry {
+  colors: string[];
+  gameCount: number;
+  deckCount: number;
+}
 
 /** Gemeinsame Zeile für die vereinte Decks&Commander-Rangliste (siehe combinedDeckCommanderStats). */
 interface CombinedRankEntry {
@@ -62,7 +88,18 @@ interface ImportMappingRow {
 
 @Component({
   selector: 'app-stats-tab',
-  imports: [DecimalPipe, PlayerAvatar, FormsModule, TournamentHistory, CardImage, Meter, Pager, SplitBar],
+  imports: [
+    DecimalPipe,
+    PlayerAvatar,
+    FormsModule,
+    TournamentHistory,
+    CardImage,
+    Meter,
+    Pager,
+    SplitBar,
+    RadarChart,
+    ManaSymbol,
+  ],
   templateUrl: './stats-tab.html',
   styleUrl: './stats-tab.scss',
 })
@@ -106,6 +143,10 @@ export class StatsTab {
    */
   private readonly storedDeckCommanders = signal<Map<string, { name: string; imageUrl: string | null }>>(new Map());
 
+  /** Deck-ID -> Farbidentität, für die gruppenweite Lieblingsfarben-/Farbkombinations-Statistik
+   * (siehe groupColorAndComboStats()) - nur für Nicht-Precon-Decks geladen, siehe Effect unten. */
+  private readonly deckColorIdentities = signal<Map<string, string[]>>(new Map());
+
   constructor() {
     effect(() => {
       const deckIds = [
@@ -115,6 +156,22 @@ export class StatsTab {
       ];
       if (deckIds.length === 0) return;
       this.deckService.getStoredCommanders(deckIds).then((map) => this.storedDeckCommanders.set(map));
+    });
+
+    effect(() => {
+      // Precons bewusst außen vor - dieselbe Begründung wie im Profil-Tab (CardAndColorStats):
+      // sie sind nicht selbst zusammengestellt, sollen also nicht in die Lieblingsfarben einfließen.
+      const deckIds = [
+        ...new Set(
+          this.filteredMatches().flatMap((m) =>
+            m.players
+              .filter((p) => p.deckId && p.deckIsPrecon !== true)
+              .map((p) => p.deckId as string),
+          ),
+        ),
+      ];
+      if (deckIds.length === 0) return;
+      this.deckService.getColorIdentities(deckIds).then((map) => this.deckColorIdentities.set(map));
     });
 
     effect(() => {
@@ -630,6 +687,130 @@ export class StatsTab {
   toggleDeckQualification(): void {
     this.showDeckQualification.update((v) => !v);
   }
+
+  // --- Gruppenweite Lieblingsfarben & Farbkombinationen ---
+
+  /** Umschalter wie im Profil-Tab: "games" gewichtet nach tatsächlich gespielten Partien je Deck
+   * (Standard), "decks" zählt jedes Deck nur 1x, unabhängig davon, wie oft es gespielt wurde. */
+  readonly colorStatsWeightMode = signal<ColorStatsWeightMode>('games');
+
+  setColorStatsWeightMode(mode: ColorStatsWeightMode): void {
+    this.colorStatsWeightMode.set(mode);
+  }
+
+  /** Wählt je nach aktivem Modus den passenden Zählwert eines Eintrags aus - identisch zu countFor() im Profil-Tab. */
+  readonly colorCountFor = (entry: { gameCount: number; deckCount: number }): number =>
+    this.colorStatsWeightMode() === 'games' ? entry.gameCount : entry.deckCount;
+
+  /**
+   * Farb- und Farbkombinations-Zählung über ALLE (Nicht-Precon-)Decks der Gruppe hinweg, die in
+   * den aktuell gefilterten Matches (Zeitraum/Modus) vorkommen - Partien-Teilnahmen und Deck-Anzahl
+   * parallel gezählt, wie DeckService.getCardAndColorStats() für den Profil-Tab. Anders als dort
+   * läuft hier keine eigene DB-Abfrage: die Matches sind über filteredMatches() schon geladen, nur
+   * die Farbidentität der beteiligten Decks kommt separat aus deckColorIdentities() (siehe Effect
+   * oben) - Decks, deren Farbidentität noch nicht geladen ist oder wegen is_private nicht lesbar
+   * war, fließen einfach nicht mit ein.
+   */
+  private readonly groupColorAndComboStats = computed(() => {
+    const identities = this.deckColorIdentities();
+    const colorCounts = new Map<
+      string,
+      { gameCount: number; deckCount: number; decks: Set<string> }
+    >();
+    const comboCounts = new Map<
+      string,
+      { colors: string[]; gameCount: number; deckCount: number; decks: Set<string> }
+    >();
+
+    for (const match of this.filteredMatches()) {
+      for (const p of match.players) {
+        if (!p.deckId || p.deckIsPrecon === true) continue;
+        const identity = identities.get(p.deckId);
+        if (identity === undefined) continue;
+
+        const colors = FILTER_COLORS.filter((c) => identity.includes(c));
+        for (const color of colors.length > 0 ? colors : [COLORLESS]) {
+          const entry = colorCounts.get(color) ?? {
+            gameCount: 0,
+            deckCount: 0,
+            decks: new Set<string>(),
+          };
+          entry.gameCount++;
+          entry.decks.add(p.deckId);
+          entry.deckCount = entry.decks.size;
+          colorCounts.set(color, entry);
+        }
+
+        const comboKey = colors.join('');
+        const combo = comboCounts.get(comboKey) ?? {
+          colors,
+          gameCount: 0,
+          deckCount: 0,
+          decks: new Set<string>(),
+        };
+        combo.gameCount++;
+        combo.decks.add(p.deckId);
+        combo.deckCount = combo.decks.size;
+        comboCounts.set(comboKey, combo);
+      }
+    }
+
+    // Immer alle sechs Achsen, auch mit 0 - das Netzdiagramm braucht eine feste Achsenmenge.
+    const colorRanking: GroupColorEntry[] = COLOR_RADAR_AXES.map((color) => ({
+      color,
+      gameCount: colorCounts.get(color)?.gameCount ?? 0,
+      deckCount: colorCounts.get(color)?.deckCount ?? 0,
+    }));
+    const colorComboRanking: GroupColorComboEntry[] = [...comboCounts.values()].map((c) => ({
+      colors: c.colors,
+      gameCount: c.gameCount,
+      deckCount: c.deckCount,
+    }));
+
+    return { colorRanking, colorComboRanking };
+  });
+
+  /** Farbverteilung als Netzdiagramm - feste Achsenreihenfolge, siehe COLOR_RADAR_AXES. */
+  readonly groupColorRadarChart = computed<RadarChartDatum[]>(() =>
+    this.groupColorAndComboStats().colorRanking.map((stat) => ({
+      label: this.colorLabel(stat.color),
+      value: this.colorCountFor(stat),
+      color: this.colorVar(stat.color),
+      symbol: stat.color,
+    })),
+  );
+
+  readonly rankedGroupColorCombos = computed(() =>
+    [...this.groupColorAndComboStats().colorComboRanking].sort(
+      (a, b) => this.colorCountFor(b) - this.colorCountFor(a),
+    ),
+  );
+
+  /** Höchster Zählwert für die relative Balkenbreite in der Farbkombinations-Rangliste. */
+  readonly maxGroupColorComboCount = computed(() =>
+    Math.max(1, ...this.rankedGroupColorCombos().map((c) => this.colorCountFor(c))),
+  );
+
+  /** CSS-Farbe einer Manafarbe, aus den globalen --pip-*-Tokens - identisch zu colorVar() im Profil-Tab. */
+  readonly colorVar = (color: string): string =>
+    'WUBRG'.includes(color) ? `var(--pip-${color.toLowerCase()})` : 'var(--series-neutral)';
+
+  /** Anzeigename einer Achse - identisch zu colorLabel() im Profil-Tab. */
+  readonly colorLabel = (color: string): string =>
+    color === COLORLESS ? this.i18n.t('deckView.colorless') : this.i18n.t(`pip.${color}`);
+
+  /** Anzeigename einer Farbkombination (Eigenname wie "Azorius", sonst aneinandergereihte
+   * Farbnamen) - identisch zu colorComboLabel() im Profil-Tab. */
+  readonly colorComboLabel = (colors: string[]): string => {
+    if (colors.length === 0) return this.i18n.t('deckView.colorless');
+    if (colors.length === 1)
+      return this.i18n.t('colorCombo.mono', { color: this.colorLabel(colors[0]) });
+    if (colors.length >= 5) return this.i18n.t('colorCombo.fiveColor');
+    return colorComboName(colors) ?? colors.map((c) => this.colorLabel(c)).join(' / ');
+  };
+
+  /** Farben einer Kombination in WUBRG-Reihenfolge - identisch zu comboColors() im Profil-Tab. */
+  readonly comboColors = (colors: string[]): string[] => sortColors(colors);
 
   // --- Spieler-Details ---
 
