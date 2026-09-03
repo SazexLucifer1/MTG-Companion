@@ -37,8 +37,9 @@ import { I18nService } from '../../i18n.service';
  *
  * Die handgebauten Sheets fielen nicht auf, weil sie durchweg auf oberster Ebene ihrer Datei
  * stehen, außerhalb jeder Karte. Diese Komponente wird dagegen mitten in Karten eingesetzt, also
- * hängt sie ihren Inhalt über einen DomPortalOutlet direkt an den <body> - dort greift kein
- * fremder Bezugsrahmen mehr.
+ * hängt sie ihren Inhalt über einen DomPortalOutlet in einen eigenen Container am <body> - dort
+ * greift kein fremder Bezugsrahmen mehr. Der Container ist bewusst nicht der <body> selbst,
+ * siehe ngOnDestroy.
  *
  * Bewusst DomPortalOutlet statt der CDK-Overlay: das gesamte Aussehen kommt weiterhin aus den
  * vorhandenen globalen Klassen, es braucht also weder eine Positionsstrategie noch das
@@ -67,6 +68,8 @@ export class OverflowMenu implements OnDestroy {
 
   /** Erst beim ersten Öffnen angelegt - ein nie geöffnetes Menü hängt nichts in den <body>. */
   private outlet: DomPortalOutlet | null = null;
+  /** Eigener Container im <body>, siehe ngOnDestroy. */
+  private host: HTMLElement | null = null;
 
   toggle(): void {
     if (this.open()) this.close();
@@ -84,12 +87,24 @@ export class OverflowMenu implements OnDestroy {
   ngOnDestroy(): void {
     // Ohne dispose() bliebe das Sheet im <body> zurück, wenn die Komponente geschlossen wird,
     // während das Menü offen ist (z.B. eine Deckzeile verschwindet nach dem Löschen).
+    //
+    // dispose() räumt aber nicht nur den Inhalt weg, sondern entfernt auch das Outlet-Element
+    // selbst (CDK: `super.dispose(); this.outletElement.remove();`). Solange das Outlet direkt
+    // auf document.body saß, hat jedes zerstörte Menü damit den <body> aus dem Dokument
+    // genommen - die Seite wurde weiß, ohne jede Fehlermeldung. Deshalb bekommt das Portal
+    // einen eigenen Container, den dispose() gefahrlos entsorgen darf.
     this.outlet?.dispose();
     this.outlet = null;
+    this.host = null; // von dispose() bereits aus dem DOM entfernt
   }
 
   private openMenu(): void {
-    this.outlet ??= new DomPortalOutlet(document.body, this.appRef, this.injector);
+    if (!this.outlet) {
+      this.host = document.createElement('div');
+      this.host.classList.add('overflow-menu-portal');
+      document.body.appendChild(this.host);
+      this.outlet = new DomPortalOutlet(this.host, this.appRef, this.injector);
+    }
     if (!this.outlet.hasAttached()) this.outlet.attach(this.portal());
     this.open.set(true);
   }
