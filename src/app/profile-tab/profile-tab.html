@@ -327,7 +327,7 @@
   }
 
   @if (profileViewTab() === 'stats') {
-<div class="profile-grid">
+<div class="profile-grid stats-grid">
     @if (placementDistribution().length > 0) {
       <section class="glass-card">
         <h2>{{ i18n.t('profile.placementDistribution') }}</h2>
@@ -399,13 +399,13 @@
       }
 
       @if (stats.colorComboRanking.length > 0) {
-        <section class="glass-card">
+        <section class="glass-card span-full">
           <h2>{{ i18n.t('profile.colorComboRankingTitle') }}</h2>
           <p class="hint">{{ i18n.t('profile.colorComboRankingHint') }}</p>
           <!-- Bleibt eine Liste: eine Zeile trägt mehrere Farben, das kann ein einfarbiger
                Balken nicht ausdrücken. Die Manasymbole übernehmen die Identität, der Balken
                darunter die Häufigkeit. -->
-          <ul class="player-list compact-list ranked-list">
+          <ul class="player-list compact-list ranked-list combo-grid">
             @for (combo of rankedColorComboRanking(); track combo.colors.join('')) {
               <li>
                 <span class="player-name combo-name">

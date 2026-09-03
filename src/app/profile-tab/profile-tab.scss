@@ -1,15 +1,15 @@
 @use '../../styles/breakpoints' as bp;
 
 .profile-name-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 
-    .profile-name {
-      font-weight: 600;
-      font-size: 1.1rem;
-    }
+  .profile-name {
+    font-weight: 600;
+    font-size: 1.1rem;
   }
+}
 
 .add-row {
   display: flex;
@@ -449,15 +449,18 @@
    Knopf). Man musste durch die halbe Seite scrollen, um alles zu sehen. */
 .profile-grid {
   display: grid;
-  // Zwei Spalten ab Tablet, eine auf dem Handy - über auto-fit statt fester Spaltenzahl, damit die
-  // Sektionen auch dann sauber sitzen, wenn welche fehlen (je nach Zustand bleiben von acht nur
-  // vier übrig).
+  // Zwei Spalten ab Tablet, eine auf dem Handy - und zwar als feste Spaltenzahl statt über
+  // auto-fit. Mit auto-fit hing die Spaltenzahl an der verfügbaren Breite, und da die Profilseite
+  // aus mehreren getrennten .profile-grid-Blöcken besteht, kippte nicht jeder davon bei derselben
+  // Fensterbreite um: auf einem 768px-Tablet standen die Statistik-Sektionen zweispaltig, der
+  // Block mit Daten-Export und Danger Zone darunter aber einspaltig. Genau dieses Springen ließ
+  // die Seite zufällig zusammengewürfelt wirken.
   //
   // Warum nicht mehr Spalten: die kleinen Sektionen treten in zwei Paaren auf (Platzierungen +
   // Gesamtwerte oben, Daten-Export + Danger Zone unten), zwischen denen die vollbreiten Listen
   // stehen. Bei zwei Spalten füllt jedes Paar seine Zeile vollständig; bei drei oder vier bliebe
   // die Hälfte leer.
-  grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--sp-6);
   // Jede Karte nur so hoch wie ihr Inhalt. Zwischenzeitlich stand hier "stretch", damit Karten
   // derselben Zeile bündig abschließen - das ging aber nur gut, solange die Nachbarn ähnlich viel
@@ -479,6 +482,47 @@
   // Sortierung, zehn Zeilen, Pager) und die Feedback-Liste.
   > .span-full {
     grid-column: 1 / -1;
+  }
+}
+
+// Die Farbkombinationen sind der längste Block des Profils - je nach Deckbestand über zwanzig
+// Zeilen. Als halbbreite Karte stand er zuletzt allein in seiner Rasterzeile: eine sehr hohe Säule
+// neben einer komplett leeren Spalte, und darunter ging es erst nach viel Scrollen weiter. Über die
+// volle Breite mit mehrspaltigem Zeilenraster füllt derselbe Inhalt die Fläche, die er ohnehin
+// blockiert, und ist nur noch ein Drittel so hoch. Ohne Spaltenangabe ist das Raster einspaltig,
+// die Handy-Ansicht bleibt also die gewohnte Liste.
+.combo-grid {
+  display: grid;
+  // Nur Spaltenabstand: die Zeilen sollen wie in einer einspaltigen Liste direkt aufeinanderfolgen,
+  // damit die Trennlinien der Einträge über alle Spalten hinweg auf einer Höhe liegen.
+  column-gap: var(--sp-6);
+}
+
+@include bp.up(md) {
+  .profile-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  // Im Statistik-Raster des eigenen Profils schließen Karten derselben Zeile bündig ab - anders als
+  // im allgemeinen .profile-grid, das dafür bewusst "start" benutzt. Der Grund für dieses "start"
+  // war die Farbkombinations-Rangliste: die konnte ein Mehrfaches der Höhe ihrer Nachbarkarte
+  // erreichen und blies diese zu einem fast leeren Glasfeld auf. Sie steht jetzt über die volle
+  // Breite in einer eigenen Zeile, in den verbleibenden Paaren liegen die Höhen nah beieinander -
+  // dort ist ein gemeinsamer unterer Rand genau das, was das Raster aufgeräumt wirken lässt.
+  .profile-grid.stats-grid {
+    align-items: stretch;
+  }
+
+  .combo-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+// Ab Desktop drei Spalten für die Farbkombinationen: eine Spalte ist dann noch rund 340px breit,
+// genug für bis zu fünf Manasymbole plus Farbname und Zähler.
+@include bp.up(lg) {
+  .combo-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
