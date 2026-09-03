@@ -4,6 +4,7 @@ export const match = {
     // --- Match-Tab: Neues Match ---
     'match.newMatch': 'Neues Match',
     'match.gameMode': 'Spielmodus',
+    'match.gameFormat': 'Spielformat',
     'match.whoPlays': 'Wer spielt mit?',
     'match.noPlayersYet': 'Noch keine Spieler angelegt. Füge sie im Tab „Gruppe" hinzu.',
     'match.guestHint':
@@ -119,6 +120,7 @@ export const match = {
     // --- Match tab: New match ---
     'match.newMatch': 'New Match',
     'match.gameMode': 'Game Mode',
+    'match.gameFormat': 'Game format',
     'match.whoPlays': 'Who is playing?',
     'match.noPlayersYet': 'No players yet. Add them in the "Group" tab.',
     'match.guestHint':

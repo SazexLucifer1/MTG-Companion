@@ -1,4 +1,4 @@
-import { GameMode } from './models';
+import { DeckFormat, GameMode } from './models';
 import type { SelectedDraftSet } from './game-session.service';
 
 export type TournamentStatus = 'setup' | 'active' | 'completed';
@@ -14,6 +14,8 @@ export interface Tournament {
   name: string;
   status: TournamentStatus;
   gameMode: GameMode;
+  /** Gespieltes MTG-Format, kombiniert mit gameMode - null nur bei gameMode 'Spezialevent'. */
+  gameFormat: DeckFormat | null;
   tableSize: TableSize;
   roundCountMode: RoundCountMode;
   manualRoundCount: number | null;

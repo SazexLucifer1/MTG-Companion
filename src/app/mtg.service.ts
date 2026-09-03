@@ -14,6 +14,7 @@ const MATCH_HISTORY_SELECT = `
   id,
   played_at,
   game_mode,
+  game_format,
   winner_name,
   draft_set_id,
   draft_set_code,
@@ -859,6 +860,7 @@ export class MtgService {
       .insert({
         group_id: groupId,
         game_mode: match.mode,
+        game_format: match.format ?? null,
         cube_id: match.cube?.id ?? null,
         winner_name: match.winner,
         draft_set_id: match.draftSet?.id ?? null,
@@ -1322,6 +1324,7 @@ export class MtgService {
         .insert({
           group_id: groupId,
           game_mode: match.mode,
+          game_format: match.format ?? null,
           cube_id: match.cube?.id ?? null,
           winner_name: match.winner,
           played_at: match.date,

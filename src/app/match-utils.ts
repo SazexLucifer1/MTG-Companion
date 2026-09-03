@@ -1,4 +1,4 @@
-import { GameMode, Match } from './models';
+import { DeckFormat, GameMode, Match } from './models';
 
 /** Platzhalter-Gewinner bei Archenemy: "die anderen Spieler" (alle außer dem Archenemy) haben gewonnen. */
 export const ARCHENEMY_OTHERS = '__OTHERS__';
@@ -34,6 +34,17 @@ export function isPlayerWinner(
 }
 
 /**
+ * Baut das lesbare Anzeige-Label aus Kategorie (GameMode) + Format zusammen, z.B. "Cube · Modern"
+ * oder einfach "Modern" bei Kategorie 'Normal' (die nicht extra angezeigt wird, da sie nur "kein
+ * Sondermodus" bedeutet). Spezialevent hat nie ein Format, kommt also immer alleine.
+ */
+export function gameModeLabel(mode: GameMode, format: DeckFormat | null): string {
+  if (mode === 'Spezialevent') return mode;
+  if (mode === 'Normal') return format ?? mode;
+  return format ? `${mode} · ${format}` : mode;
+}
+
+/**
  * Baut aus den Mitgliedern eines Teams einen lesbaren Anzeigenamen ("Anna & Ben") statt des rohen,
  * austauschbaren Team-Bezeichners ("Team 1") - für Stellen, an denen ein Team NACH dem laufenden
  * Spiel angezeigt wird (z.B. Sieger-Auswahl im Verlauf), wo die live-only ingameUnits-Computed aus
@@ -54,6 +65,7 @@ export function mapMatchRow(row: any): Match {
     id: row.id,
     date: row.played_at,
     mode: row.game_mode,
+    format: row.game_format ?? null,
     winner: row.winner_name,
     tournamentMatchId: row.tournament_match_id ?? undefined,
     tournamentGameNumber: row.tournament_game_number ?? undefined,

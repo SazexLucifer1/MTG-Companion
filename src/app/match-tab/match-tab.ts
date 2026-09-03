@@ -12,8 +12,8 @@ import { DeckService, DeckOwner } from '../deck.service';
 import { I18nService } from '../i18n.service';
 import { TournamentService } from '../tournament.service';
 import { DialogService } from '../dialog.service';
-import { GAME_MODES, TEAM_OPTIONS, Match, LIVE_TRACKING_START_DATE } from '../models';
-import { ARCHENEMY_OTHERS, DRAW, teamMemberLabel } from '../match-utils';
+import { GAME_MODES, TEAM_OPTIONS, Match, LIVE_TRACKING_START_DATE, DECK_FORMATS } from '../models';
+import { ARCHENEMY_OTHERS, DRAW, teamMemberLabel, gameModeLabel } from '../match-utils';
 import { CardImage } from '../card-image/card-image';
 
 /** Ein einzelnes Spiel oder eine zu einer Karte zusammengefasste BO3-Turnierpartie (2-3 Einzelspiele) im Verlauf. */
@@ -24,6 +24,7 @@ export type HistoryRow =
       tournamentMatchId: string;
       date: string;
       mode: Match['mode'];
+      format: Match['format'];
       players: [string, string];
       scores: [number, number];
       games: Match[];
@@ -51,7 +52,12 @@ export class MatchTab {
   }
 
   readonly modes = GAME_MODES;
+  readonly formats = DECK_FORMATS;
   readonly teamOptions = TEAM_OPTIONS;
+
+  modeLabel(mode: Match['mode'], format: Match['format']): string {
+    return gameModeLabel(mode, format);
+  }
 
   // --- Cubes ---
   readonly newCubeName = signal('');
@@ -503,6 +509,7 @@ export class MatchTab {
             tournamentMatchId: m.tournamentMatchId,
             date: m.date,
             mode: m.mode,
+            format: m.format,
             players: [p1, p2],
             scores: [games.filter((g) => g.winner === p1).length, games.filter((g) => g.winner === p2).length],
             games,

@@ -4,7 +4,7 @@ import { AuthService } from './auth.service';
 import { GroupService } from './group.service';
 import { MtgService } from './mtg.service';
 import { GameSessionService, SelectedDraftSet } from './game-session.service';
-import { GameMode } from './models';
+import { DeckFormat, GameMode } from './models';
 import { PageVisibilityService } from './page-visibility.service';
 import { DialogService } from './dialog.service';
 import { I18nService } from './i18n.service';
@@ -516,6 +516,7 @@ export class TournamentService {
       name: row.name,
       status: row.status as TournamentStatus,
       gameMode: row.game_mode as GameMode,
+      gameFormat: (row.game_format as DeckFormat) ?? null,
       tableSize: row.table_size as TableSize,
       roundCountMode: row.round_count_mode as RoundCountMode,
       manualRoundCount: row.manual_round_count,
@@ -544,6 +545,7 @@ export class TournamentService {
     groupId: string,
     name: string,
     gameMode: GameMode,
+    gameFormat: DeckFormat | null,
     tableSize: TableSize,
     roundCountMode: RoundCountMode,
     manualRoundCount: number | null,
@@ -565,6 +567,7 @@ export class TournamentService {
           group_id: groupId,
           name: trimmedName,
           game_mode: gameMode,
+          game_format: gameFormat,
           table_size: tableSize,
           round_count_mode: roundCountMode,
           manual_round_count: roundCountMode === 'manual' ? manualRoundCount : null,
@@ -1353,7 +1356,8 @@ export class TournamentService {
     if (existingSession) {
       await this.session.joinLiveSession(existingSession.id);
     } else {
-      this.session.mode.set(tournament?.gameMode ?? 'Commander');
+      this.session.setMode(tournament?.gameMode ?? 'Normal');
+      this.session.format.set(tournament ? tournament.gameFormat : 'Commander');
       this.session.selectedDraftSet.set(tournament?.draftSet ?? null);
       this.session.selectedCubeId.set(tournament?.cubeId ?? null);
       this.session.selectedPlayers.set(match.participants.map((p) => ({ name: p.playerName })));
@@ -1703,7 +1707,8 @@ export class TournamentService {
     for (let i = 0; i < winnerWins + loserWins; i++) {
       const thisWinnerName = i < winnerWins ? winnerEntry.playerName : otherEntry.playerName;
       const matchRowId = await this.mtg.addMatch({
-        mode: this.activeTournament()?.gameMode ?? 'Commander',
+        mode: this.activeTournament()?.gameMode ?? 'Normal',
+        format: this.activeTournament() ? this.activeTournament()!.gameFormat : 'Commander',
         players: match.participants.map((p) => ({ name: p.playerName })),
         winner: thisWinnerName,
         tournamentMatchId: match.id,
@@ -1749,7 +1754,8 @@ export class TournamentService {
     if (!winnerName) return;
 
     const matchRowId = await this.mtg.addMatch({
-      mode: this.activeTournament()?.gameMode ?? 'Commander',
+      mode: this.activeTournament()?.gameMode ?? 'Normal',
+      format: this.activeTournament() ? this.activeTournament()!.gameFormat : 'Commander',
       players: match.participants.map((p) => ({ name: p.playerName })),
       winner: winnerName,
       tournamentMatchId: match.id,

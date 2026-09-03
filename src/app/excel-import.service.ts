@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import * as XLSX from 'xlsx';
 import JSZip from 'jszip';
-import { GameMode, Match, MatchPlayer, TeamName } from './models';
+import { DeckFormat, GameMode, Match, MatchPlayer, TeamName } from './models';
 import { ScryfallService } from './scryfall.service';
 import { sleep } from './array-utils';
 
@@ -253,7 +253,7 @@ export class ExcelImportService {
 
       for (const row of rowsBySheet.get(sheetName) ?? []) {
         const commander = commanderNames.get(this.rowKey(row)) ?? row.deckName;
-        result.push(...this.buildSimpleMode('Commander', trimmedPlayer, commander, row.normal, importDate));
+        result.push(...this.buildSimpleMode('Normal', trimmedPlayer, commander, row.normal, importDate));
         result.push(...this.buildArchenemyTeam(trimmedPlayer, commander, row.archTeam, importDate));
         result.push(...this.buildArchenemyEvil(trimmedPlayer, commander, row.archEvil, importDate));
         result.push(...this.buildTwoHeadedGiant(trimmedPlayer, commander, row.twoHg, importDate));
@@ -264,7 +264,7 @@ export class ExcelImportService {
       const guessedName = this.guessPlayerName(sheetName);
       const yearEnd = this.yearEndStats.get(guessedName.toLowerCase()) ?? this.yearEndStats.get(trimmedPlayer.toLowerCase());
       if (yearEnd) {
-        result.push(...this.buildSimpleMode('Spezialevent', trimmedPlayer, undefined, yearEnd, importDate));
+        result.push(...this.buildSimpleMode('Spezialevent', trimmedPlayer, undefined, yearEnd, importDate, null));
       }
     }
 
@@ -349,15 +349,16 @@ export class ExcelImportService {
     commander: string | undefined,
     stats: { played: number; wins: number },
     date: string,
+    format: DeckFormat | null = 'Commander',
   ): Omit<Match, 'id' | 'countsInGeneralStats'>[] {
     const matches: Omit<Match, 'id' | 'countsInGeneralStats'>[] = [];
     const losses = Math.max(0, stats.played - stats.wins);
 
     for (let i = 0; i < stats.wins; i++) {
-      matches.push(this.makeMatch(mode, date, [{ name: player, commander }], player));
+      matches.push(this.makeMatch(mode, date, [{ name: player, commander }], player, format));
     }
     for (let i = 0; i < losses; i++) {
-      matches.push(this.makeMatch(mode, date, [{ name: player, commander }], IMPORT_LOSS_PLACEHOLDER));
+      matches.push(this.makeMatch(mode, date, [{ name: player, commander }], IMPORT_LOSS_PLACEHOLDER, format));
     }
     return matches;
   }
@@ -433,7 +434,13 @@ export class ExcelImportService {
     return matches;
   }
 
-  private makeMatch(mode: GameMode, date: string, players: MatchPlayer[], winner: string): Omit<Match, 'id' | 'countsInGeneralStats'> {
-    return { mode, date, players, winner };
+  private makeMatch(
+    mode: GameMode,
+    date: string,
+    players: MatchPlayer[],
+    winner: string,
+    format: DeckFormat | null = 'Commander'
+  ): Omit<Match, 'id' | 'countsInGeneralStats'> {
+    return { mode, format, date, players, winner };
   }
 }
