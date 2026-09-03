@@ -50,7 +50,7 @@ Ort, Beobachtung, Ziel, Grenze. Claude springt direkt in `profile-tab/` und änd
 
 > ✅ „Im Match-Tab steht auf dem Knopf ‚➕ Hinzufügen' — mach daraus ‚Spieler hinzufügen'. Englisch bitte mit."
 
-Bei Textänderungen ist der **wörtliche aktuelle Text** das Wertvollste, was du liefern kannst: Claude findet ihn damit in einem Suchlauf, statt eine 2673-Zeilen-Datei zu durchforsten.
+Bei Textänderungen ist der **wörtliche aktuelle Text** das Wertvollste, was du liefern kannst: Claude findet ihn damit in einem Suchlauf, statt alle Textdateien durchsuchen zu müssen.
 
 ---
 
@@ -60,7 +60,7 @@ Wenn du diese Begriffe benutzt, entfällt die Suche.
 
 | Du sagst …                                         | Claude geht nach …                                    |
 | -------------------------------------------------- | ----------------------------------------------------- |
-| Beschriftung, Text, Übersetzung, „da steht …"      | `src/app/i18n.service.ts` (gezielte Suche)            |
+| Beschriftung, Text, Übersetzung, „da steht …"      | `src/app/i18n/` (je Bereich eine Datei)               |
 | Match-Tab, neues Match erfassen                    | `src/app/match-tab/`                                  |
 | Suche-Tab, Kartensuche, Commander-Suche, Precons   | `src/app/search-tab/`                                 |
 | Statistik-Tab, Auswertungen, Diagramme, Zahlen     | `src/app/stats-tab/`                                  |
