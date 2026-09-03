@@ -112,6 +112,16 @@ export const stats = {
     'stats.qualificationToggle': '▸ Spiele bis zur Qualifikation ({{count}})',
     'stats.qualificationToggleExpanded': '▾ Spiele bis zur Qualifikation ({{count}})',
 
+    // --- Stats-Tab: Gruppenweite Lieblingsfarben & Farbkombinationen ---
+    'stats.colorStatsWeightByGames': 'Nach Partien',
+    'stats.colorStatsWeightByDecks': 'Nach Decks',
+    'stats.colorRankingTitle': '🎨 Lieblingsfarben der Gruppe',
+    'stats.colorRankingHint':
+      'Je weiter außen, desto häufiger steckt die Farbe in den Decks der Gruppe. Farblose Decks zählen auf der sechsten Achse, nicht auf eine Farbe - Precons zählen gar nicht mit.',
+    'stats.colorComboRankingTitle': '🌈 Farbkombinationen der Gruppe',
+    'stats.colorComboRankingHint':
+      'Wie oft welche Farbkombination in den Decks der Gruppe vorkommt - Precons zählen nicht mit.',
+
     // --- Stats-Tab: Danger Zone ---
     'stats.dangerZone': '⚠️ Danger Zone',
     'stats.dangerZoneHint':
@@ -233,6 +243,16 @@ export const stats = {
     'stats.playerQualificationToggleExpanded': '▾ Show players ({{count}})',
     'stats.qualificationToggle': '▸ Games until qualification ({{count}})',
     'stats.qualificationToggleExpanded': '▾ Games until qualification ({{count}})',
+
+    // --- Stats tab: group-wide favorite colors & color combinations ---
+    'stats.colorStatsWeightByGames': 'By games',
+    'stats.colorStatsWeightByDecks': 'By decks',
+    'stats.colorRankingTitle': '🎨 Favorite colors of the group',
+    'stats.colorRankingHint':
+      'The further out, the more often that color is in the group’s decks. Colorless decks count on the sixth axis, not towards a color - precons are excluded entirely.',
+    'stats.colorComboRankingTitle': '🌈 Color combinations of the group',
+    'stats.colorComboRankingHint':
+      'How often each color combination appears in the group’s decks - precons are excluded.',
 
     // --- Stats tab: danger zone ---
     'stats.dangerZone': '⚠️ Danger Zone',
