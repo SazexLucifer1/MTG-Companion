@@ -57,7 +57,7 @@ export const tutorial = {
       'Hier startest du neue Partien und siehst weiter unten deinen kompletten Match-Verlauf. Diese Tour zeigt dir alle Funktionen der Reihe nach.',
     'tutorial.match.mode.title': '🎲 Spielmodus',
     'tutorial.match.mode.text':
-      'Wähle zuerst den Modus: Commander, Two-Headed Giant, Archenemy, Cube, Draft oder Spezialevent. Je nach Wahl erscheinen weiter unten passende Zusatz-Optionen.',
+      'Wähle zuerst den Modus: Commander, Two-Headed Giant, Archenemy, Cube, Draft, Spezialevent oder eines der offiziellen Constructed-Formate wie Standard oder Modern. Je nach Wahl erscheinen weiter unten passende Zusatz-Optionen.',
     'tutorial.match.players.title': '🧑‍🤝‍🧑 Mitspieler auswählen',
     'tutorial.match.players.text':
       'Tippe die Namen aller Mitspieler an. Neue Spieler legst du im Gruppen-Tab an - dort kannst du sie auch mit einem Account verknüpfen.',
@@ -260,7 +260,7 @@ export const tutorial = {
       'This is where you start new games and see your full match history further down. This tour walks through every feature step by step.',
     'tutorial.match.mode.title': '🎲 Game mode',
     'tutorial.match.mode.text':
-      'First pick a mode: Commander, Two-Headed Giant, Archenemy, Cube, Draft or Special Event. Depending on your choice, matching extra options appear further down.',
+      'First pick a mode: Commander, Two-Headed Giant, Archenemy, Cube, Draft, Special Event, or one of the official constructed formats like Standard or Modern. Depending on your choice, matching extra options appear further down.',
     'tutorial.match.players.title': '🧑‍🤝‍🧑 Choose players',
     'tutorial.match.players.text':
       'Tap the names of everyone playing. Add new players in the Group tab - you can also link them to an account there.',
