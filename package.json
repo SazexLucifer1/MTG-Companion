@@ -7,7 +7,10 @@
     "start": "npm run version:generate && ng serve",
     "build": "npm run version:generate && ng build",
     "watch": "npm run version:generate && ng build --watch --configuration development",
-    "test": "ng test"
+    "test": "ng test",
+    "typecheck": "npm run version:generate && ng build --configuration development",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "private": true,
   "packageManager": "npm@11.12.1",

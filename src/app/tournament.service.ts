@@ -6,6 +6,8 @@ import { MtgService } from './mtg.service';
 import { GameSessionService, SelectedDraftSet } from './game-session.service';
 import { GameMode } from './models';
 import { PageVisibilityService } from './page-visibility.service';
+import { DialogService } from './dialog.service';
+import { I18nService } from './i18n.service';
 import { chunk } from './array-utils';
 import {
   ParticipantStatus,
@@ -39,6 +41,8 @@ export class TournamentService {
   private readonly mtg = inject(MtgService);
   private readonly session = inject(GameSessionService);
   private readonly pageVisibility = inject(PageVisibilityService);
+  private readonly dialog = inject(DialogService);
+  private readonly i18n = inject(I18nService);
 
   /** Steuert die Sichtbarkeit des globalen Turnier-Overlays (TournamentPanel), unabhängig davon, ob schon ein Turnier existiert (Erstellungs-Wizard nutzt dasselbe Overlay). */
   readonly panelExpanded = signal(false);
@@ -1371,15 +1375,18 @@ export class TournamentService {
     tournamentMatchId: string,
     winnerEntry: { playerId: string; playerName: string },
     otherEntry: { playerId: string; playerName: string }
-  ): Promise<{ winnerWins: number; otherWins: number }> {
+  ): Promise<{ winnerWins: number; otherWins: number; ok: boolean }> {
     const { data: gameRows, error: gameRowsError } = await supabase
       .from('matches')
       .select('winner_name')
       .eq('tournament_match_id', tournamentMatchId);
 
     if (gameRowsError || !gameRows) {
+      // Bewusst OHNE zu schreiben zurück: mit einem leeren Leseergebnis würde unten sonst
+      // winner_player_id/completed_at auf null gesetzt und damit ein bereits entschiedener Tisch
+      // wieder auf "offen" zurückgedreht.
       console.error('Konnte Spielstand nicht neu berechnen:', gameRowsError);
-      return { winnerWins: 0, otherWins: 0 };
+      return { winnerWins: 0, otherWins: 0, ok: false };
     }
 
     const winnerWins = gameRows.filter((r) => r.winner_name === winnerEntry.playerName).length;
@@ -1411,7 +1418,11 @@ export class TournamentService {
       .eq('id', tournamentMatchId);
     if (winnerError) console.error('Konnte Turnier-Sieger nicht speichern:', winnerError);
 
-    return { winnerWins, otherWins };
+    // ok=false heißt: der Spielstand steht jetzt NICHT so in der Datenbank, wie er hier berechnet
+    // wurde. Die Aufrufer dürfen daraufhin weder den Tisch als entschieden behandeln noch
+    // automatisch das nächste Spiel starten - sonst entsteht die Endlosschleife aus
+    // "speichern schlägt fehl -> Tisch bleibt offen -> nächstes Spiel -> speichern schlägt fehl".
+    return { winnerWins, otherWins, ok: !error && !otherError && !winnerError };
   }
 
   /** Einzelne gespeicherte Spiele eines Tisches (für die nachträgliche "Sieger ändern"-Korrektur bei BO3-Tischen). */
@@ -1449,33 +1460,46 @@ export class TournamentService {
       return false;
     }
 
-    await this.recomputeBo3(tournamentMatchId, match.participants[0], match.participants[1]);
+    const { ok } = await this.recomputeBo3(tournamentMatchId, match.participants[0], match.participants[1]);
     await this.deleteLiveSessionForTable(tournamentMatchId);
     await this.loadRoundsAndMatches(match.tournamentId);
-    return true;
+    return ok;
   }
 
   /** Trägt ein fertig gespieltes Einzelspiel ein und meldet zurück, ob der Tisch damit entschieden ist (BO3 erst ab 2 Siegen, Pods sofort) - siehe handleGameFinished(). */
-  private async recordGameResult(tournamentMatchId: string, matchRowId: string, winnerName: string): Promise<boolean> {
-    if (this.processedGameResults.has(matchRowId)) return false;
+  private async recordGameResult(
+    tournamentMatchId: string,
+    matchRowId: string,
+    winnerName: string
+  ): Promise<{ decided: boolean; ok: boolean }> {
+    if (this.processedGameResults.has(matchRowId)) return { decided: false, ok: true };
+    // Sperre sofort setzen, damit zwei gleichzeitige Durchläufe dasselbe Spiel nicht doppelt
+    // eintragen - bei einem Fehlschlag unten aber wieder zurücknehmen, sonst könnte dieses Spiel
+    // nie mehr nachgetragen werden (z.B. nachdem eine gestörte Datenbank wieder erreichbar ist).
     this.processedGameResults.add(matchRowId);
+    const giveUp = (ok: boolean) => {
+      if (!ok) this.processedGameResults.delete(matchRowId);
+      return { decided: false, ok };
+    };
 
     const match = this.matches().find((m) => m.id === tournamentMatchId);
-    if (!match) return false;
+    if (!match) return giveUp(false);
 
     const isDraw = winnerName === this.session.DRAW;
     let decided = false;
 
     if (match.participants.length === 2) {
       // 1v1 Best-of-3: ein Unentschieden-Einzelspiel zählt für keine Seite, Tisch bleibt offen.
-      if (isDraw) return false;
+      // Das ist kein Fehler, sondern ein gültiges Ergebnis - die Sperre bleibt deshalb bestehen.
+      if (isDraw) return { decided: false, ok: true };
 
       const winnerPlayerId = this.mtg.playerIdFor(winnerName);
       const winnerEntry = match.participants.find((p) => p.playerId === winnerPlayerId);
       const otherEntry = match.participants.find((p) => p.playerId !== winnerPlayerId);
-      if (!winnerEntry || !otherEntry) return false;
+      if (!winnerEntry || !otherEntry) return giveUp(false);
 
-      const { winnerWins, otherWins } = await this.recomputeBo3(tournamentMatchId, winnerEntry, otherEntry);
+      const { winnerWins, otherWins, ok } = await this.recomputeBo3(tournamentMatchId, winnerEntry, otherEntry);
+      if (!ok) return giveUp(false);
       decided = winnerWins >= 2 || otherWins >= 2;
 
       const { error: gameNumberError } = await supabase
@@ -1491,15 +1515,21 @@ export class TournamentService {
           .from('tournament_matches')
           .update({ is_draw: true, completed_at: new Date().toISOString() })
           .eq('id', tournamentMatchId);
-        if (error) console.error('Konnte Unentschieden nicht speichern:', error);
+        if (error) {
+          console.error('Konnte Unentschieden nicht speichern:', error);
+          return giveUp(false);
+        }
       } else {
         const winnerPlayerId = this.mtg.playerIdFor(winnerName);
-        if (!winnerPlayerId) return false;
+        if (!winnerPlayerId) return giveUp(false);
         const { error } = await supabase
           .from('tournament_matches')
           .update({ winner_player_id: winnerPlayerId, winner_source: 'games', completed_at: new Date().toISOString() })
           .eq('id', tournamentMatchId);
-        if (error) console.error('Konnte Turnier-Sieger nicht speichern:', error);
+        if (error) {
+          console.error('Konnte Turnier-Sieger nicht speichern:', error);
+          return giveUp(false);
+        }
       }
 
       const { error: gameNumberError } = await supabase
@@ -1510,7 +1540,7 @@ export class TournamentService {
     }
 
     await this.loadRoundsAndMatches(match.tournamentId);
-    return decided;
+    return { decided, ok: true };
   }
 
   /**
@@ -1523,7 +1553,19 @@ export class TournamentService {
   private async handleGameFinished(tournamentMatchId: string, matchRowId: string, winnerName: string): Promise<void> {
     this.autoAdvancing.set(true);
     try {
-      await this.recordGameResult(tournamentMatchId, matchRowId, winnerName);
+      const { ok } = await this.recordGameResult(tournamentMatchId, matchRowId, winnerName);
+
+      // Konnte das Ergebnis nicht gespeichert werden, steht der Tisch weiterhin auf "offen" - dann
+      // aber NICHT automatisch das nächste Spiel starten: der nächste Versuch würde genauso
+      // scheitern, und das Ganze liefe endlos weiter (Fehler 42P17 in den RLS-Policies, siehe
+      // sql/fix-tournament-rls-recursion-2026-09-03.sql). Stattdessen einmal sichtbar melden und
+      // zurück ins Turnier-Panel, damit man überhaupt wieder herauskommt.
+      if (!ok) {
+        this.openPanel();
+        await this.dialog.alert(this.i18n.t('tournament.msg.saveFailed'));
+        return;
+      }
+
       // Bewusst aus dem frisch neu geladenen Tisch selbst abgeleitet (statt nur aus dem Rückgabewert
       // von recordGameResult) - so bleibt diese Entscheidung immer konsistent mit der Sperre in
       // startGameForMatch(), die einen bereits entschiedenen Tisch ohnehin nicht mehr startet.
@@ -1657,6 +1699,7 @@ export class TournamentService {
     if (!deleted) return false;
 
     const winnerWins = 2;
+    let allRowsCreated = true;
     for (let i = 0; i < winnerWins + loserWins; i++) {
       const thisWinnerName = i < winnerWins ? winnerEntry.playerName : otherEntry.playerName;
       const matchRowId = await this.mtg.addMatch({
@@ -1669,13 +1712,18 @@ export class TournamentService {
       if (matchRowId) {
         const { error } = await supabase.from('matches').update({ tournament_game_number: i + 1 }).eq('id', matchRowId);
         if (error) console.error('Konnte Spielnummer nicht am Match hinterlegen:', error);
+      } else {
+        // Ohne diese Zeile stimmt der Endstand nicht mehr - vorher wurde das stillschweigend
+        // übergangen und die Funktion meldete trotzdem Erfolg.
+        console.error('Konnte Einzelspiel für den manuellen Endstand nicht anlegen.');
+        allRowsCreated = false;
       }
     }
 
-    await this.recomputeBo3(tournamentMatchId, winnerEntry, otherEntry);
+    const { ok } = await this.recomputeBo3(tournamentMatchId, winnerEntry, otherEntry);
     await this.deleteLiveSessionForTable(tournamentMatchId);
     await this.loadRoundsAndMatches(match.tournamentId);
-    return true;
+    return ok && allRowsCreated;
   }
 
   /**

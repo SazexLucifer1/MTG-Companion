@@ -78,6 +78,8 @@ export const tournament = {
       'Du bist noch nicht Mitglied dieser Gruppe. Tritt zuerst im Gruppe-Tab per Gruppen-Code bei, dann kannst du diesen Turnier-Code eingeben.',
     'tournament.msg.noPlayerProfile': 'Kein Spieler-Profil in dieser Gruppe gefunden.',
     'tournament.msg.joinFailed': 'Beitritt fehlgeschlagen.',
+    'tournament.msg.saveFailed':
+      'Das Ergebnis konnte nicht gespeichert werden - es wurde nichts geändert. Bitte noch einmal versuchen; klappt es weiterhin nicht, melde es über „Feedback“ im Profil.',
     'tournament.msg.joinSuccess': 'Erfolgreich beigetreten!',
     'tournament.cancelButton': 'Turnier abbrechen',
     'tournament.confirmCancel':
@@ -189,6 +191,8 @@ export const tournament = {
       "You're not a member of this group yet. Join with the group's invite code in the Group tab first, then enter this tournament code.",
     'tournament.msg.noPlayerProfile': 'No player profile found in this group.',
     'tournament.msg.joinFailed': 'Failed to join.',
+    'tournament.msg.saveFailed':
+      'The result could not be saved - nothing was changed. Please try again; if it keeps failing, report it via “Feedback” in your profile.',
     'tournament.msg.joinSuccess': 'Successfully joined!',
     'tournament.cancelButton': 'Cancel tournament',
     'tournament.confirmCancel':
