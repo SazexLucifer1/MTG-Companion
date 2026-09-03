@@ -5,21 +5,13 @@
  */
 export const LIVE_TRACKING_START_DATE = new Date('2026-07-17');
 
-export type GameMode = 'Commander' | 'Two-Headed Giant' | 'Archenemy' | 'Cube' | 'Draft' | 'Spezialevent';
-
-export const GAME_MODES: GameMode[] = ['Commander', 'Two-Headed Giant', 'Archenemy', 'Cube', 'Draft', 'Spezialevent'];
-
-export type TeamName = 'Team 1' | 'Team 2' | 'Team 3' | 'Team 4' | 'Team 5';
-
-export const TEAM_OPTIONS: TeamName[] = ['Team 1', 'Team 2', 'Team 3', 'Team 4', 'Team 5'];
-
 /**
  * Offizielle, von Wizards of the Coast mit eigener Banned/Restricted-Liste geführte
  * Spielformate - zur Auswahl beim Anlegen/Bearbeiten eines Decks (decks.format, siehe
- * DeckService.saveDeck()/updateDeckInfo()). Bewusst NICHT übersetzt (wie GameMode oben) - das
- * sind feste Format-Eigennamen, keine UI-Texte. Limited-Formate (Draft/Sealed) und rein
- * community-geführte Varianten (Duel Commander, Oathbreaker) sind bewusst ausgeklammert, siehe
- * PR-Beschreibung.
+ * DeckService.saveDeck()/updateDeckInfo()) UND als Teilmenge der Spielmodi (GameMode) unten, mit
+ * denen ein Match erfasst werden kann. Bewusst NICHT übersetzt - das sind feste
+ * Format-Eigennamen, keine UI-Texte. Limited-Formate (Draft/Sealed) und rein community-geführte
+ * Varianten (Duel Commander, Oathbreaker) sind bewusst ausgeklammert, siehe PR-Beschreibung.
  */
 export type DeckFormat =
   | 'Standard'
@@ -51,6 +43,29 @@ export const DECK_FORMATS: DeckFormat[] = [
   'Explorer',
   'Timeless',
 ];
+
+/**
+ * Spielmodi, mit denen ein Match erfasst werden kann - die nicht deck-spezifischen Multiplayer-
+ * Varianten (Two-Headed Giant, Archenemy, Cube, Draft, Spezialevent) PLUS alle offiziellen
+ * MTG-Formate aus DeckFormat oben (Standard, Modern, Commander, ...). Bewusst von DeckFormat
+ * abgeleitet statt eine zweite, unabhängige Liste zu pflegen - eine Erweiterung von DECK_FORMATS
+ * zieht so automatisch hier mit, ohne dass beide Listen auseinanderlaufen können.
+ */
+export type GameMode = 'Two-Headed Giant' | 'Archenemy' | 'Cube' | 'Draft' | 'Spezialevent' | DeckFormat;
+
+export const GAME_MODES: GameMode[] = [
+  'Commander',
+  'Two-Headed Giant',
+  'Archenemy',
+  'Cube',
+  'Draft',
+  'Spezialevent',
+  ...DECK_FORMATS.filter((f) => f !== 'Commander'),
+];
+
+export type TeamName = 'Team 1' | 'Team 2' | 'Team 3' | 'Team 4' | 'Team 5';
+
+export const TEAM_OPTIONS: TeamName[] = ['Team 1', 'Team 2', 'Team 3', 'Team 4', 'Team 5'];
 
 export interface MatchPlayer {
   name: string;
