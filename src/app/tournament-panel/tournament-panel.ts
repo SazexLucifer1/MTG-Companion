@@ -282,10 +282,20 @@ export class TournamentPanel {
     return Math.round(value * 100);
   }
 
-  /** Organizer oder eine der tatsächlich am Tisch spielenden Personen dürfen das Spiel starten/den Sieger festlegen - so kann die veranstaltende Person das auch stellvertretend für accountlose Personen tun. */
+  /**
+   * Organizer, Gruppen-Host oder eine der tatsächlich am Tisch spielenden Personen dürfen das Spiel
+   * starten/den Sieger festlegen - so kann die veranstaltende Person das auch stellvertretend für
+   * accountlose Personen tun. Der Gruppen-Host muss mit drin sein, weil die Datenbank-Policy ihn
+   * ausdrücklich erlaubt (siehe security-fixes-2026-08-26.sql): ohne ihn sah ein Host, der das
+   * Turnier nicht selbst angelegt hat, den Knopf gar nicht erst.
+   */
   canManageMatch(match: TournamentMatch): boolean {
     const myName = this.mtg.myPlayerName();
-    return this.tournament.isOrganizer() || match.participants.some((p) => p.playerName === myName);
+    return (
+      this.tournament.isOrganizer() ||
+      this.groupService.isOwner() ||
+      match.participants.some((p) => p.playerName === myName)
+    );
   }
 
   winnerNameFor(match: TournamentMatch): string | null {
@@ -308,30 +318,41 @@ export class TournamentPanel {
     this.gamesForCorrection.set([]);
   }
 
-  async pickWinner(match: TournamentMatch, winnerPlayerId: string): Promise<void> {
-    if (match.winnerPlayerId) {
-      await this.tournament.correctWinner(match.id, winnerPlayerId);
-    } else {
-      await this.tournament.setManualWinner(match.id, winnerPlayerId);
+  /**
+   * Schließt die Sieger-Auswahl nur bei Erfolg. Vorher wurde der Rückgabewert weggeworfen und der
+   * Dialog in jedem Fall geschlossen - ein fehlgeschlagenes Speichern sah deshalb exakt so aus wie
+   * ein erfolgreiches, nämlich als würde gar nichts passieren.
+   */
+  private async applyWinnerChoice(action: Promise<boolean>): Promise<void> {
+    if (await action) {
+      this.closeWinnerPicker();
+      return;
     }
-    this.closeWinnerPicker();
+    await this.dialog.alert(this.i18n.t('tournament.msg.saveFailed'));
+  }
+
+  async pickWinner(match: TournamentMatch, winnerPlayerId: string): Promise<void> {
+    await this.applyWinnerChoice(
+      match.winnerPlayerId
+        ? this.tournament.correctWinner(match.id, winnerPlayerId)
+        : this.tournament.setManualWinner(match.id, winnerPlayerId)
+    );
   }
 
   /** Trägt einen BO3-Endstand direkt ein (2:0/2:1), ohne dass die Einzelspiele über den Ingame-Tracker gespielt wurden. */
   async pickScore(match: TournamentMatch, winnerPlayerId: string, loserWins: 0 | 1): Promise<void> {
-    await this.tournament.setManualScore(match.id, winnerPlayerId, loserWins);
-    this.closeWinnerPicker();
+    await this.applyWinnerChoice(this.tournament.setManualScore(match.id, winnerPlayerId, loserWins));
   }
 
   async pickDraw(matchId: string): Promise<void> {
-    await this.tournament.setManualDraw(matchId);
-    this.closeWinnerPicker();
+    await this.applyWinnerChoice(this.tournament.setManualDraw(matchId));
   }
 
   /** Korrigiert, wer ein einzelnes bereits gespeichertes Spiel innerhalb eines BO3-Tisches gewonnen hat - lädt die Liste danach neu, damit man bei Bedarf gleich noch ein weiteres Spiel korrigieren kann. */
   async correctGame(tournamentMatchId: string, gameRowId: string, newWinnerName: string): Promise<void> {
-    await this.tournament.correctGameWinner(tournamentMatchId, gameRowId, newWinnerName);
+    const ok = await this.tournament.correctGameWinner(tournamentMatchId, gameRowId, newWinnerName);
     this.gamesForCorrection.set(await this.tournament.fetchGamesFor(tournamentMatchId));
+    if (!ok) await this.dialog.alert(this.i18n.t('tournament.msg.saveFailed'));
   }
 
   close(): void {
