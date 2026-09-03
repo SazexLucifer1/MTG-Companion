@@ -118,6 +118,32 @@ export interface CardAndColorStats {
   colorComboRanking: ColorComboStat[];
 }
 
+/**
+ * Ein Eintrag der weltweiten "Decks"- bzw. "Commander"-Rangliste (GlobalStats-Komponente) - kommt
+ * aus der SECURITY DEFINER-Funktion global_deck_commander_stats() (sql/global-stats-functions-*
+ * .sql), da RLS einen normalen Client-Query auf die eigenen Gruppen beschränkt. Bewusst OHNE
+ * Spielername ("gespielt von X") - das würde erstmals Namen aus fremden, nie für eine weltweite
+ * Ansicht freigegebenen Gruppen offenlegen. Zwei getrennte Interfaces statt einem gemeinsamen, weil
+ * die beiden Ranglisten in der UI bewusst getrennt sind (anders als im Gruppen-Scope).
+ */
+export interface GlobalDeckStat {
+  /** Für den "Ansehen"-Sprung zur Deck-Detailansicht. */
+  deckId: string;
+  name: string;
+  commanderImageUrl: string | null;
+  games: number;
+  wins: number;
+  winRate: number;
+}
+
+export interface GlobalCommanderStat {
+  name: string;
+  commanderImageUrl: string | null;
+  games: number;
+  wins: number;
+  winRate: number;
+}
+
 export interface DeckCard {
   cardName: string;
   quantity: number;
@@ -1262,6 +1288,88 @@ export class DeckService {
       result.set(row.id, (row.color_identity as string[] | null) ?? []);
     }
     return result;
+  }
+
+  /**
+   * Weltweite "Decks & Commander"-Rangliste über ALLE Spieler der Website hinweg (Stats-Tab,
+   * Global-Ansicht) - ruft die serverseitige Funktion global_deck_commander_stats() auf (siehe
+   * sql/global-stats-functions-*.sql). Muss einmalig im Supabase-SQL-Editor angelegt werden -
+   * bis dahin liefert der Aufruf einen Fehler, der hier abgefangen wird (leere Liste statt Absturz).
+   */
+  async getGlobalDeckCommanderStats(): Promise<{
+    decks: GlobalDeckStat[];
+    commanders: GlobalCommanderStat[];
+  }> {
+    const empty = { decks: [], commanders: [] };
+    const { data, error } = await supabase.rpc('global_deck_commander_stats');
+
+    if (error || !data) {
+      console.error('Konnte weltweite Decks&Commander-Statistik nicht laden:', error);
+      return empty;
+    }
+
+    const decks: GlobalDeckStat[] = [];
+    const commanders: GlobalCommanderStat[] = [];
+    for (const row of data as any[]) {
+      const games = Number(row.games);
+      const wins = Number(row.wins);
+      const winRate = games > 0 ? (wins / games) * 100 : 0;
+      if (row.bucket === 'deck') {
+        decks.push({
+          deckId: row.deck_id,
+          name: row.name,
+          commanderImageUrl: row.commander_image_url,
+          games,
+          wins,
+          winRate,
+        });
+      } else {
+        commanders.push({
+          name: row.name,
+          commanderImageUrl: row.commander_image_url,
+          games,
+          wins,
+          winRate,
+        });
+      }
+    }
+    return { decks, commanders };
+  }
+
+  /**
+   * Weltweite Lieblingsfarben/Farbkombinationen über ALLE Spieler der Website hinweg (Stats-Tab,
+   * Global-Ansicht) - ruft global_color_and_combo_stats() auf (siehe
+   * sql/global-stats-functions-*.sql). Liefert dieselbe ColorStat[]/ColorComboStat[]-Form wie
+   * getCardAndColorStats(), damit die vorhandene Radar-/Kombinations-Darstellung (inkl.
+   * Partien/Decks-Umschalter) unverändert wiederverwendet werden kann.
+   */
+  async getGlobalColorAndComboStats(): Promise<{
+    colorRanking: ColorStat[];
+    colorComboRanking: ColorComboStat[];
+  }> {
+    const empty = { colorRanking: [], colorComboRanking: [] };
+    const { data, error } = await supabase.rpc('global_color_and_combo_stats');
+
+    if (error || !data) {
+      console.error('Konnte weltweite Farbstatistik nicht laden:', error);
+      return empty;
+    }
+
+    const rows = data as any[];
+    const COLOR_AXES: readonly ColorStat['color'][] = [...FILTER_COLORS, COLORLESS];
+    const colorRanking: ColorStat[] = COLOR_AXES.map((color) => {
+      const row = rows.find((r) => r.kind === 'axis' && r.colors?.[0] === color);
+      return { color, gameCount: Number(row?.games ?? 0), deckCount: Number(row?.decks ?? 0) };
+    });
+    const colorComboRanking: ColorComboStat[] = rows
+      .filter((r) => r.kind === 'combo')
+      .map((r) => ({
+        colors: r.colors as ColorComboStat['colors'],
+        gameCount: Number(r.games),
+        deckCount: Number(r.decks),
+      }));
+
+    return { colorRanking, colorComboRanking };
   }
 
   /**

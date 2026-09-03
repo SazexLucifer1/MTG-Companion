@@ -113,12 +113,40 @@
   <app-tournament-history />
 } @else {
 
+<div class="stats-scope-toggle segmented">
+  <button [class.active]="viewScope() === 'group'" (click)="setViewScope('group')">
+    {{ i18n.t('stats.viewScopeGroup') }}
+  </button>
+  <button [class.active]="viewScope() === 'global'" (click)="setViewScope('global')">
+    {{ i18n.t('stats.viewScopeGlobal') }}
+  </button>
+</div>
+
+@if (viewScope() === 'global') {
+
+<app-global-stats />
+
+} @else {
+
 @if (mtg.allModesHiddenForMe() && !groupService.isOwner()) {
 <section class="glass-card">
   <h2>{{ i18n.t('stats.title') }}</h2>
   <p class="hint">{{ i18n.t('stats.lockedHint') }}</p>
 </section>
 } @else {
+
+@if (groupService.myGroups().length > 1) {
+<section class="glass-card">
+  <p class="hint">{{ i18n.t('stats.groupSwitcherHint') }}</p>
+  <div class="chip-row">
+    @for (group of groupService.myGroups(); track group.id) {
+    <button class="glass-chip" [class.active]="effectiveViewedGroupId() === group.id" (click)="setViewedGroup(group.id)">
+      {{ group.name }}
+    </button>
+    }
+  </div>
+</section>
+}
 
 @if (mtg.history().length === 0) {
 <section class="glass-card">
@@ -715,4 +743,5 @@
 </div>
 }
 
+}
 }

@@ -1,0 +1,159 @@
+@use '../../styles/breakpoints' as bp;
+
+// Dieselben Klassen wie im Stats-Tab (stats-tab.scss) - Angular kapselt Komponenten-Styles, eine
+// gemeinsame Datei für dieses eine Muster wäre eine größere, hier nicht angefragte
+// Umstrukturierung, deshalb lokal dupliziert (gleiche Begründung wie schon bei .combo-grid dort).
+
+.sort-toggle {
+  margin: 8px 0 4px;
+}
+
+.ranking {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+
+  li {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    grid-template-areas:
+      'rank name rate'
+      'rank detail rate'
+      'rank bar bar';
+    column-gap: 10px;
+    row-gap: 4px;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+
+    &:last-child {
+      border-bottom: none;
+    }
+  }
+
+  .rank {
+    grid-area: rank;
+    font-size: 1.3rem;
+    min-width: 34px;
+    text-align: center;
+  }
+
+  .name {
+    grid-area: name;
+    font-weight: 600;
+  }
+
+  .detail {
+    grid-area: detail;
+    font-size: 0.82rem;
+    opacity: 0.75;
+  }
+
+  .rate {
+    grid-area: rate;
+    font-weight: 700;
+    color: var(--accent);
+  }
+
+  app-meter {
+    grid-area: bar;
+  }
+}
+
+.qualification {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+
+  li {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    align-items: center;
+    gap: var(--sp-2) var(--sp-3);
+    padding: var(--sp-4) 0;
+    border-bottom: 1px solid var(--divider);
+
+    &:last-child {
+      border-bottom: none;
+    }
+  }
+
+  app-meter {
+    grid-column: 1 / -1;
+  }
+
+  .name {
+    font-weight: 600;
+    min-width: 0;
+  }
+
+  .detail {
+    font-size: 0.82rem;
+    opacity: 0.75;
+    white-space: nowrap;
+  }
+
+  .needed {
+    font-weight: 700;
+    color: var(--gold);
+    font-size: 0.85rem;
+    white-space: nowrap;
+  }
+}
+
+.combo-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  column-gap: var(--sp-6);
+
+  li {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: var(--sp-2) var(--sp-3);
+    padding: var(--sp-4) 0;
+    border-bottom: 1px solid var(--divider);
+
+    &:last-child {
+      border-bottom: none;
+    }
+  }
+
+  app-meter {
+    grid-column: 1 / -1;
+  }
+
+  .combo-name {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    flex-wrap: wrap;
+    font-weight: 600;
+    min-width: 0;
+  }
+
+  .detail {
+    font-size: 0.82rem;
+    opacity: 0.75;
+    white-space: nowrap;
+  }
+
+  @include bp.up(md) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  @include bp.up(lg) {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+// Gleiche Obergrenze wie im Stats-Tab - diese Komponente ersetzt ihn für abgemeldete Besucher
+// direkt in app.html, soll also nicht breiter wirken.
+:host {
+  display: block;
+  max-width: var(--content-measure);
+  margin: 0 auto;
+}

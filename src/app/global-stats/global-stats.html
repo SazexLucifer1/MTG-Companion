@@ -1,0 +1,175 @@
+@if (!auth.currentUser()) {
+<app-login-required [message]="i18n.t('stats.globalLoginHint')" />
+}
+
+<section class="glass-card">
+  <h2>{{ i18n.t('stats.viewScopeGlobal') }}</h2>
+  <p class="hint">{{ i18n.t('stats.globalDecksAndCommandersHint') }}</p>
+</section>
+
+@if (loading()) {
+<section class="glass-card">
+  <p class="hint">{{ i18n.t('stats.globalLoading') }}</p>
+</section>
+} @else {
+
+@if (decks.ranked().length > 0 || decks.inQualification().length > 0) {
+<section class="glass-card" data-tutorial="stats-global-decks">
+  <h2>{{ i18n.t('stats.globalDecksTitle') }}</h2>
+  <div class="segmented sort-toggle">
+    <button [class.active]="decks.sortMode() === 'winRate'" (click)="decks.sortMode.set('winRate')">{{ i18n.t('sort.winRate') }}</button>
+    <button [class.active]="decks.sortMode() === 'wins'" (click)="decks.sortMode.set('wins')">{{ i18n.t('sort.wins') }}</button>
+    <button [class.active]="decks.sortMode() === 'games'" (click)="decks.sortMode.set('games')">{{ i18n.t('sort.games') }}</button>
+  </div>
+  <ul class="ranking">
+    @for (e of decks.paged(); track e.deckId; let i = $index) {
+    <li>
+      <span class="rank">{{ medal(decks.effectivePage() * 10 + i) }}</span>
+      <span class="name card-name-cell">
+        @if (e.commanderImageUrl; as img) {
+        <button type="button" class="card-thumb" (click)="cardPreview.open(img, null, e.name)">
+          <app-card-image [compact]="true" [imageUrl]="img" [alt]="e.name" />
+        </button>
+        }
+        <span class="card-name-text">{{ e.name }}</span>
+        @if (auth.currentUser()) {
+        <button type="button" class="glass-button small" (click)="openDeck(e.deckId)">{{ i18n.t('deck.view') }}</button>
+        }
+      </span>
+      <span class="detail">{{ e.wins }} / {{ e.games }} {{ i18n.t('stats.wins') }}</span>
+      <span class="rate">{{ e.winRate | number: '1.0-0' }}%</span>
+      <app-meter [value]="barValue(e, decks.sortMode())" [max]="barMax(decks.ranked(), decks.sortMode())" />
+    </li>
+    }
+  </ul>
+  <app-pager [page]="decks.page()" [totalItems]="decks.ranked().length" (pageChange)="decks.page.set($event)" />
+  @if (decks.inQualification().length > 0) {
+  <button class="glass-chip" (click)="decks.toggleQualification()">
+    {{ decks.showQualification() ? i18n.t('stats.qualificationToggleExpanded', { count: decks.inQualification().length }) : i18n.t('stats.qualificationToggle', { count: decks.inQualification().length }) }}
+  </button>
+  } @if (decks.showQualification()) {
+  <ul class="qualification">
+    @for (e of decks.pagedQualification(); track e.deckId) {
+    <li>
+      <span class="name card-name-cell">
+        @if (e.commanderImageUrl; as img) {
+        <button type="button" class="card-thumb" (click)="cardPreview.open(img, null, e.name)">
+          <app-card-image [compact]="true" [imageUrl]="img" [alt]="e.name" />
+        </button>
+        }
+        <span class="card-name-text">{{ e.name }}</span>
+      </span>
+      <span class="detail">{{ e.games }} / {{ qualificationThreshold }} {{ i18n.t('stats.games') }}</span>
+      <span class="needed">{{ i18n.t('stats.stillNeeded', { count: e.gamesNeeded }) }}</span>
+      <app-meter [value]="e.games" [max]="qualificationThreshold" />
+    </li>
+    }
+  </ul>
+  <app-pager
+    [page]="decks.qualPage()"
+    [totalItems]="decks.inQualification().length"
+    (pageChange)="decks.qualPage.set($event)"
+  />
+  }
+</section>
+}
+
+@if (commanders.ranked().length > 0 || commanders.inQualification().length > 0) {
+<section class="glass-card" data-tutorial="stats-global-commanders">
+  <h2>{{ i18n.t('stats.globalCommandersTitle') }}</h2>
+  <div class="segmented sort-toggle">
+    <button [class.active]="commanders.sortMode() === 'winRate'" (click)="commanders.sortMode.set('winRate')">{{ i18n.t('sort.winRate') }}</button>
+    <button [class.active]="commanders.sortMode() === 'wins'" (click)="commanders.sortMode.set('wins')">{{ i18n.t('sort.wins') }}</button>
+    <button [class.active]="commanders.sortMode() === 'games'" (click)="commanders.sortMode.set('games')">{{ i18n.t('sort.games') }}</button>
+  </div>
+  <ul class="ranking">
+    @for (e of commanders.paged(); track e.name; let i = $index) {
+    <li>
+      <span class="rank">{{ medal(commanders.effectivePage() * 10 + i) }}</span>
+      <span class="name card-name-cell">
+        @if (e.commanderImageUrl; as img) {
+        <button type="button" class="card-thumb" (click)="cardPreview.open(img, null, e.name)">
+          <app-card-image [compact]="true" [imageUrl]="img" [alt]="e.name" />
+        </button>
+        }
+        <span class="card-name-text">{{ e.name }}</span>
+      </span>
+      <span class="detail">{{ e.wins }} / {{ e.games }} {{ i18n.t('stats.wins') }}</span>
+      <span class="rate">{{ e.winRate | number: '1.0-0' }}%</span>
+      <app-meter [value]="barValue(e, commanders.sortMode())" [max]="barMax(commanders.ranked(), commanders.sortMode())" />
+    </li>
+    }
+  </ul>
+  <app-pager [page]="commanders.page()" [totalItems]="commanders.ranked().length" (pageChange)="commanders.page.set($event)" />
+  @if (commanders.inQualification().length > 0) {
+  <button class="glass-chip" (click)="commanders.toggleQualification()">
+    {{ commanders.showQualification() ? i18n.t('stats.qualificationToggleExpanded', { count: commanders.inQualification().length }) : i18n.t('stats.qualificationToggle', { count: commanders.inQualification().length }) }}
+  </button>
+  } @if (commanders.showQualification()) {
+  <ul class="qualification">
+    @for (e of commanders.pagedQualification(); track e.name) {
+    <li>
+      <span class="name card-name-cell">
+        @if (e.commanderImageUrl; as img) {
+        <button type="button" class="card-thumb" (click)="cardPreview.open(img, null, e.name)">
+          <app-card-image [compact]="true" [imageUrl]="img" [alt]="e.name" />
+        </button>
+        }
+        <span class="card-name-text">{{ e.name }}</span>
+      </span>
+      <span class="detail">{{ e.games }} / {{ qualificationThreshold }} {{ i18n.t('stats.games') }}</span>
+      <span class="needed">{{ i18n.t('stats.stillNeeded', { count: e.gamesNeeded }) }}</span>
+      <app-meter [value]="e.games" [max]="qualificationThreshold" />
+    </li>
+    }
+  </ul>
+  <app-pager
+    [page]="commanders.qualPage()"
+    [totalItems]="commanders.inQualification().length"
+    (pageChange)="commanders.qualPage.set($event)"
+  />
+  }
+</section>
+}
+
+@if (rankedColorCombos().length > 0) {
+<div class="segmented sort-toggle">
+  <button [class.active]="colorStatsWeightMode() === 'games'" (click)="setColorStatsWeightMode('games')">
+    {{ i18n.t('stats.colorStatsWeightByGames') }}
+  </button>
+  <button [class.active]="colorStatsWeightMode() === 'decks'" (click)="setColorStatsWeightMode('decks')">
+    {{ i18n.t('stats.colorStatsWeightByDecks') }}
+  </button>
+</div>
+
+<section class="glass-card">
+  <h2>{{ i18n.t('stats.colorRankingTitleGlobal') }}</h2>
+  <p class="hint">{{ i18n.t('stats.colorRankingHintGlobal') }}</p>
+  <app-radar-chart [data]="colorRadarChart()" />
+</section>
+
+<section class="glass-card">
+  <h2>{{ i18n.t('stats.colorComboRankingTitleGlobal') }}</h2>
+  <p class="hint">{{ i18n.t('stats.colorComboRankingHintGlobal') }}</p>
+  <ul class="combo-grid">
+    @for (combo of rankedColorCombos(); track combo.colors.join('')) {
+      <li>
+        <span class="combo-name">
+          @if (combo.colors.length === 0) {
+            <app-mana-symbol symbol="C" />
+          } @else {
+            @for (c of comboColors(combo.colors); track c) {
+              <app-mana-symbol [symbol]="c" />
+            }
+          }
+          {{ colorComboLabel(combo.colors) }}
+        </span>
+        <span class="detail">{{ colorCountFor(combo) }}×</span>
+        <app-meter [value]="colorCountFor(combo)" [max]="maxColorComboCount()" />
+      </li>
+    }
+  </ul>
+</section>
+}
+
+}

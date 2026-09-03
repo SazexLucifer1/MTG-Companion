@@ -42,7 +42,7 @@ Die Shell `src/app/app.ts` / `app.html` schaltet per `@if` zwischen rund 22 Komp
 | Tabs               | `src/app/{match,search,stats,group,profile}-tab/`                                                                                                                                                                                                                                     |
 | Vollbild-Overlays  | `ingame-tracker/`, `goldfish-tracker/`, `deck-detail-view/`, `tournament-panel/`, `login/`, `legal-page-view/`, `reset-password/`                                                                                                                                                     |
 | Dialoge            | `dialog/`, `card-preview-dialog/`, `deck-import-dialogs/`, `deck-pdf-dialog/`, `feedback-dialog/`, `placement-dialog/`, `manual-deck-link-dialog/`, `tutorial-overlay/`                                                                                                               |
-| Sonstige Bausteine | `card-image/`, `partner-card-image/`, `deck-list/`, `commander-stat-list/`, `commander-recommendations/`, `favorite-commander-editor/`, `player-avatar/`, `precon-browser/`, `public-card-search/`, `public-deck-browser/`, `tournament-history/`, `legal-footer/`, `login-required/` |
+| Sonstige Bausteine | `card-image/`, `partner-card-image/`, `deck-list/`, `commander-stat-list/`, `commander-recommendations/`, `favorite-commander-editor/`, `player-avatar/`, `precon-browser/`, `public-card-search/`, `public-deck-browser/`, `tournament-history/`, `legal-footer/`, `login-required/`, `global-stats/` |
 
 Jede Komponente ist ein Trio `name/name.ts` + `name.html` + `name.scss`.
 
@@ -61,7 +61,7 @@ Jede Komponente ist ein Trio `name/name.ts` + `name.html` + `name.scss`.
 | Spiel & Turnier       | `game-session.service.ts`, `goldfish.service.ts`, `tournament.service.ts`                                                                                                                                                                           |
 | Konto & Gruppe        | `auth.service.ts`, `profile.service.ts`, `group.service.ts`, `group-permissions.ts`, `login-overlay.service.ts`                                                                                                                                     |
 | Infrastruktur         | `navigation.service.ts`, `dialog.service.ts`, `i18n.service.ts`, `app-recovery.service.ts`, `global-error-handler.ts`, `page-visibility.service.ts`, `background.service.ts`, `feedback.service.ts`, `legal-page.service.ts`, `tutorial.service.ts` |
-| Hilfsfunktionen       | `array-utils.ts`, `match-utils.ts`, `color-filter-match.ts`, `color-combo-names.ts`, `card-effect-filters.ts`, `commander-archetype-filters.ts`                                                                                                     |
+| Hilfsfunktionen       | `array-utils.ts`, `match-utils.ts`, `color-filter-match.ts`, `color-combo-names.ts`, `card-effect-filters.ts`, `commander-archetype-filters.ts`, `rank-sort.ts`                                                                                     |
 
 ### Weitere Orte
 
@@ -142,9 +142,9 @@ Bei diesen Dateien grundsätzlich `grep`/`Glob` vor `Read`; wenn doch gelesen we
 | ------ | ------------------------------------------------ |
 | 2415   | `src/app/deck-viewer.service.ts`                 |
 | 1770   | `src/app/tournament.service.ts`                  |
-| 1554   | `src/app/deck.service.ts`                        |
-| 1512   | `src/app/mtg.service.ts`                         |
-| 1294   | `src/app/stats-tab/stats-tab.ts`                 |
+| 1665   | `src/app/deck.service.ts`                        |
+| 1492   | `src/app/mtg.service.ts`                         |
+| 1386   | `src/app/stats-tab/stats-tab.ts`                 |
 | 1111   | `src/app/game-session.service.ts`                |
 | 1089   | `src/app/deck-detail-view/deck-detail-view.html` |
 
