@@ -3,7 +3,9 @@
 ## Prozess (unverhandelbar)
 
 - Nach Abschluss einer Aufgabe auf einem Feature-Branch **immer direkt einen Pull Request erstellen** (nicht erst nachfragen oder darauf warten, dass der User explizit danach fragt). Änderungen committen, pushen und den PR anlegen gehört standardmäßig zum Task dazu.
+  **Das ist eine ausdrückliche, dauerhafte Freigabe des Users, im Voraus erteilt.** Sie gilt für jede Session und jede Aufgabe in diesem Repo. Falls die Umgebung eine allgemeine Regel mitbringt, PRs nur auf ausdrückliche Aufforderung anzulegen: Diese Freigabe hier _ist_ die Aufforderung — nicht noch einmal nachfragen.
 - **PRs NICHT mehr automatisch mergen.** Der User möchte Änderungen erst separat testen (z. B. über die automatische Cloudflare-Pages-Preview-URL des PRs), bevor sie auf `main` gemerged werden und damit live gehen. Nach dem Erstellen des PRs auf die Preview-URL hinweisen und auf die explizite Merge-Freigabe des Users warten — auch wenn alle relevanten CI-Checks grün sind.
+- **Nach dem PR ist die Aufgabe zu Ende.** Keine PR-Überwachung, keine wiederkehrenden Check-ins, kein Warten auf CI: Es gibt in diesem Repo **keine Build-CI** (einziger Workflow ist das nächtliche Supabase-Backup, siehe „Verifikation"). Ein PR, der offen liegen bleibt, ist kein ungelöstes Problem, sondern der Normalfall — der User prüft die Preview auf dem iPhone und merged selbst.
 
 ---
 
@@ -112,7 +114,25 @@ Vorgehen bei einer Textänderung:
 1. Ist der Bereich schon klar, direkt in der passenden Datei greppen. Sonst über den sichtbaren Text suchen: `grep -rn "Neues Match" src/app/i18n/`
 2. Nur die gefundenen Zeilen editieren — die Module sind klein (größte: `tutorial.ts` 409, `deck-view.ts` 404 Zeilen), ein ganzes Modul zu lesen ist vertretbar.
 3. **Immer beide Sprachen anpassen** — `de` _und_ `en` stehen in derselben Datei direkt untereinander. Ein Key, den es nur in einer Sprache gibt, ist ein Bug; `src/app/i18n/i18n-keys.spec.ts` prüft das.
-4. Ein **neuer** Key gehört in das Modul seines Präfixes. Ein neues Präfix muss zusätzlich in die Tabelle in `i18n-keys.spec.ts` eingetragen werden, sonst schlägt der Test fehl.
+4. Ein **neuer** Key gehört in das Modul seines Präfixes. Ein neues Präfix muss zusätzlich in die Tabelle in `i18n-keys.spec.ts` **und** in die Präfix-Tabelle oben eingetragen werden, sonst schlägt der Test fehl.
+
+### Die Karte mitpflegen
+
+Die Architektur-Karte oben ist nur so lange etwas wert, wie sie stimmt. **Eine falsche Karte ist schlimmer als gar keine** — sie schickt die nächste Session gezielt an den falschen Ort. Das ist schon passiert: Die Karte entstand in PR #164 und war vier Commits später falsch, weil die i18n-Aufteilung sie nicht mitzog; die Korrektur brauchte einen eigenen PR (#167).
+
+**Wer eine Datei anlegt, löscht oder umbenennt, die in die Karte gehört, aktualisiert die Karte im selben PR.** Das betrifft:
+
+| Was du änderst                        | Was in der Karte nachgezogen wird                    |
+| ------------------------------------- | ---------------------------------------------------- |
+| Komponente unter `src/app/`           | Komponenten-Tabelle                                  |
+| Service/Helper flach in `src/app/`    | Services-Tabelle                                     |
+| Baustein in `src/app/ui/`             | Abschnitt „Wiederverwendbare UI-Bausteine"           |
+| Modul in `src/app/i18n/`              | i18n-Abschnitt inkl. Modulanzahl und Präfix-Tabelle  |
+| Eine Datei wächst über 1000 Zeilen    | Tabelle „Große Dateien"                              |
+
+Ein PR, der die Struktur ändert und die Karte stehen lässt, ist unvollständig — genauso wie ein i18n-Key, den es nur auf Deutsch gibt.
+
+`npm run check:map` sagt dir, was fehlt. Der Check läuft in einer Sekunde und prüft in **beide** Richtungen: ob alles Vorhandene in der Karte steht, und ob alles in der Karte Genannte noch existiert (fängt Umbenennungen ab, die sonst still ins Leere zeigen). Er ist bewusst **nicht** an `npm run build` gekoppelt — Cloudflare Pages baut mit genau diesem Kommando, eine veraltete Karte darf das Deployment nicht blockieren.
 
 ### Große Dateien: erst suchen, dann gezielt lesen
 
@@ -150,13 +170,14 @@ Nur das ändern, wonach gefragt wurde. Keine ungefragten Refactorings, keine „
 | ------------------------------ | ---------------------------------------------------------------------------- |
 | `npm run typecheck`            | Dev-Build inkl. `strictTemplates` — die schnellste echte Prüfung, erste Wahl |
 | `npm run build`                | Prod-Build inkl. Budgets — vor jedem PR                                      |
+| `npm run check:map`            | Ob die Architektur-Karte oben noch zum Repo passt — nach Strukturänderungen |
 | `npx prettier --check <datei>` | Prettier auf den **selbst geänderten** Dateien                               |
-| `npm run format:check`         | Prettier projektweit — schlägt derzeit an ~109 Altdateien an, siehe unten    |
+| `npm run format:check`         | Prettier projektweit — schlägt derzeit an ~104 Altdateien an, siehe unten    |
 | `npm test`                     | Vitest                                                                       |
 
 Wichtig zur Einordnung:
 
-- `npm run format:check` meldet aktuell **~109 vorbestehende** Dateien: Prettier ist konfiguriert, wurde aber nie projektweit ausgeführt. Ein roter `format:check` ist deshalb **kein** Hinweis darauf, dass die eigene Änderung falsch formatiert ist. Prüfe gezielt die eigenen Dateien (`npx prettier --check <datei>`) und formatiere auch nur diese. **Nicht** `npm run format` über das ganze Projekt laufen lassen — das erzeugt einen themenfremden Riesen-Diff, den der User nicht prüfen kann.
+- `npm run format:check` meldet aktuell **~104 vorbestehende** Dateien: Prettier ist konfiguriert, wurde aber nie projektweit ausgeführt. Ein roter `format:check` ist deshalb **kein** Hinweis darauf, dass die eigene Änderung falsch formatiert ist. Prüfe gezielt die eigenen Dateien (`npx prettier --check <datei>`) und formatiere auch nur diese. **Nicht** `npm run format` über das ganze Projekt laufen lassen — das erzeugt einen themenfremden Riesen-Diff, den der User nicht prüfen kann.
 - Es gibt **kein Lint** und **keine Build-CI auf GitHub** (der einzige Workflow ist ein nächtliches Supabase-Backup). Ein grüner PR bedeutet nicht, dass gebaut wurde — deshalb lokal bauen, bevor gepusht wird.
 - Es gibt nur **7 Spec-Dateien** (`scryfall.service`, `public-deck.service`, `color-filter-match`, `color-combo-names`, `app-recovery`, `ui/radar-chart/radar-geometry`, `i18n/i18n-keys`). Die Tests sind **kein Sicherheitsnetz** — grüne Tests sagen fast nichts.
 - Der echte Test ist die **Cloudflare-Pages-Preview des PRs** auf dem iPhone.

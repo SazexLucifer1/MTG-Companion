@@ -19,5 +19,11 @@ Beim Umsetzen:
 - Neue Datenfelder brauchen einen Eintrag in `models.ts` bzw. `tournament.models.ts`.
 - Neue externe Domains müssen in die CSP in `public/_headers`.
 - Datenbankänderungen als datiertes Skript in `sql/`.
+- **Neue Dateien gehören in die Architektur-Karte.** Wer eine Komponente, einen Service, einen Baustein in `src/app/ui/` oder ein i18n-Modul anlegt, trägt sie im selben PR in `CLAUDE.md` ein — sonst schickt die Karte die nächste Session ins Leere.
 
-Zum Schluss: `npm run build`, dann committen, pushen, PR anlegen (siehe `CLAUDE.md`).
+Zum Schluss:
+
+1. `npm run build`
+2. `npm run check:map` — prüft, ob die Karte in `CLAUDE.md` noch zum Repo passt. Meldet er etwas, ist die Karte nachzuziehen, nicht der Check zu umgehen.
+3. **Screenshot als Nachweis**, wenn die Funktion sichtbar ist: `npm start` und die Funktion in der laufenden App durchklicken (Ablauf und Test-Accounts stehen in `CLAUDE.md`). Ein grüner Build belegt nicht, dass die Funktion bedienbar ist.
+4. Committen, pushen, PR anlegen (siehe `CLAUDE.md`).

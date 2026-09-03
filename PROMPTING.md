@@ -129,13 +129,20 @@ Der letzte ist unterschätzt. „Wie funktioniert eigentlich die Turnierwertung?
 
 Das steht alles schon in `CLAUDE.md` und kostet nur Platz:
 
-- „Bitte erstelle danach einen PR" — passiert automatisch
-- „Nicht mergen, ich will erst testen" — ist die Standardregel
 - „Denk dran, es ist Angular" / Erklärungen zum Projekt — steht in der Karte
 - Dateipfade, wenn du den Bereich benannt hast
 - Höflichkeitsfloskeln, Entschuldigungen für „dumme Fragen"
 
 Was du dafür **hinzufügen** solltest: den wörtlichen Text, die genaue Fehlermeldung, den Screenshot. Konkretes Material ist immer billiger als eine Beschreibung davon.
+
+## Was ohnehin passiert
+
+Diese beiden Dinge sind in `CLAUDE.md` als Standardregel hinterlegt — du musst sie nicht anordnen, darfst es aber jederzeit:
+
+- **Der PR wird automatisch angelegt.** Änderungen committen, pushen und den PR eröffnen gehört zu jeder Aufgabe dazu.
+- **Gemerged wird nicht.** Der PR bleibt offen, damit du ihn über die Cloudflare-Preview auf dem iPhone testen kannst. Erst dein „kann rein" merged ihn.
+
+Ein „bitte danach einen PR anlegen, aber noch nicht mergen" schadet trotzdem nie — es kostet eine Zeile und stellt sicher, dass es auch dann passiert, wenn eine Session die Projektregeln einmal nicht mitbekommt.
 
 ---
 

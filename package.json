@@ -10,7 +10,8 @@
     "test": "ng test",
     "typecheck": "npm run version:generate && ng build --configuration development",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "check:map": "node scripts/check-architecture-map.js"
   },
   "private": true,
   "packageManager": "npm@11.12.1",
