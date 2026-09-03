@@ -19,6 +19,20 @@
     </div>
 
     <div class="import-field">
+      <label class="hint" for="deck-format-select">{{ importService.i18n.t('importDialog.formatLabel') }}</label>
+      <select
+        id="deck-format-select"
+        class="glass-input"
+        [ngModel]="importService.selectedFormat()"
+        (ngModelChange)="importService.selectedFormat.set($event)"
+      >
+        @for (f of importService.deckFormats; track f) {
+          <option [ngValue]="f">{{ f }}</option>
+        }
+      </select>
+    </div>
+
+    <div class="import-field">
       <label class="hint" for="deck-text-input">{{ importService.i18n.t('importDialog.cardListLabel') }}</label>
       <textarea
         id="deck-text-input"
@@ -88,6 +102,20 @@
         [ngModel]="importService.newDeckName()"
         (ngModelChange)="importService.newDeckName.set($event)"
       />
+    </div>
+
+    <div class="import-field">
+      <label class="hint" for="empty-deck-format-select">{{ importService.i18n.t('importDialog.formatLabel') }}</label>
+      <select
+        id="empty-deck-format-select"
+        class="glass-input"
+        [ngModel]="importService.newDeckFormat()"
+        (ngModelChange)="importService.newDeckFormat.set($event)"
+      >
+        @for (f of importService.deckFormats; track f) {
+          <option [ngValue]="f">{{ f }}</option>
+        }
+      </select>
     </div>
 
     <div class="import-field">

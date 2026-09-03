@@ -21,6 +21,7 @@ import {
   pipChartData,
   typeChartData,
 } from './ui/bar-chart/deck-chart-data';
+import { DeckFormat, DECK_FORMATS } from './models';
 
 export interface ManaCurveBucket {
   label: string;
@@ -131,19 +132,26 @@ export class DeckViewerService {
   // Stift-Button wurde entfernt).
   readonly deckNameDraft = signal('');
   readonly deckTagDraft = signal<string | null>(null);
+  readonly deckFormatDraft = signal<DeckFormat | null>(null);
+  readonly deckFormats = DECK_FORMATS;
   readonly deckInfoSaving = signal(false);
 
   readonly deckInfoDirty = computed(() => {
     const deck = this.viewingDeck();
     if (!deck) return false;
-    return this.deckNameDraft().trim() !== deck.name || this.deckTagDraft() !== deck.edhrecTag;
+    return (
+      this.deckNameDraft().trim() !== deck.name ||
+      this.deckTagDraft() !== deck.edhrecTag ||
+      this.deckFormatDraft() !== deck.format
+    );
   });
 
-  /** Verwirft Name/Tag-Entwurf und setzt auf die gespeicherten Werte zurück. */
+  /** Verwirft Name/Tag/Format-Entwurf und setzt auf die gespeicherten Werte zurück. */
   resetDeckInfoDraft(): void {
     const deck = this.viewingDeck();
     this.deckNameDraft.set(deck?.name ?? '');
     this.deckTagDraft.set(deck?.edhrecTag ?? null);
+    this.deckFormatDraft.set(deck?.format ?? null);
   }
 
   async saveDeckInfo(): Promise<void> {
@@ -153,10 +161,11 @@ export class DeckViewerService {
 
     this.deckInfoSaving.set(true);
     const tag = this.deckTagDraft();
-    const ok = await this.deckService.updateDeckInfo(deck.id, name, tag);
+    const format = this.deckFormatDraft();
+    const ok = await this.deckService.updateDeckInfo(deck.id, name, tag, format);
     this.deckInfoSaving.set(false);
     if (ok) {
-      this.viewingDeck.set({ ...deck, name, edhrecTag: tag });
+      this.viewingDeck.set({ ...deck, name, edhrecTag: tag, format });
       this.deckNameDraft.set(name);
     }
   }
@@ -2028,6 +2037,7 @@ export class DeckViewerService {
     this.viewingDeck.set(deck);
     this.deckNameDraft.set(deck.name);
     this.deckTagDraft.set(deck.edhrecTag);
+    this.deckFormatDraft.set(deck.format);
     this.deckInfoSaving.set(false);
     this.detailBusy.set(true);
     this.showChangeLog.set(false);

@@ -6,6 +6,7 @@ import { sleep } from './array-utils';
 import { GroupService } from './group.service';
 import { PreconService } from './precon.service';
 import { COLORLESS, FILTER_COLORS } from './color-filter-match';
+import { DeckFormat } from './models';
 
 export interface Deck {
   id: string;
@@ -16,7 +17,7 @@ export interface Deck {
   /** Gruppe des Spielers, falls playerId gesetzt ist - für die Bearbeitungsrechte-Prüfung (nur der Gruppen-Admin darf ein spielerbesitztes Deck bearbeiten). */
   groupId: string | null;
   name: string;
-  format: string | null;
+  format: DeckFormat | null;
   updatedAt: string;
   /** Zeitpunkt der Deck-Anlage (unverändert seit dem Import, im Gegensatz zu updatedAt) - für den Jahresfilter in der Deck-Auswahl. */
   createdAt: string;
@@ -397,7 +398,7 @@ export class DeckService {
   async saveDeck(
     owner: DeckOwner,
     name: string,
-    format: string | null,
+    format: DeckFormat | null,
     rawText: string,
     existingDeckId: string | null,
     isPrecon = false,
@@ -940,15 +941,20 @@ export class DeckService {
     return true;
   }
 
-  /** Ändert nur Name und EDHREC-Tag eines bestehenden Decks, ohne die Kartenliste anzufassen. */
-  async updateDeckInfo(deckId: string, name: string, edhrecTag: string | null): Promise<boolean> {
+  /** Ändert Name, EDHREC-Tag und Spielformat eines bestehenden Decks, ohne die Kartenliste anzufassen. */
+  async updateDeckInfo(
+    deckId: string,
+    name: string,
+    edhrecTag: string | null,
+    format: DeckFormat | null
+  ): Promise<boolean> {
     const { error } = await supabase
       .from('decks')
-      .update({ name, edhrec_tag: edhrecTag, updated_at: new Date().toISOString() })
+      .update({ name, edhrec_tag: edhrecTag, format, updated_at: new Date().toISOString() })
       .eq('id', deckId);
 
     if (error) {
-      console.error('Konnte Deckname/Tag nicht ändern:', error);
+      console.error('Konnte Deckname/Tag/Format nicht ändern:', error);
       return false;
     }
     return true;

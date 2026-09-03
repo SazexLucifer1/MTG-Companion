@@ -13,6 +13,45 @@ export type TeamName = 'Team 1' | 'Team 2' | 'Team 3' | 'Team 4' | 'Team 5';
 
 export const TEAM_OPTIONS: TeamName[] = ['Team 1', 'Team 2', 'Team 3', 'Team 4', 'Team 5'];
 
+/**
+ * Offizielle, von Wizards of the Coast mit eigener Banned/Restricted-Liste geführte
+ * Spielformate - zur Auswahl beim Anlegen/Bearbeiten eines Decks (decks.format, siehe
+ * DeckService.saveDeck()/updateDeckInfo()). Bewusst NICHT übersetzt (wie GameMode oben) - das
+ * sind feste Format-Eigennamen, keine UI-Texte. Limited-Formate (Draft/Sealed) und rein
+ * community-geführte Varianten (Duel Commander, Oathbreaker) sind bewusst ausgeklammert, siehe
+ * PR-Beschreibung.
+ */
+export type DeckFormat =
+  | 'Standard'
+  | 'Pioneer'
+  | 'Modern'
+  | 'Legacy'
+  | 'Vintage'
+  | 'Pauper'
+  | 'Commander'
+  | 'Pauper Commander'
+  | 'Brawl'
+  | 'Historic Brawl'
+  | 'Alchemy'
+  | 'Explorer'
+  | 'Timeless';
+
+export const DECK_FORMATS: DeckFormat[] = [
+  'Standard',
+  'Pioneer',
+  'Modern',
+  'Legacy',
+  'Vintage',
+  'Pauper',
+  'Commander',
+  'Pauper Commander',
+  'Brawl',
+  'Historic Brawl',
+  'Alchemy',
+  'Explorer',
+  'Timeless',
+];
+
 export interface MatchPlayer {
   name: string;
   commander?: string;

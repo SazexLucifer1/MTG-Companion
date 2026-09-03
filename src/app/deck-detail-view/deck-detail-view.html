@@ -18,6 +18,17 @@
             [ngModel]="viewer.deckNameDraft()"
             (ngModelChange)="viewer.deckNameDraft.set($event)"
           />
+          <select
+            class="glass-input"
+            [attr.aria-label]="viewer.i18n.t('deckView.formatAria')"
+            [ngModel]="viewer.deckFormatDraft()"
+            (ngModelChange)="viewer.deckFormatDraft.set($event)"
+          >
+            <option [ngValue]="null">{{ viewer.i18n.t('deckView.noFormat') }}</option>
+            @for (f of viewer.deckFormats; track f) {
+              <option [ngValue]="f">{{ f }}</option>
+            }
+          </select>
           @if (viewer.edhrecTagsBusy()) {
             <p class="hint">{{ viewer.i18n.t('deckView.loadingEdhrecTags') }}</p>
           } @else if (viewer.edhrecAvailableTags().length === 0) {
