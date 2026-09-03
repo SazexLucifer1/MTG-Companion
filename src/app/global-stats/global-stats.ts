@@ -1,4 +1,4 @@
-import { Component, Signal, computed, inject, signal } from '@angular/core';
+import { Component, Signal, computed, effect, inject, signal } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 import {
   DeckService,
@@ -7,6 +7,7 @@ import {
   ColorStat,
   ColorComboStat,
 } from '../deck.service';
+import { DECK_FORMATS, DeckFormat, GAME_MODES, GameMode } from '../models';
 import { DeckViewerService } from '../deck-viewer.service';
 import { AuthService } from '../auth.service';
 import { CardPreviewService } from '../card-preview.service';
@@ -140,15 +141,72 @@ export class GlobalStats {
   readonly decks = new QualifiedRanking<GlobalDeckStat>(() => this.deckStatsRaw());
   readonly commanders = new QualifiedRanking<GlobalCommanderStat>(() => this.commanderStatsRaw());
 
+  // --- Kategorie-/Format-Filter (eigenständig, kein Bezug zu MtgService.statVisibility - Global
+  // hat keinen Host, der Sichtbarkeit pro Account einschränken könnte, also auch keine Sperr-Chips
+  // wie im Stats-Tab). Jede Änderung löst über den Effect unten einen Neu-Abruf der beiden
+  // RPC-Funktionen aus - anders als im Stats-Tab (dort clientseitiger Filter auf bereits geladenen
+  // Matches) müssen hier die Filter als Parameter an die serverseitige Aggregation gehen, da
+  // einzelne Match-Zeilen die Datenbank nie verlassen. ---
+
+  readonly gameModes = GAME_MODES;
+  readonly selectedModes = signal<Set<GameMode>>(new Set(GAME_MODES));
+  readonly deckFormats = DECK_FORMATS;
+  readonly selectedFormats = signal<Set<DeckFormat>>(new Set(DECK_FORMATS));
+
+  readonly isAllModesSelected = computed(() => GAME_MODES.every((m) => this.selectedModes().has(m)));
+  readonly isAllFormatsSelected = computed(() =>
+    DECK_FORMATS.every((f) => this.selectedFormats().has(f))
+  );
+
+  isModeSelected(mode: GameMode): boolean {
+    return this.selectedModes().has(mode);
+  }
+
+  toggleModeFilter(mode: GameMode): void {
+    this.selectedModes.update((set) => {
+      const next = new Set(set);
+      next.has(mode) ? next.delete(mode) : next.add(mode);
+      return next;
+    });
+  }
+
+  selectAllModes(): void {
+    this.selectedModes.set(new Set(GAME_MODES));
+  }
+
+  isFormatSelected(format: DeckFormat): boolean {
+    return this.selectedFormats().has(format);
+  }
+
+  toggleFormatFilter(format: DeckFormat): void {
+    this.selectedFormats.update((set) => {
+      const next = new Set(set);
+      next.has(format) ? next.delete(format) : next.add(format);
+      return next;
+    });
+  }
+
+  selectAllFormats(): void {
+    this.selectedFormats.set(new Set(DECK_FORMATS));
+  }
+
   constructor() {
-    Promise.all([
-      this.deckService.getGlobalDeckCommanderStats(),
-      this.deckService.getGlobalColorAndComboStats(),
-    ]).then(([deckCommander, colors]) => {
-      this.deckStatsRaw.set(deckCommander.decks);
-      this.commanderStatsRaw.set(deckCommander.commanders);
-      this.colorAndCombo.set(colors);
-      this.loading.set(false);
+    effect(() => {
+      // "Alles ausgewählt" wird als null (= kein Filter) durchgereicht statt als volle Liste - das
+      // ist der unveränderte Default-Aufruf von vorher und spart der DB die Filterprüfung.
+      const modes = this.isAllModesSelected() ? null : [...this.selectedModes()];
+      const formats = this.isAllFormatsSelected() ? null : [...this.selectedFormats()];
+
+      this.loading.set(true);
+      Promise.all([
+        this.deckService.getGlobalDeckCommanderStats(modes, formats),
+        this.deckService.getGlobalColorAndComboStats(modes, formats),
+      ]).then(([deckCommander, colors]) => {
+        this.deckStatsRaw.set(deckCommander.decks);
+        this.commanderStatsRaw.set(deckCommander.commanders);
+        this.colorAndCombo.set(colors);
+        this.loading.set(false);
+      });
     });
   }
 

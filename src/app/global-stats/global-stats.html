@@ -7,6 +7,30 @@
   <p class="hint">{{ i18n.t('stats.globalDecksAndCommandersHint') }}</p>
 </section>
 
+<section class="glass-card">
+  <h2>{{ i18n.t('stats.modeAndFormat') }}</h2>
+  <div class="chip-row mode-chip-row">
+    <button class="glass-chip" [class.active]="isAllModesSelected()" (click)="selectAllModes()">
+      {{ i18n.t('stats.allModes') }}
+    </button>
+    @for (m of gameModes; track m) {
+    <button class="glass-chip" [class.active]="isModeSelected(m)" (click)="toggleModeFilter(m)">
+      {{ m }}
+    </button>
+    }
+  </div>
+  <div class="chip-row format-chip-row">
+    <button class="glass-chip" [class.active]="isAllFormatsSelected()" (click)="selectAllFormats()">
+      {{ i18n.t('stats.allFormats') }}
+    </button>
+    @for (f of deckFormats; track f) {
+    <button class="glass-chip" [class.active]="isFormatSelected(f)" (click)="toggleFormatFilter(f)">
+      {{ f }}
+    </button>
+    }
+  </div>
+</section>
+
 @if (loading()) {
 <section class="glass-card">
   <p class="hint">{{ i18n.t('stats.globalLoading') }}</p>

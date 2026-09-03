@@ -20,6 +20,8 @@ import {
 import {
   CommanderStats,
   DeckStats,
+  DECK_FORMATS,
+  DeckFormat,
   GAME_MODES,
   GameMode,
   LIVE_TRACKING_START_DATE,
@@ -388,8 +390,58 @@ export class StatsTab {
     return matches.filter((m) => modes.has(m.mode) && this.canViewMode(m.mode));
   }
 
+  // --- Format-Filter (Mehrfachauswahl, orthogonal zum Modus-Filter - beide lassen sich frei
+  // kombinieren, z.B. nur "Cube" + nur "Modern"). Keine Sichtbarkeitssperre wie beim Modus-Filter -
+  // das Format ist reine Statistik-Ansicht, keine Berechtigung. ---
+
+  readonly deckFormats = DECK_FORMATS;
+
+  readonly selectedFormats = signal<Set<DeckFormat>>(new Set(DECK_FORMATS));
+
+  /** Das eine ausgewählte Format, falls genau eins gewählt ist - sonst null, analog isSingleMode. */
+  readonly isSingleFormat = computed<DeckFormat | null>(() => {
+    const formats = [...this.selectedFormats()];
+    return formats.length === 1 ? formats[0] : null;
+  });
+
+  readonly isAllFormatsSelected = computed(() =>
+    DECK_FORMATS.every((f) => this.selectedFormats().has(f))
+  );
+
+  isFormatSelected(format: DeckFormat): boolean {
+    return this.selectedFormats().has(format);
+  }
+
+  toggleFormatFilter(format: DeckFormat): void {
+    this.selectedFormats.update((set) => {
+      const next = new Set(set);
+      if (next.has(format)) {
+        next.delete(format);
+      } else {
+        next.add(format);
+      }
+      return next;
+    });
+    this.selectedCommanderDetail.set(null);
+    this.selectedDeckDetail.set(null);
+  }
+
+  selectAllFormats(): void {
+    this.selectedFormats.set(new Set(DECK_FORMATS));
+    this.selectedCommanderDetail.set(null);
+    this.selectedDeckDetail.set(null);
+  }
+
+  /** Format-Filter als reine Funktion, siehe applyYearFilter() für die Begründung. Matches ohne
+   * Format (Spezialevent, format === null) haben nichts zum Filtern und laufen deshalb IMMER durch -
+   * sie sind über diesen Filter nie ausschließbar. */
+  private applyFormatFilter(matches: Match[]): Match[] {
+    const formats = this.selectedFormats();
+    return matches.filter((m) => m.format === null || formats.has(m.format));
+  }
+
   readonly filteredMatches = computed<Match[]>(() =>
-    this.applyModeFilter(this.yearFilteredMatches()),
+    this.applyFormatFilter(this.applyModeFilter(this.yearFilteredMatches())),
   );
 
   // --- Lokaler Gruppen-Wechsler (nur Stats-Tab, betrifft NICHT die echte aktive Gruppe) ---
@@ -422,7 +474,7 @@ export class StatsTab {
     this.applyYearFilter(this.viewedMatches()),
   );
   readonly viewedFilteredMatches = computed<Match[]>(() =>
-    this.applyModeFilter(this.viewedYearFilteredMatches()),
+    this.applyFormatFilter(this.applyModeFilter(this.viewedYearFilteredMatches())),
   );
 
   // NEU
@@ -966,6 +1018,24 @@ export class StatsTab {
 
     return [...stats.entries()]
       .map(([mode, s]) => ({ mode, ...s, winRate: s.games > 0 ? (s.wins / s.games) * 100 : 0 }))
+      .sort((a, b) => b.games - a.games);
+  });
+
+  readonly playerFormatStats = computed(() => {
+    const player = this.selectedPlayer();
+    if (!player) return [];
+
+    const stats = new Map<DeckFormat, { games: number; wins: number }>();
+    for (const match of this.selectedPlayerMatches()) {
+      if (match.format === null) continue; // Spezialevent hat kein Format, zählt hier nicht mit
+      const entry = stats.get(match.format) ?? { games: 0, wins: 0 };
+      entry.games++;
+      if (this.isPlayerWinner(match, player)) entry.wins++;
+      stats.set(match.format, entry);
+    }
+
+    return [...stats.entries()]
+      .map(([format, s]) => ({ format, ...s, winRate: s.games > 0 ? (s.wins / s.games) * 100 : 0 }))
       .sort((a, b) => b.games - a.games);
   });
 

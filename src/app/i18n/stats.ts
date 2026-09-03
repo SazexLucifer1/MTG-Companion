@@ -42,14 +42,16 @@ export const stats = {
       'Noch keine Matches gespeichert. Trage im Tab „Match" dein erstes Ergebnis ein!',
     'stats.lockedHint':
       'Der Stats-Tab ist gerade von der veranstaltenden Person gesperrt (z.B. bis zur Jahresend-Enthüllung). Schau später nochmal vorbei!',
-    'stats.periodAndMode': 'Zeitraum & Modus',
+    'stats.periodAndMode': 'Zeitraum, Modus & Format',
+    'stats.modeAndFormat': 'Modus & Format',
     'stats.allTime': 'Alle Zeiten',
     'stats.allModes': 'Alle Modi',
+    'stats.allFormats': 'Alle Formate',
     'stats.lockedModesSingular': 'ist für dich gesperrt',
     'stats.lockedModesPlural': 'sind für dich gesperrt',
     'stats.lockedModesSuffix':
       'und daher nicht auswählbar. Wende dich an den Admin der Gruppe, falls du Zugriff haben möchtest.',
-    'stats.chooseModeHint': 'Wähle mindestens einen Modus aus, um Stats zu sehen.',
+    'stats.chooseModeHint': 'Wähle mindestens einen Modus und ein Format aus, um Stats zu sehen.',
 
     // --- Stats-Tab: Spieler-Details ---
     'stats.playerDetails': 'Spieler-Details',
@@ -66,6 +68,7 @@ export const stats = {
     'stats.winRate': 'Winrate',
     'stats.avgPlacement': 'Ø-Platzierung ({{count}})',
     'stats.byGameMode': 'Nach Spielmodus',
+    'stats.byGameFormat': 'Nach Format',
     'stats.decks': 'Decks',
     'stats.playedCommanders': 'Gespielte Commander',
     'stats.from': 'von {{name}}',
@@ -192,14 +195,16 @@ export const stats = {
     'stats.noMatchesYet': 'No matches saved yet. Enter your first result in the "Match" tab!',
     'stats.lockedHint':
       'The Stats tab is currently locked by the organizer (e.g. until the year-end reveal). Check back later!',
-    'stats.periodAndMode': 'Period & Mode',
+    'stats.periodAndMode': 'Period, mode & format',
+    'stats.modeAndFormat': 'Mode & format',
     'stats.allTime': 'All time',
     'stats.allModes': 'All modes',
+    'stats.allFormats': 'All formats',
     'stats.lockedModesSingular': 'is locked for you',
     'stats.lockedModesPlural': 'are locked for you',
     'stats.lockedModesSuffix':
       'and therefore not selectable. Contact the group admin if you would like access.',
-    'stats.chooseModeHint': 'Choose at least one mode to see stats.',
+    'stats.chooseModeHint': 'Choose at least one mode and one format to see stats.',
 
     // --- Stats tab: player details ---
     'stats.playerDetails': 'Player Details',
@@ -216,6 +221,7 @@ export const stats = {
     'stats.winRate': 'Win Rate',
     'stats.avgPlacement': 'Avg. placement ({{count}})',
     'stats.byGameMode': 'By game mode',
+    'stats.byGameFormat': 'By format',
     'stats.decks': 'Decks',
     'stats.playedCommanders': 'Played commanders',
     'stats.from': 'from {{name}}',

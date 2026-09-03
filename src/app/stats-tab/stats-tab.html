@@ -181,6 +181,16 @@
     </button>
     }
   </div>
+  <div class="chip-row format-chip-row">
+    <button class="glass-chip" [class.active]="isAllFormatsSelected()" (click)="selectAllFormats()">
+      {{ i18n.t('stats.allFormats') }}
+    </button>
+    @for (f of deckFormats; track f) {
+    <button class="glass-chip" [class.active]="isFormatSelected(f)" (click)="toggleFormatFilter(f)">
+      {{ f }}
+    </button>
+    }
+  </div>
 </section>
 
 @if (blockedModes().length > 0) {
@@ -193,7 +203,7 @@
 </section>
 }
 
-@if (selectedModes().size === 0) {
+@if (selectedModes().size === 0 || selectedFormats().size === 0) {
 <section class="glass-card">
   <p class="hint">{{ i18n.t('stats.chooseModeHint') }}</p>
 </section>
@@ -274,6 +284,19 @@
       <span class="detail">{{ m.wins }} / {{ m.games }} {{ i18n.t('stats.wins') }}</span>
       <span class="rate">{{ m.winRate | number: '1.0-0' }}%</span>
       <app-meter [value]="m.winRate" />
+    </li>
+    }
+  </ul>
+  } @if (isSingleFormat() === null && playerFormatStats().length > 0) {
+  <h3>{{ i18n.t('stats.byGameFormat') }}</h3>
+  <ul class="ranking">
+    @for (f of playerFormatStats(); track f.format) {
+    <li>
+      <span class="rank">🎴</span>
+      <span class="name">{{ f.format }}</span>
+      <span class="detail">{{ f.wins }} / {{ f.games }} {{ i18n.t('stats.wins') }}</span>
+      <span class="rate">{{ f.winRate | number: '1.0-0' }}%</span>
+      <app-meter [value]="f.winRate" />
     </li>
     }
   </ul>
