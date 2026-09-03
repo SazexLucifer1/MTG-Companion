@@ -1,4 +1,4 @@
-import { GameMode } from './models';
+import { GameMode, Match } from './models';
 
 /** Platzhalter-Gewinner bei Archenemy: "die anderen Spieler" (alle außer dem Archenemy) haben gewonnen. */
 export const ARCHENEMY_OTHERS = '__OTHERS__';
@@ -41,4 +41,54 @@ export function isPlayerWinner(
  */
 export function teamMemberLabel(players: { name: string; team?: string }[], team: string): string {
   return players.filter((p) => p.team === team).map((p) => p.name).join(' & ');
+}
+
+/**
+ * Wandelt eine rohe Supabase-Zeile aus der "matches"-Query (mit verschachtelten Relationen) in
+ * unser Match-Format um - aus mtg.service.ts extrahiert (dort ursprünglich private Methode), damit
+ * MtgService.loadMatchesForGroups() (gruppenübergreifende Auswertungen im Stats-Tab) dieselbe
+ * Umwandlung nutzen kann wie loadHistory(), ohne sie zu duplizieren.
+ */
+export function mapMatchRow(row: any): Match {
+  const match: Match = {
+    id: row.id,
+    date: row.played_at,
+    mode: row.game_mode,
+    winner: row.winner_name,
+    tournamentMatchId: row.tournament_match_id ?? undefined,
+    tournamentGameNumber: row.tournament_game_number ?? undefined,
+    countsInGeneralStats: row.counts_in_general_stats ?? true,
+    players: (row.match_players ?? []).map((mp: any) => ({
+      name: mp.player_name ?? mp.players?.display_name ?? '',
+      commander: mp.commander_name ?? undefined,
+      partnerCommander: mp.partner_commander_name ?? undefined,
+      team: mp.team ?? undefined,
+      isArchenemy: mp.is_archenemy ?? undefined,
+      deckId: mp.deck_id ?? undefined,
+      deckName: mp.decks?.name ?? undefined,
+      deckOwnerId: mp.decks?.user_id ?? undefined,
+      deckOwnerPlayerId: mp.decks?.player_id ?? undefined,
+      deckIsPrecon: mp.decks?.is_precon ?? undefined,
+      placement: mp.placement ?? undefined,
+    })),
+  };
+
+  if (row.cubes) {
+    match.cube = {
+      id: row.cubes.id,
+      name: row.cubes.name,
+      isCommander: row.cubes.is_commander,
+    };
+  }
+
+  if (row.draft_set_id) {
+    match.draftSet = {
+      id: row.draft_set_id,
+      code: row.draft_set_code ?? undefined,
+      name: row.draft_set_name,
+      releasedAt: row.draft_set_released_at ?? undefined,
+    };
+  }
+
+  return match;
 }

@@ -122,6 +122,20 @@ export const stats = {
     'stats.colorComboRankingHint':
       'Wie oft welche Farbkombination in den Decks der Gruppe vorkommt - Precons zählen nicht mit.',
 
+    // --- Stats-Tab: Global-Ansicht & lokaler Gruppen-Wechsler ---
+    'stats.viewScopeGroup': '👥 Gruppe',
+    'stats.viewScopeGlobal': '🌐 Global',
+    'stats.groupSwitcherHint': 'Gruppe für diese Übersicht wählen.',
+    'stats.globalDecksAndCommandersHint':
+      'Über alle Spieler der gesamten Website hinweg - ohne Mindestanzahl Spiele und ohne Spielernamen (die würden sonst Personen aus fremden Gruppen offenlegen).',
+    'stats.globalLoading': 'Lade weltweite Statistik …',
+    'stats.colorRankingTitleGlobal': '🎨 Lieblingsfarben (weltweit)',
+    'stats.colorRankingHintGlobal':
+      'Je weiter außen, desto häufiger steckt die Farbe in den Decks aller Spieler der Website. Farblose Decks zählen auf der sechsten Achse, nicht auf eine Farbe - private Decks und Precons zählen nicht mit.',
+    'stats.colorComboRankingTitleGlobal': '🌈 Farbkombinationen (weltweit)',
+    'stats.colorComboRankingHintGlobal':
+      'Wie oft welche Farbkombination in den Decks aller Spieler der Website vorkommt - private Decks und Precons zählen nicht mit.',
+
     // --- Stats-Tab: Danger Zone ---
     'stats.dangerZone': '⚠️ Danger Zone',
     'stats.dangerZoneHint':
@@ -253,6 +267,20 @@ export const stats = {
     'stats.colorComboRankingTitle': '🌈 Color combinations of the group',
     'stats.colorComboRankingHint':
       'How often each color combination appears in the group’s decks - precons are excluded.',
+
+    // --- Stats tab: global view & local group switcher ---
+    'stats.viewScopeGroup': '👥 Group',
+    'stats.viewScopeGlobal': '🌐 Global',
+    'stats.groupSwitcherHint': 'Choose a group for this overview.',
+    'stats.globalDecksAndCommandersHint':
+      'Across every player on the whole website - no minimum game count and no player names (those would otherwise expose people from groups you’re not in).',
+    'stats.globalLoading': 'Loading global stats …',
+    'stats.colorRankingTitleGlobal': '🎨 Favorite colors (worldwide)',
+    'stats.colorRankingHintGlobal':
+      'The further out, the more often that color is in every player’s decks on the site. Colorless decks count on the sixth axis, not towards a color - private decks and precons are excluded.',
+    'stats.colorComboRankingTitleGlobal': '🌈 Color combinations (worldwide)',
+    'stats.colorComboRankingHintGlobal':
+      'How often each color combination appears across every player’s decks on the site - private decks and precons are excluded.',
 
     // --- Stats tab: danger zone ---
     'stats.dangerZone': '⚠️ Danger Zone',

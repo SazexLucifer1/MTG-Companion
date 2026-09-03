@@ -6,6 +6,35 @@ import { AuthService } from './auth.service';
 import { DeckService } from './deck.service';
 import { ProfileService } from './profile.service';
 import { chunk } from './array-utils';
+import { mapMatchRow } from './match-utils';
+
+/** Select-Liste für die "matches"-Query, gemeinsam genutzt von loadHistory() (echte aktive Gruppe)
+ * und loadMatchesForGroups() (gruppenübergreifende Auswertungen im Stats-Tab). */
+const MATCH_HISTORY_SELECT = `
+  id,
+  played_at,
+  game_mode,
+  winner_name,
+  draft_set_id,
+  draft_set_code,
+  draft_set_name,
+  draft_set_released_at,
+  tournament_match_id,
+  tournament_game_number,
+  counts_in_general_stats,
+  cubes ( id, name, is_commander ),
+  match_players (
+    player_name,
+    commander_name,
+    partner_commander_name,
+    team,
+    is_archenemy,
+    deck_id,
+    placement,
+    decks ( name, user_id, player_id, is_precon ),
+    players ( display_name )
+  )
+`;
 
 @Injectable({ providedIn: 'root' })
 export class MtgService {
@@ -738,33 +767,7 @@ export class MtgService {
   private async loadHistory(groupId: string): Promise<void> {
     const { data, error } = await supabase
       .from('matches')
-      .select(
-        `
-        id,
-        played_at,
-        game_mode,
-        winner_name,
-        draft_set_id,
-        draft_set_code,
-        draft_set_name,
-        draft_set_released_at,
-        tournament_match_id,
-        tournament_game_number,
-        counts_in_general_stats,
-        cubes ( id, name, is_commander ),
-        match_players (
-          player_name,
-          commander_name,
-          partner_commander_name,
-          team,
-          is_archenemy,
-          deck_id,
-          placement,
-          decks ( name, user_id, player_id, is_precon ),
-          players ( display_name )
-        )
-      `
-      )
+      .select(MATCH_HISTORY_SELECT)
       .eq('group_id', groupId)
       .order('played_at', { ascending: false });
 
@@ -773,52 +776,29 @@ export class MtgService {
       return;
     }
 
-    this.history.set((data ?? []).map((row: any) => this.mapRowToMatch(row)));
+    this.history.set((data ?? []).map((row: any) => mapMatchRow(row)));
   }
 
-  /** Wandelt eine rohe Supabase-Zeile (mit verschachtelten Relationen) in unser Match-Format um. */
-  private mapRowToMatch(row: any): Match {
-    const match: Match = {
-      id: row.id,
-      date: row.played_at,
-      mode: row.game_mode,
-      winner: row.winner_name,
-      tournamentMatchId: row.tournament_match_id ?? undefined,
-      tournamentGameNumber: row.tournament_game_number ?? undefined,
-      countsInGeneralStats: row.counts_in_general_stats ?? true,
-      players: (row.match_players ?? []).map((mp: any) => ({
-        name: mp.player_name ?? mp.players?.display_name ?? '',
-        commander: mp.commander_name ?? undefined,
-        partnerCommander: mp.partner_commander_name ?? undefined,
-        team: mp.team ?? undefined,
-        isArchenemy: mp.is_archenemy ?? undefined,
-        deckId: mp.deck_id ?? undefined,
-        deckName: mp.decks?.name ?? undefined,
-        deckOwnerId: mp.decks?.user_id ?? undefined,
-        deckOwnerPlayerId: mp.decks?.player_id ?? undefined,
-        deckIsPrecon: mp.decks?.is_precon ?? undefined,
-        placement: mp.placement ?? undefined,
-      })),
-    };
+  /**
+   * Wie loadHistory(), aber für eine Liste von Gruppen statt einer einzelnen, und gibt die Matches
+   * direkt zurück statt State zu setzen - für gruppenübergreifende Auswertungen im Stats-Tab (lokal
+   * gewählte Fremdgruppe), die NICHT die echte aktive Gruppe (history()) verändern sollen.
+   */
+  async loadMatchesForGroups(groupIds: string[]): Promise<Match[]> {
+    if (groupIds.length === 0) return [];
 
-    if (row.cubes) {
-      match.cube = {
-        id: row.cubes.id,
-        name: row.cubes.name,
-        isCommander: row.cubes.is_commander,
-      };
+    const { data, error } = await supabase
+      .from('matches')
+      .select(MATCH_HISTORY_SELECT)
+      .in('group_id', groupIds)
+      .order('played_at', { ascending: false });
+
+    if (error) {
+      console.error('Konnte gruppenübergreifende Matches nicht laden:', error);
+      return [];
     }
 
-    if (row.draft_set_id) {
-      match.draftSet = {
-        id: row.draft_set_id,
-        code: row.draft_set_code ?? undefined,
-        name: row.draft_set_name,
-        releasedAt: row.draft_set_released_at ?? undefined,
-      };
-    }
-
-    return match;
+    return (data ?? []).map((row: any) => mapMatchRow(row));
   }
 
   /**
