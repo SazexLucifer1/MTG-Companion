@@ -274,6 +274,12 @@ export class GroupService {
     const user = this.auth.currentUser();
     if (!user) return false;
 
+    // Vorher merken, welche Gruppen bekannt sind - daran wird die neue unten erkannt. Ein
+    // .select() am insert waere naheliegender, laesst PostgREST die Zeile aber zurueckgeben,
+    // und dafuer greift die SELECT-Policy auf groups, die in diesem Moment noch nicht erfuellt
+    // ist: der Insert scheitert dann komplett mit 42501.
+    const bekannt = new Set(this.myGroups().map((g) => g.id));
+
     const { error } = await supabase
       .from('groups')
       .insert({ name: trimmed, created_by: user.id });
@@ -284,6 +290,35 @@ export class GroupService {
     }
 
     await this.refresh();
+
+    // Die Admin-Mitgliedschaft legt handle_new_group() serverseitig an, einen players-Eintrag
+    // aber nicht. Ohne den taucht der Ersteller nicht unter "Wer spielt mit?" auf und kann in
+    // seiner eigenen Gruppe kein Match eintragen - genauso wenig ein eigenes Deck waehlen, weil
+    // die Deckauswahl am verknuepften Spieler haengt. Beim Beitritt ueber einen Einladungscode
+    // passiert das laengst; hier hat es schlicht gefehlt.
+    const neu = this.myGroups().find((g) => !bekannt.has(g.id));
+    if (neu) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('display_name')
+        .eq('id', user.id)
+        .single();
+
+      if (profile?.display_name) {
+        const { error: playerError } = await supabase
+          .from('players')
+          .insert({ group_id: neu.id, display_name: profile.display_name, user_id: user.id });
+
+        if (playerError) {
+          // Kein "return" - die Gruppe steht, das ist nur ein Zusatzschritt. Denselben Umgang
+          // hat der Beitritts-Weg.
+          console.error('Konnte Spieler-Eintrag nicht anlegen:', playerError);
+        } else {
+          await this.refresh();
+        }
+      }
+    }
+
     return true;
   }
 

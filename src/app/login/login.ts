@@ -42,6 +42,11 @@ export class Login {
           this.infoMessage.set(this.i18n.t('login.msg.signupConfirmation'));
           this.mode.set('signin');
           this.password.set('');
+        } else {
+          // Ohne Bestaetigungsmail liefert signUp sofort eine Session, der Account ist also
+          // fertig angemeldet. Fehlte das Schliessen hier, blieb die Anmeldekarte ueber der
+          // bereits eingeloggten App liegen und fing als Overlay saemtliche Klicks ab.
+          this.overlay.close();
         }
       } else {
         await this.auth.signIn(this.email(), this.password());
