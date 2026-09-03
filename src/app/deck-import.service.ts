@@ -4,9 +4,10 @@ import { PreconService, PreconSummary } from './precon.service';
 import { ScryfallService } from './scryfall.service';
 import { EdhrecService, EdhrecTag } from './edhrec.service';
 import { I18nService } from './i18n.service';
+import { DeckFormat, DECK_FORMATS } from './models';
 
-/** Diese App ist reine Commander-App - das Format ist also immer dasselbe, keine Abfrage nötig. */
-const FIXED_FORMAT = 'Commander';
+/** Precons sind immer fertige Commander-Produkte - kein Grund, hier eine Abfrage anzubieten. */
+const PRECON_FORMAT = 'Commander';
 
 /**
  * Hält den Zustand der Deck-Import-/Precon-Import-Dialoge global (statt lokal in DeckList), damit
@@ -65,6 +66,8 @@ export class DeckImportService {
   readonly editingDeckId = signal<string | null>(null);
   readonly deckName = signal('');
   readonly deckText = signal('');
+  readonly deckFormats = DECK_FORMATS;
+  readonly selectedFormat = signal<DeckFormat>('Commander');
   readonly importBusy = signal(false);
   readonly importMessage = signal('');
   private deckTextCommanderTimer: ReturnType<typeof setTimeout> | null = null;
@@ -75,6 +78,7 @@ export class DeckImportService {
     this.editingDeckId.set(null);
     this.deckName.set('');
     this.deckText.set('');
+    this.selectedFormat.set('Commander');
     this.importMessage.set('');
     this.lastTagsCommander = null;
     this.selectedCommanderTag.set(null);
@@ -87,6 +91,7 @@ export class DeckImportService {
     this.onSaved = onSaved;
     this.editingDeckId.set(deck.id);
     this.deckName.set(deck.name);
+    this.selectedFormat.set(deck.format ?? 'Commander');
     this.importMessage.set('');
     const cards = await this.deckService.loadDeckCards(deck.id);
     this.deckText.set(cards.map((c) => `${c.quantity} ${c.cardName}`).join('\n'));
@@ -120,7 +125,7 @@ export class DeckImportService {
     const ok = await this.deckService.saveDeck(
       this.owner,
       name,
-      FIXED_FORMAT,
+      this.selectedFormat(),
       this.deckText(),
       this.editingDeckId(),
       false,
@@ -148,6 +153,7 @@ export class DeckImportService {
   readonly newDeckCommanderQuery = signal('');
   readonly newDeckCommanderSuggestions = signal<string[]>([]);
   readonly newDeckCommanderSelected = signal<string | null>(null);
+  readonly newDeckFormat = signal<DeckFormat>('Commander');
   readonly newDeckBusy = signal(false);
   readonly newDeckMessage = signal('');
 
@@ -158,6 +164,7 @@ export class DeckImportService {
     this.newDeckCommanderQuery.set('');
     this.newDeckCommanderSuggestions.set([]);
     this.newDeckCommanderSelected.set(null);
+    this.newDeckFormat.set('Commander');
     this.newDeckMessage.set('');
     this.lastTagsCommander = null;
     this.selectedCommanderTag.set(null);
@@ -194,10 +201,11 @@ export class DeckImportService {
     this.newDeckMessage.set('');
 
     const tag = this.selectedCommanderTag();
+    const format = this.newDeckFormat();
     const deckId = await this.deckService.saveDeck(
       this.owner,
       name,
-      FIXED_FORMAT,
+      format,
       `Commander:\n1 ${commander}`,
       null,
       false,
@@ -214,7 +222,7 @@ export class DeckImportService {
         playerId: this.owner.kind === 'player' ? this.owner.playerId : null,
         groupId: null,
         name,
-        format: FIXED_FORMAT,
+        format,
         updatedAt: new Date().toISOString(),
         createdAt: new Date().toISOString(),
         isPrecon: false,
@@ -304,7 +312,7 @@ export class DeckImportService {
         (await this.deckService.saveDeck(
           this.owner,
           precon.name,
-          'Commander',
+          PRECON_FORMAT,
           text,
           null,
           true,

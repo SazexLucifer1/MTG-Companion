@@ -3,16 +3,20 @@
   <h2>{{ i18n.t('match.newMatch') }}</h2>
 
   <h3>{{ i18n.t('match.gameMode') }}</h3>
-  <div class="chip-row" data-tutorial="match-mode">
+  <select
+    class="glass-input"
+    data-tutorial="match-mode"
+    [attr.aria-label]="i18n.t('match.gameMode')"
+    [ngModel]="session.mode()"
+    (ngModelChange)="session.mode.set($event)"
+  >
     @for (m of modes; track m) {
-      <button class="glass-chip" [class.active]="session.mode() === m" (click)="session.mode.set(m)">
-        {{ m }}
-      </button>
+      <option [ngValue]="m">{{ m }}</option>
     }
-  </div>
+  </select>
 
-  <!-- Als .glass-chip stand das direkt unter den sechs Spielmodus-Chips und sah aus wie ein
-       siebter Modus-Filter. Es ist aber eine Aktion, die den ganzen Tab wechselt. -->
+  <!-- Als .glass-chip stand das direkt unter der Spielmodus-Auswahl und sah aus wie eine
+       weitere Modus-Option. Es ist aber eine Aktion, die den ganzen Tab wechselt. -->
   <button class="glass-button" (click)="openTournamentPanel()">
     🏆 {{ tournament.activeTournament() ? i18n.t('tournament.openPanelButton') : i18n.t('tournament.createButton') }}
   </button>
