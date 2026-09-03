@@ -41,6 +41,18 @@ update public.tournaments
 set game_format = 'Commander'
 where game_format is null and game_mode <> 'Spezialevent';
 
+-- Sicherheitsnetz: jede Zeile, deren game_mode nach Schritt 1 immer noch keine der 6 gültigen
+-- Kategorien ist (z.B. ein unerwarteter/verwaister Wert), auf 'Normal' zurückfallen lassen - sonst
+-- würde der CHECK-Constraint gleich unten am Anlegen scheitern, weil Postgres bestehende Zeilen
+-- dagegen validiert.
+update public.matches
+set game_mode = 'Normal'
+where game_mode not in ('Normal', 'Two-Headed Giant', 'Archenemy', 'Cube', 'Draft', 'Spezialevent');
+
+update public.tournaments
+set game_mode = 'Normal'
+where game_mode not in ('Normal', 'Two-Headed Giant', 'Archenemy', 'Cube', 'Draft', 'Spezialevent');
+
 -- CHECK-Constraints: game_mode auf die 6 Kategorien beschränken, game_format auf die offizielle
 -- Formatliste (siehe deck-format-check-2026-09-03.sql) oder NULL (nur bei Spezialevent gültig).
 alter table public.matches drop constraint if exists matches_game_mode_check;
