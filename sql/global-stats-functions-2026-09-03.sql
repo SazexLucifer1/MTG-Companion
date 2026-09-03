@@ -11,9 +11,8 @@
 --     "gespielt von X" - sonst gäbe die weltweite Ansicht erstmals Namen aus fremden, nie für eine
 --     weltweite Ansicht freigegebenen Gruppen preis.
 --   - Private Decks (is_private) bleiben ausgeschlossen, wie bei der öffentlichen Deck-Suche.
---   - Nur an "authenticated" freigegeben, nicht an "anon" - anders als die öffentliche Deck-Suche
---     ist das eine eingeloggte Statistik-Ansicht, kein Marketing-Feature für nicht angemeldete
---     Besucher.
+--   - Auch an "anon" freigegeben (nicht nur "authenticated") - die Global-Ansicht im Stats-Tab
+--     soll wie der öffentliche Deck-Browser auch ohne Login sichtbar sein.
 --
 -- Manuell im Supabase-SQL-Editor ausführen (keine DB-Zugangsdaten in dieser Session, sql/-Dateien
 -- laufen nie automatisch).
@@ -107,7 +106,7 @@ as $$
 $$;
 
 revoke all on function public.global_deck_commander_stats() from public;
-grant execute on function public.global_deck_commander_stats() to authenticated;
+grant execute on function public.global_deck_commander_stats() to authenticated, anon;
 
 create or replace function public.global_color_and_combo_stats()
 returns table (kind text, colors text[], games bigint, decks bigint)
@@ -138,4 +137,4 @@ as $$
 $$;
 
 revoke all on function public.global_color_and_combo_stats() from public;
-grant execute on function public.global_color_and_combo_stats() to authenticated;
+grant execute on function public.global_color_and_combo_stats() to authenticated, anon;

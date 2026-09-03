@@ -1,6 +1,7 @@
 import { Component, inject } from '@angular/core';
 import { MatchTab } from './match-tab/match-tab';
 import { StatsTab } from './stats-tab/stats-tab';
+import { GlobalStats } from './global-stats/global-stats';
 import { ProfileTab } from './profile-tab/profile-tab';
 import { GroupTab } from './group-tab/group-tab';
 import { IngameTracker } from './ingame-tracker/ingame-tracker';
@@ -56,6 +57,7 @@ import { APP_VERSION, APP_COMMIT } from './version';
     LegalPageView,
     SearchTab,
     LoginRequired,
+    GlobalStats,
   ],
   templateUrl: './app.html',
   styleUrl: './app.scss',

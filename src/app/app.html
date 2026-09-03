@@ -39,7 +39,7 @@
   } @case ('search') {
   <app-search-tab />
   } @case ('stats') {
-  @if (auth.currentUser()) { <app-stats-tab /> } @else { <app-login-required [message]="i18n.t('loginRequired.stats')" /> }
+  @if (auth.currentUser()) { <app-stats-tab /> } @else { <app-global-stats /> }
   } @case ('group') {
   @if (auth.currentUser()) { <app-group-tab /> } @else { <app-login-required [message]="i18n.t('loginRequired.group')" /> }
   } @case ('profile') {

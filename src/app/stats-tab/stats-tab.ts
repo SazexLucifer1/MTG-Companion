@@ -9,7 +9,7 @@ import { ProfileService } from '../profile.service';
 import { CardPreviewService } from '../card-preview.service';
 import { PlayerAvatar } from '../player-avatar/player-avatar';
 import { ScryfallCard, ScryfallService } from '../scryfall.service';
-import { DeckService, GlobalDeckCommanderStat, ColorStat, ColorComboStat } from '../deck.service';
+import { DeckService } from '../deck.service';
 import { DeckViewerService } from '../deck-viewer.service';
 import { CardImage } from '../card-image/card-image';
 import {
@@ -36,8 +36,15 @@ import { RadarChart, RadarChartDatum } from '../ui/radar-chart/radar-chart';
 import { ManaSymbol } from '../ui/mana-symbol/mana-symbol';
 import { colorComboName, sortColors } from '../color-combo-names';
 import { COLORLESS, FILTER_COLORS } from '../color-filter-match';
+import {
+  RankSortMode,
+  compareBySortMode,
+  medal as medalFor,
+  barValue as barValueFor,
+  barMax as barMaxFor,
+} from '../rank-sort';
+import { GlobalStats } from '../global-stats/global-stats';
 
-export type RankSortMode = 'wins' | 'winRate' | 'games';
 export type StatsViewMode = 'stats' | 'tournaments';
 export type ColorStatsWeightMode = 'games' | 'decks';
 export type StatsScope = 'group' | 'global';
@@ -100,6 +107,7 @@ interface ImportMappingRow {
     SplitBar,
     RadarChart,
     ManaSymbol,
+    GlobalStats,
   ],
   templateUrl: './stats-tab.html',
   styleUrl: './stats-tab.scss',
@@ -212,14 +220,6 @@ export class StatsTab {
       this.viewedGroupId.set(null);
     });
 
-    // Lädt die weltweite Statistik einmalig beim ersten Wechsel in den Global-Scope, nicht bei
-    // jedem erneuten Hin- und Herschalten - das sind zwei serverseitige Aggregat-Abfragen über die
-    // gesamte Website, kein leichter Request.
-    effect(() => {
-      if (this.viewScope() !== 'global' || this.globalStatsLoaded()) return;
-      this.loadGlobalStats();
-    });
-
     effect(() => {
       const names = new Set<string>();
       for (const e of this.pagedCombinedStats()) {
@@ -270,19 +270,8 @@ export class StatsTab {
   }
 
   // --- Sortierung der Ranglisten: nach Siegen, Winrate oder Spielanzahl umschaltbar ---
-
-  private compareBySortMode<T extends { wins: number; winRate: number; games: number }>(
-    mode: RankSortMode
-  ): (a: T, b: T) => number {
-    switch (mode) {
-      case 'wins':
-        return (a, b) => b.wins - a.wins || b.winRate - a.winRate;
-      case 'games':
-        return (a, b) => b.games - a.games || b.winRate - a.winRate;
-      case 'winRate':
-        return (a, b) => b.winRate - a.winRate || b.games - a.games;
-    }
-  }
+  // compareBySortMode/barValue/barMax/medal kommen aus rank-sort.ts - dieselbe Sortier- und
+  // Balkenlogik braucht auch die eigenständige GlobalStats-Komponente (weltweit, ohne Login).
 
   readonly playerSortMode = signal<RankSortMode>('winRate');
   /** Gemeinsamer Sortier-Modus für die vereinte Decks&Commander-Rangliste. */
@@ -296,32 +285,8 @@ export class StatsTab {
   // Die Liste war dann nach der einen Größe geordnet und der Balken zeigte eine andere - dadurch
   // sahen die Balken willkürlich aus, mal länger, mal kürzer, ohne erkennbaren Bezug zur
   // Reihenfolge. Jetzt zeigt der Balken immer die Größe, nach der gerade sortiert wird.
-
-  /** Der Wert, den der Balken einer Zeile darstellt - passend zur aktiven Sortierung. */
-  barValue(entry: { wins: number; games: number; winRate: number }, mode: RankSortMode): number {
-    switch (mode) {
-      case 'wins':
-        return entry.wins;
-      case 'games':
-        return entry.games;
-      case 'winRate':
-        return entry.winRate;
-    }
-  }
-
-  /**
-   * Bezugsgröße für die Balken einer Liste.
-   *
-   * Bei Winrate fest 100, damit 40% in jeder Liste gleich lang aussieht. Bei Absolutwerten der
-   * Größtwert der Liste, sonst wäre bei lauter kleinen Zahlen jeder Balken ein Stummel.
-   */
-  barMax(
-    list: readonly { wins: number; games: number; winRate: number }[],
-    mode: RankSortMode,
-  ): number {
-    if (mode === 'winRate') return 100;
-    return Math.max(1, ...list.map((e) => this.barValue(e, mode)));
-  }
+  readonly barValue = barValueFor;
+  readonly barMax = barMaxFor;
 
   // --- Stats-Sichtbarkeit ---
 
@@ -515,7 +480,7 @@ export class StatsTab {
   readonly rankedPlayerStats = computed<PlayerStats[]>(() =>
     this.playerStats()
       .filter((p) => p.games >= this.qualificationThreshold())
-      .sort(this.compareBySortMode(this.playerSortMode()))
+      .sort(compareBySortMode(this.playerSortMode()))
   );
 
   /** Seitenweise Anzeige der Spieler-Rangliste (10 pro Seite). */
@@ -730,7 +695,7 @@ export class StatsTab {
   readonly rankedCombinedStats = computed<CombinedRankEntry[]>(() =>
     this.combinedDeckCommanderStats()
       .filter((e) => e.games >= this.commanderQualificationThreshold())
-      .sort(this.compareBySortMode(this.deckSortMode()))
+      .sort(compareBySortMode(this.deckSortMode()))
   );
 
   /** Seitenweise Anzeige der Decks&Commander-Rangliste (10 pro Seite). */
@@ -903,82 +868,14 @@ export class StatsTab {
   /** Farben einer Kombination in WUBRG-Reihenfolge - identisch zu comboColors() im Profil-Tab. */
   readonly comboColors = (colors: string[]): string[] => sortColors(colors);
 
-  // --- Global-Statistik (weltweit, über ALLE Spieler der Website) ---
-  //
-  // Anders als der Gruppen-Scope (obenrum, Client-seitig aus viewedFilteredMatches() berechnet)
-  // kommt "Global" aus zwei serverseitigen Funktionen (sql/global-stats-functions-*.sql) - RLS
-  // beschränkt einen normalen Query strikt auf die eigenen Gruppen, weltweite Aggregate sind nur
-  // über eine SECURITY DEFINER-Funktion möglich, die NUR aggregierte Zahlen zurückgibt. Deshalb
-  // ohne Zeitraum-/Modus-Filter (die Funktionen kennen keine Parameter dafür) und ohne
-  // Qualifikationsschwelle (ausdrücklich so gewünscht) - und ohne Spielernamen in der Decks&
-  // Commander-Liste (würde sonst Namen aus fremden, nie freigegebenen Gruppen offenlegen).
-
+  /** Umschalter Gruppe/Global - "Global" wird von der eigenständigen GlobalStats-Komponente
+   * gerendert (siehe stats-tab.html), die auch ohne Login funktioniert und deshalb bewusst nicht
+   * Teil dieser (komplett login-pflichtigen) Komponente ist. */
   readonly viewScope = signal<StatsScope>('group');
 
   setViewScope(scope: StatsScope): void {
     this.viewScope.set(scope);
   }
-
-  private readonly globalStatsLoaded = signal(false);
-  readonly globalStatsLoading = signal(false);
-  private readonly globalDeckCommanderStats = signal<GlobalDeckCommanderStat[]>([]);
-  private readonly globalColorAndComboStatsData = signal<{
-    colorRanking: ColorStat[];
-    colorComboRanking: ColorComboStat[];
-  }>({
-    colorRanking: [],
-    colorComboRanking: [],
-  });
-
-  /** Lädt die weltweiten Daten einmalig beim ersten Wechsel in den Global-Scope (siehe Effect im Konstruktor). */
-  private loadGlobalStats(): void {
-    this.globalStatsLoading.set(true);
-    Promise.all([
-      this.deckService.getGlobalDeckCommanderStats(),
-      this.deckService.getGlobalColorAndComboStats(),
-    ]).then(([deckCommander, colors]) => {
-      this.globalDeckCommanderStats.set(deckCommander);
-      this.globalColorAndComboStatsData.set(colors);
-      this.globalStatsLoaded.set(true);
-      this.globalStatsLoading.set(false);
-    });
-  }
-
-  readonly rankedGlobalDeckCommanderStats = computed(() =>
-    [...this.globalDeckCommanderStats()].sort(this.compareBySortMode(this.deckSortMode())),
-  );
-
-  /** Seitenweise Anzeige der weltweiten Decks&Commander-Rangliste (10 pro Seite, keine Schwelle). */
-  readonly globalCombinedPage = signal(0);
-  readonly globalCombinedTotalPages = computed(() =>
-    Math.max(1, Math.ceil(this.rankedGlobalDeckCommanderStats().length / PAGE_SIZE)),
-  );
-  readonly globalCombinedEffectivePage = computed(() =>
-    Math.min(this.globalCombinedPage(), this.globalCombinedTotalPages() - 1),
-  );
-  readonly pagedGlobalDeckCommanderStats = computed(() => {
-    const start = this.globalCombinedEffectivePage() * PAGE_SIZE;
-    return this.rankedGlobalDeckCommanderStats().slice(start, start + PAGE_SIZE);
-  });
-
-  readonly globalColorRadarChart = computed<RadarChartDatum[]>(() =>
-    this.globalColorAndComboStatsData().colorRanking.map((stat) => ({
-      label: this.colorLabel(stat.color),
-      value: this.colorCountFor(stat),
-      color: this.colorVar(stat.color),
-      symbol: stat.color,
-    })),
-  );
-
-  readonly rankedGlobalColorCombos = computed(() =>
-    [...this.globalColorAndComboStatsData().colorComboRanking].sort(
-      (a, b) => this.colorCountFor(b) - this.colorCountFor(a),
-    ),
-  );
-
-  readonly maxGlobalColorComboCount = computed(() =>
-    Math.max(1, ...this.rankedGlobalColorCombos().map((c) => this.colorCountFor(c))),
-  );
 
   // --- Spieler-Details ---
 
@@ -1092,7 +989,7 @@ export class StatsTab {
         ...s,
         winRate: s.games > 0 ? (s.wins / s.games) * 100 : 0,
       }))
-      .sort(this.compareBySortMode(this.playerCommanderSortMode()));
+      .sort(compareBySortMode(this.playerCommanderSortMode()));
   });
 
   /** Deck-Stats des ausgewählten Spielers (eigene + geliehene Decks, die er selbst gespielt hat). */
@@ -1147,7 +1044,7 @@ export class StatsTab {
           commanderImageUrl: storedCommander?.imageUrl ?? null,
         };
       })
-      .sort(this.compareBySortMode(this.playerDeckSortMode()));
+      .sort(compareBySortMode(this.playerDeckSortMode()));
   });
 
   /** Ob die ausklappbaren "Decks"/"Gespielte Commander"-Bereiche in den Spieler-Details offen sind. */
@@ -1307,9 +1204,7 @@ export class StatsTab {
     return isMatchWinner(match.mode, match.winner, playerName, player?.team, player?.isArchenemy);
   }
 
-  medal(index: number): string {
-    return ['🥇', '🥈', '🥉'][index] ?? `${index + 1}.`;
-  }
+  readonly medal = medalFor;
 
   // --- Excel-Import ---
 

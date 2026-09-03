@@ -119,17 +119,24 @@ export interface CardAndColorStats {
 }
 
 /**
- * Ein Eintrag der weltweiten "Decks & Commander"-Rangliste (Stats-Tab, Global-Ansicht) - kommt aus
- * der SECURITY DEFINER-Funktion global_deck_commander_stats() (sql/global-stats-functions-*.sql),
- * da RLS einen normalen Client-Query auf die eigenen Gruppen beschränkt. Bewusst OHNE Spielername
- * ("gespielt von X") - das würde erstmals Namen aus fremden, nie für eine weltweite Ansicht
- * freigegebenen Gruppen offenlegen.
+ * Ein Eintrag der weltweiten "Decks"- bzw. "Commander"-Rangliste (GlobalStats-Komponente) - kommt
+ * aus der SECURITY DEFINER-Funktion global_deck_commander_stats() (sql/global-stats-functions-*
+ * .sql), da RLS einen normalen Client-Query auf die eigenen Gruppen beschränkt. Bewusst OHNE
+ * Spielername ("gespielt von X") - das würde erstmals Namen aus fremden, nie für eine weltweite
+ * Ansicht freigegebenen Gruppen offenlegen. Zwei getrennte Interfaces statt einem gemeinsamen, weil
+ * die beiden Ranglisten in der UI bewusst getrennt sind (anders als im Gruppen-Scope).
  */
-export interface GlobalDeckCommanderStat {
-  /** 'd:'+deckId für ein eigenständiges Deck, 'c:'+Name für einen Precon-/unverlinkten Commander. */
-  key: string;
-  /** Nur bei einem eigenständigen Deck gesetzt - für den "Ansehen"-Sprung zum Deck. */
-  deckId?: string;
+export interface GlobalDeckStat {
+  /** Für den "Ansehen"-Sprung zur Deck-Detailansicht. */
+  deckId: string;
+  name: string;
+  commanderImageUrl: string | null;
+  games: number;
+  wins: number;
+  winRate: number;
+}
+
+export interface GlobalCommanderStat {
   name: string;
   commanderImageUrl: string | null;
   games: number;
@@ -1289,27 +1296,44 @@ export class DeckService {
    * sql/global-stats-functions-*.sql). Muss einmalig im Supabase-SQL-Editor angelegt werden -
    * bis dahin liefert der Aufruf einen Fehler, der hier abgefangen wird (leere Liste statt Absturz).
    */
-  async getGlobalDeckCommanderStats(): Promise<GlobalDeckCommanderStat[]> {
+  async getGlobalDeckCommanderStats(): Promise<{
+    decks: GlobalDeckStat[];
+    commanders: GlobalCommanderStat[];
+  }> {
+    const empty = { decks: [], commanders: [] };
     const { data, error } = await supabase.rpc('global_deck_commander_stats');
 
     if (error || !data) {
       console.error('Konnte weltweite Decks&Commander-Statistik nicht laden:', error);
-      return [];
+      return empty;
     }
 
-    return (data as any[]).map((row) => {
+    const decks: GlobalDeckStat[] = [];
+    const commanders: GlobalCommanderStat[] = [];
+    for (const row of data as any[]) {
       const games = Number(row.games);
       const wins = Number(row.wins);
-      return {
-        key: row.bucket === 'deck' ? `d:${row.deck_id}` : `c:${row.name}`,
-        deckId: row.deck_id ?? undefined,
-        name: row.name,
-        commanderImageUrl: row.commander_image_url,
-        games,
-        wins,
-        winRate: games > 0 ? (wins / games) * 100 : 0,
-      };
-    });
+      const winRate = games > 0 ? (wins / games) * 100 : 0;
+      if (row.bucket === 'deck') {
+        decks.push({
+          deckId: row.deck_id,
+          name: row.name,
+          commanderImageUrl: row.commander_image_url,
+          games,
+          wins,
+          winRate,
+        });
+      } else {
+        commanders.push({
+          name: row.name,
+          commanderImageUrl: row.commander_image_url,
+          games,
+          wins,
+          winRate,
+        });
+      }
+    }
+    return { decks, commanders };
   }
 
   /**
