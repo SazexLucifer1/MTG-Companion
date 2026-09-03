@@ -64,10 +64,11 @@ Jede Komponente ist ein Trio `name/name.ts` + `name.html` + `name.scss`.
 ### Weitere Orte
 
 - **Typen:** `src/app/models.ts`, `src/app/tournament.models.ts`
+- **Übersetzungen:** `src/app/i18n/` — 13 Module (`auth`, `common`, `deck`, `deck-view`, `feedback`, `group`, `ingame`, `match`, `profile`, `search`, `stats`, `tournament`, `tutorial`), je Datei beide Sprachen. Siehe die Arbeitsregel weiter unten.
 - **Styles:** Design-Tokens (`--sp-*` Abstände, `--r-*` Rundungen, Flächen, Diagrammfarben) global in `src/styles.scss`; Partials in `src/styles/` (`_breakpoints.scss`, `_mana.scss`). Style-Budget: **6 kB Warnung / 12 kB Fehler pro Komponenten-Style** — große `.scss`-Dateien nicht unbegrenzt wachsen lassen.
 - **Cloudflare Functions:** `functions/api/proxy-image.ts` (CORS-Proxy für Scryfall-Bilder im PDF-Export), `functions/api/estimate-bracket.ts`
 - **CSP und Cache-Header:** `public/_headers` — wer eine neue externe API anbindet, muss sie hier freischalten, sonst blockt der Browser sie stillschweigend.
-- **Supabase-Migrationen:** `sql/` (datierte Skripte)
+- **Supabase-Migrationen:** `sql/` (datierte Skripte). **Diese Dateien laufen nicht automatisch** — sie müssen von Hand im Supabase-SQL-Editor ausgeführt werden, ein Merge allein ändert an der Datenbank nichts. Wer einem Fehler nachgeht, der nach „die App speichert nicht“ aussieht, prüft deshalb zuerst die Browser-Konsole: Rechte-Fehler kommen als HTTP 500 mit Postgres-Codes wie `42P17` an, nicht als Code-Fehler (siehe `sql/fix-tournament-rls-recursion-2026-09-03.sql`).
 - **Generiert, niemals von Hand anfassen:** `src/app/version.ts` (erzeugt von `scripts/generate-version.js` bei jedem `start`/`build`, gitignored)
 
 ---
@@ -76,22 +77,42 @@ Jede Komponente ist ein Trio `name/name.ts` + `name.html` + `name.scss`.
 
 Diese Regeln sparen Kontext und damit Zeit und Kosten. Sie sind nicht optional.
 
-### UI-Texte werden gegrept, nie gelesen
+### UI-Texte: erst die richtige Datei bestimmen, dann greppen
 
-Alle sichtbaren Texte liegen in `src/app/i18n.service.ts` — **2673 Zeilen, niemals am Stück lesen.** Aufbau: eine flache Tabelle pro Sprache, Keys nach dem Schema `bereich.beschreibung`:
+Alle sichtbaren Texte liegen in `src/app/i18n/` — **je Bereich eine Datei, beide Sprachen darin nebeneinander.** `i18n.service.ts` selbst ist nur noch die Klasse plus das Zusammensetzen der Module (~110 Zeilen) und enthält **keine** Texte mehr.
 
 ```ts
-const TRANSLATIONS: Record<Lang, Record<string, string>> = {
-  de: { 'match.newMatch': 'Neues Match', 'nav.profile': 'Profil', … },
-  en: { … },
+// src/app/i18n/match.ts
+export const match = {
+  de: { 'match.newMatch': 'Neues Match', … },
+  en: { 'match.newMatch': 'New match', … },
 };
 ```
 
+Das **Key-Präfix sagt, in welcher Datei der Key steht** (Schema `bereich.beschreibung`):
+
+| Präfix                                                                                                                                                     | Datei           |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------- |
+| `match`, `game`, `placement`                                                                                                                               | `match.ts`      |
+| `stats`                                                                                                                                                    | `stats.ts`      |
+| `group`, `permission`                                                                                                                                      | `group.ts`      |
+| `profile`                                                                                                                                                  | `profile.ts`    |
+| `deck`, `deckViewer`, `importDialog`, `pdfDialog`                                                                                                          | `deck.ts`       |
+| `deckView`                                                                                                                                                 | `deck-view.ts`  |
+| `tournament`, `tournamentHistory`                                                                                                                          | `tournament.ts` |
+| `ingame`, `goldfish`                                                                                                                                       | `ingame.ts`     |
+| `archetypeFilter`, `effectFilter`, `keywordFilter`, `commanderRec`, `precons`, `publicDecks`, `publicSearch`, `search`, `colorFilter`, `colorCombo`, `pip` | `search.ts`     |
+| `login`, `loginRequired`, `resetPassword`                                                                                                                  | `auth.ts`       |
+| `feedback`                                                                                                                                                 | `feedback.ts`   |
+| `tutorial`                                                                                                                                                 | `tutorial.ts`   |
+| `dialog`, `common`, `nav`, `header`, `sort`, `legal`, `cardImage`, `partnerCardImage`                                                                      | `common.ts`     |
+
 Vorgehen bei einer Textänderung:
 
-1. `grep -n "Neues Match" src/app/i18n.service.ts` (nach dem sichtbaren Text) oder `grep -n "'match\." src/app/i18n.service.ts` (nach dem Präfix)
-2. Nur die gefundenen Zeilen editieren
-3. **Immer beide Sprachblöcke anpassen** — `de` _und_ `en`. Ein Key, der nur in einer Sprache existiert, ist ein Bug.
+1. Ist der Bereich schon klar, direkt in der passenden Datei greppen. Sonst über den sichtbaren Text suchen: `grep -rn "Neues Match" src/app/i18n/`
+2. Nur die gefundenen Zeilen editieren — die Module sind klein (größte: `tutorial.ts` 409, `deck-view.ts` 404 Zeilen), ein ganzes Modul zu lesen ist vertretbar.
+3. **Immer beide Sprachen anpassen** — `de` _und_ `en` stehen in derselben Datei direkt untereinander. Ein Key, den es nur in einer Sprache gibt, ist ein Bug; `src/app/i18n/i18n-keys.spec.ts` prüft das.
+4. Ein **neuer** Key gehört in das Modul seines Präfixes. Ein neues Präfix muss zusätzlich in die Tabelle in `i18n-keys.spec.ts` eingetragen werden, sonst schlägt der Test fehl.
 
 ### Große Dateien: erst suchen, dann gezielt lesen
 
@@ -99,9 +120,8 @@ Bei diesen Dateien grundsätzlich `grep`/`Glob` vor `Read`; wenn doch gelesen we
 
 | Zeilen | Datei                                            |
 | ------ | ------------------------------------------------ |
-| 2673   | `src/app/i18n.service.ts`                        |
 | 2415   | `src/app/deck-viewer.service.ts`                 |
-| 1722   | `src/app/tournament.service.ts`                  |
+| 1770   | `src/app/tournament.service.ts`                  |
 | 1528   | `src/app/deck.service.ts`                        |
 | 1512   | `src/app/mtg.service.ts`                         |
 | 1142   | `src/app/stats-tab/stats-tab.ts`                 |
@@ -138,7 +158,7 @@ Wichtig zur Einordnung:
 
 - `npm run format:check` meldet aktuell **~109 vorbestehende** Dateien: Prettier ist konfiguriert, wurde aber nie projektweit ausgeführt. Ein roter `format:check` ist deshalb **kein** Hinweis darauf, dass die eigene Änderung falsch formatiert ist. Prüfe gezielt die eigenen Dateien (`npx prettier --check <datei>`) und formatiere auch nur diese. **Nicht** `npm run format` über das ganze Projekt laufen lassen — das erzeugt einen themenfremden Riesen-Diff, den der User nicht prüfen kann.
 - Es gibt **kein Lint** und **keine Build-CI auf GitHub** (der einzige Workflow ist ein nächtliches Supabase-Backup). Ein grüner PR bedeutet nicht, dass gebaut wurde — deshalb lokal bauen, bevor gepusht wird.
-- Es gibt nur **6 Spec-Dateien** (`scryfall.service`, `public-deck.service`, `color-filter-match`, `color-combo-names`, `app-recovery`, `ui/radar-chart/radar-geometry`). Die Tests sind **kein Sicherheitsnetz** — grüne Tests sagen fast nichts.
+- Es gibt nur **7 Spec-Dateien** (`scryfall.service`, `public-deck.service`, `color-filter-match`, `color-combo-names`, `app-recovery`, `ui/radar-chart/radar-geometry`, `i18n/i18n-keys`). Die Tests sind **kein Sicherheitsnetz** — grüne Tests sagen fast nichts.
 - Der echte Test ist die **Cloudflare-Pages-Preview des PRs** auf dem iPhone.
 
 ---
