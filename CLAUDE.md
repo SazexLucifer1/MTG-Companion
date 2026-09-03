@@ -172,6 +172,72 @@ Wichtig zur Einordnung:
 
 ---
 
+## Test-Accounts: die App selbst anschauen und Änderungen validieren
+
+Es gibt vier Testkonten auf der **Produktiv**-Supabase, die zusammen in der Gruppe
+„Claude Testgruppe" spielen. Damit kann jede Session die laufende App selbst bedienen —
+einloggen, durchklicken, Screenshots machen — statt Änderungen nur im Code zu prüfen.
+
+> ⚠️ **Die Passwörter stehen bewusst nicht hier.** Dieses Repo ist öffentlich; eingecheckte
+> Zugangsdaten wären für jeden lesbar. Der User gibt sie auf Nachfrage im Chat heraus.
+> Notfalls kommt man auch ohne sie weiter: Die Registrierung ist offen und
+> `mailer_autoconfirm` ist aktiv, ein frisches Konto ist also in Sekunden einsatzbereit —
+> es sieht dann nur die Gruppendaten nicht, solange es nicht eingeladen wurde.
+
+| Konto     | E-Mail                                | Rolle            |
+| --------- | ------------------------------------- | ---------------- |
+| Admin     | `claude.qa.1788426226171@example.com` | Admin der Gruppe |
+| Spieler 2 | `claude.qa.1788420220051@example.com` | Mitglied         |
+| Spieler 3 | `claude.qa.1788420433192@example.com` | Mitglied         |
+| Spieler 4 | `claude.qa.1788420636039@example.com` | Mitglied         |
+
+Bestand: 8 importierte Precon-Decks (2 pro Konto), 15 gespielte Matches, dadurch gefüllte
+Spieler-, Deck- und Commander-Ranglisten. **Diese Daten nicht löschen** — ohne sie sind alle
+Statistik-Ansichten leer und damit nicht prüfbar.
+
+### Erwartung an neue Sessions
+
+Wer die UI ändert, prüft die Änderung **in der laufenden App** und belegt sie mit einem
+Screenshot — nicht nur mit `npm run typecheck`. Das Projekt hat kein Lint, keine Build-CI und
+praktisch keine Tests; der Screenshot ist der einzige echte Nachweis.
+
+### So geht es
+
+`npm start` (Dev-Server auf `localhost:4200`, spricht mit der Produktiv-Supabase), dann
+Playwright 1.56 und Chromium — beide sind in der Umgebung vorinstalliert, **kein**
+`playwright install`:
+
+```js
+const browser = await chromium.launch({
+  executablePath: '/opt/pw-browsers/chromium',
+  args: [
+    '--no-sandbox',
+    '--disable-quic',
+    '--disable-features=PostQuantumKyber,TLS13KyberSupport,EncryptedClientHello,UseDnsHttpsSvcb',
+    '--ssl-version-max=tls1.2',
+  ],
+});
+const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, locale: 'de-DE' });
+```
+
+Vier Stolpersteine, die sonst jede Session neu sucht:
+
+1. **Keine `proxy:`-Option setzen.** Chromium übernimmt den Proxy aus der Umgebung, und
+   `no_proxy` nimmt `localhost` bereits aus. Eine explizite Proxy-Option schickt auch die
+   Anfragen an `localhost:4200` in den Proxy — die App lädt dann gar nicht.
+2. **Die TLS-Flags oben sind Pflicht.** Ohne sie bricht der Tunnel zu Supabase mit
+   `ERR_CONNECTION_RESET` ab; der Post-Quantum-ClientHello ist dem Proxy zu groß.
+3. **Das Tutorial-Overlay erscheint pro Tab neu** und fängt alle Klicks ab. Nach jedem
+   Tabwechsel „Überspringen" klicken, sonst laufen alle folgenden Klicks in den Timeout.
+4. **Stabile Selektoren:** Tabs tragen `data-tutorial="nav-match|search|stats|group|profile"`,
+   Dialoge liegen in `.options-menu-sheet`, Bestätigungen in `app-dialog` (Button `.primary`).
+
+Ablauf für Matches (erzeugt Statistiken): Match-Tab → Spieler-Chips wählen → je Spieler
+„📚 Deck wählen" → „▶ Spiel starten" → im Tracker ⋮ → „🏁 Spiel beenden" → Sieger 🏆 →
+„Match speichern & beenden" → den `app-dialog` bestätigen.
+
+---
+
 ## Weiterführend
 
 `PROMPTING.md` im Projektwurzelverzeichnis erklärt dem User, wie er Aufgaben formuliert. Die dortige Vokabular-Tabelle („was der User sagt" → „welche Datei") ist auch für Claude nützlich.
