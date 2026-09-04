@@ -589,160 +589,178 @@
             @if (viewer.analysisBusy()) {
               <p class="hint">{{ viewer.i18n.t('deckView.loadingAnalysis') }}</p>
             } @else {
-              <div class="stat-tiles">
-                <div class="stat-tile">
-                  <span class="stat-value">{{ viewer.averageCmc() != null ? ((viewer.averageCmc() | number: '1.1-2')) : '–' }}</span>
-                  <span class="stat-label">{{ viewer.i18n.t('deckView.avgCmcTile') }}</span>
-                </div>
-                <div class="stat-tile">
-                  <span class="stat-value">{{ viewer.landCount() }}</span>
-                  <span class="stat-label">{{ viewer.i18n.t('deckView.landsTile') }}</span>
-                </div>
-                <div class="stat-tile">
-                  <span class="stat-value">{{ viewer.nonBasicLandPercent() != null ? (viewer.nonBasicLandPercent() + '%') : '–' }}</span>
-                  <span class="stat-label">{{ viewer.i18n.t('deckView.nonBasicLandTile') }}</span>
-                </div>
-                <div class="stat-tile">
-                  @if (viewer.priceBusy()) {
-                    <span class="stat-value">…</span>
-                  } @else if (viewer.totalDeckPrice(); as price) {
-                    <span class="stat-value">{{ price | currency: 'EUR' }}</span>
-                  } @else {
-                    <span class="stat-value">–</span>
-                  }
-                  <span class="stat-label">{{ viewer.i18n.t('deckView.priceTile') }}</span>
-                </div>
-              </div>
-
-              <h4 class="deck-section-title">{{ viewer.i18n.t('deckView.manaCurveTitle') }}</h4>
-              <app-bar-chart [data]="viewer.manaCurveChart()" orientation="vertical" />
-
-              <h4 class="deck-section-title">{{ viewer.i18n.t('deckView.pipDistTitle') }}</h4>
-              @if (viewer.pipDistribution().length > 0) {
-                <app-bar-chart [data]="viewer.pipDistributionChart()" labelWidth="22px" />
-              }
-
-              <h4 class="deck-section-title">{{ viewer.i18n.t('deckView.manaSourceTitle') }}</h4>
-              @if (viewer.manaSourceCount() > 0) {
-                <p class="hint">
-                  {{
-                    viewer.i18n.t('deckView.manaSourceSummary', {
-                      count: viewer.manaSourceCount(),
-                      total: viewer.viewingTotalCards(),
-                      nonLand: viewer.nonLandManaSourceCount()
-                    })
-                  }}
-                </p>
-                <app-bar-chart [data]="viewer.manaSourceChart()" labelWidth="22px" />
-              } @else {
-                <p class="hint">{{ viewer.i18n.t('deckView.manaSourceEmpty') }}</p>
-              }
-
-              <h4 class="deck-section-title">{{ viewer.i18n.t('deckView.typeBreakdownTitle') }}</h4>
-              <app-bar-chart [data]="viewer.typeBreakdownChart()" labelWidth="110px" />
-
-              <h4 class="deck-section-title">{{ viewer.i18n.t('deckView.effectCategoriesTitle') }}</h4>
-              @if (viewer.effectCategoryCountsBusy()) {
-                @if (viewer.effectCategoryProgress(); as progress) {
-                  <p class="hint">{{ viewer.i18n.t('deckView.loadingEffectCategoriesProgress', { done: progress.done, total: progress.total }) }}</p>
-                } @else {
-                  <p class="hint">{{ viewer.i18n.t('deckView.loadingEffectCategories') }}</p>
-                }
-              } @else if (viewer.effectCategoryStats(); as stats) {
-                <p class="hint">{{ viewer.i18n.t('deckView.effectCategoriesHint') }}</p>
+              <section class="analysis-section analysis-section-wide">
                 <div class="stat-tiles">
-                  @for (stat of stats; track stat.key) {
-                    <button
-                      class="stat-tile stat-tile-button"
-                      [disabled]="stat.count === 0"
-                      (click)="viewer.openEffectCategoryPopup(viewer.i18n.t(stat.labelKey), stat.cards)"
-                    >
-                      <span class="stat-value">{{ stat.count }}</span>
-                      <span class="stat-label">{{ viewer.i18n.t(stat.labelKey) }}</span>
-                    </button>
-                  }
+                  <div class="stat-tile">
+                    <span class="stat-value">{{ viewer.averageCmc() != null ? ((viewer.averageCmc() | number: '1.1-2')) : '–' }}</span>
+                    <span class="stat-label">{{ viewer.i18n.t('deckView.avgCmcTile') }}</span>
+                  </div>
+                  <div class="stat-tile">
+                    <span class="stat-value">{{ viewer.landCount() }}</span>
+                    <span class="stat-label">{{ viewer.i18n.t('deckView.landsTile') }}</span>
+                  </div>
+                  <div class="stat-tile">
+                    <span class="stat-value">{{ viewer.nonBasicLandPercent() != null ? (viewer.nonBasicLandPercent() + '%') : '–' }}</span>
+                    <span class="stat-label">{{ viewer.i18n.t('deckView.nonBasicLandTile') }}</span>
+                  </div>
+                  <div class="stat-tile">
+                    @if (viewer.priceBusy()) {
+                      <span class="stat-value">…</span>
+                    } @else if (viewer.totalDeckPrice(); as price) {
+                      <span class="stat-value">{{ price | currency: 'EUR' }}</span>
+                    } @else {
+                      <span class="stat-value">–</span>
+                    }
+                    <span class="stat-label">{{ viewer.i18n.t('deckView.priceTile') }}</span>
+                  </div>
                 </div>
-              }
+              </section>
 
-              <h4 class="deck-section-title">{{ viewer.i18n.t('deckView.gameChangerTitle') }}</h4>
-              <p class="hint">
-                {{ viewer.i18n.t('deckView.gameChangerSummary', { count: viewer.gameChangerCount(), total: viewer.viewingTotalCards(), hint: viewer.estimatedBracketHint() }) }}
-              </p>
-              @if (viewer.gameChangerCards().length > 0) {
-                <ul class="game-changer-list">
-                  @for (gc of viewer.gameChangerCards(); track gc.cardName) {
-                    <li>
-                      @if (gc.quantity > 1) {<span class="deck-card-qty-text">{{ gc.quantity }}×</span>}
-                      <button class="card-name-link" (click)="viewer.openCardPreview(gc.cardName)">{{ gc.cardName }}</button>
-                    </li>
+              <section class="analysis-section">
+                <h4 class="deck-section-title">{{ viewer.i18n.t('deckView.manaCurveTitle') }}</h4>
+                <app-bar-chart [data]="viewer.manaCurveChart()" orientation="vertical" />
+              </section>
+
+              <section class="analysis-section">
+                <h4 class="deck-section-title">{{ viewer.i18n.t('deckView.pipDistTitle') }}</h4>
+                @if (viewer.pipDistribution().length > 0) {
+                  <app-bar-chart [data]="viewer.pipDistributionChart()" labelWidth="22px" />
+                }
+              </section>
+
+              <section class="analysis-section">
+                <h4 class="deck-section-title">{{ viewer.i18n.t('deckView.manaSourceTitle') }}</h4>
+                @if (viewer.manaSourceCount() > 0) {
+                  <p class="hint">
+                    {{
+                      viewer.i18n.t('deckView.manaSourceSummary', {
+                        count: viewer.manaSourceCount(),
+                        total: viewer.viewingTotalCards(),
+                        nonLand: viewer.nonLandManaSourceCount()
+                      })
+                    }}
+                  </p>
+                  <app-bar-chart [data]="viewer.manaSourceChart()" labelWidth="22px" />
+                } @else {
+                  <p class="hint">{{ viewer.i18n.t('deckView.manaSourceEmpty') }}</p>
+                }
+              </section>
+
+              <section class="analysis-section">
+                <h4 class="deck-section-title">{{ viewer.i18n.t('deckView.typeBreakdownTitle') }}</h4>
+                <app-bar-chart [data]="viewer.typeBreakdownChart()" labelWidth="110px" />
+              </section>
+
+              <section class="analysis-section analysis-section-wide">
+                <h4 class="deck-section-title">{{ viewer.i18n.t('deckView.effectCategoriesTitle') }}</h4>
+                @if (viewer.effectCategoryCountsBusy()) {
+                  @if (viewer.effectCategoryProgress(); as progress) {
+                    <p class="hint">{{ viewer.i18n.t('deckView.loadingEffectCategoriesProgress', { done: progress.done, total: progress.total }) }}</p>
+                  } @else {
+                    <p class="hint">{{ viewer.i18n.t('deckView.loadingEffectCategories') }}</p>
                   }
-                </ul>
-              }
-
-              <h4 class="deck-section-title">{{ viewer.i18n.t('deckView.tutorsTitle') }}</h4>
-              @if (viewer.tutorCards().length === 0) {
-                <p class="hint">{{ viewer.i18n.t('deckView.noneFound') }}</p>
-              } @else {
-                <ul class="game-changer-list">
-                  @for (t of viewer.tutorCards(); track t.cardName) {
-                    <li>
-                      @if (t.quantity > 1) {<span class="deck-card-qty-text">{{ t.quantity }}×</span>}
-                      <button class="card-name-link" (click)="viewer.openCardPreview(t.cardName)">{{ t.cardName }}</button>
-                    </li>
-                  }
-                </ul>
-              }
-
-              <h4 class="deck-section-title">{{ viewer.i18n.t('deckView.mldTitle') }}</h4>
-              @if (viewer.bracketEstimateBusy()) {
-                <p class="hint">{{ viewer.i18n.t('deckView.loadingSpellbookEval') }}</p>
-              } @else if (viewer.bracketEstimateFailed()) {
-                <p class="hint">{{ viewer.i18n.t('deckView.spellbookUnavailable') }}</p>
-                @if (viewer.bracketEstimateErrorDetail(); as detail) {
-                  <p class="hint bracket-caveat">{{ viewer.i18n.t('deckView.technicalMessage', { detail }) }}</p>
-                }
-              } @else if (viewer.bracketEstimate()) {
-                @if (viewer.massLandDenialCards().length > 0) {
-                  <p class="hint"><strong>{{ viewer.i18n.t('deckView.massLandDenialLabel') }}</strong></p>
-                  <ul class="game-changer-list">
-                    @for (c of viewer.massLandDenialCards(); track c.cardName) {
-                      <li><button class="card-name-link" (click)="viewer.openCardPreview(c.cardName)">{{ c.cardName }}</button></li>
+                } @else if (viewer.effectCategoryStats(); as stats) {
+                  <p class="hint">{{ viewer.i18n.t('deckView.effectCategoriesHint') }}</p>
+                  <div class="stat-tiles">
+                    @for (stat of stats; track stat.key) {
+                      <button
+                        class="stat-tile stat-tile-button"
+                        [disabled]="stat.count === 0"
+                        (click)="viewer.openEffectCategoryPopup(viewer.i18n.t(stat.labelKey), stat.cards)"
+                      >
+                        <span class="stat-value">{{ stat.count }}</span>
+                        <span class="stat-label">{{ viewer.i18n.t(stat.labelKey) }}</span>
+                      </button>
                     }
-                  </ul>
+                  </div>
                 }
-                @if (viewer.extraTurnCards().length > 0) {
-                  <p class="hint"><strong>{{ viewer.i18n.t('deckView.extraTurnsLabel') }}</strong></p>
+              </section>
+
+              <section class="analysis-section">
+                <h4 class="deck-section-title">{{ viewer.i18n.t('deckView.gameChangerTitle') }}</h4>
+                <p class="hint">
+                  {{ viewer.i18n.t('deckView.gameChangerSummary', { count: viewer.gameChangerCount(), total: viewer.viewingTotalCards(), hint: viewer.estimatedBracketHint() }) }}
+                </p>
+                @if (viewer.gameChangerCards().length > 0) {
                   <ul class="game-changer-list">
-                    @for (c of viewer.extraTurnCards(); track c.cardName) {
-                      <li><button class="card-name-link" (click)="viewer.openCardPreview(c.cardName)">{{ c.cardName }}</button></li>
-                    }
-                  </ul>
-                }
-                @if (viewer.twoCardCombos().length > 0) {
-                  <p class="hint"><strong>{{ viewer.i18n.t('deckView.twoCardComboLabel') }}</strong></p>
-                  <ul class="game-changer-list">
-                    @for (combo of viewer.twoCardCombos(); track combo.cardNames.join('+')) {
+                    @for (gc of viewer.gameChangerCards(); track gc.cardName) {
                       <li>
-                        @for (name of combo.cardNames; track name; let last = $last) {
-                          <button class="card-name-link" (click)="viewer.openCardPreview(name)">{{ name }}</button>
-                          @if (!last) { <span> + </span> }
-                        }
-                        → {{ combo.produces.join(', ') }}
+                        @if (gc.quantity > 1) {<span class="deck-card-qty-text">{{ gc.quantity }}×</span>}
+                        <button class="card-name-link" (click)="viewer.openCardPreview(gc.cardName)">{{ gc.cardName }}</button>
                       </li>
                     }
                   </ul>
                 }
-                @if (
-                  viewer.massLandDenialCards().length === 0 &&
-                  viewer.extraTurnCards().length === 0 &&
-                  viewer.twoCardCombos().length === 0
-                ) {
-                  <p class="hint">{{ viewer.i18n.t('deckView.noneOfThisFound') }}</p>
+              </section>
+
+              <section class="analysis-section">
+                <h4 class="deck-section-title">{{ viewer.i18n.t('deckView.tutorsTitle') }}</h4>
+                @if (viewer.tutorCards().length === 0) {
+                  <p class="hint">{{ viewer.i18n.t('deckView.noneFound') }}</p>
+                } @else {
+                  <ul class="game-changer-list">
+                    @for (t of viewer.tutorCards(); track t.cardName) {
+                      <li>
+                        @if (t.quantity > 1) {<span class="deck-card-qty-text">{{ t.quantity }}×</span>}
+                        <button class="card-name-link" (click)="viewer.openCardPreview(t.cardName)">{{ t.cardName }}</button>
+                      </li>
+                    }
+                  </ul>
                 }
-                @if (viewer.spellbookBracketLabel(); as label) {
-                  <p class="hint">{{ viewer.i18n.t('deckView.spellbookEstimateLabel') }} <strong>{{ label }}</strong></p>
+              </section>
+
+              <section class="analysis-section">
+                <h4 class="deck-section-title">{{ viewer.i18n.t('deckView.mldTitle') }}</h4>
+                @if (viewer.bracketEstimateBusy()) {
+                  <p class="hint">{{ viewer.i18n.t('deckView.loadingSpellbookEval') }}</p>
+                } @else if (viewer.bracketEstimateFailed()) {
+                  <p class="hint">{{ viewer.i18n.t('deckView.spellbookUnavailable') }}</p>
+                  @if (viewer.bracketEstimateErrorDetail(); as detail) {
+                    <p class="hint bracket-caveat">{{ viewer.i18n.t('deckView.technicalMessage', { detail }) }}</p>
+                  }
+                } @else if (viewer.bracketEstimate()) {
+                  @if (viewer.massLandDenialCards().length > 0) {
+                    <p class="hint"><strong>{{ viewer.i18n.t('deckView.massLandDenialLabel') }}</strong></p>
+                    <ul class="game-changer-list">
+                      @for (c of viewer.massLandDenialCards(); track c.cardName) {
+                        <li><button class="card-name-link" (click)="viewer.openCardPreview(c.cardName)">{{ c.cardName }}</button></li>
+                      }
+                    </ul>
+                  }
+                  @if (viewer.extraTurnCards().length > 0) {
+                    <p class="hint"><strong>{{ viewer.i18n.t('deckView.extraTurnsLabel') }}</strong></p>
+                    <ul class="game-changer-list">
+                      @for (c of viewer.extraTurnCards(); track c.cardName) {
+                        <li><button class="card-name-link" (click)="viewer.openCardPreview(c.cardName)">{{ c.cardName }}</button></li>
+                      }
+                    </ul>
+                  }
+                  @if (viewer.twoCardCombos().length > 0) {
+                    <p class="hint"><strong>{{ viewer.i18n.t('deckView.twoCardComboLabel') }}</strong></p>
+                    <ul class="game-changer-list">
+                      @for (combo of viewer.twoCardCombos(); track combo.cardNames.join('+')) {
+                        <li>
+                          @for (name of combo.cardNames; track name; let last = $last) {
+                            <button class="card-name-link" (click)="viewer.openCardPreview(name)">{{ name }}</button>
+                            @if (!last) { <span> + </span> }
+                          }
+                          → {{ combo.produces.join(', ') }}
+                        </li>
+                      }
+                    </ul>
+                  }
+                  @if (
+                    viewer.massLandDenialCards().length === 0 &&
+                    viewer.extraTurnCards().length === 0 &&
+                    viewer.twoCardCombos().length === 0
+                  ) {
+                    <p class="hint">{{ viewer.i18n.t('deckView.noneOfThisFound') }}</p>
+                  }
+                  @if (viewer.spellbookBracketLabel(); as label) {
+                    <p class="hint">{{ viewer.i18n.t('deckView.spellbookEstimateLabel') }} <strong>{{ label }}</strong></p>
+                  }
                 }
-              }
+              </section>
             }
           </div>
         }

@@ -1512,8 +1512,11 @@ export class DeckService {
    * unabhängig davon, ob ein Deck verlinkt ist, da hier die Gesamtzahl gefragt ist statt einer
    * reinen Commander-Rangliste. Respektiert stats_locked einer Gruppe bewusst NICHT - das sperrt nur
    * die geteilte Rangliste für andere Mitglieder, nicht die eigenen Zahlen für einen selbst.
+   *
+   * year begrenzt die Auswertung auf ein Kalenderjahr (Jahresfilter der Profil-Statistiken);
+   * ohne Angabe zählen alle Partien.
    */
-  async getCrossGroupPersonalStats(userId: string): Promise<CrossGroupPersonalStats> {
+  async getCrossGroupPersonalStats(userId: string, year?: number): Promise<CrossGroupPersonalStats> {
     const { data: playerRows, error: playerError } = await supabase
       .from('players')
       .select('id, group_id')
@@ -1530,7 +1533,7 @@ export class DeckService {
     const { data, error } = await supabase
       .from('match_players')
       .select(
-        'commander_name, team, is_archenemy, players ( display_name ), matches ( game_mode, winner_name, counts_in_general_stats )'
+        'commander_name, team, is_archenemy, players ( display_name ), matches ( game_mode, winner_name, counts_in_general_stats, played_at )'
       )
       .in('player_id', playerIds);
 
@@ -1547,6 +1550,10 @@ export class DeckService {
       const match = row.matches;
       const playerName = row.players?.display_name;
       if (!match || !playerName || match.counts_in_general_stats === false) continue;
+      // Jahresfilter clientseitig statt als Query-Bedingung: die Matches hängen hier über einen
+      // Join dran, und ein Filter auf die eingebettete Tabelle bräuchte einen Inner-Join-Hinweis -
+      // die Zeilenzahl (Partien EINES Accounts) ist klein genug, dass sich das nicht lohnt.
+      if (year != null && new Date(match.played_at).getFullYear() !== year) continue;
 
       totalGames++;
       const won = isPlayerWinner(match.game_mode, match.winner_name, playerName, row.team, row.is_archenemy);
@@ -1591,15 +1598,18 @@ export class DeckService {
    * "isLand"-Flag in deck_cards. Precon-Decks (is_precon) fließen bewusst NICHT ein, da sie nicht
    * selbst zusammengestellt wurden. mostUsedCards liefert die vollständige Liste (nicht nur Top 5) -
    * das Slicen auf die Top 5 je aktivem Modus übernimmt das Profil-Tab.
+   *
+   * year begrenzt die Auswertung wie bei getCrossGroupPersonalStats() auf ein Kalenderjahr - ein
+   * Deck ohne Partie in diesem Jahr fällt damit ganz heraus.
    */
-  async getCardAndColorStats(owner: DeckOwner): Promise<CardAndColorStats> {
+  async getCardAndColorStats(owner: DeckOwner, year?: number): Promise<CardAndColorStats> {
     const empty: CardAndColorStats = { mostUsedCards: [], colorRanking: [], colorComboRanking: [] };
     const playerIds = await this.resolvePlayerIds(owner);
     if (playerIds.length === 0) return empty;
 
     const { data: matchData, error: matchError } = await supabase
       .from('match_players')
-      .select('deck_id, matches ( counts_in_general_stats )')
+      .select('deck_id, matches ( counts_in_general_stats, played_at )')
       .in('player_id', playerIds)
       .not('deck_id', 'is', null);
 
@@ -1612,6 +1622,9 @@ export class DeckService {
     for (const row of matchData as any[]) {
       const deckId = row.deck_id as string | null;
       if (!deckId || row.matches?.counts_in_general_stats === false) continue;
+      // Siehe getCrossGroupPersonalStats(): Jahresfilter clientseitig. Ein Deck, das im gewählten
+      // Jahr nicht gespielt wurde, fällt damit ganz aus der Karten-/Farbstatistik heraus.
+      if (year != null && new Date(row.matches?.played_at).getFullYear() !== year) continue;
       gamesPerDeck.set(deckId, (gamesPerDeck.get(deckId) ?? 0) + 1);
     }
 

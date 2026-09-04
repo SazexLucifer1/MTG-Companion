@@ -315,19 +315,22 @@ export class StatsTab {
 
   // --- Zeitraum-Filter (Jahr) ---
 
-  readonly selectedYear = signal<number | 'Alle'>('Alle');
+  /** Startet auf dem laufenden Jahr statt auf "Alle": gefragt ist beim Öffnen fast immer die
+   * aktuelle Saison, die Gesamtübersicht holt man sich gezielt über den Filter. */
+  readonly selectedYear = signal<number | 'Alle'>(new Date().getFullYear());
 
   readonly availableYears = computed<number[]>(() => {
-    const years = new Set<number>();
+    // Das laufende Jahr steht immer zur Auswahl, auch bevor darin das erste Match gespielt wurde -
+    // sonst zeigte das Feld beim Öffnen eine Vorauswahl, die es in der Liste gar nicht gibt.
+    const years = new Set<number>([new Date().getFullYear()]);
     for (const m of this.mtg.history()) {
       years.add(new Date(m.date).getFullYear());
     }
     return [...years].sort((a, b) => b - a);
   });
 
-  setSelectedYear(event: Event): void {
-    const value = (event.target as HTMLSelectElement).value;
-    this.selectedYear.set(value === 'Alle' ? 'Alle' : Number(value));
+  setSelectedYear(year: number | 'Alle'): void {
+    this.selectedYear.set(year);
     this.selectedCommanderDetail.set(null);
     this.selectedDeckDetail.set(null);
   }

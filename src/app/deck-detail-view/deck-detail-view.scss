@@ -110,12 +110,44 @@
 // Kontrast/Unterscheidbarkeit (inkl. Farbenblindheit) vor dem dunklen App-Hintergrund.
 .deck-analysis {
   margin: 4px 0 12px;
+  // Die Abschnitte liegen in einem Raster statt in einer einzigen Spalte: auf dem Handy bleibt es
+  // bei einer Spalte (die Abstände kommen dann vom gap statt von den Titel-Margins), ab Tablet
+  // füllt das Raster so viele Spalten, wie bei 340px Mindestbreite hineinpassen. Vorher stapelten
+  // sich alle Abschnitte auch auf dem Desktop untereinander, und rechts neben den auf 620px
+  // gedeckelten Diagrammen blieb der halbe Bildschirm leer.
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--sp-6) var(--sp-7);
+  // Kurze Abschnitte sollen oben stehen bleiben statt auf die Höhe des längsten Nachbarn in
+  // derselben Rasterzeile gedehnt zu werden.
+  align-items: start;
 
   --pip-w: #c18010;
   --pip-u: #213ced;
   --pip-b: #81548c;
   --pip-r: #ec1313;
   --pip-g: #0fb345;
+}
+
+// Innerhalb einer Sektion trägt der gap den Abstand, der Titel deshalb ohne eigenen oben.
+.deck-analysis .analysis-section {
+  min-width: 0;
+
+  .deck-section-title {
+    margin: 0 0 var(--sp-3);
+  }
+}
+
+// Kachelreihen über die volle Rasterbreite - die vier Kennzahlen und die zwölf Effekt-Kategorien
+// wären in einer schmalen Spalte eine Kachelsäule. 1 / -1 ist auch einspaltig gefahrlos.
+.deck-analysis .analysis-section-wide {
+  grid-column: 1 / -1;
+}
+
+@include bp.up(md) {
+  .deck-analysis {
+    grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  }
 }
 
 .pip-W {
