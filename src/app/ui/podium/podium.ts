@@ -1,4 +1,6 @@
 import { Component, computed, input, output } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
+import { ManaSymbol } from '../mana-symbol/mana-symbol';
 
 /** Anzahl Plätze auf dem Siegertreppchen. */
 export const PODIUM_SIZE = 3;
@@ -19,8 +21,10 @@ export interface PodiumEntry {
   detail: string;
   /** Die große Zahl, z.B. "55%". */
   value: string;
-  /** Kartenbild bzw. Avatar-URL - fehlt sie, kommt ein Platzhalter. */
+  /** Kartenbild bzw. Avatar-URL - fehlt sie, kommt ein Platzhalter. Bei shape 'symbols' ungenutzt. */
   imageUrl?: string | null;
+  /** Nur bei shape 'symbols': die Manasymbole der Farbkombination ('C' für farblos). */
+  symbols?: readonly string[];
 }
 
 const MEDALS = ['🥇', '🥈', '🥉'];
@@ -36,14 +40,25 @@ const MEDALS = ['🥇', '🥈', '🥉'];
  */
 @Component({
   selector: 'app-podium',
+  imports: [NgTemplateOutlet, ManaSymbol],
   templateUrl: './podium.html',
   styleUrl: './podium.scss',
 })
 export class Podium {
   /** Die ersten drei Einträge der Rangliste, in Platzierungsreihenfolge. Weniger als drei ist ok. */
   readonly entries = input<readonly PodiumEntry[]>([]);
-  /** 'card' = Kartenbild im MTG-Format, 'avatar' = runder Spieler-Avatar. */
-  readonly shape = input<'card' | 'avatar'>('card');
+  /**
+   * 'card' = Kartenbild im MTG-Format, 'avatar' = runder Spieler-Avatar, 'symbols' = die
+   * Manasymbole einer Farbkombination (Profil-Tab, wo es gar kein Bild gibt).
+   */
+  readonly shape = input<'card' | 'avatar' | 'symbols'>('card');
+
+  /**
+   * false = die Plätze sind nur Anzeige, kein Knopf. Für Ranglisten ohne sinnvolle Klickaktion
+   * (Farbkombinationen): ein Button, der nichts tut, wäre für Tastatur und Screenreader eine
+   * Falle, und der Zeigefinger-Cursor verspricht etwas, das nicht passiert.
+   */
+  readonly interactive = input(true);
 
   /** Klick auf einen Platz - der Aufrufer entscheidet, was passiert (Kartenvorschau, Profil, …). */
   readonly entrySelect = output<PodiumEntry>();

@@ -23,6 +23,8 @@ import { BarChart, BarChartDatum } from '../ui/bar-chart/bar-chart';
 import { RadarChart, RadarChartDatum } from '../ui/radar-chart/radar-chart';
 import { Meter } from '../ui/meter/meter';
 import { ManaSymbol } from '../ui/mana-symbol/mana-symbol';
+import { Podium, PodiumEntry, PODIUM_SIZE } from '../ui/podium/podium';
+import { splitPodium } from '../rank-sort';
 import { colorComboName, sortColors } from '../color-combo-names';
 import { COLORLESS, FILTER_COLORS } from '../color-filter-match';
 
@@ -37,7 +39,7 @@ const COLOR_RADAR_AXES: readonly string[] = [...FILTER_COLORS, COLORLESS];
 
 @Component({
   selector: 'app-profile-tab',
-  imports: [FormsModule, DatePipe, DecimalPipe, DeckList, CardImage, CommanderStatList, FavoriteCommanderEditor, BarChart, RadarChart, Meter, ManaSymbol],
+  imports: [FormsModule, DatePipe, DecimalPipe, DeckList, CardImage, CommanderStatList, FavoriteCommanderEditor, BarChart, RadarChart, Meter, ManaSymbol, Podium],
   templateUrl: './profile-tab.html',
   styleUrl: './profile-tab.scss',
 })
@@ -248,6 +250,51 @@ export class ProfileTab {
     Math.max(1, ...this.rankedColorComboRanking().map((c) => this.countFor(c)))
   );
 
+  // --- Siegertreppchen (ui/podium) für die ersten drei Plätze der beiden Ranglisten. Anders als
+  // im Statistik-Tab sind beide Listen hier nicht seitenweise, deshalb steht splitPodium() fest
+  // auf Seite 0 und die Nummerierung darunter beginnt immer bei PODIUM_SIZE + 1 (also "4."). ---
+
+  readonly podiumSize = PODIUM_SIZE;
+
+  private readonly mostUsedCardsSplit = computed(() => splitPodium(this.rankedMostUsedCards(), 0));
+  readonly mostUsedCardsRest = computed(() => this.mostUsedCardsSplit().rest);
+  readonly mostUsedCardsPodium = computed<PodiumEntry[]>(() =>
+    this.mostUsedCardsSplit().podium.map((c) => ({
+      key: c.cardName,
+      name: c.cardName,
+      detail: '',
+      value: `${this.countFor(c)}×`,
+      imageUrl: this.mostUsedCardImage(c),
+    }))
+  );
+
+  /** Bild einer meistgespielten Karte: bevorzugt das im Deck hinterlegte, sonst das über Scryfall
+   * nachgeladene (siehe commanderCards) - im Deck steckt in der Regel nur für Commander eines. */
+  readonly mostUsedCardImage = (card: { cardName: string; imageUrl: string | null }): string | null =>
+    card.imageUrl ?? this.commanderImage(card.cardName);
+
+  private readonly colorComboSplit = computed(() =>
+    splitPodium(this.rankedColorComboRanking(), 0)
+  );
+  readonly colorComboRest = computed(() => this.colorComboSplit().rest);
+  readonly colorComboPodium = computed<PodiumEntry[]>(() =>
+    this.colorComboSplit().podium.map((combo) => ({
+      key: combo.colors.join('') || 'C',
+      name: this.colorComboLabel(combo.colors),
+      detail: '',
+      value: `${this.countFor(combo)}×`,
+      symbols: combo.colors.length === 0 ? ['C'] : this.comboColors(combo.colors),
+    }))
+  );
+
+  /** Klick auf einen Treppchen-Platz der Karten-Rangliste zeigt die Karte groß - dasselbe wie ein
+   * Klick auf das Vorschaubild in der Liste darunter. */
+  openPodiumCard(entry: PodiumEntry): void {
+    if (entry.imageUrl) {
+      this.cardPreview.open(entry.imageUrl, this.commanderBackImage(entry.name), entry.name);
+    }
+  }
+
   private async refreshUnassignedAndDecks(): Promise<void> {
     const userId = this.profileService.profile()?.id;
     if (!userId) return;
@@ -334,6 +381,13 @@ export class ProfileTab {
         ...this.unassignedCommanderStats().map((c) => c.commander),
         ...this.viewingUnassignedCommanderStats().map((c) => c.commander),
         ...this.viewingNpcUnassignedCommanderStats().map((c) => c.commander),
+        // Meistgespielte Karten: deck_cards.image_url ist in der Praxis nur beim Commander
+        // gefüllt (Precon-/Decklisten-Import legt für normale Karten kein Bild ab), sonst bliebe
+        // in der Karten-Rangliste überall der Platzhalter stehen. Nur die tatsächlich
+        // angezeigten Top 5 werden nachgeschlagen, nicht die volle Kartenliste.
+        ...this.rankedMostUsedCards()
+          .filter((c) => !c.imageUrl)
+          .map((c) => c.cardName),
       ];
       const cache = this.commanderCards();
       const missing = [...new Set(names)].filter((n) => !(n.toLowerCase() in cache));
@@ -359,7 +413,8 @@ export class ProfileTab {
     });
   }
 
-  /** Kartenname (lowercase) -> Scryfall-Daten oder null (nicht gefunden), für die "Commander ohne Deck"-Liste. */
+  /** Kartenname (lowercase) -> Scryfall-Daten oder null (nicht gefunden). Füllt die "Commander ohne
+   * Deck"-Liste und springt bei den meistgespielten Karten ein, wo im Deck kein Bild hinterlegt ist. */
   private readonly commanderCards = signal<Record<string, ScryfallCard | null>>({});
 
   /** Als gebundene Arrow-Function-Property statt Methode gehalten, damit sie unverändert als

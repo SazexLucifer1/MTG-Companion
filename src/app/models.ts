@@ -28,20 +28,26 @@ export type DeckFormat =
   | 'Explorer'
   | 'Timeless';
 
+/**
+ * Alphabetisch sortiert, weil diese Liste jedes Format-Dropdown der App füllt (Match-Tab,
+ * Turnier, Deck anlegen/bearbeiten, Statistik-Filter): in einem Auswahlfeld sucht man einen
+ * Namen, keine Reihenfolge nach Erscheinungsjahr oder Kartenpool. Die Reihenfolge hat sonst
+ * keine Bedeutung - gespeichert wird immer der Wert, nie der Index.
+ */
 export const DECK_FORMATS: DeckFormat[] = [
-  'Standard',
-  'Pioneer',
-  'Modern',
-  'Legacy',
-  'Vintage',
-  'Pauper',
-  'Commander',
-  'Pauper Commander',
-  'Brawl',
-  'Historic Brawl',
   'Alchemy',
+  'Brawl',
+  'Commander',
   'Explorer',
+  'Historic Brawl',
+  'Legacy',
+  'Modern',
+  'Pauper',
+  'Pauper Commander',
+  'Pioneer',
+  'Standard',
   'Timeless',
+  'Vintage',
 ];
 
 /**

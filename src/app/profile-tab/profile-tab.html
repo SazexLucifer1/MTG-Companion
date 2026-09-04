@@ -378,10 +378,27 @@
           <!-- Bewusst Liste statt Balkendiagramm: Kartennamen wie "An Offer You Can't Refuse"
                würden in der Beschriftungsspalte eines Diagramms abgeschnitten. Der Balken kommt
                stattdessen unter die Zeile. -->
+          <app-podium [entries]="mostUsedCardsPodium()" (entrySelect)="openPodiumCard($event)" />
           <ul class="player-list compact-list ranked-list">
-            @for (card of rankedMostUsedCards(); track card.cardName; let i = $index) {
+            @for (card of mostUsedCardsRest(); track card.cardName; let i = $index) {
               <li>
-                <span class="player-name">{{ i + 1 }}. {{ card.cardName }}</span>
+                <span class="player-name card-name-cell">
+                  @if (mostUsedCardImage(card); as img) {
+                    <button
+                      type="button"
+                      class="card-thumb small"
+                      (click)="cardPreview.open(img, commanderBackImage(card.cardName), card.cardName)"
+                    >
+                      <app-card-image
+                        [compact]="true"
+                        [imageUrl]="img"
+                        [backImageUrl]="commanderBackImage(card.cardName)"
+                        [alt]="card.cardName"
+                      />
+                    </button>
+                  }
+                  <span class="card-name-text">{{ podiumSize + i + 1 }}. {{ card.cardName }}</span>
+                </span>
                 <span class="hint">{{ countFor(card) }}×</span>
                 <app-meter [value]="countFor(card)" [max]="maxMostUsedCardCount()" />
               </li>
@@ -405,8 +422,9 @@
           <!-- Bleibt eine Liste: eine Zeile trägt mehrere Farben, das kann ein einfarbiger
                Balken nicht ausdrücken. Die Manasymbole übernehmen die Identität, der Balken
                darunter die Häufigkeit. -->
+          <app-podium [entries]="colorComboPodium()" shape="symbols" [interactive]="false" />
           <ul class="player-list compact-list ranked-list combo-grid">
-            @for (combo of rankedColorComboRanking(); track combo.colors.join('')) {
+            @for (combo of colorComboRest(); track combo.colors.join('')) {
               <li>
                 <span class="player-name combo-name">
                   @if (combo.colors.length === 0) {

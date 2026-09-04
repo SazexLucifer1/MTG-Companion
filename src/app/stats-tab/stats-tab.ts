@@ -386,9 +386,16 @@ export class StatsTab {
 
   readonly deckFormats = DECK_FORMATS;
 
-  /** Genau EIN Format oder "Alle" - anders als beim Modus-Filter bewusst keine Mehrfachauswahl:
-   * Deck-Ranglisten sind nur innerhalb eines Formats vergleichbar (siehe deckComparisonAvailable). */
-  readonly selectedFormat = signal<DeckFormat | 'Alle'>('Alle');
+  /**
+   * Genau EIN Format oder "Alle" - anders als beim Modus-Filter bewusst keine Mehrfachauswahl:
+   * Deck-Ranglisten sind nur innerhalb eines Formats vergleichbar (siehe deckComparisonAvailable).
+   *
+   * Startet auf "Commander" statt auf "Alle" - dieselbe Begründung wie in der Global-Ansicht
+   * (global-stats.ts): mit "Alle" bleibt die Rangliste "Decks & Commander" beim ersten Aufruf
+   * leer, weil Decks über Formate hinweg nicht vergleichbar sind. Commander ist zudem das
+   * Format, in dem hier praktisch alles gespielt wird.
+   */
+  readonly selectedFormat = signal<DeckFormat | 'Alle'>('Commander');
 
   setSelectedFormat(format: DeckFormat | 'Alle'): void {
     this.selectedFormat.set(format);
