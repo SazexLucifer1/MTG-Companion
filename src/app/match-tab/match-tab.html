@@ -8,12 +8,25 @@
     data-tutorial="match-mode"
     [attr.aria-label]="i18n.t('match.gameMode')"
     [ngModel]="session.mode()"
-    (ngModelChange)="session.mode.set($event)"
+    (ngModelChange)="session.setMode($event)"
   >
     @for (m of modes; track m) {
       <option [ngValue]="m">{{ m }}</option>
     }
   </select>
+
+  @if (session.mode() !== 'Spezialevent') {
+    <select
+      class="glass-input"
+      [attr.aria-label]="i18n.t('match.gameFormat')"
+      [ngModel]="session.format()"
+      (ngModelChange)="session.format.set($event)"
+    >
+      @for (f of formats; track f) {
+        <option [ngValue]="f">{{ f }}</option>
+      }
+    </select>
+  }
 
   <!-- Als .glass-chip stand das direkt unter der Spielmodus-Auswahl und sah aus wie eine
        weitere Modus-Option. Es ist aber eine Aktion, die den ganzen Tab wechselt. -->
@@ -26,7 +39,7 @@
     <ul class="live-sessions-list">
       @for (s of session.otherGroupLiveSessions(); track s.id) {
         <li>
-          <span class="live-session-info">{{ s.mode }} · {{ s.playerNames.join(', ') }}</span>
+          <span class="live-session-info">{{ modeLabel(s.mode, s.format) }} · {{ s.playerNames.join(', ') }}</span>
           <button class="glass-chip small" (click)="session.joinLiveSession(s.id)">
             {{ i18n.t('match.liveSessionJoin') }}
           </button>
@@ -335,7 +348,7 @@
         @if (row.kind === 'group') {
           <li class="history-item history-group">
             <div class="history-head" (click)="toggleGroup(row.tournamentMatchId)">
-              <span class="history-mode">{{ row.mode }}</span>
+              <span class="history-mode">{{ modeLabel(row.mode, row.format) }}</span>
               <span class="history-date">{{ row.date | date: 'dd.MM.yyyy, HH:mm' }}</span>
               <span class="hint">
                 {{ i18n.t('match.bo3Summary', { p1: row.players[0], s1: row.scores[0], s2: row.scores[1], p2: row.players[1] }) }}
@@ -364,9 +377,9 @@
   <li class="history-item">
     <div class="history-head">
     @if (match.mode === 'Cube' && match.cube) {
-      <span class="history-mode">{{ match.mode }} – {{ match.cube.name }}</span>
+      <span class="history-mode">{{ modeLabel(match.mode, match.format) }} – {{ match.cube.name }}</span>
     } @else {
-      <span class="history-mode">{{ match.mode }}</span>
+      <span class="history-mode">{{ modeLabel(match.mode, match.format) }}</span>
     }
     <span class="history-date">{{ match.date | date: 'dd.MM.yyyy, HH:mm' }}</span>
     @if (

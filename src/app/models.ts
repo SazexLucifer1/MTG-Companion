@@ -45,23 +45,15 @@ export const DECK_FORMATS: DeckFormat[] = [
 ];
 
 /**
- * Spielmodi, mit denen ein Match erfasst werden kann - die nicht deck-spezifischen Multiplayer-
- * Varianten (Two-Headed Giant, Archenemy, Cube, Draft, Spezialevent) PLUS alle offiziellen
- * MTG-Formate aus DeckFormat oben (Standard, Modern, Commander, ...). Bewusst von DeckFormat
- * abgeleitet statt eine zweite, unabhängige Liste zu pflegen - eine Erweiterung von DECK_FORMATS
- * zieht so automatisch hier mit, ohne dass beide Listen auseinanderlaufen können.
+ * Spielkategorie eines Matches/Turniers - orthogonal zum Spielformat (DeckFormat oben): 'Normal'
+ * heißt "keine besondere Kategorie, ganz normales 1v1/Multiplayer-Spiel" und wird IMMER mit einem
+ * Format kombiniert (z.B. Normal+Commander, Normal+Modern). Two-Headed Giant/Archenemy/Cube/Draft
+ * lassen sich ebenfalls mit einem Format kombinieren ("was wirklich gespielt wurde", z.B.
+ * Cube+Modern), nur Spezialevent hat bewusst kein Format (siehe Match.format/Tournament.gameFormat).
  */
-export type GameMode = 'Two-Headed Giant' | 'Archenemy' | 'Cube' | 'Draft' | 'Spezialevent' | DeckFormat;
+export type GameMode = 'Normal' | 'Two-Headed Giant' | 'Archenemy' | 'Cube' | 'Draft' | 'Spezialevent';
 
-export const GAME_MODES: GameMode[] = [
-  'Commander',
-  'Two-Headed Giant',
-  'Archenemy',
-  'Cube',
-  'Draft',
-  'Spezialevent',
-  ...DECK_FORMATS.filter((f) => f !== 'Commander'),
-];
+export const GAME_MODES: GameMode[] = ['Normal', 'Two-Headed Giant', 'Archenemy', 'Cube', 'Draft', 'Spezialevent'];
 
 export type TeamName = 'Team 1' | 'Team 2' | 'Team 3' | 'Team 4' | 'Team 5';
 
@@ -97,6 +89,8 @@ export interface Match {
   /** ISO-Datum des Spiels */
   date: string;
   mode: GameMode;
+  /** Gespieltes MTG-Format, kombiniert mit mode (z.B. Cube+Modern) - null nur bei mode 'Spezialevent'. */
+  format: DeckFormat | null;
   players: MatchPlayer[];
   /** Name des Gewinners */
   winner: string;

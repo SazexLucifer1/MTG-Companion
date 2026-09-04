@@ -9,7 +9,7 @@
       </button>
     }
     <h3>{{ t.name }}</h3>
-    <p class="hint">{{ t.createdAt | date: 'dd.MM.yyyy' }} · {{ t.gameMode }}</p>
+    <p class="hint">{{ t.createdAt | date: 'dd.MM.yyyy' }} · {{ modeLabel(t) }}</p>
     @if (groupService.hasPermission('tournament.manage')) {
       <label class="checkbox-inline">
         <input
@@ -89,7 +89,7 @@
         @for (t of tournaments(); track t.id) {
           <li (click)="openTournament(t)">
             <span class="player-name">{{ t.name }}</span>
-            <span class="hint">{{ t.createdAt | date: 'dd.MM.yyyy' }} · {{ t.gameMode }}</span>
+            <span class="hint">{{ t.createdAt | date: 'dd.MM.yyyy' }} · {{ modeLabel(t) }}</span>
             <span class="hint">
               {{ t.status === 'completed' ? i18n.t('tournamentHistory.statusCompleted') : t.status === 'active' ? i18n.t('tournamentHistory.statusActive') : i18n.t('tournamentHistory.statusSetup') }}
             </span>

@@ -1,7 +1,10 @@
 // NEU (komplette Datei)
 import { Injectable, WritableSignal, computed, effect, inject, signal } from '@angular/core';
 import type { RealtimeChannel } from '@supabase/supabase-js';
-import { GameMode, MatchPlayer, TEAM_OPTIONS, TeamName } from './models';
+import { DeckFormat, GameMode, MatchPlayer, TEAM_OPTIONS, TeamName } from './models';
+
+/** Formate mit Singleton-Regel/eigenem Commander - steuert, ob bei Kategorie 'Normal' die Commander-Auswahl im Match-Tab erscheint (siehe GameSessionService.requiresCommanderSelection). */
+const COMMANDER_STYLE_FORMATS: DeckFormat[] = ['Commander', 'Pauper Commander', 'Brawl', 'Historic Brawl'];
 import { MtgService } from './mtg.service';
 import { I18nService } from './i18n.service';
 import { GroupService } from './group.service';
@@ -36,6 +39,7 @@ function stableStringify(value: unknown): string {
  */
 export interface LiveSessionState {
   mode: GameMode;
+  format: DeckFormat | null;
   selectedPlayers: MatchPlayer[];
   selectedCubeId: string | null;
   selectedDraftSet: SelectedDraftSet | null;
@@ -99,7 +103,9 @@ export class GameSessionService {
   readonly minimized = signal(false);
   readonly showWinnerPanel = signal(false);
 
-  readonly mode = signal<GameMode>('Commander');
+  readonly mode = signal<GameMode>('Normal');
+  /** Gespieltes MTG-Format, kombiniert mit mode - null nur bei mode 'Spezialevent' (siehe setMode()). */
+  readonly format = signal<DeckFormat | null>('Commander');
   readonly selectedPlayers = signal<MatchPlayer[]>([]);
   readonly winner = signal<string | null>(null);
   readonly selectedCubeId = signal<string | null>(null);
@@ -134,7 +140,13 @@ export class GameSessionService {
 
   /** Alle aktuell laufenden Spiele der eigenen Gruppe (für die "Laufende Spiele"-Übersicht im Match-Tab UND die "Beitreten statt Starten"-Beschriftung im Turnier-Panel), roh - inkl. der eigenen Session. */
   private readonly groupLiveSessions = signal<
-    { id: string; mode: GameMode; playerNames: string[]; tournamentMatchId: string | null }[]
+    {
+      id: string;
+      mode: GameMode;
+      format: DeckFormat | null;
+      playerNames: string[];
+      tournamentMatchId: string | null;
+    }[]
   >([]);
 
   /**
@@ -163,6 +175,7 @@ export class GameSessionService {
   /** Der Teil des Zustands, der synchronisiert wird - siehe LiveSessionState. Neues Objekt bei jeder relevanten Änderung, damit der Push-Effect unten zuverlässig reagiert. */
   private readonly syncSnapshot = computed<LiveSessionState>(() => ({
     mode: this.mode(),
+    format: this.format(),
     selectedPlayers: this.selectedPlayers(),
     selectedCubeId: this.selectedCubeId(),
     selectedDraftSet: this.selectedDraftSet(),
@@ -265,6 +278,16 @@ export class GameSessionService {
     this.pinnedBottomKey.set(key);
   }
 
+  /** Setzt die Kategorie und hält das Format konsistent - Spezialevent hat nie ein Format, alle anderen brauchen eins (Default Commander, falls gerade keins gesetzt war). */
+  setMode(mode: GameMode): void {
+    this.mode.set(mode);
+    if (mode === 'Spezialevent') {
+      this.format.set(null);
+    } else if (this.format() === null) {
+      this.format.set('Commander');
+    }
+  }
+
   readonly isTwoHeadedGiantMode = computed(() => this.mode() === 'Two-Headed Giant');
 
   /**
@@ -333,12 +356,11 @@ export class GameSessionService {
   });
 
   readonly requiresCommanderSelection = computed(() => {
-    if (
-      this.mode() === 'Commander' ||
-      this.mode() === 'Two-Headed Giant' ||
-      this.mode() === 'Archenemy'
-    )
-      return true;
+    if (this.mode() === 'Two-Headed Giant' || this.mode() === 'Archenemy') return true;
+    if (this.mode() === 'Normal') {
+      const format = this.format();
+      return format !== null && COMMANDER_STYLE_FORMATS.includes(format);
+    }
     if (this.mode() === 'Cube') {
       const cube = this.mtg.cubes().find((c) => c.id === this.selectedCubeId());
       return Boolean(cube && cube.isCommander);
@@ -550,6 +572,7 @@ export class GameSessionService {
         return {
           id: row.id,
           mode: state.mode,
+          format: state.format ?? null,
           playerNames: state.selectedPlayers.map((p) => p.name),
           tournamentMatchId: row.tournament_match_id ?? null,
         };
@@ -618,6 +641,8 @@ export class GameSessionService {
 
   private applySyncSnapshot(state: LiveSessionState): void {
     this.mode.set(state.mode);
+    // Fallback für Sessions von vor diesem Feature (state.format fehlt dann im JSONB-Stand).
+    this.format.set(state.format ?? (state.mode === 'Spezialevent' ? null : 'Commander'));
     this.selectedPlayers.set(state.selectedPlayers);
     this.selectedCubeId.set(state.selectedCubeId);
     this.selectedDraftSet.set(state.selectedDraftSet);
@@ -957,6 +982,7 @@ export class GameSessionService {
 
       const matchId = await this.mtg.addMatch({
         mode: this.mode(),
+        format: this.format(),
         players,
         winner,
         cube: cube ? { id: cube.id, name: cube.name, isCommander: cube.isCommander } : undefined,
@@ -1014,7 +1040,8 @@ export class GameSessionService {
     this.winner.set(null);
     this.selectedCubeId.set(null);
     this.selectedDraftSet.set(null);
-    this.mode.set('Commander');
+    this.mode.set('Normal');
+    this.format.set('Commander');
     this.pinnedBottomKey.set(null);
     this.pinnedBottomKey.set(null);
     this.manualOrder.set(null); // NEU // NEU

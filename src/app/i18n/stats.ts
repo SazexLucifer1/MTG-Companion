@@ -42,9 +42,14 @@ export const stats = {
       'Noch keine Matches gespeichert. Trage im Tab „Match" dein erstes Ergebnis ein!',
     'stats.lockedHint':
       'Der Stats-Tab ist gerade von der veranstaltenden Person gesperrt (z.B. bis zur Jahresend-Enthüllung). Schau später nochmal vorbei!',
-    'stats.periodAndMode': 'Zeitraum & Modus',
+    'stats.periodAndMode': 'Zeitraum, Modus & Format',
+    'stats.modeAndFormat': 'Modus & Format',
     'stats.allTime': 'Alle Zeiten',
     'stats.allModes': 'Alle Modi',
+    'stats.modes': 'Spielmodi',
+    'stats.allFormats': 'Alle Spielformate',
+    'stats.chooseFormatForDecksHint':
+      'Wähle oben ein bestimmtes Spielformat, um Decks und Commander zu vergleichen - über alle Formate hinweg stünde ein Commander-Deck gegen ein Modern-Deck, was nichts aussagt.',
     'stats.lockedModesSingular': 'ist für dich gesperrt',
     'stats.lockedModesPlural': 'sind für dich gesperrt',
     'stats.lockedModesSuffix':
@@ -66,6 +71,7 @@ export const stats = {
     'stats.winRate': 'Winrate',
     'stats.avgPlacement': 'Ø-Platzierung ({{count}})',
     'stats.byGameMode': 'Nach Spielmodus',
+    'stats.byGameFormat': 'Nach Format',
     'stats.decks': 'Decks',
     'stats.playedCommanders': 'Gespielte Commander',
     'stats.from': 'von {{name}}',
@@ -192,9 +198,14 @@ export const stats = {
     'stats.noMatchesYet': 'No matches saved yet. Enter your first result in the "Match" tab!',
     'stats.lockedHint':
       'The Stats tab is currently locked by the organizer (e.g. until the year-end reveal). Check back later!',
-    'stats.periodAndMode': 'Period & Mode',
+    'stats.periodAndMode': 'Period, mode & format',
+    'stats.modeAndFormat': 'Mode & format',
     'stats.allTime': 'All time',
     'stats.allModes': 'All modes',
+    'stats.modes': 'Game modes',
+    'stats.allFormats': 'All game formats',
+    'stats.chooseFormatForDecksHint':
+      'Pick a specific game format above to compare decks and commanders - across all formats a Commander deck would be ranked against a Modern deck, which says nothing.',
     'stats.lockedModesSingular': 'is locked for you',
     'stats.lockedModesPlural': 'are locked for you',
     'stats.lockedModesSuffix':
@@ -216,6 +227,7 @@ export const stats = {
     'stats.winRate': 'Win Rate',
     'stats.avgPlacement': 'Avg. placement ({{count}})',
     'stats.byGameMode': 'By game mode',
+    'stats.byGameFormat': 'By format',
     'stats.decks': 'Decks',
     'stats.playedCommanders': 'Played commanders',
     'stats.from': 'from {{name}}',

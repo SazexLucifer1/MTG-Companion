@@ -1,5 +1,6 @@
-import { Component, Signal, computed, inject, signal } from '@angular/core';
+import { Component, Signal, computed, effect, inject, signal } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import {
   DeckService,
   GlobalDeckStat,
@@ -7,6 +8,7 @@ import {
   ColorStat,
   ColorComboStat,
 } from '../deck.service';
+import { DECK_FORMATS, DeckFormat, GAME_MODES, GameMode } from '../models';
 import { DeckViewerService } from '../deck-viewer.service';
 import { AuthService } from '../auth.service';
 import { CardPreviewService } from '../card-preview.service';
@@ -17,6 +19,7 @@ import { Meter } from '../ui/meter/meter';
 import { Pager } from '../ui/pager/pager';
 import { RadarChart, RadarChartDatum } from '../ui/radar-chart/radar-chart';
 import { ManaSymbol } from '../ui/mana-symbol/mana-symbol';
+import { MultiSelect } from '../ui/multi-select/multi-select';
 import { colorComboName, sortColors } from '../color-combo-names';
 import { COLORLESS, FILTER_COLORS } from '../color-filter-match';
 import { RankSortMode, compareBySortMode, medal, barValue, barMax } from '../rank-sort';
@@ -112,7 +115,17 @@ class QualifiedRanking<T extends { name: string; games: number; wins: number; wi
  */
 @Component({
   selector: 'app-global-stats',
-  imports: [DecimalPipe, CardImage, LoginRequired, Meter, Pager, RadarChart, ManaSymbol],
+  imports: [
+    DecimalPipe,
+    FormsModule,
+    CardImage,
+    LoginRequired,
+    Meter,
+    Pager,
+    RadarChart,
+    ManaSymbol,
+    MultiSelect,
+  ],
   templateUrl: './global-stats.html',
   styleUrl: './global-stats.scss',
 })
@@ -140,15 +153,56 @@ export class GlobalStats {
   readonly decks = new QualifiedRanking<GlobalDeckStat>(() => this.deckStatsRaw());
   readonly commanders = new QualifiedRanking<GlobalCommanderStat>(() => this.commanderStatsRaw());
 
+  // --- Kategorie-/Format-Filter (eigenständig, kein Bezug zu MtgService.statVisibility - Global
+  // hat keinen Host, der Sichtbarkeit pro Account einschränken könnte, also auch keine Sperr-Chips
+  // wie im Stats-Tab). Jede Änderung löst über den Effect unten einen Neu-Abruf der beiden
+  // RPC-Funktionen aus - anders als im Stats-Tab (dort clientseitiger Filter auf bereits geladenen
+  // Matches) müssen hier die Filter als Parameter an die serverseitige Aggregation gehen, da
+  // einzelne Match-Zeilen die Datenbank nie verlassen. ---
+
+  readonly gameModes = GAME_MODES;
+  readonly selectedModes = signal<Set<GameMode>>(new Set(GAME_MODES));
+  readonly deckFormats = DECK_FORMATS;
+
+  /**
+   * Genau EIN Format oder "Alle". Startet bewusst auf "Commander" statt auf "Alle": diese Ansicht
+   * besteht fast nur aus Deck-/Commander-Ranglisten, und die sind über alle Formate hinweg nicht
+   * vergleichbar (siehe deckComparisonAvailable) - mit "Alle" als Start stünde hier beim ersten
+   * Aufruf eine praktisch leere Seite.
+   */
+  readonly selectedFormat = signal<DeckFormat | 'Alle'>('Commander');
+
+  readonly isAllModesSelected = computed(() => GAME_MODES.every((m) => this.selectedModes().has(m)));
+
+  /** Deck-/Commander-Ranglisten sind nur innerhalb eines Formats vergleichbar - siehe Stats-Tab. */
+  readonly deckComparisonAvailable = computed(() => this.selectedFormat() !== 'Alle');
+
+  setSelectedModes(next: Set<string>): void {
+    this.selectedModes.set(new Set(GAME_MODES.filter((m) => next.has(m))));
+  }
+
+  setSelectedFormat(format: DeckFormat | 'Alle'): void {
+    this.selectedFormat.set(format);
+  }
+
   constructor() {
-    Promise.all([
-      this.deckService.getGlobalDeckCommanderStats(),
-      this.deckService.getGlobalColorAndComboStats(),
-    ]).then(([deckCommander, colors]) => {
-      this.deckStatsRaw.set(deckCommander.decks);
-      this.commanderStatsRaw.set(deckCommander.commanders);
-      this.colorAndCombo.set(colors);
-      this.loading.set(false);
+    effect(() => {
+      // "Alles ausgewählt" wird als null (= kein Filter) durchgereicht statt als volle Liste - das
+      // ist der unveränderte Default-Aufruf von vorher und spart der DB die Filterprüfung.
+      const modes = this.isAllModesSelected() ? null : [...this.selectedModes()];
+      const format = this.selectedFormat();
+      const formats = format === 'Alle' ? null : [format];
+
+      this.loading.set(true);
+      Promise.all([
+        this.deckService.getGlobalDeckCommanderStats(modes, formats),
+        this.deckService.getGlobalColorAndComboStats(modes, formats),
+      ]).then(([deckCommander, colors]) => {
+        this.deckStatsRaw.set(deckCommander.decks);
+        this.commanderStatsRaw.set(deckCommander.commanders);
+        this.colorAndCombo.set(colors);
+        this.loading.set(false);
+      });
     });
   }
 

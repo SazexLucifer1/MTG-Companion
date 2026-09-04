@@ -8,7 +8,7 @@ import { ScryfallService, ScryfallSet } from '../scryfall.service';
 import { I18nService } from '../i18n.service';
 import { DialogService } from '../dialog.service';
 import { TournamentMatch, TableSize } from '../tournament.models';
-import { GAME_MODES, GameMode } from '../models';
+import { GAME_MODES, GameMode, DeckFormat, DECK_FORMATS } from '../models';
 
 /** Two-Headed Giant ist teambasiert und passt nicht zu individuellem Swiss-Ranking - daher hier ausgeschlossen. */
 const TOURNAMENT_GAME_MODES: GameMode[] = GAME_MODES.filter((m) => m !== 'Two-Headed Giant');
@@ -36,10 +36,12 @@ export class TournamentPanel {
   readonly i18n = inject(I18nService);
 
   readonly gameModes = TOURNAMENT_GAME_MODES;
+  readonly formats = DECK_FORMATS;
 
   // --- Erstellungs-Wizard ---
   readonly newName = signal('');
-  readonly selectedGameMode = signal<GameMode>('Commander');
+  readonly selectedGameMode = signal<GameMode>('Normal');
+  readonly selectedGameFormat = signal<DeckFormat | null>('Commander');
   readonly selectedTableSize = signal<TableSize>(2);
   readonly roundCountMode = signal<'auto' | 'manual'>('auto');
   readonly manualRoundCount = signal<number>(4);
@@ -156,6 +158,16 @@ export class TournamentPanel {
     this.manualRoundCount.set(Math.max(1, Number(value) || 1));
   }
 
+  /** Setzt die Turnier-Kategorie und hält das Format konsistent - analog GameSessionService.setMode(). */
+  setSelectedGameMode(mode: GameMode): void {
+    this.selectedGameMode.set(mode);
+    if (mode === 'Spezialevent') {
+      this.selectedGameFormat.set(null);
+    } else if (this.selectedGameFormat() === null) {
+      this.selectedGameFormat.set('Commander');
+    }
+  }
+
   async createTournament(): Promise<void> {
     const groupId = this.groupService.groupId();
     if (!groupId || this.creating()) return;
@@ -165,6 +177,7 @@ export class TournamentPanel {
       groupId,
       this.newName(),
       this.selectedGameMode(),
+      this.selectedGameFormat(),
       this.selectedTableSize(),
       this.roundCountMode(),
       this.roundCountMode() === 'manual' ? this.manualRoundCount() : null,

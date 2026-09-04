@@ -231,11 +231,25 @@
       <h4>{{ i18n.t('tournament.gameModeHeading') }}</h4>
       <div class="chip-row">
         @for (m of gameModes; track m) {
-          <button class="glass-chip" [class.active]="selectedGameMode() === m" (click)="selectedGameMode.set(m)">
+          <button class="glass-chip" [class.active]="selectedGameMode() === m" (click)="setSelectedGameMode(m)">
             {{ m }}
           </button>
         }
       </div>
+
+      @if (selectedGameMode() !== 'Spezialevent') {
+        <h4>{{ i18n.t('match.gameFormat') }}</h4>
+        <select
+          class="glass-input"
+          [attr.aria-label]="i18n.t('match.gameFormat')"
+          [ngModel]="selectedGameFormat()"
+          (ngModelChange)="selectedGameFormat.set($event)"
+        >
+          @for (f of formats; track f) {
+            <option [ngValue]="f">{{ f }}</option>
+          }
+        </select>
+      }
 
       @if (selectedGameMode() === 'Cube') {
         <h4>{{ i18n.t('match.chooseCube') }}</h4>

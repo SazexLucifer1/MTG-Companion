@@ -6,7 +6,7 @@ import { sleep } from './array-utils';
 import { GroupService } from './group.service';
 import { PreconService } from './precon.service';
 import { COLORLESS, FILTER_COLORS } from './color-filter-match';
-import { DeckFormat } from './models';
+import { DeckFormat, GameMode } from './models';
 
 export interface Deck {
   id: string;
@@ -1297,22 +1297,56 @@ export class DeckService {
   }
 
   /**
+   * Ruft eine der beiden Global-Statistik-Funktionen auf und fällt auf ihre alte, parameterlose
+   * Fassung zurück, falls die gefilterte Signatur noch nicht existiert (PostgREST-Code PGRST202,
+   * d.h. sql/global-stats-format-filter-2026-09-03.sql wurde noch nicht im Supabase-Editor
+   * ausgeführt). Ungefilterte Zahlen sind allemal besser als eine leere Seite - ohne diesen
+   * Rückfall stand die komplette Global-Ansicht leer da, bis die Migration lief. Nach der Migration
+   * greift der Zweig nie mehr. Liefert null, wenn auch der Rückfall scheitert.
+   */
+  private async callGlobalStatsRpc(
+    fn: string,
+    params: Record<string, unknown>,
+    label: string
+  ): Promise<any[] | null> {
+    const first = await supabase.rpc(fn, params);
+    if (!first.error) return (first.data ?? []) as any[];
+
+    if (first.error.code === 'PGRST202') {
+      console.warn(`${label}: SQL-Migration ausstehend, zeige ungefilterte Zahlen.`);
+      const legacy = await supabase.rpc(fn);
+      if (!legacy.error) return (legacy.data ?? []) as any[];
+      console.error(label, legacy.error);
+      return null;
+    }
+
+    console.error(label, first.error);
+    return null;
+  }
+
+  /**
    * Weltweite "Decks & Commander"-Rangliste über ALLE Spieler der Website hinweg (Stats-Tab,
    * Global-Ansicht) - ruft die serverseitige Funktion global_deck_commander_stats() auf (siehe
-   * sql/global-stats-functions-*.sql). Muss einmalig im Supabase-SQL-Editor angelegt werden -
-   * bis dahin liefert der Aufruf einen Fehler, der hier abgefangen wird (leere Liste statt Absturz).
+   * sql/global-stats-functions-*.sql, sql/global-stats-format-filter-2026-09-03.sql für die
+   * modes/formats-Parameter). Muss einmalig im Supabase-SQL-Editor angelegt werden - bis dahin
+   * greift der Rückfall in callGlobalStatsRpc() (ungefiltert statt leer).
+   * modes/formats = null bedeutet "kein Filter" (Default, entspricht dem bisherigen Verhalten).
    */
-  async getGlobalDeckCommanderStats(): Promise<{
+  async getGlobalDeckCommanderStats(
+    modes: GameMode[] | null = null,
+    formats: DeckFormat[] | null = null
+  ): Promise<{
     decks: GlobalDeckStat[];
     commanders: GlobalCommanderStat[];
   }> {
     const empty = { decks: [], commanders: [] };
-    const { data, error } = await supabase.rpc('global_deck_commander_stats');
+    const data = await this.callGlobalStatsRpc(
+      'global_deck_commander_stats',
+      { p_modes: modes, p_formats: formats },
+      'Konnte weltweite Decks&Commander-Statistik nicht laden:'
+    );
 
-    if (error || !data) {
-      console.error('Konnte weltweite Decks&Commander-Statistik nicht laden:', error);
-      return empty;
-    }
+    if (!data) return empty;
 
     const decks: GlobalDeckStat[] = [];
     const commanders: GlobalCommanderStat[] = [];
@@ -1345,23 +1379,27 @@ export class DeckService {
   /**
    * Weltweite Lieblingsfarben/Farbkombinationen über ALLE Spieler der Website hinweg (Stats-Tab,
    * Global-Ansicht) - ruft global_color_and_combo_stats() auf (siehe
-   * sql/global-stats-functions-*.sql). Liefert dieselbe ColorStat[]/ColorComboStat[]-Form wie
-   * getCardAndColorStats(), damit die vorhandene Radar-/Kombinations-Darstellung (inkl.
+   * sql/global-stats-functions-*.sql, sql/global-stats-format-filter-2026-09-03.sql für die
+   * modes/formats-Parameter, null = kein Filter). Liefert dieselbe ColorStat[]/ColorComboStat[]-Form
+   * wie getCardAndColorStats(), damit die vorhandene Radar-/Kombinations-Darstellung (inkl.
    * Partien/Decks-Umschalter) unverändert wiederverwendet werden kann.
    */
-  async getGlobalColorAndComboStats(): Promise<{
+  async getGlobalColorAndComboStats(
+    modes: GameMode[] | null = null,
+    formats: DeckFormat[] | null = null
+  ): Promise<{
     colorRanking: ColorStat[];
     colorComboRanking: ColorComboStat[];
   }> {
     const empty = { colorRanking: [], colorComboRanking: [] };
-    const { data, error } = await supabase.rpc('global_color_and_combo_stats');
+    const rows = await this.callGlobalStatsRpc(
+      'global_color_and_combo_stats',
+      { p_modes: modes, p_formats: formats },
+      'Konnte weltweite Farbstatistik nicht laden:'
+    );
 
-    if (error || !data) {
-      console.error('Konnte weltweite Farbstatistik nicht laden:', error);
-      return empty;
-    }
+    if (!rows) return empty;
 
-    const rows = data as any[];
     const COLOR_AXES: readonly ColorStat['color'][] = [...FILTER_COLORS, COLORLESS];
     const colorRanking: ColorStat[] = COLOR_AXES.map((color) => {
       const row = rows.find((r) => r.kind === 'axis' && r.colors?.[0] === color);

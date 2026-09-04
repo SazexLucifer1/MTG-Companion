@@ -5,6 +5,7 @@ import { GroupService } from '../group.service';
 import { I18nService } from '../i18n.service';
 import { DialogService } from '../dialog.service';
 import { StandingsRow, Tournament, TournamentMatch } from '../tournament.models';
+import { gameModeLabel } from '../match-utils';
 import { Meter } from '../ui/meter/meter';
 
 /**
@@ -61,6 +62,10 @@ export class TournamentHistory {
     this.selectedStandings.set([]);
     this.selectedMatches.set([]);
     this.showStandingsInfo.set(false);
+  }
+
+  modeLabel(t: Tournament): string {
+    return gameModeLabel(t.gameMode, t.gameFormat);
   }
 
   participantNamesFor(match: TournamentMatch): string {

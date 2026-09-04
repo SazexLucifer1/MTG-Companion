@@ -14,6 +14,7 @@ const MATCH_HISTORY_SELECT = `
   id,
   played_at,
   game_mode,
+  game_format,
   winner_name,
   draft_set_id,
   draft_set_code,
@@ -35,6 +36,21 @@ const MATCH_HISTORY_SELECT = `
     players ( display_name )
   )
 `;
+
+/**
+ * Dieselbe Select-Liste ohne game_format - Rückfallebene, solange
+ * sql/match-category-format-split-2026-09-03.sql noch nicht im Supabase-Editor ausgeführt wurde.
+ * Eine Abfrage auf eine nicht existierende Spalte lässt Postgres komplett scheitern, und da
+ * loadHistory() bei einem Fehler das history-Signal unangetastet lässt, stand dann die gesamte App
+ * ohne einen einzigen Match da (Verlauf UND Statistik) - siehe fetchMatchRows().
+ */
+const MATCH_HISTORY_SELECT_WITHOUT_FORMAT = MATCH_HISTORY_SELECT.replace('  game_format,\n', '');
+
+/** Fehlt die game_format-Spalte noch? Postgres meldet 42703 ("column ... does not exist"). */
+function isMissingGameFormatError(error: { code?: string; message?: string } | null): boolean {
+  if (!error) return false;
+  return error.code === '42703' || (error.message ?? '').includes('game_format');
+}
 
 @Injectable({ providedIn: 'root' })
 export class MtgService {
@@ -764,19 +780,45 @@ export class MtgService {
     if (groupId) await this.loadHistory(groupId);
   }
 
-  private async loadHistory(groupId: string): Promise<void> {
-    const { data, error } = await supabase
-      .from('matches')
-      .select(MATCH_HISTORY_SELECT)
-      .eq('group_id', groupId)
-      .order('played_at', { ascending: false });
+  /**
+   * Führt eine "matches"-Abfrage aus und wiederholt sie einmal ohne die game_format-Spalte, falls
+   * die in der Datenbank noch fehlt (Migration noch nicht ausgeführt, siehe
+   * MATCH_HISTORY_SELECT_WITHOUT_FORMAT). Ohne diesen Rückfall macht eine ausstehende Migration den
+   * kompletten Verlauf samt aller Statistiken unsichtbar, obwohl in der Datenbank alles unverändert
+   * daliegt. Liefert null, wenn auch der zweite Versuch scheitert.
+   */
+  private async fetchMatchRows(
+    run: (select: string) => PromiseLike<{ data: any[] | null; error: any }>,
+    label: string
+  ): Promise<any[] | null> {
+    const first = await run(MATCH_HISTORY_SELECT);
+    if (!first.error) return first.data ?? [];
 
-    if (error) {
-      console.error('Konnte Matches nicht laden:', error);
-      return;
+    if (isMissingGameFormatError(first.error)) {
+      console.warn(`${label}: Spalte game_format fehlt noch (SQL-Migration ausstehend), lade ohne sie.`);
+      const retry = await run(MATCH_HISTORY_SELECT_WITHOUT_FORMAT);
+      if (!retry.error) return retry.data ?? [];
+      console.error(label, retry.error);
+      return null;
     }
 
-    this.history.set((data ?? []).map((row: any) => mapMatchRow(row)));
+    console.error(label, first.error);
+    return null;
+  }
+
+  private async loadHistory(groupId: string): Promise<void> {
+    const rows = await this.fetchMatchRows(
+      (select) =>
+        supabase
+          .from('matches')
+          .select(select)
+          .eq('group_id', groupId)
+          .order('played_at', { ascending: false }),
+      'Konnte Matches nicht laden:'
+    );
+    if (!rows) return;
+
+    this.history.set(rows.map((row: any) => mapMatchRow(row)));
   }
 
   /**
@@ -787,18 +829,17 @@ export class MtgService {
   async loadMatchesForGroups(groupIds: string[]): Promise<Match[]> {
     if (groupIds.length === 0) return [];
 
-    const { data, error } = await supabase
-      .from('matches')
-      .select(MATCH_HISTORY_SELECT)
-      .in('group_id', groupIds)
-      .order('played_at', { ascending: false });
+    const rows = await this.fetchMatchRows(
+      (select) =>
+        supabase
+          .from('matches')
+          .select(select)
+          .in('group_id', groupIds)
+          .order('played_at', { ascending: false }),
+      'Konnte gruppenübergreifende Matches nicht laden:'
+    );
 
-    if (error) {
-      console.error('Konnte gruppenübergreifende Matches nicht laden:', error);
-      return [];
-    }
-
-    return (data ?? []).map((row: any) => mapMatchRow(row));
+    return (rows ?? []).map((row: any) => mapMatchRow(row));
   }
 
   /**
@@ -859,6 +900,7 @@ export class MtgService {
       .insert({
         group_id: groupId,
         game_mode: match.mode,
+        game_format: match.format ?? null,
         cube_id: match.cube?.id ?? null,
         winner_name: match.winner,
         draft_set_id: match.draftSet?.id ?? null,
@@ -1322,6 +1364,7 @@ export class MtgService {
         .insert({
           group_id: groupId,
           game_mode: match.mode,
+          game_format: match.format ?? null,
           cube_id: match.cube?.id ?? null,
           winner_name: match.winner,
           played_at: match.date,
