@@ -9,6 +9,11 @@ export interface ScryfallCard {
   cmc?: number;
   manaCost?: string;
   colorIdentity?: string[];
+  /**
+   * Farben, die diese Karte an Mana erzeugen kann ('W'|'U'|'B'|'R'|'G'|'C') - von Scryfall selbst
+   * gepflegt, fehlt bei Karten, die gar kein Mana erzeugen. Grundlage der Manaquellen-Verteilung.
+   */
+  producedMana?: string[];
   /** Teil der offiziellen Commander-Bracket-"Game Changers"-Liste (von Scryfall selbst gepflegt). */
   gameChanger?: boolean;
   oracleText?: string;
@@ -843,6 +848,14 @@ export class ScryfallService {
       cmc: data.cmc as number | undefined,
       manaCost: (data.mana_cost || data.card_faces?.[0]?.mana_cost) as string | undefined,
       colorIdentity: data.color_identity as string[] | undefined,
+      // Bei doppelseitigen Karten (z.B. MDFC-Ländern) steht produced_mana je nach Karte oben oder
+      // nur auf den Faces - beide Quellen zusammenführen, sonst fehlt die halbe Manabasis.
+      producedMana: (data.produced_mana as string[] | undefined) ??
+        (data.card_faces as any[] | undefined)?.reduce<string[] | undefined>((acc, face) => {
+          const produced = face?.produced_mana as string[] | undefined;
+          if (!produced) return acc;
+          return [...new Set([...(acc ?? []), ...produced])];
+        }, undefined),
       gameChanger: data.game_changer as boolean | undefined,
       oracleText: (data.oracle_text || data.card_faces?.[0]?.oracle_text) as string | undefined,
       keywords: data.keywords as string[] | undefined,

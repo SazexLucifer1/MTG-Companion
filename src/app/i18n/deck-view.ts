@@ -101,6 +101,9 @@ export const deckView = {
     'deckView.pipInfoLabel': 'Pip-Verteilung:',
     'deckView.pipInfoText':
       'Wie oft jede Farbe (Weiß/Blau/Schwarz/Rot/Grün) in den Manakosten aller Nicht-Land-Karten vorkommt. Hybrid- und Phyrexianisch-Manasymbole zählen für ihre Farbe(n) mit.',
+    'deckView.manaSourceInfoLabel': 'Manaquellen:',
+    'deckView.manaSourceInfoText':
+      'Wie viele Karten Mana welcher Farbe erzeugen können - Länder, Manasteine und Manadorks zusammen, nach Scryfalls produced_mana. Gezählt werden Karten, nicht Manasymbole: Eine Karte, die mehrere Farben erzeugt (z.B. ein Triom), zählt bei jeder dieser Farben mit, die Balkensumme ist deshalb größer als die Zahl der Manaquellen.',
     'deckView.priceInfoLabel': 'Kartenpreis gesamt:',
     'deckView.priceInfoText':
       'Summe der Scryfall-EUR-Preise (Cardmarket) der günstigsten Druckvariante jeder Karte - unabhängig vom im Deck gewählten Artwork. Karten ohne ermittelbaren Preis fließen nicht in die Summe ein.',
@@ -162,6 +165,10 @@ export const deckView = {
     'deckView.manaCurveTitle': 'Manakurve',
     'deckView.avgCmc': 'Ø Manakosten: {{value}}',
     'deckView.pipDistTitle': 'Pip-Verteilung',
+    'deckView.manaSourceTitle': 'Manaquellen-Verteilung',
+    'deckView.manaSourceSummary':
+      '{{count}} von {{total}} Karten erzeugen Mana · davon {{nonLand}} ohne Land',
+    'deckView.manaSourceEmpty': 'Keine Karten gefunden, die Mana erzeugen.',
     'deckView.gameChangerTitle': 'Game Changer & Bracket-Richtwert',
     'deckView.gameChangerSummary':
       '{{count}} von {{total}} Karten auf der offiziellen Game-Changer-Liste · {{hint}}',
@@ -303,6 +310,9 @@ export const deckView = {
     'deckView.pipInfoLabel': 'Pip distribution:',
     'deckView.pipInfoText':
       'How often each color (White/Blue/Black/Red/Green) appears in the mana costs of all non-land cards. Hybrid and Phyrexian mana symbols count towards their color(s).',
+    'deckView.manaSourceInfoLabel': 'Mana sources:',
+    'deckView.manaSourceInfoText':
+      "How many cards can produce mana of each color - lands, mana rocks and mana dorks together, based on Scryfall's produced_mana. Cards are counted, not mana symbols: a card producing several colors (e.g. a triome) counts towards each of them, so the bars add up to more than the number of mana sources.",
     'deckView.priceInfoLabel': 'Total card price:',
     'deckView.priceInfoText':
       "Sum of the Scryfall EUR prices (Cardmarket) of each card's cheapest printing - independent of the artwork chosen in the deck. Cards without a determinable price are excluded from the sum.",
@@ -364,6 +374,10 @@ export const deckView = {
     'deckView.manaCurveTitle': 'Mana Curve',
     'deckView.avgCmc': 'Avg. mana value: {{value}}',
     'deckView.pipDistTitle': 'Pip Distribution',
+    'deckView.manaSourceTitle': 'Mana Source Distribution',
+    'deckView.manaSourceSummary':
+      '{{count}} of {{total}} cards produce mana · {{nonLand}} of them non-land',
+    'deckView.manaSourceEmpty': 'No mana-producing cards found.',
     'deckView.gameChangerTitle': 'Game Changer & Bracket Estimate',
     'deckView.gameChangerSummary':
       '{{count}} of {{total}} cards on the official Game Changer list · {{hint}}',
