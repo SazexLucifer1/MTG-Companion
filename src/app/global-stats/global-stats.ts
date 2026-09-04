@@ -1,5 +1,6 @@
 import { Component, Signal, computed, effect, inject, signal } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import {
   DeckService,
   GlobalDeckStat,
@@ -18,6 +19,7 @@ import { Meter } from '../ui/meter/meter';
 import { Pager } from '../ui/pager/pager';
 import { RadarChart, RadarChartDatum } from '../ui/radar-chart/radar-chart';
 import { ManaSymbol } from '../ui/mana-symbol/mana-symbol';
+import { MultiSelect } from '../ui/multi-select/multi-select';
 import { colorComboName, sortColors } from '../color-combo-names';
 import { COLORLESS, FILTER_COLORS } from '../color-filter-match';
 import { RankSortMode, compareBySortMode, medal, barValue, barMax } from '../rank-sort';
@@ -113,7 +115,17 @@ class QualifiedRanking<T extends { name: string; games: number; wins: number; wi
  */
 @Component({
   selector: 'app-global-stats',
-  imports: [DecimalPipe, CardImage, LoginRequired, Meter, Pager, RadarChart, ManaSymbol],
+  imports: [
+    DecimalPipe,
+    FormsModule,
+    CardImage,
+    LoginRequired,
+    Meter,
+    Pager,
+    RadarChart,
+    ManaSymbol,
+    MultiSelect,
+  ],
   templateUrl: './global-stats.html',
   styleUrl: './global-stats.scss',
 })
@@ -151,43 +163,26 @@ export class GlobalStats {
   readonly gameModes = GAME_MODES;
   readonly selectedModes = signal<Set<GameMode>>(new Set(GAME_MODES));
   readonly deckFormats = DECK_FORMATS;
-  readonly selectedFormats = signal<Set<DeckFormat>>(new Set(DECK_FORMATS));
+
+  /**
+   * Genau EIN Format oder "Alle". Startet bewusst auf "Commander" statt auf "Alle": diese Ansicht
+   * besteht fast nur aus Deck-/Commander-Ranglisten, und die sind über alle Formate hinweg nicht
+   * vergleichbar (siehe deckComparisonAvailable) - mit "Alle" als Start stünde hier beim ersten
+   * Aufruf eine praktisch leere Seite.
+   */
+  readonly selectedFormat = signal<DeckFormat | 'Alle'>('Commander');
 
   readonly isAllModesSelected = computed(() => GAME_MODES.every((m) => this.selectedModes().has(m)));
-  readonly isAllFormatsSelected = computed(() =>
-    DECK_FORMATS.every((f) => this.selectedFormats().has(f))
-  );
 
-  isModeSelected(mode: GameMode): boolean {
-    return this.selectedModes().has(mode);
+  /** Deck-/Commander-Ranglisten sind nur innerhalb eines Formats vergleichbar - siehe Stats-Tab. */
+  readonly deckComparisonAvailable = computed(() => this.selectedFormat() !== 'Alle');
+
+  setSelectedModes(next: Set<string>): void {
+    this.selectedModes.set(new Set(GAME_MODES.filter((m) => next.has(m))));
   }
 
-  toggleModeFilter(mode: GameMode): void {
-    this.selectedModes.update((set) => {
-      const next = new Set(set);
-      next.has(mode) ? next.delete(mode) : next.add(mode);
-      return next;
-    });
-  }
-
-  selectAllModes(): void {
-    this.selectedModes.set(new Set(GAME_MODES));
-  }
-
-  isFormatSelected(format: DeckFormat): boolean {
-    return this.selectedFormats().has(format);
-  }
-
-  toggleFormatFilter(format: DeckFormat): void {
-    this.selectedFormats.update((set) => {
-      const next = new Set(set);
-      next.has(format) ? next.delete(format) : next.add(format);
-      return next;
-    });
-  }
-
-  selectAllFormats(): void {
-    this.selectedFormats.set(new Set(DECK_FORMATS));
+  setSelectedFormat(format: DeckFormat | 'Alle'): void {
+    this.selectedFormat.set(format);
   }
 
   constructor() {
@@ -195,7 +190,8 @@ export class GlobalStats {
       // "Alles ausgewählt" wird als null (= kein Filter) durchgereicht statt als volle Liste - das
       // ist der unveränderte Default-Aufruf von vorher und spart der DB die Filterprüfung.
       const modes = this.isAllModesSelected() ? null : [...this.selectedModes()];
-      const formats = this.isAllFormatsSelected() ? null : [...this.selectedFormats()];
+      const format = this.selectedFormat();
+      const formats = format === 'Alle' ? null : [format];
 
       this.loading.set(true);
       Promise.all([

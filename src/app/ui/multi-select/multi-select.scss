@@ -1,0 +1,53 @@
+:host {
+  display: block;
+}
+
+.multi-select-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  width: 100%;
+  // Wie eine Auswahlliste lesbar: linksbündiger Text, Pfeil rechts.
+  text-align: left;
+  cursor: pointer;
+}
+
+.multi-select-summary {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.multi-select-caret {
+  flex: 0 0 auto;
+  opacity: 0.7;
+}
+
+.multi-select-heading {
+  margin: 0 0 var(--sp-1);
+  text-align: center;
+}
+
+.multi-select-option {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-1) var(--sp-2);
+  border-radius: var(--r-sm);
+  cursor: pointer;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.06);
+  }
+
+  // Gesperrte Einträge (z.B. vom Host ausgeblendete Spielmodi) bleiben lesbar, aber sichtbar inaktiv.
+  &.locked {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+
+  input {
+    flex: 0 0 auto;
+  }
+}

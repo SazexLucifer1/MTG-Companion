@@ -9,26 +9,26 @@
 
 <section class="glass-card">
   <h2>{{ i18n.t('stats.modeAndFormat') }}</h2>
-  <div class="chip-row mode-chip-row">
-    <button class="glass-chip" [class.active]="isAllModesSelected()" (click)="selectAllModes()">
-      {{ i18n.t('stats.allModes') }}
-    </button>
-    @for (m of gameModes; track m) {
-    <button class="glass-chip" [class.active]="isModeSelected(m)" (click)="toggleModeFilter(m)">
-      {{ m }}
-    </button>
-    }
-  </div>
-  <div class="chip-row format-chip-row">
-    <button class="glass-chip" [class.active]="isAllFormatsSelected()" (click)="selectAllFormats()">
-      {{ i18n.t('stats.allFormats') }}
-    </button>
+  <!-- [ngModel]/[ngValue] statt [value]: sonst greift die Vorauswahl "Commander" nicht sichtbar,
+       siehe Kommentar im Stats-Tab. -->
+  <select
+    class="glass-input"
+    [attr.aria-label]="i18n.t('stats.allFormats')"
+    [ngModel]="selectedFormat()"
+    (ngModelChange)="setSelectedFormat($event)"
+  >
+    <option [ngValue]="'Alle'">{{ i18n.t('stats.allFormats') }}</option>
     @for (f of deckFormats; track f) {
-    <button class="glass-chip" [class.active]="isFormatSelected(f)" (click)="toggleFormatFilter(f)">
-      {{ f }}
-    </button>
+    <option [ngValue]="f">{{ f }}</option>
     }
-  </div>
+  </select>
+  <app-multi-select
+    [options]="gameModes"
+    [value]="selectedModes()"
+    (valueChange)="setSelectedModes($event)"
+    [allLabel]="i18n.t('stats.allModes')"
+    [label]="i18n.t('stats.modes')"
+  />
 </section>
 
 @if (loading()) {
@@ -37,7 +37,12 @@
 </section>
 } @else {
 
-@if (decks.ranked().length > 0 || decks.inQualification().length > 0) {
+@if (!deckComparisonAvailable()) {
+<section class="glass-card" data-tutorial="stats-global-decks">
+  <h2>{{ i18n.t('stats.globalDecksTitle') }}</h2>
+  <p class="hint">{{ i18n.t('stats.chooseFormatForDecksHint') }}</p>
+</section>
+} @else if (decks.ranked().length > 0 || decks.inQualification().length > 0) {
 <section class="glass-card" data-tutorial="stats-global-decks">
   <h2>{{ i18n.t('stats.globalDecksTitle') }}</h2>
   <div class="segmented sort-toggle">
@@ -98,7 +103,7 @@
 </section>
 }
 
-@if (commanders.ranked().length > 0 || commanders.inQualification().length > 0) {
+@if (deckComparisonAvailable() && (commanders.ranked().length > 0 || commanders.inQualification().length > 0)) {
 <section class="glass-card" data-tutorial="stats-global-commanders">
   <h2>{{ i18n.t('stats.globalCommandersTitle') }}</h2>
   <div class="segmented sort-toggle">

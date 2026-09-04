@@ -46,12 +46,15 @@ export const stats = {
     'stats.modeAndFormat': 'Modus & Format',
     'stats.allTime': 'Alle Zeiten',
     'stats.allModes': 'Alle Modi',
-    'stats.allFormats': 'Alle Formate',
+    'stats.modes': 'Spielmodi',
+    'stats.allFormats': 'Alle Spielformate',
+    'stats.chooseFormatForDecksHint':
+      'Wähle oben ein bestimmtes Spielformat, um Decks und Commander zu vergleichen - über alle Formate hinweg stünde ein Commander-Deck gegen ein Modern-Deck, was nichts aussagt.',
     'stats.lockedModesSingular': 'ist für dich gesperrt',
     'stats.lockedModesPlural': 'sind für dich gesperrt',
     'stats.lockedModesSuffix':
       'und daher nicht auswählbar. Wende dich an den Admin der Gruppe, falls du Zugriff haben möchtest.',
-    'stats.chooseModeHint': 'Wähle mindestens einen Modus und ein Format aus, um Stats zu sehen.',
+    'stats.chooseModeHint': 'Wähle mindestens einen Modus aus, um Stats zu sehen.',
 
     // --- Stats-Tab: Spieler-Details ---
     'stats.playerDetails': 'Spieler-Details',
@@ -199,12 +202,15 @@ export const stats = {
     'stats.modeAndFormat': 'Mode & format',
     'stats.allTime': 'All time',
     'stats.allModes': 'All modes',
-    'stats.allFormats': 'All formats',
+    'stats.modes': 'Game modes',
+    'stats.allFormats': 'All game formats',
+    'stats.chooseFormatForDecksHint':
+      'Pick a specific game format above to compare decks and commanders - across all formats a Commander deck would be ranked against a Modern deck, which says nothing.',
     'stats.lockedModesSingular': 'is locked for you',
     'stats.lockedModesPlural': 'are locked for you',
     'stats.lockedModesSuffix':
       'and therefore not selectable. Contact the group admin if you would like access.',
-    'stats.chooseModeHint': 'Choose at least one mode and one format to see stats.',
+    'stats.chooseModeHint': 'Choose at least one mode to see stats.',
 
     // --- Stats tab: player details ---
     'stats.playerDetails': 'Player Details',

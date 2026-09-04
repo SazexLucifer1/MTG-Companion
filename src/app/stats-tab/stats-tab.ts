@@ -36,6 +36,7 @@ import { Pager } from '../ui/pager/pager';
 import { SplitBar, SplitSegment } from '../ui/split-bar/split-bar';
 import { RadarChart, RadarChartDatum } from '../ui/radar-chart/radar-chart';
 import { ManaSymbol } from '../ui/mana-symbol/mana-symbol';
+import { MultiSelect } from '../ui/multi-select/multi-select';
 import { colorComboName, sortColors } from '../color-combo-names';
 import { COLORLESS, FILTER_COLORS } from '../color-filter-match';
 import {
@@ -109,6 +110,7 @@ interface ImportMappingRow {
     SplitBar,
     RadarChart,
     ManaSymbol,
+    MultiSelect,
     GlobalStats,
   ],
   templateUrl: './stats-tab.html',
@@ -355,31 +357,15 @@ export class StatsTab {
     return modes.length === 1 ? modes[0] : null;
   });
 
-  readonly isAllModesSelected = computed(() =>
-    GAME_MODES.every((m) => this.selectedModes().has(m))
-  );
-
-  isModeSelected(mode: GameMode): boolean {
-    return this.selectedModes().has(mode);
-  }
-
-  toggleModeFilter(mode: GameMode): void {
-    if (!this.canViewMode(mode)) return;
-    this.selectedModes.update((set) => {
-      const next = new Set(set);
-      if (next.has(mode)) {
-        next.delete(mode);
-      } else {
-        next.add(mode);
-      }
-      return next;
-    });
-    this.selectedCommanderDetail.set(null);
-    this.selectedDeckDetail.set(null);
-  }
-
-  selectAllModes(): void {
-    this.selectedModes.set(new Set(GAME_MODES));
+  /**
+   * Übernimmt die Auswahl aus dem Mehrfachauswahl-Menü (app-multi-select liefert ein Set<string>).
+   * Gesperrte Modi werden hier nochmal herausgefiltert - das Menü sperrt sie zwar schon, aber die
+   * Sichtbarkeitsregel darf nicht allein an der Oberfläche hängen (applyModeFilter() erzwingt sie
+   * zusätzlich ein drittes Mal auf den Daten).
+   */
+  setSelectedModes(next: Set<string>): void {
+    const allowed = GAME_MODES.filter((m) => next.has(m) && this.canViewMode(m));
+    this.selectedModes.set(new Set(allowed));
     this.selectedCommanderDetail.set(null);
     this.selectedDeckDetail.set(null);
   }
@@ -396,49 +382,35 @@ export class StatsTab {
 
   readonly deckFormats = DECK_FORMATS;
 
-  readonly selectedFormats = signal<Set<DeckFormat>>(new Set(DECK_FORMATS));
+  /** Genau EIN Format oder "Alle" - anders als beim Modus-Filter bewusst keine Mehrfachauswahl:
+   * Deck-Ranglisten sind nur innerhalb eines Formats vergleichbar (siehe deckComparisonAvailable). */
+  readonly selectedFormat = signal<DeckFormat | 'Alle'>('Alle');
 
-  /** Das eine ausgewählte Format, falls genau eins gewählt ist - sonst null, analog isSingleMode. */
-  readonly isSingleFormat = computed<DeckFormat | null>(() => {
-    const formats = [...this.selectedFormats()];
-    return formats.length === 1 ? formats[0] : null;
-  });
-
-  readonly isAllFormatsSelected = computed(() =>
-    DECK_FORMATS.every((f) => this.selectedFormats().has(f))
-  );
-
-  isFormatSelected(format: DeckFormat): boolean {
-    return this.selectedFormats().has(format);
-  }
-
-  toggleFormatFilter(format: DeckFormat): void {
-    this.selectedFormats.update((set) => {
-      const next = new Set(set);
-      if (next.has(format)) {
-        next.delete(format);
-      } else {
-        next.add(format);
-      }
-      return next;
-    });
+  setSelectedFormat(format: DeckFormat | 'Alle'): void {
+    this.selectedFormat.set(format);
     this.selectedCommanderDetail.set(null);
     this.selectedDeckDetail.set(null);
   }
 
-  selectAllFormats(): void {
-    this.selectedFormats.set(new Set(DECK_FORMATS));
-    this.selectedCommanderDetail.set(null);
-    this.selectedDeckDetail.set(null);
-  }
-
-  /** Format-Filter als reine Funktion, siehe applyYearFilter() für die Begründung. Matches ohne
-   * Format (Spezialevent, format === null) haben nichts zum Filtern und laufen deshalb IMMER durch -
-   * sie sind über diesen Filter nie ausschließbar. */
+  /**
+   * Format-Filter als reine Funktion, siehe applyYearFilter() für die Begründung.
+   *
+   * Matches ohne Format (Spezialevent) fallen bei einer konkreten Formatwahl heraus: wer sich
+   * "Modern" ansieht, will keine formatlosen Spezialevents mitgezählt bekommen. Unter "Alle
+   * Spielformate" laufen sie ganz normal mit.
+   */
   private applyFormatFilter(matches: Match[]): Match[] {
-    const formats = this.selectedFormats();
-    return matches.filter((m) => m.format === null || formats.has(m.format));
+    const format = this.selectedFormat();
+    if (format === 'Alle') return matches;
+    return matches.filter((m) => m.format === format);
   }
+
+  /**
+   * Ob Deck-/Commander-Vergleiche sinnvoll sind - nur innerhalb EINES Formats. Über alle Formate
+   * hinweg stünde ein Commander-Deck gegen ein Modern-Deck in derselben Rangliste, was nichts
+   * aussagt. Die betroffenen Abschnitte weichen dann einem Hinweis (stats.chooseFormatForDecksHint).
+   */
+  readonly deckComparisonAvailable = computed(() => this.selectedFormat() !== 'Alle');
 
   readonly filteredMatches = computed<Match[]>(() =>
     this.applyFormatFilter(this.applyModeFilter(this.yearFilteredMatches())),

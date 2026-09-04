@@ -164,33 +164,30 @@
     <option [value]="year">{{ year }}</option>
     }
   </select>
-  <div class="chip-row mode-chip-row">
-    <button class="glass-chip" [class.active]="isAllModesSelected()" (click)="selectAllModes()">
-      {{ i18n.t('stats.allModes') }}
-    </button>
-    @for (m of gameModes; track m) {
-    <button
-      class="glass-chip"
-      [class.active]="isModeSelected(m)"
-      [class.locked]="!canViewMode(m)"
-      [disabled]="!canViewMode(m)"
-      (click)="toggleModeFilter(m)"
-    >
-      @if (!canViewMode(m)) { 🔒 }
-      {{ m }}
-    </button>
-    }
-  </div>
-  <div class="chip-row format-chip-row">
-    <button class="glass-chip" [class.active]="isAllFormatsSelected()" (click)="selectAllFormats()">
-      {{ i18n.t('stats.allFormats') }}
-    </button>
+  <!-- [ngModel]/[ngValue] statt [value]/(change) wie beim Jahr-Feld daneben: bei [value] setzt
+       Angular den Wert, bevor die @for-Optionen im DOM stehen, und der Browser fällt sichtbar auf
+       den ersten Eintrag zurück - in der Global-Ansicht (Vorauswahl "Commander") stand dann "Alle
+       Spielformate" im Feld, obwohl intern gefiltert wurde. -->
+  <select
+    class="glass-input"
+    [attr.aria-label]="i18n.t('stats.allFormats')"
+    [ngModel]="selectedFormat()"
+    (ngModelChange)="setSelectedFormat($event)"
+  >
+    <option [ngValue]="'Alle'">{{ i18n.t('stats.allFormats') }}</option>
     @for (f of deckFormats; track f) {
-    <button class="glass-chip" [class.active]="isFormatSelected(f)" (click)="toggleFormatFilter(f)">
-      {{ f }}
-    </button>
+    <option [ngValue]="f">{{ f }}</option>
     }
-  </div>
+  </select>
+  <app-multi-select
+    [options]="gameModes"
+    [value]="selectedModes()"
+    (valueChange)="setSelectedModes($event)"
+    [disabledOptions]="blockedModes()"
+    disabledMarker="🔒"
+    [allLabel]="i18n.t('stats.allModes')"
+    [label]="i18n.t('stats.modes')"
+  />
 </section>
 
 @if (blockedModes().length > 0) {
@@ -203,7 +200,7 @@
 </section>
 }
 
-@if (selectedModes().size === 0 || selectedFormats().size === 0) {
+@if (selectedModes().size === 0) {
 <section class="glass-card">
   <p class="hint">{{ i18n.t('stats.chooseModeHint') }}</p>
 </section>
@@ -287,7 +284,7 @@
     </li>
     }
   </ul>
-  } @if (isSingleFormat() === null && playerFormatStats().length > 0) {
+  } @if (selectedFormat() === 'Alle' && playerFormatStats().length > 0) {
   <h3>{{ i18n.t('stats.byGameFormat') }}</h3>
   <ul class="ranking">
     @for (f of playerFormatStats(); track f.format) {
@@ -300,7 +297,9 @@
     </li>
     }
   </ul>
-  } @if (playerDeckStats().length > 0) {
+  } @if (!deckComparisonAvailable()) {
+  <p class="hint">{{ i18n.t('stats.chooseFormatForDecksHint') }}</p>
+  } @if (deckComparisonAvailable() && playerDeckStats().length > 0) {
   <button class="glass-chip" (click)="togglePlayerDecks()">
     {{ showPlayerDecks() ? '▾' : '▸' }} {{ i18n.t('stats.decks') }} ({{ playerDeckStats().length }})
   </button>
@@ -357,7 +356,7 @@
     }
   </ul>
   }
-  } @if (playerCommanderStats().length > 0) {
+  } @if (deckComparisonAvailable() && playerCommanderStats().length > 0) {
   <button class="glass-chip" (click)="togglePlayerCommanders()">
     {{ showPlayerCommanders() ? '▾' : '▸' }} {{ i18n.t('stats.playedCommanders') }} ({{ playerCommanderStats().length }})
   </button>
@@ -550,7 +549,7 @@
   <p class="hint h2h-total">{{ i18n.t('stats.h2h.gamesTogether') }}: <strong>{{ h2hGames() }}</strong></p>
   <app-split-bar [segments]="h2hSegments()" />
 
-  @if (h2hCommanderStatsA().length > 0) {
+  @if (deckComparisonAvailable() && h2hCommanderStatsA().length > 0) {
   <h3>{{ i18n.t('stats.h2h.commandersOf', { name: h2hPlayerA() ?? '' }) }}</h3>
   <ul class="ranking">
     @for (c of h2hCommanderStatsA(); track c.commander; let i = $index) {
@@ -571,7 +570,7 @@
     }
   </ul>
   }
-  @if (h2hCommanderStatsB().length > 0) {
+  @if (deckComparisonAvailable() && h2hCommanderStatsB().length > 0) {
   <h3>{{ i18n.t('stats.h2h.commandersOf', { name: h2hPlayerB() ?? '' }) }}</h3>
   <ul class="ranking">
     @for (c of h2hCommanderStatsB(); track c.commander; let i = $index) {
@@ -596,7 +595,12 @@
   }
 </section>
 
-@if (combinedDeckCommanderStats().length > 0) {
+@if (!deckComparisonAvailable()) {
+<section class="glass-card" data-tutorial="stats-decks-commanders">
+  <h2>{{ i18n.t('stats.decksAndCommanders') }}</h2>
+  <p class="hint">{{ i18n.t('stats.chooseFormatForDecksHint') }}</p>
+</section>
+} @else if (combinedDeckCommanderStats().length > 0) {
 <section class="glass-card" data-tutorial="stats-decks-commanders">
   <h2>{{ i18n.t('stats.decksAndCommanders') }}</h2>
   <p class="hint">

@@ -5,8 +5,12 @@ export const common = {
     'dialog.ok': 'OK',
     'dialog.cancel': 'Abbrechen',
 
-    // --- Wiederverwendbare Bausteine (Overflow-Menü, Diagramme) ---
+    // --- Wiederverwendbare Bausteine (Overflow-Menü, Mehrfachauswahl, Diagramme) ---
     'common.moreActions': 'Weitere Aktionen',
+    'common.close': 'Schließen',
+    'common.multiSelectAll': 'Alle',
+    'common.multiSelectNone': 'Keine Auswahl',
+    'common.multiSelectCount': '{{count}} ausgewählt',
     'nav.match': 'Match',
     'nav.search': 'Suche',
     'nav.stats': 'Statistik',
@@ -35,8 +39,12 @@ export const common = {
     'dialog.ok': 'OK',
     'dialog.cancel': 'Cancel',
 
-    // --- Reusable building blocks (overflow menu, charts) ---
+    // --- Reusable building blocks (overflow menu, multi-select, charts) ---
     'common.moreActions': 'More actions',
+    'common.close': 'Close',
+    'common.multiSelectAll': 'All',
+    'common.multiSelectNone': 'Nothing selected',
+    'common.multiSelectCount': '{{count}} selected',
     'nav.match': 'Match',
     'nav.search': 'Search',
     'nav.stats': 'Stats',

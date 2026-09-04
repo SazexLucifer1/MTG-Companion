@@ -1,0 +1,59 @@
+<button
+  #trigger
+  type="button"
+  class="glass-input multi-select-trigger"
+  (click)="toggleOpen()"
+  [attr.aria-label]="label()"
+  [attr.aria-expanded]="open()"
+  aria-haspopup="listbox"
+>
+  <span class="multi-select-summary">{{ summary() }}</span>
+  <span class="multi-select-caret" aria-hidden="true">▾</span>
+</button>
+
+<!-- Wird beim Öffnen an den <body> gehängt statt hier gerendert - Begründung in multi-select.ts. -->
+<ng-template cdkPortal>
+  <div class="options-menu-overlay" (click)="close()">
+    <!-- Bewusst KEIN (click)="close()" auf dem Sheet selbst: hier werden mehrere Häkchen
+         nacheinander gesetzt, das Sheet darf sich dabei nicht nach dem ersten schließen. -->
+    <div
+      class="options-menu-sheet"
+      cdkTrapFocus
+      [cdkTrapFocusAutoCapture]="true"
+      role="listbox"
+      aria-multiselectable="true"
+      (click)="$event.stopPropagation()"
+      (keydown.escape)="close()"
+    >
+      @if (label()) {
+        <h3 class="multi-select-heading">{{ label() }}</h3>
+      }
+
+      <button
+        type="button"
+        class="glass-chip multi-select-all"
+        [class.active]="allSelected()"
+        (click)="selectAll()"
+      >
+        {{ allLabel() || i18n.t('common.multiSelectAll') }}
+      </button>
+
+      @for (option of options(); track option) {
+        <label class="multi-select-option" [class.locked]="isDisabled(option)">
+          <input
+            type="checkbox"
+            [checked]="isSelected(option)"
+            [disabled]="isDisabled(option)"
+            (change)="toggle(option)"
+          />
+          <span>
+            @if (isDisabled(option) && disabledMarker()) { {{ disabledMarker() }} }
+            {{ option }}
+          </span>
+        </label>
+      }
+
+      <button type="button" class="glass-button" (click)="close()">{{ i18n.t('common.close') }}</button>
+    </div>
+  </div>
+</ng-template>
