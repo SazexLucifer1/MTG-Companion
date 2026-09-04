@@ -37,6 +37,26 @@
 </section>
 } @else {
 
+@if (overview(); as o) {
+<section class="glass-card" data-tutorial="stats-global-overview">
+  <h2>{{ i18n.t('stats.overview') }}</h2>
+  <div class="stat-tiles">
+    <div class="stat-tile">
+      <span class="stat-value">{{ o.games }}</span>
+      <span class="stat-label">{{ i18n.t('stats.totalGames') }}</span>
+    </div>
+    <div class="stat-tile">
+      <span class="stat-value">{{ o.players }}</span>
+      <span class="stat-label">{{ i18n.t('stats.activePlayers') }}</span>
+    </div>
+    <div class="stat-tile">
+      <span class="stat-value">{{ o.decks }}</span>
+      <span class="stat-label">{{ i18n.t('stats.builtDecks') }}</span>
+    </div>
+  </div>
+</section>
+}
+
 @if (!deckComparisonAvailable()) {
 <section class="glass-card" data-tutorial="stats-global-decks">
   <h2>{{ i18n.t('stats.globalDecksTitle') }}</h2>
@@ -106,6 +126,7 @@
 @if (deckComparisonAvailable() && (commanders.ranked().length > 0 || commanders.inQualification().length > 0)) {
 <section class="glass-card" data-tutorial="stats-global-commanders">
   <h2>{{ i18n.t('stats.globalCommandersTitle') }}</h2>
+  <p class="hint">{{ i18n.t('stats.distinctCommandersCount', { count: distinctCommanderCount() }) }}</p>
   <div class="segmented sort-toggle">
     <button [class.active]="commanders.sortMode() === 'winRate'" (click)="commanders.sortMode.set('winRate')">{{ i18n.t('sort.winRate') }}</button>
     <button [class.active]="commanders.sortMode() === 'wins'" (click)="commanders.sortMode.set('wins')">{{ i18n.t('sort.wins') }}</button>

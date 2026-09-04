@@ -5,6 +5,7 @@ import {
   DeckService,
   GlobalDeckStat,
   GlobalCommanderStat,
+  GlobalOverviewStats,
   ColorStat,
   ColorComboStat,
 } from '../deck.service';
@@ -109,9 +110,10 @@ class QualifiedRanking<T extends { name: string; games: number; wins: number; wi
  * Fälle, kein doppelter Code.
  *
  * RLS beschränkt einen normalen Query strikt auf die eigenen Gruppen (is_group_member(group_id)) -
- * die Daten kommen deshalb aus zwei SECURITY DEFINER-Funktionen
- * (sql/global-stats-functions-2026-09-03.sql), die NUR aggregierte Zahlen liefern, keine
- * Spielernamen (siehe DeckService.getGlobalDeckCommanderStats()).
+ * die Daten kommen deshalb aus drei SECURITY DEFINER-Funktionen
+ * (sql/global-stats-functions-2026-09-03.sql, sql/global-overview-stats-2026-09-04.sql), die NUR
+ * aggregierte Zahlen liefern, keine Spielernamen (siehe
+ * DeckService.getGlobalDeckCommanderStats()).
  */
 @Component({
   selector: 'app-global-stats',
@@ -143,6 +145,10 @@ export class GlobalStats {
 
   readonly loading = signal(true);
 
+  /** null = Übersichtszahlen nicht verfügbar (SQL-Migration noch nicht gelaufen) -> Kacheln aus. */
+  private readonly overviewRaw = signal<GlobalOverviewStats | null>(null);
+  readonly overview = this.overviewRaw.asReadonly();
+
   private readonly deckStatsRaw = signal<GlobalDeckStat[]>([]);
   private readonly commanderStatsRaw = signal<GlobalCommanderStat[]>([]);
   private readonly colorAndCombo = signal<{
@@ -152,6 +158,13 @@ export class GlobalStats {
 
   readonly decks = new QualifiedRanking<GlobalDeckStat>(() => this.deckStatsRaw());
   readonly commanders = new QualifiedRanking<GlobalCommanderStat>(() => this.commanderStatsRaw());
+
+  /**
+   * Verschiedene Commander weltweit - bewusst NUR hier, direkt an der Commander-Rangliste, und
+   * nicht in den Übersichts-Kacheln: dort steht die Deck-Anzahl. Zählt alle Commander der
+   * Rangliste inkl. der noch nicht qualifizierten, ist also unabhängig von der Sortierung.
+   */
+  readonly distinctCommanderCount = computed(() => this.commanderStatsRaw().length);
 
   // --- Kategorie-/Format-Filter (eigenständig, kein Bezug zu MtgService.statVisibility - Global
   // hat keinen Host, der Sichtbarkeit pro Account einschränken könnte, also auch keine Sperr-Chips
@@ -197,10 +210,12 @@ export class GlobalStats {
       Promise.all([
         this.deckService.getGlobalDeckCommanderStats(modes, formats),
         this.deckService.getGlobalColorAndComboStats(modes, formats),
-      ]).then(([deckCommander, colors]) => {
+        this.deckService.getGlobalOverviewStats(modes, formats),
+      ]).then(([deckCommander, colors, overview]) => {
         this.deckStatsRaw.set(deckCommander.decks);
         this.commanderStatsRaw.set(deckCommander.commanders);
         this.colorAndCombo.set(colors);
+        this.overviewRaw.set(overview);
         this.loading.set(false);
       });
     });

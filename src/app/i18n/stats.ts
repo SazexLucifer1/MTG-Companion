@@ -97,6 +97,9 @@ export const stats = {
     'stats.totalGames': 'Spiele gesamt',
     'stats.activePlayers': 'Aktive Spieler',
     'stats.commanders': 'Commander',
+    'stats.builtDecks': 'Gebaute Decks',
+    'stats.distinctDecksCount': '{{count}} verschiedene Decks',
+    'stats.distinctCommandersCount': '{{count}} verschiedene Commander',
     'stats.ranking': 'Spieler-Rangliste',
     'stats.notEnoughGamesForRanking':
       'Noch niemand hat genug Spiele für die Rangliste – siehe Qualifikation unten.',
@@ -253,6 +256,9 @@ export const stats = {
     'stats.totalGames': 'Total games',
     'stats.activePlayers': 'Active players',
     'stats.commanders': 'Commanders',
+    'stats.builtDecks': 'Decks built',
+    'stats.distinctDecksCount': '{{count}} distinct decks',
+    'stats.distinctCommandersCount': '{{count}} distinct commanders',
     'stats.ranking': 'Player ranking',
     'stats.notEnoughGamesForRanking':
       'No one has enough games for the ranking yet – see qualification below.',

@@ -429,8 +429,8 @@
       <span class="stat-label">{{ i18n.t('stats.activePlayers') }}</span>
     </div>
     <div class="stat-tile">
-      <span class="stat-value">{{ distinctCommanderCount() }}</span>
-      <span class="stat-label">{{ i18n.t('stats.commanders') }}</span>
+      <span class="stat-value">{{ distinctDeckCount() }}</span>
+      <span class="stat-label">{{ i18n.t('stats.decks') }}</span>
     </div>
   </div>
 </section>
@@ -605,6 +605,10 @@
   <h2>{{ i18n.t('stats.decksAndCommanders') }}</h2>
   <p class="hint">
     {{ i18n.t('stats.decksAndCommandersHint') }}
+  </p>
+  <p class="hint">
+    {{ i18n.t('stats.distinctDecksCount', { count: distinctDeckCount() }) }} ·
+    {{ i18n.t('stats.distinctCommandersCount', { count: distinctCommanderCount() }) }}
   </p>
   <div class="segmented sort-toggle">
     <button [class.active]="deckSortMode() === 'winRate'" (click)="deckSortMode.set('winRate')">{{ i18n.t('sort.winRate') }}</button>

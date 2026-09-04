@@ -656,7 +656,11 @@ export class StatsTab {
       .sort((a, b) => b.wins - a.wins || b.winRate - a.winRate);
   });
 
-  /** Verschiedene Commander insgesamt (eigenständige Decks + Precons/Unverlinkte), für die Übersichts-Kachel. */
+  /**
+   * Verschiedene Commander insgesamt (eigenständige Decks + Precons/Unverlinkte). Steht bewusst
+   * NICHT mehr in der Übersicht - dort zählt jetzt distinctDeckCount() -, sondern nur noch an der
+   * "Decks & Commander"-Rangliste, wo die Commander auch tatsächlich aufgelistet werden.
+   */
   readonly distinctCommanderCount = computed(() => {
     const names = new Set<string>();
     for (const d of this.deckStats()) {
@@ -665,6 +669,14 @@ export class StatsTab {
     for (const c of this.commanderStats()) names.add(c.commander);
     return names.size;
   });
+
+  /**
+   * Verschiedene gespielte Decks für die Übersichts-Kachel: jedes eigenständige Deck einmal, dazu
+   * jeder Precon/unverlinkte Commander als ein Deck (für diese Partien gibt es kein angelegtes
+   * Deck, gespielt wurde aber trotzdem eins). Das ist genau die Zeilenzahl der
+   * "Decks & Commander"-Rangliste - die Kachel und die Liste darunter sagen damit dasselbe.
+   */
+  readonly distinctDeckCount = computed(() => this.combinedDeckCommanderStats().length);
 
   /**
    * Decks und Commander in EINER gemeinsamen Rangliste: eigenständige (Nicht-Precon-)Decks
