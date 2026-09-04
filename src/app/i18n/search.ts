@@ -11,6 +11,7 @@ export const search = {
     'pip.B': 'Schwarz',
     'pip.R': 'Rot',
     'pip.G': 'Grün',
+    'pip.C': 'Farblos',
 
     // Namen der Farbkombinationen (Azorius, Grixis, ...) stehen bewusst NICHT hier: sie sind
     // Eigennamen aus dem Spiel und in jeder Sprache gleich (siehe color-combo-names.ts).
@@ -120,6 +121,7 @@ export const search = {
     'pip.B': 'Black',
     'pip.R': 'Red',
     'pip.G': 'Green',
+    'pip.C': 'Colorless',
     'colorCombo.mono': 'Mono-{{color}}',
     'colorCombo.fiveColor': 'Five-color',
     'colorFilter.modeExact': 'exactly',

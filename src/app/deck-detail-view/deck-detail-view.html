@@ -549,6 +549,9 @@
               <strong>{{ viewer.i18n.t('deckView.pipInfoLabel') }}</strong> {{ viewer.i18n.t('deckView.pipInfoText') }}
             </p>
             <p class="hint">
+              <strong>{{ viewer.i18n.t('deckView.manaSourceInfoLabel') }}</strong> {{ viewer.i18n.t('deckView.manaSourceInfoText') }}
+            </p>
+            <p class="hint">
               <strong>{{ viewer.i18n.t('deckView.priceInfoLabel') }}</strong> {{ viewer.i18n.t('deckView.priceInfoText') }}
             </p>
             <p class="hint">
@@ -617,6 +620,22 @@
               <h4 class="deck-section-title">{{ viewer.i18n.t('deckView.pipDistTitle') }}</h4>
               @if (viewer.pipDistribution().length > 0) {
                 <app-bar-chart [data]="viewer.pipDistributionChart()" labelWidth="22px" />
+              }
+
+              <h4 class="deck-section-title">{{ viewer.i18n.t('deckView.manaSourceTitle') }}</h4>
+              @if (viewer.manaSourceCount() > 0) {
+                <p class="hint">
+                  {{
+                    viewer.i18n.t('deckView.manaSourceSummary', {
+                      count: viewer.manaSourceCount(),
+                      total: viewer.viewingTotalCards(),
+                      nonLand: viewer.nonLandManaSourceCount()
+                    })
+                  }}
+                </p>
+                <app-bar-chart [data]="viewer.manaSourceChart()" labelWidth="22px" />
+              } @else {
+                <p class="hint">{{ viewer.i18n.t('deckView.manaSourceEmpty') }}</p>
               }
 
               <h4 class="deck-section-title">{{ viewer.i18n.t('deckView.typeBreakdownTitle') }}</h4>

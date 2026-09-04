@@ -34,6 +34,13 @@ export interface PipCount {
   count: number;
 }
 
+/** Wie viele Deckkarten Mana dieser Farbe erzeugen können (Manaquellen-Verteilung). */
+export interface ManaSourceCount {
+  color: 'W' | 'U' | 'B' | 'R' | 'G' | 'C';
+  label: string;
+  count: number;
+}
+
 export interface GameChangerEntry {
   cardName: string;
   quantity: number;
@@ -305,6 +312,11 @@ export class DeckViewerService {
   readonly typeBreakdownChart = computed<BarChartDatum[]>(() =>
     typeChartData(this.typeBreakdown()),
   );
+  // Dieselbe Abbildung wie bei den Pips: gleiche Farben, gleiche Symbole, nur eine andere
+  // Zählweise dahinter - deshalb bewusst pipChartData() statt einer zweiten, identischen Funktion.
+  readonly manaSourceChart = computed<BarChartDatum[]>(() =>
+    pipChartData(this.manaSourceDistribution()),
+  );
 
   private static readonly PIP_COLORS: PipCount['color'][] = ['W', 'U', 'B', 'R', 'G'];
 
@@ -328,6 +340,52 @@ export class DeckViewerService {
       count: counts[color],
     }));
   });
+
+  private static readonly MANA_SOURCE_COLORS: ManaSourceCount['color'][] = ['W', 'U', 'B', 'R', 'G', 'C'];
+
+  /** Karten (inkl. Länder), die laut Scryfall überhaupt Mana erzeugen können - Basis der Manaquellen-Auswertung. */
+  private readonly manaSourceCards = computed(() => {
+    const details = this.viewingCardDetails();
+    return this.analysisDeckCards().filter(
+      (c) => (details.get(c.cardName.toLowerCase())?.producedMana?.length ?? 0) > 0,
+    );
+  });
+
+  /**
+   * Gegenstück zur Pip-Verteilung: nicht was das Deck an Mana *kostet*, sondern was es an Mana
+   * *erzeugt*. Gezählt werden Karten (mit ihrer Anzahl), nicht Manasymbole - eine Karte, die
+   * mehrere Farben erzeugen kann (Triom, Sol-Ring-artige Länder, "Mana jeder Farbe"), zählt
+   * deshalb bei jeder dieser Farben mit; die Balkensumme ist entsprechend größer als die Zahl der
+   * Manaquellen. Grundlage ist Scryfalls produced_mana, das Länder, Manasteine und Manadorks
+   * gleichermaßen abdeckt.
+   */
+  readonly manaSourceDistribution = computed<ManaSourceCount[]>(() => {
+    const details = this.viewingCardDetails();
+    const counts: Record<string, number> = { W: 0, U: 0, B: 0, R: 0, G: 0, C: 0 };
+    for (const card of this.manaSourceCards()) {
+      const produced = details.get(card.cardName.toLowerCase())?.producedMana ?? [];
+      for (const color of new Set(produced)) {
+        if (color in counts) counts[color] += card.quantity;
+      }
+    }
+    return DeckViewerService.MANA_SOURCE_COLORS.map((color) => ({
+      color,
+      label: this.i18n.t(`pip.${color}`),
+      count: counts[color],
+    }));
+  });
+
+  /** Anzahl aller Manaquellen im Deck (Karten, nicht Farben - jede Karte genau einmal). */
+  readonly manaSourceCount = computed(() =>
+    this.manaSourceCards().reduce((sum, c) => sum + c.quantity, 0),
+  );
+
+  /** Manaquellen, die keine Länder sind (Manasteine, Manadorks, Verzauberungen). */
+  readonly nonLandManaSourceCount = computed(() =>
+    this.manaSourceCards()
+      .filter((c) => !(c.typeLine ?? '').includes('Land'))
+      .reduce((sum, c) => sum + c.quantity, 0),
+  );
 
   readonly gameChangerCards = computed<GameChangerEntry[]>(() => {
     const details = this.viewingCardDetails();
