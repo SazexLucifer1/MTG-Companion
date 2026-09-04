@@ -13,6 +13,14 @@
   gap: var(--sp-3);
   // Die Plätze wachsen von unten: der Erste ist am höchsten, die Podeste stehen auf einer Linie.
   align-items: end;
+
+  // Mit ein oder zwei Plätzen zöge 1fr die Spalten über die ganze Kartenbreite - ein einzelnes
+  // Podest sähe dann aus wie ein leerer Balken. Hier bekommen sie eine sinnvolle Breite und
+  // stehen mittig.
+  &.sparse {
+    grid-auto-columns: minmax(96px, 150px);
+    justify-content: center;
+  }
 }
 
 .place {
@@ -44,7 +52,8 @@
 }
 
 .card-frame,
-.avatar-frame {
+.avatar-frame,
+.symbol-frame {
   position: relative;
   display: flex;
   align-items: center;
@@ -95,6 +104,27 @@
   .value {
     font-size: 1.25rem;
   }
+}
+
+.symbol-frame {
+  // Kein Bild, nur die Manasymbole der Farbkombination - deshalb ein flaches Feld statt einer
+  // Kartenfläche. Fünffarbige Kombinationen dürfen umbrechen.
+  flex-wrap: wrap;
+  gap: 2px;
+  // Schmiegt sich an die Symbole an, statt die Spalte auszufüllen - anders als bei Karte und
+  // Avatar gibt es hier kein Bild, das eine feste Fläche rechtfertigt.
+  width: auto;
+  min-width: 56px;
+  max-width: 100%;
+  min-height: 34px;
+  padding: var(--sp-2) var(--sp-4);
+  border-radius: var(--r-md);
+  font-size: 0.95rem;
+}
+
+.place.first .symbol-frame {
+  min-height: 44px;
+  font-size: 1.15rem;
 }
 
 .frame-placeholder {
