@@ -446,10 +446,11 @@
   @if (rankedPlayerStats().length === 0) {
   <p class="hint">{{ i18n.t('stats.notEnoughGamesForRanking') }}</p>
   }
+  <app-podium [entries]="playerPodium()" shape="avatar" (entrySelect)="openPlayerProfile($event.name)" />
   <ul class="ranking">
-    @for (p of pagedPlayerStats(); track p.name; let i = $index) {
+    @for (p of pagedPlayerStatsRest(); track p.name; let i = $index) {
     <li>
-      <span class="rank">{{ medal(playerEffectivePage() * 10 + i) }}</span>
+      <span class="rank">{{ medal(playerRestOffset() + i) }}</span>
       <span class="name player-name-cell" [class.clickable]="isPlayerLinked(p.name)" (click)="openPlayerProfile(p.name)">
         <app-player-avatar [url]="mtg.playerAvatars()[p.name] ?? null" />
         {{ p.name }}
@@ -618,10 +619,11 @@
   @if (rankedCombinedStats().length === 0) {
   <p class="hint">{{ i18n.t('stats.notEnoughGamesForRankingDecks') }}</p>
   }
+  <app-podium [entries]="combinedPodium()" (entrySelect)="openPodiumCard($event)" />
   <ul class="ranking">
-    @for (e of pagedCombinedStats(); track e.key; let i = $index) {
+    @for (e of pagedCombinedStatsRest(); track e.key; let i = $index) {
     <li>
-      <span class="rank">{{ medal(combinedEffectivePage() * 10 + i) }}</span>
+      <span class="rank">{{ medal(combinedRestOffset() + i) }}</span>
       <span class="name card-name-cell">
         @if (commanderImage(e.cardName, e.cardImageUrl); as img) {
         <button type="button" class="card-thumb" (click)="cardPreview.open(img, commanderBackImage(e.cardName), e.cardName)">

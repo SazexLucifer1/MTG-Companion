@@ -70,10 +70,11 @@
     <button [class.active]="decks.sortMode() === 'wins'" (click)="decks.sortMode.set('wins')">{{ i18n.t('sort.wins') }}</button>
     <button [class.active]="decks.sortMode() === 'games'" (click)="decks.sortMode.set('games')">{{ i18n.t('sort.games') }}</button>
   </div>
+  <app-podium [entries]="deckPodium()" (entrySelect)="openPodiumEntry($event)" />
   <ul class="ranking">
-    @for (e of decks.paged(); track e.deckId; let i = $index) {
+    @for (e of decks.pagedRest(); track e.deckId; let i = $index) {
     <li>
-      <span class="rank">{{ medal(decks.effectivePage() * 10 + i) }}</span>
+      <span class="rank">{{ medal(decks.restOffset() + i) }}</span>
       <span class="name card-name-cell">
         @if (e.commanderImageUrl; as img) {
         <button type="button" class="card-thumb" (click)="cardPreview.open(img, null, e.name)">
@@ -132,10 +133,11 @@
     <button [class.active]="commanders.sortMode() === 'wins'" (click)="commanders.sortMode.set('wins')">{{ i18n.t('sort.wins') }}</button>
     <button [class.active]="commanders.sortMode() === 'games'" (click)="commanders.sortMode.set('games')">{{ i18n.t('sort.games') }}</button>
   </div>
+  <app-podium [entries]="commanderPodium()" (entrySelect)="openPodiumEntry($event)" />
   <ul class="ranking">
-    @for (e of commanders.paged(); track e.name; let i = $index) {
+    @for (e of commanders.pagedRest(); track e.name; let i = $index) {
     <li>
-      <span class="rank">{{ medal(commanders.effectivePage() * 10 + i) }}</span>
+      <span class="rank">{{ medal(commanders.restOffset() + i) }}</span>
       <span class="name card-name-cell">
         @if (e.commanderImageUrl; as img) {
         <button type="button" class="card-thumb" (click)="cardPreview.open(img, null, e.name)">

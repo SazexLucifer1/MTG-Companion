@@ -45,7 +45,10 @@ import {
   medal as medalFor,
   barValue as barValueFor,
   barMax as barMaxFor,
+  splitPodium,
+  podiumRestOffset,
 } from '../rank-sort';
+import { Podium, PodiumEntry } from '../ui/podium/podium';
 import { GlobalStats } from '../global-stats/global-stats';
 
 export type StatsViewMode = 'stats' | 'tournaments';
@@ -111,6 +114,7 @@ interface ImportMappingRow {
     RadarChart,
     ManaSymbol,
     MultiSelect,
+    Podium,
     GlobalStats,
   ],
   templateUrl: './stats-tab.html',
@@ -520,6 +524,24 @@ export class StatsTab {
     return this.rankedPlayerStats().slice(start, start + PAGE_SIZE);
   });
 
+  // Erste drei aufs Siegertreppchen (ui/podium), der Rest bleibt Liste - siehe rank-sort.ts.
+  private readonly playerSplit = computed(() =>
+    splitPodium(this.pagedPlayerStats(), this.playerEffectivePage())
+  );
+  readonly pagedPlayerStatsRest = computed(() => this.playerSplit().rest);
+  readonly playerRestOffset = computed(() =>
+    podiumRestOffset(this.playerEffectivePage(), PAGE_SIZE)
+  );
+  readonly playerPodium = computed<PodiumEntry[]>(() =>
+    this.playerSplit().podium.map((p) => ({
+      key: p.name,
+      name: p.name,
+      detail: `${p.wins} / ${p.games} ${this.i18n.t('stats.wins')}`,
+      value: `${Math.round(p.winRate)}%`,
+      imageUrl: this.mtg.playerAvatars()[p.name] ?? null,
+    }))
+  );
+
 
 
   /** Spieler unterhalb der Schwelle, mit Anzeige wie viele Spiele noch bis zur Qualifikation fehlen. */
@@ -746,6 +768,32 @@ export class StatsTab {
     const start = this.combinedEffectivePage() * PAGE_SIZE;
     return this.rankedCombinedStats().slice(start, start + PAGE_SIZE);
   });
+
+  // Erste drei aufs Siegertreppchen (ui/podium), der Rest bleibt Liste - siehe rank-sort.ts.
+  private readonly combinedSplit = computed(() =>
+    splitPodium(this.pagedCombinedStats(), this.combinedEffectivePage())
+  );
+  readonly pagedCombinedStatsRest = computed(() => this.combinedSplit().rest);
+  readonly combinedRestOffset = computed(() =>
+    podiumRestOffset(this.combinedEffectivePage(), PAGE_SIZE)
+  );
+  readonly combinedPodium = computed<PodiumEntry[]>(() =>
+    this.combinedSplit().podium.map((e) => ({
+      key: e.key,
+      name: e.name,
+      detail: `${e.wins} / ${e.games} ${this.i18n.t('stats.wins')}`,
+      value: `${Math.round(e.winRate)}%`,
+      imageUrl: this.commanderImage(e.cardName, e.cardImageUrl),
+    }))
+  );
+
+  /** Klick auf einen Treppchen-Platz der Decks&Commander-Rangliste zeigt die Karte groß - dasselbe
+   * wie ein Klick auf das Vorschaubild in der Liste darunter. */
+  openPodiumCard(entry: PodiumEntry): void {
+    if (entry.imageUrl) {
+      this.cardPreview.open(entry.imageUrl, this.commanderBackImage(entry.name), entry.name);
+    }
+  }
 
 
 

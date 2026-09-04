@@ -23,7 +23,16 @@ import { ManaSymbol } from '../ui/mana-symbol/mana-symbol';
 import { MultiSelect } from '../ui/multi-select/multi-select';
 import { colorComboName, sortColors } from '../color-combo-names';
 import { COLORLESS, FILTER_COLORS } from '../color-filter-match';
-import { RankSortMode, compareBySortMode, medal, barValue, barMax } from '../rank-sort';
+import {
+  RankSortMode,
+  compareBySortMode,
+  medal,
+  barValue,
+  barMax,
+  splitPodium,
+  podiumRestOffset,
+} from '../rank-sort';
+import { Podium, PodiumEntry } from '../ui/podium/podium';
 
 const PAGE_SIZE = 10;
 
@@ -56,6 +65,12 @@ class QualifiedRanking<T extends { name: string; games: number; wins: number; wi
   readonly totalPages: Signal<number>;
   readonly effectivePage: Signal<number>;
   readonly paged: Signal<T[]>;
+  /** Die ersten drei der ersten Seite - stehen auf dem Treppchen statt in der Liste. */
+  readonly podium: Signal<T[]>;
+  /** Die Zeilen der aktuellen Seite ohne die, die schon auf dem Treppchen stehen. */
+  readonly pagedRest: Signal<T[]>;
+  /** Rang-Index der ersten Zeile unter dem Treppchen, für medal(). */
+  readonly restOffset: Signal<number>;
   readonly qualTotalPages: Signal<number>;
   readonly qualEffectivePage: Signal<number>;
   readonly pagedQualification: Signal<(T & { gamesNeeded: number })[]>;
@@ -82,6 +97,11 @@ class QualifiedRanking<T extends { name: string; games: number; wins: number; wi
       const start = this.effectivePage() * PAGE_SIZE;
       return this.ranked().slice(start, start + PAGE_SIZE);
     });
+
+    const split = computed(() => splitPodium(this.paged(), this.effectivePage()));
+    this.podium = computed(() => split().podium);
+    this.pagedRest = computed(() => split().rest);
+    this.restOffset = computed(() => podiumRestOffset(this.effectivePage(), PAGE_SIZE));
 
     this.qualTotalPages = computed(() =>
       Math.max(1, Math.ceil(this.inQualification().length / PAGE_SIZE)),
@@ -127,6 +147,7 @@ class QualifiedRanking<T extends { name: string; games: number; wins: number; wi
     RadarChart,
     ManaSymbol,
     MultiSelect,
+    Podium,
   ],
   templateUrl: './global-stats.html',
   styleUrl: './global-stats.scss',
@@ -165,6 +186,38 @@ export class GlobalStats {
    * Rangliste inkl. der noch nicht qualifizierten, ist also unabhängig von der Sortierung.
    */
   readonly distinctCommanderCount = computed(() => this.commanderStatsRaw().length);
+
+  // --- Siegertreppchen (ui/podium) für die ersten drei Plätze der beiden Ranglisten. Die Liste
+  // darunter läuft ab Platz 4 weiter, siehe splitPodium()/podiumRestOffset() in rank-sort.ts. ---
+
+  private podiumFields(e: {
+    name: string;
+    games: number;
+    wins: number;
+    winRate: number;
+    commanderImageUrl: string | null;
+  }) {
+    return {
+      name: e.name,
+      detail: `${e.wins} / ${e.games} ${this.i18n.t('stats.wins')}`,
+      value: `${Math.round(e.winRate)}%`,
+      imageUrl: e.commanderImageUrl,
+    };
+  }
+
+  readonly deckPodium = computed<PodiumEntry[]>(() =>
+    this.decks.podium().map((e) => ({ key: e.deckId, ...this.podiumFields(e) })),
+  );
+
+  readonly commanderPodium = computed<PodiumEntry[]>(() =>
+    this.commanders.podium().map((e) => ({ key: e.name, ...this.podiumFields(e) })),
+  );
+
+  /** Klick auf einen Treppchen-Platz zeigt die Karte groß - dasselbe wie ein Klick auf das
+   * Vorschaubild in der Liste darunter. */
+  openPodiumEntry(entry: PodiumEntry): void {
+    if (entry.imageUrl) this.cardPreview.open(entry.imageUrl, null, entry.name);
+  }
 
   // --- Kategorie-/Format-Filter (eigenständig, kein Bezug zu MtgService.statVisibility - Global
   // hat keinen Host, der Sichtbarkeit pro Account einschränken könnte, also auch keine Sperr-Chips
