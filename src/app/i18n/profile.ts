@@ -54,6 +54,7 @@ export const profile = {
     'profile.removeAria': 'Entfernen',
     'profile.searchCardPlaceholder': 'Kartenname suchen …',
     'profile.close': 'Schließen',
+    'profile.statsPeriod': '📅 Zeitraum',
     'profile.placementDistribution': '🏁 Platzierungen',
     'profile.placementDistributionHint':
       'Wie oft welcher Platz erreicht wurde - nur Matches mit eingetragener Platzierung zählen mit.',
@@ -188,6 +189,7 @@ export const profile = {
     'profile.removeAria': 'Remove',
     'profile.searchCardPlaceholder': 'Search card name …',
     'profile.close': 'Close',
+    'profile.statsPeriod': '📅 Period',
     'profile.placementDistribution': '🏁 Placements',
     'profile.placementDistributionHint':
       'How often each place was reached - only matches with a recorded placement count.',

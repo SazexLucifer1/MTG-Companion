@@ -327,12 +327,30 @@
   }
 
   @if (profileViewTab() === 'stats') {
+  <!-- Zeitraum ganz oben, weil er ALLE Kacheln darunter betrifft - dieselbe Rolle wie der
+       Jahr-Filter im Statistik-Tab. [ngModel]/[ngValue] statt [value]/(change): sonst setzt Angular
+       die Vorauswahl, bevor die @for-Optionen im DOM stehen, und das Feld zeigt sichtbar "Alle
+       Zeiten", obwohl intern das laufende Jahr gefiltert wird. -->
+  <section class="glass-card stats-year-filter">
+    <h2>{{ i18n.t('profile.statsPeriod') }}</h2>
+    <select
+      class="glass-input"
+      [attr.aria-label]="i18n.t('profile.statsPeriod')"
+      [ngModel]="statsYear()"
+      (ngModelChange)="setStatsYear($event)"
+    >
+      <option [ngValue]="'Alle'">{{ i18n.t('stats.allTime') }}</option>
+      @for (year of availableStatsYears(); track year) {
+        <option [ngValue]="year">{{ year }}</option>
+      }
+    </select>
+  </section>
 <div class="profile-grid stats-grid">
-    @if (placementDistribution().length > 0) {
+    @if (ownPlacementDistribution().length > 0) {
       <section class="glass-card">
         <h2>{{ i18n.t('profile.placementDistribution') }}</h2>
         <p class="hint">{{ i18n.t('profile.placementDistributionHint') }}</p>
-        <app-bar-chart [data]="placementChart()" orientation="vertical" />
+        <app-bar-chart [data]="ownPlacementChart()" orientation="vertical" />
       </section>
     }
 

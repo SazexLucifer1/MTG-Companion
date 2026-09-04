@@ -158,10 +158,19 @@
   <div class="section-header-row">
     <h2>{{ i18n.t('stats.periodAndMode') }}</h2>
   </div>
-  <select class="glass-input" [value]="selectedYear()" (change)="setSelectedYear($event)">
-    <option value="Alle">{{ i18n.t('stats.allTime') }}</option>
+  <!-- [ngModel]/[ngValue] statt [value]/(change) aus demselben Grund wie beim Format-Feld darunter:
+       bei [value] setzt Angular den Wert, bevor die @for-Optionen im DOM stehen. Solange hier "Alle"
+       vorausgewählt war, fiel das nicht auf (das ist die erste Option); mit dem laufenden Jahr als
+       Vorauswahl stünde sichtbar "Alle Zeit" im Feld, obwohl intern das Jahr gefiltert wird. -->
+  <select
+    class="glass-input"
+    [attr.aria-label]="i18n.t('stats.allTime')"
+    [ngModel]="selectedYear()"
+    (ngModelChange)="setSelectedYear($event)"
+  >
+    <option [ngValue]="'Alle'">{{ i18n.t('stats.allTime') }}</option>
     @for (year of availableYears(); track year) {
-    <option [value]="year">{{ year }}</option>
+    <option [ngValue]="year">{{ year }}</option>
     }
   </select>
   <!-- [ngModel]/[ngValue] statt [value]/(change) wie beim Jahr-Feld daneben: bei [value] setzt

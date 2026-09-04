@@ -114,7 +114,21 @@ export class ProfileTab {
    * Platzierung zählen mit (rein optionale Zusatz-Info, siehe models.ts MatchPlayer.placement).
    * Gilt für das gerade angezeigte Profil (eigenes, ein fremder Account oder ein NPC).
    */
-  readonly placementDistribution = computed<{ placement: number; count: number }[]>(() => {
+  readonly placementDistribution = computed<{ placement: number; count: number }[]>(() =>
+    this.countPlacements('Alle'),
+  );
+
+  /**
+   * Dieselbe Verteilung, aber auf das im eigenen Profil gewählte Jahr eingegrenzt (siehe
+   * statsYear). Bewusst eine zweite Ableitung statt eines Filters in placementDistribution: der
+   * Jahres-Umschalter steht nur in der Statistik-Ansicht des EIGENEN Profils, ein fremdes oder
+   * NPC-Profil würde sonst still nach einem Jahr gefiltert, das dort niemand sieht.
+   */
+  readonly ownPlacementDistribution = computed<{ placement: number; count: number }[]>(() =>
+    this.countPlacements(this.statsYear()),
+  );
+
+  private countPlacements(year: number | 'Alle'): { placement: number; count: number }[] {
     const npcName = this.profileService.viewingPlayerName();
     const userId = this.profileService.viewingUserId() ?? this.profileService.profile()?.id ?? null;
     const name = npcName ?? this.playerNameForUserId(userId);
@@ -123,11 +137,12 @@ export class ProfileTab {
     const counts = new Map<number, number>();
     for (const match of this.mtg.history()) {
       if (match.countsInGeneralStats === false) continue;
+      if (year !== 'Alle' && new Date(match.date).getFullYear() !== year) continue;
       const placement = match.players.find((p) => p.name === name)?.placement;
       if (placement != null) counts.set(placement, (counts.get(placement) ?? 0) + 1);
     }
     return [...counts.entries()].sort((a, b) => a[0] - b[0]).map(([placement, count]) => ({ placement, count }));
-  });
+  }
 
   /**
    * Die Platzierungsverteilung als Säulendiagramm.
@@ -137,11 +152,19 @@ export class ProfileTab {
    * Kopfrechnen ergibt.
    */
   readonly placementChart = computed<BarChartDatum[]>(() =>
-    this.placementDistribution().map((p) => ({
+    this.toPlacementChart(this.placementDistribution()),
+  );
+
+  readonly ownPlacementChart = computed<BarChartDatum[]>(() =>
+    this.toPlacementChart(this.ownPlacementDistribution()),
+  );
+
+  private toPlacementChart(entries: { placement: number; count: number }[]): BarChartDatum[] {
+    return entries.map((p) => ({
       label: this.i18n.t('placement.badge', { placement: p.placement }),
       value: p.count,
-    })),
-  );
+    }));
+  }
 
   readonly unassignedCommanderStats = signal<CommanderGameStats[]>([]);
   /** Gleiches wie unassignedCommanderStats, aber für ein FREMDES Profil - rein zum Ansehen, ohne Reparieren/Verlinken (das kann nur der Account-Besitzer selbst). */
@@ -155,8 +178,31 @@ export class ProfileTab {
   readonly crossGroupStats = signal<CrossGroupPersonalStats | null>(null);
 
   /** Umschalter zwischen den Statistik-Sektionen und dem Deck-Bereich im eigenen Profil - ohne den
-   * hätte man immer erst an allen Statistiken vorbeiscrollen müssen, um zu den Decks zu kommen. */
-  readonly profileViewTab = signal<'stats' | 'decks'>('stats');
+   * hätte man immer erst an allen Statistiken vorbeiscrollen müssen, um zu den Decks zu kommen.
+   * Startet auf den Decks: das ist der Bereich, in dem im Profil tatsächlich gearbeitet wird
+   * (Deck ansehen, importieren, bearbeiten), die Statistiken liest man seltener und gezielt. */
+  readonly profileViewTab = signal<'stats' | 'decks'>('decks');
+
+  // --- Zeitraum-Filter der Profil-Statistiken ---
+
+  /** Wie im Statistik-Tab: das laufende Jahr ist die Vorauswahl, 'Alle' fasst alle Jahre zusammen. */
+  readonly statsYear = signal<number | 'Alle'>(new Date().getFullYear());
+
+  /**
+   * Auswahlliste der Jahre. Das laufende Jahr steht immer darin, auch ohne Match darin - sonst
+   * zeigte das Feld eine Vorauswahl, die es in der Liste gar nicht gibt. Die übrigen Jahre kommen
+   * aus dem Match-Verlauf der aktiven Gruppe; die gruppenübergreifenden Kacheln darunter können
+   * dadurch Jahre enthalten, die hier nicht einzeln anwählbar sind - dafür bleibt 'Alle'.
+   */
+  readonly availableStatsYears = computed<number[]>(() => {
+    const years = new Set<number>([new Date().getFullYear()]);
+    for (const match of this.mtg.history()) years.add(new Date(match.date).getFullYear());
+    return [...years].sort((a, b) => b - a);
+  });
+
+  setStatsYear(year: number | 'Alle'): void {
+    this.statsYear.set(year);
+  }
 
   setProfileViewTab(tab: 'stats' | 'decks'): void {
     this.profileViewTab.set(tab);
@@ -323,7 +369,10 @@ export class ProfileTab {
         this.crossGroupStats.set(null);
         return;
       }
-      this.deckService.getCrossGroupPersonalStats(userId).then((stats) => this.crossGroupStats.set(stats));
+      const year = this.statsYear();
+      this.deckService
+        .getCrossGroupPersonalStats(userId, year === 'Alle' ? undefined : year)
+        .then((stats) => this.crossGroupStats.set(stats));
     });
 
     effect(() => {
@@ -332,7 +381,10 @@ export class ProfileTab {
         this.cardAndColorStats.set(null);
         return;
       }
-      this.deckService.getCardAndColorStats({ kind: 'user', userId }).then((stats) => this.cardAndColorStats.set(stats));
+      const year = this.statsYear();
+      this.deckService
+        .getCardAndColorStats({ kind: 'user', userId }, year === 'Alle' ? undefined : year)
+        .then((stats) => this.cardAndColorStats.set(stats));
     });
 
     effect(() => {
