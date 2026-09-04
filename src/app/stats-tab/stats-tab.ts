@@ -45,7 +45,10 @@ import {
   medal as medalFor,
   barValue as barValueFor,
   barMax as barMaxFor,
+  splitPodium,
+  podiumRestOffset,
 } from '../rank-sort';
+import { Podium, PodiumEntry } from '../ui/podium/podium';
 import { GlobalStats } from '../global-stats/global-stats';
 
 export type StatsViewMode = 'stats' | 'tournaments';
@@ -111,6 +114,7 @@ interface ImportMappingRow {
     RadarChart,
     ManaSymbol,
     MultiSelect,
+    Podium,
     GlobalStats,
   ],
   templateUrl: './stats-tab.html',
@@ -520,6 +524,24 @@ export class StatsTab {
     return this.rankedPlayerStats().slice(start, start + PAGE_SIZE);
   });
 
+  // Erste drei aufs Siegertreppchen (ui/podium), der Rest bleibt Liste - siehe rank-sort.ts.
+  private readonly playerSplit = computed(() =>
+    splitPodium(this.pagedPlayerStats(), this.playerEffectivePage())
+  );
+  readonly pagedPlayerStatsRest = computed(() => this.playerSplit().rest);
+  readonly playerRestOffset = computed(() =>
+    podiumRestOffset(this.playerEffectivePage(), PAGE_SIZE)
+  );
+  readonly playerPodium = computed<PodiumEntry[]>(() =>
+    this.playerSplit().podium.map((p) => ({
+      key: p.name,
+      name: p.name,
+      detail: `${p.wins} / ${p.games} ${this.i18n.t('stats.wins')}`,
+      value: `${Math.round(p.winRate)}%`,
+      imageUrl: this.mtg.playerAvatars()[p.name] ?? null,
+    }))
+  );
+
 
 
   /** Spieler unterhalb der Schwelle, mit Anzeige wie viele Spiele noch bis zur Qualifikation fehlen. */
@@ -656,7 +678,11 @@ export class StatsTab {
       .sort((a, b) => b.wins - a.wins || b.winRate - a.winRate);
   });
 
-  /** Verschiedene Commander insgesamt (eigenständige Decks + Precons/Unverlinkte), für die Übersichts-Kachel. */
+  /**
+   * Verschiedene Commander insgesamt (eigenständige Decks + Precons/Unverlinkte). Steht bewusst
+   * NICHT mehr in der Übersicht - dort zählt jetzt distinctDeckCount() -, sondern nur noch an der
+   * "Decks & Commander"-Rangliste, wo die Commander auch tatsächlich aufgelistet werden.
+   */
   readonly distinctCommanderCount = computed(() => {
     const names = new Set<string>();
     for (const d of this.deckStats()) {
@@ -665,6 +691,14 @@ export class StatsTab {
     for (const c of this.commanderStats()) names.add(c.commander);
     return names.size;
   });
+
+  /**
+   * Verschiedene gespielte Decks für die Übersichts-Kachel: jedes eigenständige Deck einmal, dazu
+   * jeder Precon/unverlinkte Commander als ein Deck (für diese Partien gibt es kein angelegtes
+   * Deck, gespielt wurde aber trotzdem eins). Das ist genau die Zeilenzahl der
+   * "Decks & Commander"-Rangliste - die Kachel und die Liste darunter sagen damit dasselbe.
+   */
+  readonly distinctDeckCount = computed(() => this.combinedDeckCommanderStats().length);
 
   /**
    * Decks und Commander in EINER gemeinsamen Rangliste: eigenständige (Nicht-Precon-)Decks
@@ -734,6 +768,32 @@ export class StatsTab {
     const start = this.combinedEffectivePage() * PAGE_SIZE;
     return this.rankedCombinedStats().slice(start, start + PAGE_SIZE);
   });
+
+  // Erste drei aufs Siegertreppchen (ui/podium), der Rest bleibt Liste - siehe rank-sort.ts.
+  private readonly combinedSplit = computed(() =>
+    splitPodium(this.pagedCombinedStats(), this.combinedEffectivePage())
+  );
+  readonly pagedCombinedStatsRest = computed(() => this.combinedSplit().rest);
+  readonly combinedRestOffset = computed(() =>
+    podiumRestOffset(this.combinedEffectivePage(), PAGE_SIZE)
+  );
+  readonly combinedPodium = computed<PodiumEntry[]>(() =>
+    this.combinedSplit().podium.map((e) => ({
+      key: e.key,
+      name: e.name,
+      detail: `${e.wins} / ${e.games} ${this.i18n.t('stats.wins')}`,
+      value: `${Math.round(e.winRate)}%`,
+      imageUrl: this.commanderImage(e.cardName, e.cardImageUrl),
+    }))
+  );
+
+  /** Klick auf einen Treppchen-Platz der Decks&Commander-Rangliste zeigt die Karte groß - dasselbe
+   * wie ein Klick auf das Vorschaubild in der Liste darunter. */
+  openPodiumCard(entry: PodiumEntry): void {
+    if (entry.imageUrl) {
+      this.cardPreview.open(entry.imageUrl, this.commanderBackImage(entry.name), entry.name);
+    }
+  }
 
 
 

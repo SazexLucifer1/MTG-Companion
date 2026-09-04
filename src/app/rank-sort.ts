@@ -5,6 +5,8 @@
  * Balkenlogik verwenden können, ohne sie zu duplizieren.
  */
 
+import { PODIUM_SIZE } from './ui/podium/podium';
+
 export type RankSortMode = 'wins' | 'winRate' | 'games';
 
 export function compareBySortMode<T extends { wins: number; winRate: number; games: number }>(
@@ -51,4 +53,22 @@ export function barMax(
 /** Platzierungs-Symbol für die ersten drei Ränge, sonst die nummerierte Platzierung. */
 export function medal(index: number): string {
   return ['🥇', '🥈', '🥉'][index] ?? `${index + 1}.`;
+}
+
+/**
+ * Teilt die Zeilen der aktuellen Ranglisten-Seite auf: die ersten drei stehen auf dem
+ * Siegertreppchen (ui/podium), der Rest läuft als normale Liste darunter weiter. Ein Treppchen gibt
+ * es nur auf der ERSTEN Seite - ab Seite 2 ist keine Top 3 mehr im Blick, dort bleibt alles Liste.
+ */
+export function splitPodium<T>(pageRows: readonly T[], page: number): { podium: T[]; rest: T[] } {
+  if (page !== 0) return { podium: [], rest: [...pageRows] };
+  return { podium: pageRows.slice(0, PODIUM_SIZE), rest: pageRows.slice(PODIUM_SIZE) };
+}
+
+/**
+ * Rang-Index der ersten Zeile UNTER dem Treppchen - Grundlage für medal() in der Liste, damit dort
+ * auf der ersten Seite "4." statt "🥇" steht.
+ */
+export function podiumRestOffset(page: number, pageSize: number): number {
+  return page * pageSize + (page === 0 ? PODIUM_SIZE : 0);
 }

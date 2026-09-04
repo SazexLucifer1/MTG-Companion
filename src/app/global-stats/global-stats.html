@@ -37,6 +37,26 @@
 </section>
 } @else {
 
+@if (overview(); as o) {
+<section class="glass-card" data-tutorial="stats-global-overview">
+  <h2>{{ i18n.t('stats.overview') }}</h2>
+  <div class="stat-tiles">
+    <div class="stat-tile">
+      <span class="stat-value">{{ o.games }}</span>
+      <span class="stat-label">{{ i18n.t('stats.totalGames') }}</span>
+    </div>
+    <div class="stat-tile">
+      <span class="stat-value">{{ o.players }}</span>
+      <span class="stat-label">{{ i18n.t('stats.activePlayers') }}</span>
+    </div>
+    <div class="stat-tile">
+      <span class="stat-value">{{ o.decks }}</span>
+      <span class="stat-label">{{ i18n.t('stats.builtDecks') }}</span>
+    </div>
+  </div>
+</section>
+}
+
 @if (!deckComparisonAvailable()) {
 <section class="glass-card" data-tutorial="stats-global-decks">
   <h2>{{ i18n.t('stats.globalDecksTitle') }}</h2>
@@ -50,10 +70,11 @@
     <button [class.active]="decks.sortMode() === 'wins'" (click)="decks.sortMode.set('wins')">{{ i18n.t('sort.wins') }}</button>
     <button [class.active]="decks.sortMode() === 'games'" (click)="decks.sortMode.set('games')">{{ i18n.t('sort.games') }}</button>
   </div>
+  <app-podium [entries]="deckPodium()" (entrySelect)="openPodiumEntry($event)" />
   <ul class="ranking">
-    @for (e of decks.paged(); track e.deckId; let i = $index) {
+    @for (e of decks.pagedRest(); track e.deckId; let i = $index) {
     <li>
-      <span class="rank">{{ medal(decks.effectivePage() * 10 + i) }}</span>
+      <span class="rank">{{ medal(decks.restOffset() + i) }}</span>
       <span class="name card-name-cell">
         @if (e.commanderImageUrl; as img) {
         <button type="button" class="card-thumb" (click)="cardPreview.open(img, null, e.name)">
@@ -106,15 +127,17 @@
 @if (deckComparisonAvailable() && (commanders.ranked().length > 0 || commanders.inQualification().length > 0)) {
 <section class="glass-card" data-tutorial="stats-global-commanders">
   <h2>{{ i18n.t('stats.globalCommandersTitle') }}</h2>
+  <p class="hint">{{ i18n.t('stats.distinctCommandersCount', { count: distinctCommanderCount() }) }}</p>
   <div class="segmented sort-toggle">
     <button [class.active]="commanders.sortMode() === 'winRate'" (click)="commanders.sortMode.set('winRate')">{{ i18n.t('sort.winRate') }}</button>
     <button [class.active]="commanders.sortMode() === 'wins'" (click)="commanders.sortMode.set('wins')">{{ i18n.t('sort.wins') }}</button>
     <button [class.active]="commanders.sortMode() === 'games'" (click)="commanders.sortMode.set('games')">{{ i18n.t('sort.games') }}</button>
   </div>
+  <app-podium [entries]="commanderPodium()" (entrySelect)="openPodiumEntry($event)" />
   <ul class="ranking">
-    @for (e of commanders.paged(); track e.name; let i = $index) {
+    @for (e of commanders.pagedRest(); track e.name; let i = $index) {
     <li>
-      <span class="rank">{{ medal(commanders.effectivePage() * 10 + i) }}</span>
+      <span class="rank">{{ medal(commanders.restOffset() + i) }}</span>
       <span class="name card-name-cell">
         @if (e.commanderImageUrl; as img) {
         <button type="button" class="card-thumb" (click)="cardPreview.open(img, null, e.name)">

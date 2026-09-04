@@ -145,6 +145,16 @@ export interface GlobalCommanderStat {
   winRate: number;
 }
 
+/** Übersichts-Kacheln der Global-Ansicht (Stats-Tab) - siehe DeckService.getGlobalOverviewStats(). */
+export interface GlobalOverviewStats {
+  /** Echte Matches, ohne die Verlierer-Platzhalter des Excel-Imports. */
+  games: number;
+  /** Spieler mit mindestens einem gewerteten Match. */
+  players: number;
+  /** Angelegte, öffentliche Nicht-Precon-Decks. */
+  decks: number;
+}
+
 export interface DeckCard {
   cardName: string;
   quantity: number;
@@ -1374,6 +1384,38 @@ export class DeckService {
       }
     }
     return { decks, commanders };
+  }
+
+  /**
+   * Weltweite Übersichtszahlen (Spiele, aktive Spieler, gebaute Decks) für die Kacheln oben in der
+   * Global-Ansicht - ruft global_overview_stats() auf (sql/global-overview-stats-2026-09-04.sql).
+   * Anders als die beiden Ranglisten-Funktionen gibt es hier bewusst KEINEN Rückfall auf eine alte
+   * Signatur: die Funktion ist neu, es gibt keine ältere Fassung. Solange die Migration nicht im
+   * Supabase-SQL-Editor gelaufen ist, kommt null zurück und die Kacheln bleiben ausgeblendet -
+   * der Rest der Global-Ansicht funktioniert davon unberührt weiter.
+   */
+  async getGlobalOverviewStats(
+    modes: GameMode[] | null = null,
+    formats: DeckFormat[] | null = null
+  ): Promise<GlobalOverviewStats | null> {
+    const { data, error } = await supabase.rpc('global_overview_stats', {
+      p_modes: modes,
+      p_formats: formats,
+    });
+
+    if (error) {
+      console.warn('Konnte weltweite Übersichtszahlen nicht laden:', error);
+      return null;
+    }
+
+    const row = (data as any[] | null)?.[0];
+    if (!row) return null;
+
+    return {
+      games: Number(row.games ?? 0),
+      players: Number(row.players ?? 0),
+      decks: Number(row.decks ?? 0),
+    };
   }
 
   /**

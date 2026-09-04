@@ -48,7 +48,7 @@ Jede Komponente ist ein Trio `name/name.ts` + `name.html` + `name.scss`.
 
 ### Wiederverwendbare UI-Bausteine — hier zuerst nachsehen
 
-`src/app/ui/` enthält: `bar-chart`, `radar-chart`, `meter`, `split-bar`, `pager`, `overflow-menu`, `multi-select`, `color-filter`, `cmc-filter`, `mana-symbol` sowie `chart-scale.ts`.
+`src/app/ui/` enthält: `bar-chart`, `radar-chart`, `meter`, `split-bar`, `pager`, `podium`, `overflow-menu`, `multi-select`, `color-filter`, `cmc-filter`, `mana-symbol` sowie `chart-scale.ts`.
 
 **Regel: bevor ein Diagramm, ein Filter, ein Menü oder eine Blätterfunktion neu gebaut wird, prüfen, ob es das hier schon gibt.**
 
