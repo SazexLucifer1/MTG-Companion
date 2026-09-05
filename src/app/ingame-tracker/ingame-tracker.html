@@ -109,7 +109,11 @@
             </button>
           </div>
           }
-          <div class="commander-source-split" [class.single]="session.commandersOf(p).length === 1">
+          <div
+            class="commander-source-split"
+            [class.single]="session.commandersOf(p).length === 1"
+            [class.side-by-side]="isWidePanel(i)"
+          >
             @for (source of session.commandersOf(p); track source.key) {
             <div class="commander-source-half">
               <span class="source-label">{{ source.label }}</span>
