@@ -1,7 +1,7 @@
 import { Component, effect, inject } from '@angular/core';
 import { CurrencyPipe, DatePipe, DecimalPipe, PercentPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { DeckViewerService } from '../deck-viewer.service';
+import { DeckViewerService, DeckChangeGroup } from '../deck-viewer.service';
 import { DeckService, DeckCard, DeckOwner } from '../deck.service';
 import { DeckImportService } from '../deck-import.service';
 import { DeckPdfService } from '../deck-pdf.service';
@@ -63,6 +63,22 @@ export class DeckDetailView {
         backImageUrl: this.viewer.resolvedCardBackPrintImage(c),
       }))
     );
+  }
+
+  /**
+   * Druckt genau die Karten, die in EINER Bearbeitung (dem offenen Verlaufs-Reiter) ins Deck
+   * gekommen sind - der Dateiname bekommt das Datum der Bearbeitung angehängt, damit sich mehrere
+   * gedruckte Bögen desselben Decks auseinanderhalten lassen.
+   */
+  async printChangeGroup(group: DeckChangeGroup): Promise<void> {
+    const deck = this.viewer.viewingDeck();
+    if (!deck) return;
+    const cards = await this.viewer.addedCardsForPrint(group);
+    if (cards.length === 0) return;
+    // ISO-Datum (2026-09-05) statt lokalem Format: DeckPdfService.generatePdf() wirft beim Bauen des
+    // Dateinamens alles ausser Wortzeichen, Bindestrich, Klammern und Leerzeichen weg - aus "5.9.2026"
+    // würde damit "592026".
+    this.pdfService.open(`${deck.name} ${group.changedAt.slice(0, 10)}`, cards);
   }
 
   async onCustomArtworkSelected(event: Event): Promise<void> {
