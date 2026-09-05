@@ -626,6 +626,45 @@
   .deck-change-log {
     margin: 0;
   }
+
+  .glass-button.small.primary {
+    margin-top: 10px;
+    width: 100%;
+  }
+}
+
+// Ein Reiter je Bearbeitung. Waagerecht scrollbar statt umbrechend: bei einem viel bearbeiteten
+// Deck stünden sonst schnell fünf Zeilen Reiter über einer dreizeiligen Änderungsliste.
+.change-group-tabs {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+  margin-bottom: 4px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+
+  .glass-chip {
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    line-height: 1.2;
+  }
+
+  .tab-date {
+    font-weight: 600;
+  }
+
+  .tab-summary {
+    font-size: 0.75rem;
+    opacity: 0.75;
+  }
 }
 
 .add-card-panel {

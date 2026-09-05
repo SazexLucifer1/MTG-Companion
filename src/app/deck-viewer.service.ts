@@ -1,6 +1,7 @@
 import { Injectable, computed, effect, inject, signal } from '@angular/core';
 import { DeckService, Deck, DeckCard, DeckChangeEntry, DeckGameStats } from './deck.service';
 import { ScryfallService, ScryfallCard, ScryfallPrinting } from './scryfall.service';
+import { PdfSourceCard } from './deck-pdf.service';
 import {
   CommanderSpellbookService,
   BracketEstimate,
@@ -75,6 +76,22 @@ interface PendingCardChange {
  * einem `.glass-card`-Vorfahren mit backdrop-filter eingefangen zu werden (backdrop-filter/filter/
  * transform auf einem Ahnen macht diesen zum Containing Block für fixed-Kinder).
  */
+/**
+ * Zeitlicher Abstand, ab dem zwei aufeinanderfolgende Verlaufseinträge als zwei getrennte
+ * Bearbeitungen gelten - siehe DeckViewerService.changeLogGroups().
+ */
+const CHANGE_GROUP_GAP_MS = 2 * 60 * 1000;
+
+/** Eine einzelne Bearbeitung des Decks: die Verlaufseinträge eines Speichervorgangs. */
+export interface DeckChangeGroup {
+  changedAt: string;
+  added: DeckChangeEntry[];
+  removed: DeckChangeEntry[];
+  /** Summe der Kartenanzahl (nicht der Zeilen), also "3 Karten rein" statt "2 Zeilen". */
+  addedCount: number;
+  removedCount: number;
+}
+
 @Injectable({ providedIn: 'root' })
 export class DeckViewerService {
   private readonly deckService = inject(DeckService);
@@ -124,6 +141,53 @@ export class DeckViewerService {
   });
   readonly viewingDeckCards = signal<DeckCard[]>([]);
   readonly viewingChangeLog = signal<DeckChangeEntry[]>([]);
+  /**
+   * Verlauf nach Bearbeitungen gruppiert statt als eine lange Liste einzelner Zeilen.
+   *
+   * Nicht nach exakt gleichem Zeitstempel: Nur der Listen-Neuimport (DeckService.saveDeck)
+   * schreibt alle Änderungen in EINEM insert und damit mit identischem changed_at. Der normale
+   * Bearbeiten-Speichern-Weg (saveEdits -> addCardToDeck/removeCardFromDeck) schreibt dagegen pro
+   * Karte eine eigene Zeile, jede mit ihrem eigenen now() - Millisekunden bis wenige Sekunden
+   * auseinander. Exakte Gleichheit würde einen einzigen Speichervorgang deshalb in lauter
+   * Ein-Karten-Reiter zerlegen. Stattdessen gehören aufeinanderfolgende Einträge zusammen, solange
+   * zwischen ihnen höchstens CHANGE_GROUP_GAP_MS liegen - das fasst beide Schreibwege korrekt
+   * zusammen und trennt zwei wirklich getrennte Bearbeitungen weiterhin.
+   */
+  readonly changeLogGroups = computed<DeckChangeGroup[]>(() => {
+    const groups: DeckChangeGroup[] = [];
+    let previousTime: number | null = null;
+
+    // viewingChangeLog kommt absteigend sortiert (neueste zuerst, siehe DeckService.loadChangeLog).
+    for (const entry of this.viewingChangeLog()) {
+      const time = new Date(entry.changedAt).getTime();
+      const belongsToPrevious =
+        previousTime !== null && Math.abs(previousTime - time) <= CHANGE_GROUP_GAP_MS;
+
+      if (!belongsToPrevious) {
+        groups.push({ changedAt: entry.changedAt, added: [], removed: [], addedCount: 0, removedCount: 0 });
+      }
+      const group = groups[groups.length - 1];
+
+      if (entry.changeType === 'added') {
+        group.added.push(entry);
+        group.addedCount += entry.quantity;
+      } else {
+        group.removed.push(entry);
+        group.removedCount += entry.quantity;
+      }
+      previousTime = time;
+    }
+    return groups;
+  });
+  /** Zeitstempel des offenen Verlaufs-Reiters - null heißt "neuester", siehe selectedChangeGroup(). */
+  readonly selectedChangeGroupKey = signal<string | null>(null);
+  readonly selectedChangeGroup = computed<DeckChangeGroup | null>(() => {
+    const groups = this.changeLogGroups();
+    const key = this.selectedChangeGroupKey();
+    return groups.find((g) => g.changedAt === key) ?? groups[0] ?? null;
+  });
+  /** Läuft, während für den Druck einer Bearbeitung fehlende Kartenbilder von Scryfall nachgeladen werden. */
+  readonly changeGroupPrintBusy = signal(false);
   readonly viewingDeckGameStats = signal<DeckGameStats | null>(null);
   /** "mine" = nur Partien, in denen der eingeloggte Nutzer selbst Pilot war (nicht zwingend Deck-Besitzer, siehe resolveMyPlayerIds()). */
   readonly deckStatsScope = signal<'mine' | 'all'>('mine');
@@ -2099,6 +2163,7 @@ export class DeckViewerService {
     this.deckInfoSaving.set(false);
     this.detailBusy.set(true);
     this.showChangeLog.set(false);
+    this.selectedChangeGroupKey.set(null);
     this.showDeckStatsInfo.set(false);
     this.showDeckAnalysis.set(false);
     this.resetCardFilters();
@@ -2428,6 +2493,50 @@ export class DeckViewerService {
 
   toggleChangeLog(): void {
     this.showChangeLog.update((v) => !v);
+  }
+
+  selectChangeGroup(changedAt: string): void {
+    this.selectedChangeGroupKey.set(changedAt);
+  }
+
+  /**
+   * Die in EINER Bearbeitung hinzugefügten Karten als Druckliste für den PDF-Export. Karten, die
+   * inzwischen wieder aus dem Deck geflogen sind, haben kein Bild mehr im Deck - für die wird es
+   * über den Kartennamen bei Scryfall nachgeladen, sonst wären genau die alten Bearbeitungen (der
+   * eigentliche Zweck der Reiter) nicht druckbar.
+   */
+  async addedCardsForPrint(group: DeckChangeGroup): Promise<PdfSourceCard[]> {
+    this.changeGroupPrintBusy.set(true);
+    try {
+      await this.ensureCardDetailsLoaded();
+      const inDeck = new Map(this.viewingDeckCards().map((c) => [c.cardName.toLowerCase(), c]));
+
+      const cards: PdfSourceCard[] = group.added.map((entry) => {
+        const card = inDeck.get(entry.cardName.toLowerCase());
+        return {
+          cardName: entry.cardName,
+          quantity: entry.quantity,
+          imageUrl: card ? this.resolvedCardPrintImage(card) : null,
+          backImageUrl: card ? this.resolvedCardBackPrintImage(card) : null,
+        };
+      });
+
+      const missing = cards.filter((c) => !c.imageUrl).map((c) => c.cardName);
+      if (missing.length === 0) return cards;
+
+      const found = await this.scryfall.findCardsBulk(missing);
+      return cards.map((c) => {
+        if (c.imageUrl) return c;
+        const scryfallCard = found.get(c.cardName.toLowerCase());
+        return {
+          ...c,
+          imageUrl: scryfallCard?.imageUrl ?? null,
+          backImageUrl: scryfallCard?.backImageUrl ?? null,
+        };
+      });
+    } finally {
+      this.changeGroupPrintBusy.set(false);
+    }
   }
 
   toggleDeckStatsInfo(): void {
