@@ -390,6 +390,23 @@ export class IngameTracker implements AfterViewInit, OnDestroy {
     this.panelRefs.forEach((ref) => this.resizeObserver!.observe(ref.nativeElement));
   }
 
+  /**
+   * Ist dieses Panel (nach der Rotation) breiter als hoch? Dann liegen mehrere
+   * Commander-Quellen im Schadens-Fokus NEBENEINANDER statt untereinander -
+   * gestapelt bräuchte jede Quelle (Label + 64px Tap-Fläche + Padding) rund
+   * 100px, was bei den quer liegenden Panels eines 4-Spieler-Spiels (~180px
+   * Inhaltshöhe auf dem iPhone) nicht für zwei Quellen reicht: die zweite wurde
+   * von .player-panel {overflow:hidden} abgeschnitten.
+   */
+  isWidePanel(index: number): boolean {
+    const size = this.panelSizes()[index];
+    if (!size) return false;
+    const rotated = Math.abs(this.session.panelRotation(index)) === 90;
+    const width = rotated ? size.height : size.width;
+    const height = rotated ? size.width : size.height;
+    return width > height;
+  }
+
   panelInnerWidth(index: number): string {
     const size = this.panelSizes()[index];
     if (!size) return '100%';

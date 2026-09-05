@@ -367,6 +367,14 @@
     // schrumpfen lassen, wodurch die großen Tap-Zonen bei nur einem Commander
     // (kein Partner/Background) unsichtbar klein wurden.
   }
+
+  // Quer liegende Panels (siehe IngameTracker.isWidePanel) haben deutlich mehr
+  // Breite als Höhe: dort teilen sich die Commander-Quellen die Breite. Gestapelt
+  // passten bei Partner-Commandern nur ~1,8 von zwei Quellen in die ~180px
+  // Inhaltshöhe eines 4-Spieler-Panels - die zweite war abgeschnitten.
+  &.side-by-side {
+    flex-direction: row;
+  }
 }
 
 // NEU
@@ -379,9 +387,15 @@
   gap: 4px;
   padding: 8px 4px;
   min-height: 0;
+  min-width: 0;
 
-  &:first-child:not(:last-child) {
+  &:not(:last-child) {
     border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+  }
+
+  .side-by-side > &:not(:last-child) {
+    border-bottom: none;
+    border-right: 1px solid rgba(255, 255, 255, 0.15);
   }
 }
 
@@ -396,6 +410,16 @@
   white-space: nowrap;
   max-width: 100%;
   flex-shrink: 0;
+
+  // Nebeneinander ist jede Spalte nur halb so breit - lange Commander-Namen
+  // ("Frodo, Adventurous Hobbit") wären einzeilig fast komplett abgekürzt.
+  .side-by-side & {
+    white-space: normal;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-height: 1.2;
+  }
 }
 
 /* --- Große Tap-Zonen für Commander-Schaden, analog zu .life-tap-area --- */
